@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>乗レコ</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
+:root{
+  --navy:#0D1B2A;--steel:#1E3448;--track:#2E4A63;--track2:#243d55;
+  --red:#E8352A;--gold:#F2A900;--green:#2ECC71;--silver:#8CA0B3;--white:#F4F7FA;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--navy);color:var(--white);font-family:'Noto Sans JP',sans-serif;min-height:100vh;overflow-x:hidden;}
+
+header{background:var(--steel);border-bottom:3px solid var(--red);padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:200;}
+.logo{font-size:20px;font-weight:700;}.logo span{color:var(--red);}
+.badge{margin-left:auto;font-family:'DM Mono',monospace;font-size:10px;padding:3px 9px;border-radius:20px;background:var(--track);color:var(--silver);letter-spacing:1px;}
+.badge.rec{background:rgba(232,53,42,.2);color:var(--red);animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+.app{max-width:480px;margin:0 auto;padding:14px 14px 120px;}
+.phase{display:none;animation:up .3s ease;}
+.phase.active{display:block;}
+@keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+.lbl{font-size:10px;letter-spacing:2px;color:var(--silver);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.lbl::after{content:'';flex:1;height:1px;background:var(--track);}
+.card{background:var(--steel);border:1.5px solid var(--track);border-radius:14px;padding:16px;margin-bottom:14px;}
+
+.sg{margin-bottom:13px;}
+.sg label{display:block;font-size:11px;color:var(--silver);margin-bottom:5px;}
+select{width:100%;background:var(--steel);border:1.5px solid var(--track);color:var(--white);padding:11px 13px;border-radius:9px;font-family:'Noto Sans JP',sans-serif;font-size:14px;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238CA0B3' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;cursor:pointer;transition:border-color .2s;}
+select:focus{outline:none;border-color:var(--red);}
+
+.btn{width:100%;padding:15px;border:none;border-radius:11px;font-family:'Noto Sans JP',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;}
+.btn-red{background:var(--red);color:#fff;box-shadow:0 4px 18px rgba(232,53,42,.4);}
+.btn-red:hover:not(:disabled){transform:translateY(-2px);}
+.btn-red:disabled{opacity:.35;cursor:not-allowed;}
+.btn-gold{background:var(--gold);color:var(--navy);}
+.btn-gold:hover{transform:translateY(-2px);}
+.btn-dim{background:var(--track);color:var(--white);margin-top:10px;}
+.btn-sm{padding:9px 14px;font-size:13px;font-weight:600;border:none;border-radius:9px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:all .2s;}
+.btn-gps{background:rgba(46,204,113,.15);color:var(--green);border:1.5px solid rgba(46,204,113,.4);display:flex;align-items:center;justify-content:center;gap:6px;}
+.btn-gps:hover{background:rgba(46,204,113,.25);}
+.btn-gps:disabled{opacity:.4;cursor:not-allowed;}
+.btn-add{background:rgba(46,204,113,.15);color:var(--green);border:1.5px solid rgba(46,204,113,.4);}
+.btn-add:hover{background:rgba(46,204,113,.25);}
+.btn-add:disabled{opacity:.35;cursor:not-allowed;}
+.btn-stop-seg{background:rgba(242,169,0,.15);color:var(--gold);border:1.5px solid rgba(242,169,0,.4);}
+.btn-stop-seg:hover{background:rgba(242,169,0,.25);}
+
+/* ── GPS Panel ── */
+.gps-panel{background:linear-gradient(135deg,rgba(46,204,113,.08),rgba(46,204,113,.03));border:1.5px solid rgba(46,204,113,.25);border-radius:12px;padding:14px;margin-bottom:14px;}
+.gps-status{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.gps-dot{width:10px;height:10px;border-radius:50%;background:var(--silver);flex-shrink:0;transition:background .3s;}
+.gps-dot.searching{background:var(--gold);animation:pulse 1s infinite;}
+.gps-dot.found{background:var(--green);}
+.gps-dot.error{background:var(--red);}
+.gps-text{font-size:12px;color:var(--silver);}
+.gps-text strong{color:var(--white);}
+.gps-accuracy{font-family:'DM Mono',monospace;font-size:10px;color:var(--silver);margin-top:2px;}
+
+/* ── Nearest station candidates ── */
+.candidates{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+.candidate{background:var(--track2);border:1.5px solid transparent;border-radius:10px;padding:10px 13px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:10px;}
+.candidate:hover{border-color:rgba(46,204,113,.4);background:#2a4050;}
+.candidate.selected{border-color:var(--green);background:rgba(46,204,113,.1);}
+.cand-line-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.cand-info{flex:1;min-width:0;}
+.cand-name{font-size:14px;font-weight:600;}
+.cand-line{font-size:11px;color:var(--silver);}
+.cand-dist{font-family:'DM Mono',monospace;font-size:11px;color:var(--green);flex-shrink:0;}
+.cand-check{color:var(--green);font-size:16px;flex-shrink:0;opacity:0;}
+.candidate.selected .cand-check{opacity:1;}
+
+/* ── My location dot on map ── */
+/* drawn in SVG */
+
+.timer{font-family:'DM Mono',monospace;font-size:44px;font-weight:500;text-align:center;letter-spacing:2px;margin:6px 0;}
+.timer-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--silver);font-family:'DM Mono',monospace;}
+
+.seg-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;}
+.seg-item{background:var(--track2);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;}
+.seg-line-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.seg-info{flex:1;min-width:0;}
+.seg-route{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.seg-meta{font-size:11px;color:var(--silver);font-family:'DM Mono',monospace;margin-top:2px;}
+.seg-badge{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;flex-shrink:0;}
+.seg-done{background:rgba(46,204,113,.15);color:var(--green);}
+.seg-active{background:rgba(232,53,42,.15);color:var(--red);animation:pulse 1.5s infinite;}
+
+.add-panel{background:var(--track2);border:1.5px dashed rgba(46,204,113,.3);border-radius:12px;padding:14px;margin-bottom:12px;}
+
+.map-wrap{background:#060f1a;border:1.5px solid var(--track);border-radius:14px;overflow:hidden;margin-bottom:14px;position:relative;}
+.map-lbl{position:absolute;top:9px;left:12px;font-size:9px;font-family:'DM Mono',monospace;color:var(--silver);z-index:10;letter-spacing:2px;}
+.map-svg{width:100%;display:block;}
+.map-leg{display:flex;gap:12px;flex-wrap:wrap;padding:7px 12px;background:rgba(0,0,0,.4);font-size:10px;color:var(--silver);border-top:1px solid var(--track);}
+.leg-item{display:flex;align-items:center;gap:4px;}
+.leg-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;}
+.chip{background:var(--track);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--silver);}
+.chip.hl{background:rgba(232,53,42,.15);color:var(--red);border:1px solid rgba(232,53,42,.3);}
+.chip.hl2{background:rgba(242,169,0,.15);color:var(--gold);border:1px solid rgba(242,169,0,.3);}
+
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.sitem{background:var(--track);border-radius:9px;padding:12px;}
+.slbl{font-size:9px;color:var(--silver);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;}
+.sval{font-size:19px;font-weight:700;font-family:'DM Mono',monospace;}
+.sunit{font-size:10px;color:var(--silver);}
+
+.share-txt{background:var(--track);border-radius:9px;padding:12px;font-size:11px;line-height:1.9;color:var(--silver);font-family:'DM Mono',monospace;white-space:pre-wrap;margin-bottom:10px;border:1px dashed rgba(255,255,255,.05);}
+.btn-copy{width:100%;padding:11px;border:none;border-radius:9px;font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:700;cursor:pointer;background:var(--track);color:var(--white);transition:all .2s;}
+.btn-copy.ok{background:rgba(46,204,113,.2);color:var(--green);}
+
+/* 駅メモUI */
+.memo-type-btn,.memo-mood-btn,.memo-tag-btn{
+  padding:6px 12px;border:1.5px solid var(--track);border-radius:20px;
+  background:var(--track2);color:var(--silver);font-family:'Noto Sans JP',sans-serif;
+  font-size:12px;cursor:pointer;transition:all .2s;white-space:nowrap;
+}
+.memo-type-btn.active{background:rgba(46,76,99,.6);border-color:var(--gold);color:var(--gold);}
+.memo-mood-btn.active{background:rgba(242,169,0,.15);border-color:var(--gold);color:var(--gold);}
+.memo-tag-btn.active{background:rgba(46,204,113,.15);border-color:var(--green);color:var(--green);}
+.memo-type-btn:hover,.memo-mood-btn:hover,.memo-tag-btn:hover{border-color:var(--silver);color:var(--white);}
+
+.journey-track{position:relative;padding:0 0 0 28px;}
+.journey-track::before{content:'';position:absolute;left:6px;top:8px;bottom:8px;width:3px;background:linear-gradient(to bottom,var(--red),var(--gold));border-radius:2px;}
+.jstation{display:flex;align-items:flex-start;gap:8px;padding:4px 0;position:relative;}
+.jdot{position:absolute;left:-22px;top:4px;width:14px;height:14px;border-radius:50%;border:2.5px solid var(--silver);background:var(--navy);}
+.jdot.s{border-color:var(--red);background:var(--red);}
+.jdot.e{border-color:var(--gold);background:var(--gold);}
+.jdot.tr{border-color:var(--green);background:var(--green);}
+.jname{font-size:13px;}
+.jname.dim{color:var(--silver);font-size:12px;}
+.jtag{font-size:10px;padding:2px 7px;border-radius:9px;font-weight:600;margin-left:auto;flex-shrink:0;}
+.jtag.s{background:rgba(232,53,42,.2);color:var(--red);}
+.jtag.e{background:rgba(242,169,0,.2);color:var(--gold);}
+.jtag.tr{background:rgba(46,204,113,.2);color:var(--green);}
+.seg-divider{display:flex;align-items:center;gap:8px;padding:4px 0;position:relative;color:var(--silver);font-size:10px;}
+.seg-divider-dot{position:absolute;left:-22px;top:4px;width:14px;height:14px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:8px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">乗<span>レコ</span></div>
+  <div class="badge" id="badge">待機中</div>
+</header>
+
+<div class="app">
+
+<!-- ══ SETUP ══ -->
+<div class="phase active" id="phase-setup">
+  <div class="lbl" style="margin-top:6px">最初の区間を設定</div>
+
+  <!-- GPS Panel -->
+  <div class="gps-panel" id="gps-panel-setup">
+    <div class="gps-status">
+      <div class="gps-dot" id="gps-dot-setup"></div>
+      <div>
+        <div class="gps-text" id="gps-text-setup">📍 現在地から最寄り駅を検索できます</div>
+        <div class="gps-accuracy" id="gps-acc-setup"></div>
+      </div>
+    </div>
+    <button class="btn-sm btn-gps" id="gps-btn-setup" onclick="detectNearest('setup')" style="width:100%">
+      📡 現在地から最寄り駅を検索
+    </button>
+    <div class="candidates" id="candidates-setup" style="display:none"></div>
+  </div>
+
+  <div class="card">
+    <div class="sg"><label>路線</label>
+      <select id="s-line" onchange="onLineChange('setup')"><option value="">-- 路線を選択 --</option></select>
+    </div>
+    <div class="sg"><label>乗車駅（出発）</label>
+      <select id="s-start" onchange="onStationChange('setup')"><option value="">-- 駅を選択 --</option></select>
+    </div>
+    <div class="sg" style="margin-bottom:0"><label>下車駅（目的地）</label>
+      <select id="s-end" onchange="onStationChange('setup')"><option value="">-- 駅を選択 --</option></select>
+    </div>
+  </div>
+
+  <div class="map-wrap" id="setup-map" style="display:none">
+    <div class="map-lbl">ROUTE PREVIEW</div>
+    <svg id="setup-svg" class="map-svg" height="240"></svg>
+    <div class="map-leg">
+      <div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>乗車駅</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--gold)"></div>下車駅</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>現在地</div>
+    </div>
+  </div>
+
+  <button class="btn btn-red" id="setup-start" onclick="startJourney()" disabled>🚃 乗車開始</button>
+</div>
+
+<!-- ══ RECORDING ══ -->
+<div class="phase" id="phase-recording">
+  <div class="lbl" style="margin-top:6px">旅程記録中</div>
+
+  <div class="card">
+    <div class="timer" id="timer">00:00:00</div>
+    <div class="timer-meta"><span id="t-start">--:--</span><span id="t-now">現在時刻</span></div>
+  </div>
+
+  <div class="map-wrap">
+    <div class="map-lbl">LIVE MAP</div>
+    <svg id="rec-svg" class="map-svg" height="260"></svg>
+    <div class="map-leg">
+      <div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>出発</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>現在地GPS</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--gold)"></div>目的地</div>
+    </div>
+  </div>
+
+  <div id="done-segs" style="display:none">
+    <div class="lbl">完了した区間</div>
+    <div class="seg-list" id="done-seg-list"></div>
+  </div>
+
+  <div class="lbl">現在の乗車</div>
+  <div class="seg-list">
+    <div class="seg-item" id="active-seg-item">
+      <div class="seg-line-dot" id="active-dot"></div>
+      <div class="seg-info">
+        <div class="seg-route" id="active-route">--</div>
+        <div class="seg-meta" id="active-meta">--</div>
+      </div>
+      <div class="seg-badge seg-active" id="active-badge">乗車中</div>
+    </div>
+  </div>
+
+  <!-- Add next segment panel -->
+  <div id="add-panel" style="display:none">
+    <div class="add-panel">
+      <div class="lbl">🔄 次の乗車区間</div>
+
+      <!-- GPS for transfer station detection -->
+      <div class="gps-panel" style="margin-bottom:12px">
+        <div class="gps-status">
+          <div class="gps-dot" id="gps-dot-next"></div>
+          <div>
+            <div class="gps-text" id="gps-text-next">乗換駅をGPSで自動検出できます</div>
+            <div class="gps-accuracy" id="gps-acc-next"></div>
+          </div>
+        </div>
+        <button class="btn-sm btn-gps" id="gps-btn-next" onclick="detectNearest('next')" style="width:100%">
+          📡 現在地から乗換駅を検索
+        </button>
+        <div class="candidates" id="candidates-next" style="display:none"></div>
+      </div>
+
+      <div class="sg"><label>路線</label>
+        <select id="n-line" onchange="onLineChange('next')"><option value="">-- 路線を選択 --</option></select>
+      </div>
+      <div class="sg"><label>乗車駅（乗換駅）</label>
+        <select id="n-start" onchange="onStationChange('next')"><option value="">-- 駅を選択 --</option></select>
+      </div>
+      <div class="sg" style="margin-bottom:10px"><label>下車駅</label>
+        <select id="n-end" onchange="onStationChange('next')"><option value="">-- 駅を選択 --</option></select>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-sm btn-add" id="btn-add-seg" onclick="addSegment()" disabled style="flex:1">＋ 乗車開始</button>
+        <button class="btn-sm" onclick="cancelAdd()" style="background:var(--track);color:var(--silver);flex:0 0 auto">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:8px" id="rec-actions">
+    <button class="btn btn-sm btn-stop-seg" onclick="arriveAtStation()" style="flex:1">🚉 乗換・到着</button>
+    <button class="btn-sm btn-gold" onclick="endJourney()" style="flex:0 0 auto;padding:9px 18px;border-radius:9px;font-weight:700">🏁 旅程終了</button>
+  </div>
+</div>
+
+<!-- ══ RESULT ══ -->
+<div class="phase" id="phase-result">
+  <div class="lbl" style="margin-top:6px">旅程記録</div>
+  <div class="card">
+    <div style="font-size:17px;font-weight:700;margin-bottom:3px" id="res-title"></div>
+    <div style="font-size:11px;color:var(--silver);margin-bottom:16px;font-family:'DM Mono',monospace" id="res-date"></div>
+    <div class="sgrid">
+      <div class="sitem"><div class="slbl">総乗車時間</div><div class="sval" id="res-dur">--</div></div>
+      <div class="sitem"><div class="slbl">乗換回数</div><div class="sval"><span id="res-transfers">--</span><span class="sunit"> 回</span></div></div>
+      <div class="sitem"><div class="slbl">出発時刻</div><div class="sval" id="res-start" style="font-size:15px">--</div></div>
+      <div class="sitem"><div class="slbl">到着時刻</div><div class="sval" id="res-end" style="font-size:15px">--</div></div>
+    </div>
+    <div class="lbl">旅程ルート</div>
+    <div class="journey-track" id="res-journey"></div>
+  </div>
+
+  <div class="map-wrap">
+    <div class="map-lbl">RESULT MAP</div>
+    <svg id="res-svg" class="map-svg" height="300"></svg>
+    <div class="map-leg">
+      <div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>出発</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>乗換</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--gold)"></div>到着</div>
+    </div>
+  </div>
+
+  <div class="lbl">区間別記録</div>
+  <div id="res-segs"></div>
+
+  <div class="card">
+    <div class="lbl">シェアテキスト</div>
+    <div class="share-txt" id="share-txt"></div>
+    <button class="btn-copy" id="copy-btn" onclick="copyTxt()">📋 コピー</button>
+  </div>
+  <!-- Notion Save -->
+  <div class="card" id="notion-card" style="border-color:rgba(99,102,241,.3)">
+    <div class="lbl" style="color:#818cf8">Notionに保存</div>
+    <div style="font-size:12px;color:var(--silver);margin-bottom:12px;line-height:1.7">
+      ① 下のボタンを押す<br>
+      ② 表示されたテキストを<strong style="color:var(--white)">長押し→全選択→コピー</strong><br>
+      ③ Claudeのチャットに貼り付けて送信
+    </div>
+    <button class="btn-sm" id="notion-btn" onclick="showNotionJson()" style="width:100%;background:rgba(99,102,241,.2);color:#818cf8;border:1.5px solid rgba(99,102,241,.4);font-size:14px;padding:13px;border-radius:10px;font-weight:700;margin-bottom:10px">
+      ✦ 記録データを表示
+    </button>
+    <div id="notion-json-wrap" style="display:none">
+      <div style="font-size:10px;color:var(--green);margin-bottom:6px;letter-spacing:1px">▼ 長押し → 全選択 → コピー してClaudeに貼り付け</div>
+      <textarea id="notion-json-txt" readonly
+        style="width:100%;height:160px;background:#060f1a;border:1.5px solid rgba(46,204,113,.4);border-radius:9px;color:var(--green);font-family:'DM Mono',monospace;font-size:10px;padding:10px;line-height:1.6;resize:none;-webkit-user-select:all;user-select:all"
+        onclick="this.select()"
+      ></textarea>
+    </div>
+  </div>
+
+  <!-- 📸 駅メモ -->
+  <div class="card" style="border-color:rgba(242,169,0,.25)">
+    <div class="lbl" style="color:var(--gold)">📸 駅メモを残す</div>
+    <div style="font-size:12px;color:var(--silver);margin-bottom:14px;line-height:1.7">
+      乗った駅・路線にコメントや写真を記録してNotionに保存できます
+    </div>
+
+    <!-- 駅・路線セレクト -->
+    <div class="sg" style="margin-bottom:10px">
+      <label>種別</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="memo-type-btns">
+        <button class="memo-type-btn active" data-type="駅" onclick="setMemoType(this)">🚉 駅</button>
+        <button class="memo-type-btn" data-type="路線" onclick="setMemoType(this)">🚃 路線</button>
+        <button class="memo-type-btn" data-type="車内" onclick="setMemoType(this)">🪟 車内</button>
+        <button class="memo-type-btn" data-type="その他" onclick="setMemoType(this)">📍 その他</button>
+      </div>
+    </div>
+
+    <div class="sg" style="margin-bottom:10px">
+      <label id="memo-target-label">駅名</label>
+      <select id="memo-station-sel" onchange="onMemoStationChange()">
+        <option value="">-- 駅を選択 --</option>
+      </select>
+    </div>
+
+    <div class="sg" style="margin-bottom:10px">
+      <label>路線</label>
+      <select id="memo-line-sel">
+        <option value="">-- 路線を選択 --</option>
+      </select>
+    </div>
+
+    <!-- 気分 -->
+    <div class="sg" style="margin-bottom:10px">
+      <label>気分</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="memo-mood-btns">
+        <button class="memo-mood-btn" data-mood="最高" onclick="setMood(this)">🤩 最高</button>
+        <button class="memo-mood-btn active" data-mood="良い" onclick="setMood(this)">😊 良い</button>
+        <button class="memo-mood-btn" data-mood="普通" onclick="setMood(this)">😐 普通</button>
+        <button class="memo-mood-btn" data-mood="微妙" onclick="setMood(this)">😕 微妙</button>
+        <button class="memo-mood-btn" data-mood="最悪" onclick="setMood(this)">😤 最悪</button>
+      </div>
+    </div>
+
+    <!-- タグ -->
+    <div class="sg" style="margin-bottom:10px">
+      <label>タグ（複数選択可）</label>
+      <div style="display:flex;gap:5px;flex-wrap:wrap" id="memo-tag-btns">
+        <button class="memo-tag-btn" data-tag="絶景" onclick="toggleTag(this)">🏔️ 絶景</button>
+        <button class="memo-tag-btn" data-tag="食事" onclick="toggleTag(this)">🍱 食事</button>
+        <button class="memo-tag-btn" data-tag="レア車両" onclick="toggleTag(this)">🚄 レア車両</button>
+        <button class="memo-tag-btn" data-tag="混雑" onclick="toggleTag(this)">👥 混雑</button>
+        <button class="memo-tag-btn" data-tag="乗り換え" onclick="toggleTag(this)">🔀 乗り換え</button>
+        <button class="memo-tag-btn" data-tag="終点" onclick="toggleTag(this)">🏁 終点</button>
+        <button class="memo-tag-btn" data-tag="始発" onclick="toggleTag(this)">🌅 始発</button>
+      </div>
+    </div>
+
+    <!-- コメント -->
+    <div class="sg" style="margin-bottom:10px">
+      <label>コメント</label>
+      <textarea id="memo-comment"
+        placeholder="ここが良かった、景色が最高、など自由に..."
+        style="width:100%;height:90px;background:var(--track2);border:1.5px solid var(--track);border-radius:9px;color:var(--white);font-family:'Noto Sans JP',sans-serif;font-size:13px;padding:10px;resize:none;line-height:1.6;outline:none;"
+        onfocus="this.style.borderColor='var(--gold)'"
+        onblur="this.style.borderColor='var(--track)'"></textarea>
+    </div>
+
+    <!-- 写真URL -->
+    <div class="sg" style="margin-bottom:14px">
+      <label>写真URL（Google Photos / iCloud / imgur など）</label>
+      <input id="memo-photo" type="url" placeholder="https://..."
+        style="width:100%;background:var(--track2);border:1.5px solid var(--track);border-radius:9px;color:var(--white);font-family:'DM Mono',monospace;font-size:12px;padding:10px 12px;outline:none;"
+        onfocus="this.style.borderColor='var(--gold)'"
+        onblur="this.style.borderColor='var(--track)'">
+      <div style="font-size:10px;color:var(--silver);margin-top:4px">※ 写真は外部URLのみ対応（直接アップロードは今後対応予定）</div>
+    </div>
+
+    <!-- 送信ボタン -->
+    <button class="btn-sm" id="memo-submit-btn" onclick="showMemoData()"
+      style="width:100%;background:rgba(242,169,0,.15);color:var(--gold);border:1.5px solid rgba(242,169,0,.4);font-size:14px;padding:13px;border-radius:10px;font-weight:700;margin-bottom:10px">
+      📋 メモデータを表示 → Claudeに貼り付け
+    </button>
+    <div id="memo-json-wrap" style="display:none">
+      <div style="font-size:10px;color:var(--gold);margin-bottom:6px;letter-spacing:1px">▼ 長押し → 全選択 → コピー してClaudeに貼り付け</div>
+      <textarea id="memo-json-txt" readonly
+        style="width:100%;height:140px;background:#060f1a;border:1.5px solid rgba(242,169,0,.4);border-radius:9px;color:var(--gold);font-family:'DM Mono',monospace;font-size:10px;padding:10px;line-height:1.6;resize:none;-webkit-user-select:all;user-select:all"
+        onclick="this.select()"></textarea>
+    </div>
+  </div>
+
+  <button class="btn btn-dim" onclick="resetApp()">＋ 新しい旅程を記録</button>
+</div>
+
+</div><!-- /app -->
+
+<script>
+// ════════════════════════════════════════════
+// ISLANDS
+// ════════════════════════════════════════════
+const ISLANDS=[
+  {pts:[[35.68,139.77],[35.55,139.88],[35.30,139.70],[35.18,136.90],[34.70,136.50],[34.50,135.10],[34.70,134.60],[34.85,134.25],[34.70,133.90],[34.55,133.60],[34.20,132.45],[34.00,131.90],[33.95,131.05],[34.05,130.85],[34.25,131.15],[34.80,132.10],[35.00,132.55],[35.30,133.20],[35.55,133.95],[35.80,135.00],[36.20,136.10],[36.65,137.20],[36.90,138.30],[37.30,138.85],[37.50,139.10],[37.90,139.50],[38.30,140.30],[38.90,141.15],[39.70,141.90],[40.20,142.00],[40.65,141.40],[40.90,140.80],[41.20,140.40],[41.40,140.20],[41.55,140.70],[41.10,141.40],[40.50,141.95],[39.80,141.95],[39.10,141.15],[38.25,140.90],[37.80,140.75],[36.80,140.65],[36.30,140.30],[35.75,140.35],[35.68,139.77]]},
+  {pts:[[41.55,140.70],[42.00,140.95],[42.30,141.10],[42.60,141.40],[42.80,141.65],[43.10,141.35],[43.40,141.65],[43.65,142.00],[44.00,142.50],[44.40,143.20],[44.75,144.00],[44.35,144.60],[43.85,145.10],[43.50,145.45],[43.20,145.75],[43.00,145.55],[43.30,145.05],[43.60,144.65],[44.00,143.85],[43.70,143.30],[43.35,142.80],[43.00,142.30],[42.65,141.90],[42.30,141.60],[42.00,141.40],[41.80,141.00],[41.55,140.70]]},
+  {pts:[[33.95,131.05],[33.85,130.55],[33.60,130.25],[33.30,129.90],[33.00,129.70],[32.65,130.10],[32.45,130.70],[32.20,131.25],[31.60,130.55],[31.00,130.55],[31.20,131.10],[31.55,131.50],[32.05,131.90],[32.50,131.65],[32.90,131.00],[33.20,130.40],[33.55,130.90],[33.85,130.85],[33.95,131.05]]},
+  {pts:[[34.05,130.85],[34.20,132.45],[33.95,133.30],[33.50,133.55],[33.20,133.15],[32.95,132.55],[33.00,132.00],[33.30,131.50],[33.65,131.25],[34.05,130.85]]},
+];
+
+// ════════════════════════════════════════════
+// LINE DATA
+// ════════════════════════════════════════════
+const LINES=[
+  {id:'yamanote',name:'JR山手線',color:'#9ACD32',region:'東京',stations:[
+    {name:'東京',lat:35.681,lon:139.767},{name:'有楽町',lat:35.675,lon:139.763},
+    {name:'新橋',lat:35.666,lon:139.758},{name:'浜松町',lat:35.655,lon:139.757},
+    {name:'田町',lat:35.645,lon:139.747},{name:'高輪ゲートウェイ',lat:35.637,lon:139.740},
+    {name:'品川',lat:35.629,lon:139.739},{name:'大崎',lat:35.620,lon:139.729},
+    {name:'五反田',lat:35.626,lon:139.723},{name:'目黒',lat:35.633,lon:139.716},
+    {name:'恵比寿',lat:35.646,lon:139.710},{name:'渋谷',lat:35.658,lon:139.702},
+    {name:'原宿',lat:35.670,lon:139.703},{name:'代々木',lat:35.683,lon:139.702},
+    {name:'新宿',lat:35.690,lon:139.700},{name:'新大久保',lat:35.701,lon:139.700},
+    {name:'高田馬場',lat:35.712,lon:139.703},{name:'目白',lat:35.720,lon:139.709},
+    {name:'池袋',lat:35.729,lon:139.711},{name:'大塚',lat:35.731,lon:139.729},
+    {name:'巣鴨',lat:35.734,lon:139.740},{name:'駒込',lat:35.736,lon:139.749},
+    {name:'田端',lat:35.738,lon:139.762},{name:'西日暮里',lat:35.733,lon:139.767},
+    {name:'日暮里',lat:35.728,lon:139.771},{name:'鶯谷',lat:35.721,lon:139.778},
+    {name:'上野',lat:35.714,lon:139.777},{name:'御徒町',lat:35.707,lon:139.774},
+    {name:'秋葉原',lat:35.699,lon:139.774},{name:'神田',lat:35.692,lon:139.771},
+  ]},
+  {id:'chuo',name:'JR中央線（快速）',color:'#F15A22',region:'東京',stations:[
+    {name:'東京',lat:35.681,lon:139.767},{name:'神田',lat:35.692,lon:139.771},
+    {name:'御茶ノ水',lat:35.700,lon:139.764},{name:'四ツ谷',lat:35.686,lon:139.737},
+    {name:'新宿',lat:35.690,lon:139.700},{name:'中野',lat:35.708,lon:139.663},
+    {name:'高円寺',lat:35.706,lon:139.649},{name:'阿佐ヶ谷',lat:35.707,lon:139.636},
+    {name:'荻窪',lat:35.706,lon:139.621},{name:'西荻窪',lat:35.706,lon:139.601},
+    {name:'吉祥寺',lat:35.703,lon:139.580},{name:'三鷹',lat:35.703,lon:139.560},
+    {name:'武蔵境',lat:35.706,lon:139.544},{name:'国分寺',lat:35.701,lon:139.484},
+    {name:'国立',lat:35.687,lon:139.449},{name:'立川',lat:35.698,lon:139.413},
+    {name:'日野',lat:35.672,lon:139.393},{name:'豊田',lat:35.658,lon:139.368},
+    {name:'八王子',lat:35.657,lon:139.339},{name:'高尾',lat:35.642,lon:139.282},
+  ]},
+  {id:'keihin',name:'JR京浜東北線',color:'#00B2E2',region:'東京',stations:[
+    {name:'大宮',lat:35.907,lon:139.624},{name:'さいたま新都心',lat:35.895,lon:139.630},
+    {name:'与野',lat:35.882,lon:139.630},{name:'北浦和',lat:35.862,lon:139.641},
+    {name:'浦和',lat:35.859,lon:139.655},{name:'南浦和',lat:35.839,lon:139.660},
+    {name:'蕨',lat:35.825,lon:139.684},{name:'西川口',lat:35.818,lon:139.717},
+    {name:'川口',lat:35.809,lon:139.726},{name:'赤羽',lat:35.778,lon:139.721},
+    {name:'王子',lat:35.752,lon:139.739},{name:'田端',lat:35.738,lon:139.762},
+    {name:'上野',lat:35.714,lon:139.777},{name:'秋葉原',lat:35.699,lon:139.774},
+    {name:'東京',lat:35.681,lon:139.767},{name:'新橋',lat:35.666,lon:139.758},
+    {name:'浜松町',lat:35.655,lon:139.757},{name:'品川',lat:35.629,lon:139.739},
+    {name:'大井町',lat:35.600,lon:139.731},{name:'大森',lat:35.589,lon:139.736},
+    {name:'蒲田',lat:35.564,lon:139.716},{name:'川崎',lat:35.534,lon:139.700},
+    {name:'鶴見',lat:35.511,lon:139.672},{name:'横浜',lat:35.466,lon:139.623},
+  ]},
+  {id:'shonan',name:'JR湘南新宿ライン',color:'#F68B1F',region:'東京・神奈川',stations:[
+    {name:'大宮',lat:35.907,lon:139.624},{name:'浦和',lat:35.859,lon:139.655},
+    {name:'赤羽',lat:35.778,lon:139.721},{name:'池袋',lat:35.729,lon:139.711},
+    {name:'新宿',lat:35.690,lon:139.700},{name:'渋谷',lat:35.658,lon:139.702},
+    {name:'大崎',lat:35.620,lon:139.729},{name:'武蔵小杉',lat:35.577,lon:139.656},
+    {name:'横浜',lat:35.466,lon:139.623},{name:'戸塚',lat:35.397,lon:139.535},
+    {name:'大船',lat:35.343,lon:139.528},{name:'藤沢',lat:35.340,lon:139.490},
+    {name:'茅ケ崎',lat:35.334,lon:139.417},{name:'平塚',lat:35.327,lon:139.356},
+    {name:'国府津',lat:35.283,lon:139.207},{name:'小田原',lat:35.256,lon:139.154},
+  ]},
+  {id:'tokaido-shinkansen',name:'東海道新幹線',color:'#0066CC',region:'全国',stations:[
+    {name:'東京',lat:35.681,lon:139.767},{name:'品川',lat:35.629,lon:139.739},
+    {name:'新横浜',lat:35.508,lon:139.617},{name:'小田原',lat:35.256,lon:139.154},
+    {name:'熱海',lat:35.097,lon:139.072},{name:'三島',lat:35.128,lon:138.912},
+    {name:'静岡',lat:34.977,lon:138.383},{name:'浜松',lat:34.704,lon:137.735},
+    {name:'豊橋',lat:34.770,lon:137.391},{name:'名古屋',lat:35.171,lon:136.882},
+    {name:'米原',lat:35.317,lon:136.291},{name:'京都',lat:34.987,lon:135.757},
+    {name:'新大阪',lat:34.733,lon:135.500},{name:'新神戸',lat:34.700,lon:135.200},
+    {name:'姫路',lat:34.818,lon:134.693},{name:'岡山',lat:34.655,lon:133.919},
+    {name:'広島',lat:34.397,lon:132.474},{name:'小倉',lat:33.878,lon:130.877},
+    {name:'博多',lat:33.590,lon:130.421},
+  ]},
+  {id:'hokuriku',name:'北陸新幹線',color:'#005BAC',region:'北陸',stations:[
+    {name:'東京',lat:35.681,lon:139.767},{name:'上野',lat:35.714,lon:139.777},
+    {name:'大宮',lat:35.907,lon:139.624},{name:'高崎',lat:36.323,lon:139.004},
+    {name:'軽井沢',lat:36.349,lon:138.599},{name:'上田',lat:36.402,lon:138.249},
+    {name:'長野',lat:36.644,lon:138.188},{name:'上越妙高',lat:37.127,lon:138.249},
+    {name:'糸魚川',lat:37.036,lon:137.863},{name:'富山',lat:36.697,lon:137.213},
+    {name:'金沢',lat:36.578,lon:136.648},{name:'福井',lat:36.064,lon:136.220},
+    {name:'敦賀',lat:35.645,lon:136.066},
+  ]},
+  {id:'tohoku',name:'東北新幹線',color:'#007744',region:'東北',stations:[
+    {name:'東京',lat:35.681,lon:139.767},{name:'上野',lat:35.714,lon:139.777},
+    {name:'大宮',lat:35.907,lon:139.624},{name:'宇都宮',lat:36.558,lon:139.899},
+    {name:'那須塩原',lat:36.932,lon:140.052},{name:'郡山',lat:37.394,lon:140.388},
+    {name:'福島',lat:37.758,lon:140.474},{name:'仙台',lat:38.261,lon:140.882},
+    {name:'一ノ関',lat:38.878,lon:141.125},{name:'盛岡',lat:39.703,lon:141.135},
+    {name:'八戸',lat:40.512,lon:141.488},{name:'新青森',lat:40.820,lon:140.740},
+  ]},
+  {id:'osaka-loop',name:'JR大阪環状線',color:'#EC6B17',region:'大阪',stations:[
+    {name:'大阪',lat:34.702,lon:135.496},{name:'福島',lat:34.693,lon:135.472},
+    {name:'野田',lat:34.680,lon:135.457},{name:'西九条',lat:34.669,lon:135.461},
+    {name:'弁天町',lat:34.658,lon:135.463},{name:'大正',lat:34.647,lon:135.478},
+    {name:'天王寺',lat:34.647,lon:135.514},{name:'鶴橋',lat:34.664,lon:135.550},
+    {name:'玉造',lat:34.669,lon:135.535},{name:'森ノ宮',lat:34.670,lon:135.524},
+    {name:'大阪城公園',lat:34.682,lon:135.524},{name:'京橋',lat:34.693,lon:135.533},
+    {name:'桜ノ宮',lat:34.706,lon:135.519},{name:'天満',lat:34.706,lon:135.506},
+  ]},
+  {id:'tokyu-toyoko',name:'東急東横線',color:'#E5171F',region:'東京・神奈川',stations:[
+    {name:'渋谷',lat:35.658,lon:139.702},{name:'中目黒',lat:35.644,lon:139.699},
+    {name:'祐天寺',lat:35.638,lon:139.695},{name:'学芸大学',lat:35.626,lon:139.687},
+    {name:'都立大学',lat:35.616,lon:139.685},{name:'自由が丘',lat:35.607,lon:139.668},
+    {name:'田園調布',lat:35.600,lon:139.655},{name:'武蔵小杉',lat:35.577,lon:139.656},
+    {name:'日吉',lat:35.551,lon:139.632},{name:'綱島',lat:35.536,lon:139.627},
+    {name:'菊名',lat:35.510,lon:139.627},{name:'反町',lat:35.468,lon:139.634},
+    {name:'横浜',lat:35.466,lon:139.623},
+  ]},
+  {id:'tokyu-denentoshi',name:'東急田園都市線',color:'#009DA0',region:'東京・神奈川',stations:[
+    {name:'渋谷',lat:35.658,lon:139.702},{name:'池尻大橋',lat:35.649,lon:139.693},
+    {name:'三軒茶屋',lat:35.643,lon:139.669},{name:'駒沢大学',lat:35.628,lon:139.662},
+    {name:'桜新町',lat:35.614,lon:139.650},{name:'用賀',lat:35.607,lon:139.636},
+    {name:'二子玉川',lat:35.601,lon:139.620},{name:'溝の口',lat:35.601,lon:139.598},
+    {name:'梶が谷',lat:35.603,lon:139.576},{name:'宮崎台',lat:35.598,lon:139.563},
+    {name:'鷺沼',lat:35.595,lon:139.551},{name:'たまプラーザ',lat:35.578,lon:139.541},
+    {name:'あざみ野',lat:35.566,lon:139.534},{name:'青葉台',lat:35.531,lon:139.511},
+    {name:'長津田',lat:35.525,lon:139.493},{name:'中央林間',lat:35.506,lon:139.446},
+  ]},
+  {id:'hankyu-kobe',name:'阪急神戸線',color:'#AA7A29',region:'大阪・兵庫',stations:[
+    {name:'大阪梅田',lat:34.705,lon:135.501},{name:'十三',lat:34.726,lon:135.484},
+    {name:'神崎川',lat:34.737,lon:135.464},{name:'塚口',lat:34.746,lon:135.405},
+    {name:'武庫之荘',lat:34.741,lon:135.388},{name:'西宮北口',lat:34.745,lon:135.360},
+    {name:'夙川',lat:34.750,lon:135.344},{name:'芦屋川',lat:34.749,lon:135.301},
+    {name:'岡本',lat:34.738,lon:135.273},{name:'御影',lat:34.714,lon:135.251},
+    {name:'神戸三宮',lat:34.694,lon:135.198},
+  ]},
+  {id:'odakyu',name:'小田急小田原線',color:'#0072BC',region:'東京・神奈川',stations:[
+    {name:'新宿',lat:35.690,lon:139.700},{name:'代々木上原',lat:35.660,lon:139.682},
+    {name:'下北沢',lat:35.661,lon:139.668},{name:'経堂',lat:35.654,lon:139.629},
+    {name:'成城学園前',lat:35.639,lon:139.580},{name:'登戸',lat:35.627,lon:139.505},
+    {name:'新百合ヶ丘',lat:35.606,lon:139.429},{name:'町田',lat:35.543,lon:139.445},
+    {name:'相模大野',lat:35.540,lon:139.432},{name:'本厚木',lat:35.443,lon:139.362},
+    {name:'伊勢原',lat:35.399,lon:139.310},{name:'秦野',lat:35.375,lon:139.221},
+    {name:'小田原',lat:35.256,lon:139.154},
+  ]},
+  {id:'keio',name:'京王線',color:'#CC0066',region:'東京',stations:[
+    {name:'新宿',lat:35.690,lon:139.700},{name:'笹塚',lat:35.672,lon:139.661},
+    {name:'明大前',lat:35.659,lon:139.641},{name:'千歳烏山',lat:35.648,lon:139.574},
+    {name:'調布',lat:35.651,lon:139.547},{name:'府中',lat:35.669,lon:139.477},
+    {name:'聖蹟桜ヶ丘',lat:35.634,lon:139.411},{name:'高幡不動',lat:35.646,lon:139.394},
+    {name:'北野',lat:35.638,lon:139.358},{name:'八王子',lat:35.657,lon:139.339},
+  ]},
+  {id:'seibu',name:'西武池袋線',color:'#005BAC',region:'東京・埼玉',stations:[
+    {name:'池袋',lat:35.729,lon:139.711},{name:'椎名町',lat:35.729,lon:139.692},
+    {name:'江古田',lat:35.737,lon:139.666},{name:'練馬',lat:35.737,lon:139.652},
+    {name:'石神井公園',lat:35.742,lon:139.610},{name:'大泉学園',lat:35.757,lon:139.585},
+    {name:'ひばりヶ丘',lat:35.745,lon:139.543},{name:'所沢',lat:35.800,lon:139.469},
+    {name:'入間市',lat:35.835,lon:139.391},{name:'飯能',lat:35.852,lon:139.337},
+  ]},
+  {id:'sapporo',name:'札幌市営地下鉄南北線',color:'#006400',region:'北海道',stations:[
+    {name:'麻生',lat:43.119,lon:141.341},{name:'北34条',lat:43.108,lon:141.340},
+    {name:'北24条',lat:43.093,lon:141.340},{name:'北18条',lat:43.086,lon:141.340},
+    {name:'北12条',lat:43.079,lon:141.340},{name:'さっぽろ',lat:43.068,lon:141.351},
+    {name:'大通',lat:43.061,lon:141.353},{name:'すすきの',lat:43.055,lon:141.354},
+    {name:'中島公園',lat:43.049,lon:141.354},{name:'幌平橋',lat:43.040,lon:141.354},
+    {name:'平岸',lat:43.019,lon:141.355},{name:'南平岸',lat:43.011,lon:141.355},
+    {name:'澄川',lat:43.001,lon:141.356},{name:'真駒内',lat:42.982,lon:141.356},
+  ]},
+  {id:'fukuoka',name:'福岡市地下鉄空港線',color:'#00A0E9',region:'福岡',stations:[
+    {name:'福岡空港',lat:33.593,lon:130.451},{name:'博多',lat:33.590,lon:130.421},
+    {name:'祇園',lat:33.590,lon:130.406},{name:'中洲川端',lat:33.593,lon:130.398},
+    {name:'天神',lat:33.589,lon:130.399},{name:'赤坂',lat:33.586,lon:130.390},
+    {name:'唐人町',lat:33.581,lon:130.375},{name:'西新',lat:33.577,lon:130.360},
+    {name:'藤崎',lat:33.578,lon:130.347},{name:'室見',lat:33.574,lon:130.336},
+    {name:'姪浜',lat:33.581,lon:130.316},
+  ]},
+  {id:'kintetsu',name:'近鉄大阪線',color:'#C00000',region:'大阪・奈良・三重',stations:[
+    {name:'大阪上本町',lat:34.664,lon:135.518},{name:'鶴橋',lat:34.664,lon:135.550},
+    {name:'布施',lat:34.670,lon:135.575},{name:'近鉄八尾',lat:34.628,lon:135.599},
+    {name:'河内国分',lat:34.573,lon:135.672},{name:'大和高田',lat:34.519,lon:135.736},
+    {name:'大和八木',lat:34.514,lon:135.795},{name:'桜井',lat:34.522,lon:135.847},
+    {name:'長谷寺',lat:34.533,lon:135.911},{name:'榛原',lat:34.544,lon:135.958},
+    {name:'名張',lat:34.628,lon:136.108},{name:'青山町',lat:34.625,lon:136.228},
+    {name:'津',lat:34.730,lon:136.509},
+  ]},
+];
+
+// ════════════════════════════════════════════
+// GPS STATE
+// ════════════════════════════════════════════
+let gpsPos = null; // { lat, lon, accuracy }
+
+// ════════════════════════════════════════════
+// HAVERSINE DISTANCE  (km)
+// ════════════════════════════════════════════
+function haversine(lat1,lon1,lat2,lon2){
+  const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+// Find N nearest station-line pairs within maxKm
+function findNearest(lat,lon,maxKm=2,topN=6){
+  const results=[];
+  LINES.forEach(line=>{
+    line.stations.forEach((s,idx)=>{
+      const d=haversine(lat,lon,s.lat,s.lon);
+      if(d<=maxKm) results.push({line,station:s,stationIdx:idx,dist:d});
+    });
+  });
+  // Sort by distance, deduplicate by station name (keep closest line)
+  results.sort((a,b)=>a.dist-b.dist);
+  const seen=new Set();
+  return results.filter(r=>{
+    const key=r.station.name;
+    if(seen.has(key)) return false;
+    seen.add(key); return true;
+  }).slice(0,topN);
+}
+
+// ════════════════════════════════════════════
+// GPS DETECTION
+// ════════════════════════════════════════════
+function detectNearest(ctx){
+  const dotId=`gps-dot-${ctx==='setup'?'setup':'next'}`;
+  const textId=`gps-text-${ctx==='setup'?'setup':'next'}`;
+  const accId=`gps-acc-${ctx==='setup'?'setup':'next'}`;
+  const candId=`candidates-${ctx==='setup'?'setup':'next'}`;
+  const btnId=`gps-btn-${ctx==='setup'?'setup':'next'}`;
+
+  if(!navigator.geolocation){
+    document.getElementById(textId).innerHTML='<strong style="color:var(--red)">⚠️ このブラウザはGPS非対応です</strong>';
+    return;
+  }
+
+  setGpsState(dotId,textId,'searching','📡 現在地を取得中...');
+  document.getElementById(btnId).disabled=true;
+  document.getElementById(candId).style.display='none';
+
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      const lat=pos.coords.latitude, lon=pos.coords.longitude, acc=Math.round(pos.coords.accuracy);
+      gpsPos={lat,lon,accuracy:acc};
+      setGpsState(dotId,textId,'found',`✅ 現在地を取得しました`);
+      document.getElementById(accId).textContent=`精度: ±${acc}m  (${lat.toFixed(5)}, ${lon.toFixed(5)})`;
+      document.getElementById(btnId).disabled=false;
+      document.getElementById(btnId).textContent='📡 再検索';
+
+      const nearest=findNearest(lat,lon,3,8);
+      if(nearest.length===0){
+        setGpsState(dotId,textId,'error','⚠️ 半径3km以内に対応駅が見つかりません');
+        document.getElementById(candId).style.display='none';
+        return;
+      }
+      showCandidates(candId,nearest,ctx);
+
+      // Refresh map with GPS dot
+      if(ctx==='setup' && sel.lineId && sel.si!==null && sel.ei!==null){
+        const line=getL(sel.lineId);
+        drawSingleSeg('setup-svg',line,sel.si,sel.ei,{lat,lon});
+      }
+    },
+    err=>{
+      let msg='⚠️ 位置情報の取得に失敗しました';
+      if(err.code===1) msg='⚠️ 位置情報のアクセスを許可してください';
+      if(err.code===3) msg='⚠️ タイムアウト。再試行してください';
+      setGpsState(dotId,textId,'error',msg);
+      document.getElementById(btnId).disabled=false;
+    },
+    {enableHighAccuracy:true,timeout:12000,maximumAge:30000}
+  );
+}
+
+function setGpsState(dotId,textId,state,msg){
+  document.getElementById(dotId).className='gps-dot'+({searching:' searching',found:' found',error:' error'}[state]||'');
+  document.getElementById(textId).innerHTML=msg;
+}
+
+function showCandidates(containerId, candidates, ctx){
+  const container=document.getElementById(containerId);
+  container.innerHTML='';
+  container.style.display='flex';
+
+  candidates.forEach(c=>{
+    const el=document.createElement('div');
+    el.className='candidate';
+    el.innerHTML=`
+      <div class="cand-line-dot" style="background:${c.line.color}"></div>
+      <div class="cand-info">
+        <div class="cand-name">${c.station.name}</div>
+        <div class="cand-line">${c.line.name}</div>
+      </div>
+      <div class="cand-dist">${c.dist<1?(c.dist*1000).toFixed(0)+'m':c.dist.toFixed(1)+'km'}</div>
+      <div class="cand-check">✓</div>`;
+    el.onclick=()=>selectCandidate(el,c,ctx,containerId);
+    container.appendChild(el);
+  });
+}
+
+function selectCandidate(el,c,ctx,containerId){
+  // Deselect all
+  document.querySelectorAll(`#${containerId} .candidate`).forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');
+
+  // Set selects
+  const prefix=ctx==='setup'?'s':'n';
+  const lineSelect=document.getElementById(prefix+'-line');
+  lineSelect.value=c.line.id;
+  sel.lineId=c.line.id;
+
+  // Populate stations
+  ['start','end'].forEach(k=>{
+    document.getElementById(prefix+'-'+k).innerHTML='<option value="">-- 駅を選択 --</option>';
+    c.line.stations.forEach((s,i)=>document.getElementById(prefix+'-'+k).appendChild(new Option(s.name,i)));
+  });
+
+  // Auto-select the detected station as the "start" (乗車駅)
+  document.getElementById(prefix+'-start').value=c.stationIdx;
+  sel.si=c.stationIdx;
+  sel.ei=null;
+
+  refreshSetupUI(ctx);
+
+  // Update map
+  if(ctx==='setup' && gpsPos){
+    document.getElementById('setup-map').style.display='block';
+    // Can't draw full route yet (no end), just show partial
+  }
+}
+
+// ════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════
+let sel={lineId:null,si:null,ei:null};
+let journey={segments:[],active:null,journeyStart:null,timerIv:null,progIv:null,prog:0};
+
+function getL(id){return LINES.find(l=>l.id===id);}
+
+// ════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════
+(function(){
+  [document.getElementById('s-line'),document.getElementById('n-line')].forEach(el=>{
+    LINES.forEach(l=>el.appendChild(new Option(`${l.name}（${l.region}）`,l.id)));
+  });
+})();
+
+// ════════════════════════════════════════════
+// SELECT HANDLERS
+// ════════════════════════════════════════════
+function onLineChange(ctx){
+  const prefix=ctx==='setup'?'s':'n';
+  sel.lineId=document.getElementById(prefix+'-line').value;
+  sel.si=null; sel.ei=null;
+  ['start','end'].forEach(k=>{
+    document.getElementById(prefix+'-'+k).innerHTML='<option value="">-- 駅を選択 --</option>';
+  });
+  if(!sel.lineId){refreshSetupUI(ctx);return;}
+  const line=getL(sel.lineId);
+  line.stations.forEach((s,i)=>{
+    document.getElementById(prefix+'-start').appendChild(new Option(s.name,i));
+    document.getElementById(prefix+'-end').appendChild(new Option(s.name,i));
+  });
+  refreshSetupUI(ctx);
+}
+
+function onStationChange(ctx){
+  const prefix=ctx==='setup'?'s':'n';
+  const si=parseInt(document.getElementById(prefix+'-start').value);
+  const ei=parseInt(document.getElementById(prefix+'-end').value);
+  sel.si=isNaN(si)?null:si;
+  sel.ei=isNaN(ei)?null:ei;
+  refreshSetupUI(ctx);
+}
+
+function refreshSetupUI(ctx){
+  const ok=sel.lineId&&sel.si!==null&&sel.ei!==null&&sel.si!==sel.ei;
+  if(ctx==='setup'){
+    document.getElementById('setup-start').disabled=!ok;
+    document.getElementById('setup-map').style.display=ok?'block':'none';
+    if(ok){ drawSingleSeg('setup-svg',getL(sel.lineId),sel.si,sel.ei,gpsPos); }
+  } else {
+    document.getElementById('btn-add-seg').disabled=!ok;
+  }
+}
+
+// ════════════════════════════════════════════
+// JOURNEY CONTROL
+// ════════════════════════════════════════════
+function startJourney(){
+  journey.journeyStart=new Date();
+  journey.prog=0;
+  beginSegment(sel.lineId,sel.si,sel.ei);
+  showPhase('recording');
+  document.getElementById('badge').textContent='● 記録中';
+  document.getElementById('badge').className='badge rec';
+  document.getElementById('t-start').textContent=fmtTime(journey.journeyStart);
+  journey.timerIv=setInterval(tickTimer,1000);
+  journey.progIv=setInterval(()=>{journey.prog=Math.min(0.88,journey.prog+0.004);renderRecMap();},4000);
+  tickTimer(); renderRecMap();
+}
+
+function beginSegment(lineId,si,ei){
+  const line=getL(lineId);
+  const from=Math.min(si,ei),to=Math.max(si,ei);
+  const forward=si<=ei;
+  let route=line.stations.slice(from,to+1);
+  if(!forward) route=[...route].reverse();
+  journey.active={lineId,si,ei,startTime:new Date(),endTime:null,route};
+  journey.prog=0;
+  updateActiveSegUI();
+}
+
+function arriveAtStation(){
+  journey.active.endTime=new Date();
+  journey.segments.push({...journey.active});
+  journey.active=null;
+  sel={lineId:null,si:null,ei:null};
+
+  document.getElementById('add-panel').style.display='block';
+  document.getElementById('rec-actions').style.display='none';
+
+  // Reset next selects
+  document.getElementById('n-line').value='';
+  ['n-start','n-end'].forEach(id=>{document.getElementById(id).innerHTML='<option value="">-- 駅を選択 --</option>';});
+  document.getElementById('btn-add-seg').disabled=true;
+
+  // Reset GPS UI for next panel
+  setGpsState('gps-dot-next','gps-text-next','','乗換駅をGPSで自動検出できます');
+  document.getElementById('gps-acc-next').textContent='';
+  document.getElementById('candidates-next').style.display='none';
+  document.getElementById('gps-btn-next').textContent='📡 現在地から乗換駅を検索';
+
+  updateDoneSegsUI(); renderRecMap();
+}
+
+function addSegment(){
+  if(!sel.lineId||sel.si===null||sel.ei===null) return;
+  document.getElementById('add-panel').style.display='none';
+  document.getElementById('rec-actions').style.display='flex';
+  beginSegment(sel.lineId,sel.si,sel.ei);
+  journey.prog=0; renderRecMap();
+}
+
+function cancelAdd(){
+  document.getElementById('add-panel').style.display='none';
+  document.getElementById('rec-actions').style.display='flex';
+}
+
+function endJourney(){
+  if(journey.active){
+    journey.active.endTime=new Date();
+    journey.segments.push({...journey.active});
+    journey.active=null;
+  }
+  if(!journey.segments.length) return;
+  clearInterval(journey.timerIv); clearInterval(journey.progIv);
+  document.getElementById('badge').textContent='記録完了';
+  document.getElementById('badge').className='badge';
+  buildResult(); showPhase('result');
+  // 駅メモUIを旅程の駅・路線で初期化
+  setTimeout(initMemoUI, 100);
+}
+
+// ════════════════════════════════════════════
+// UI UPDATES
+// ════════════════════════════════════════════
+function updateActiveSegUI(){
+  if(!journey.active) return;
+  const line=getL(journey.active.lineId);
+  document.getElementById('active-dot').style.background=line.color;
+  const r=journey.active.route;
+  document.getElementById('active-route').textContent=`${r[0].name} → ${r[r.length-1].name}`;
+  document.getElementById('active-meta').textContent=`${line.name}  |  ${fmtTime(journey.active.startTime)} 発`;
+  document.getElementById('active-badge').textContent='乗車中';
+  document.getElementById('active-badge').className='seg-badge seg-active';
+}
+
+function updateDoneSegsUI(){
+  const container=document.getElementById('done-seg-list');
+  container.innerHTML='';
+  journey.segments.forEach(seg=>{
+    const line=getL(seg.lineId),r=seg.route,dur=seg.endTime-seg.startTime;
+    const el=document.createElement('div'); el.className='seg-item';
+    el.innerHTML=`<div class="seg-line-dot" style="background:${line.color}"></div>
+      <div class="seg-info"><div class="seg-route">${r[0].name} → ${r[r.length-1].name}</div>
+      <div class="seg-meta">${line.name}  |  ${r.length}駅  ${fmtDurShort(dur)}</div></div>
+      <div class="seg-badge seg-done">完了</div>`;
+    container.appendChild(el);
+  });
+  document.getElementById('done-segs').style.display=journey.segments.length?'block':'none';
+}
+
+function tickTimer(){
+  const now=new Date();
+  document.getElementById('timer').textContent=fmtDur(now-journey.journeyStart);
+  document.getElementById('t-now').textContent=fmtTime(now);
+}
+
+// ════════════════════════════════════════════
+// SVG HELPERS
+// ════════════════════════════════════════════
+function se(parent,tag,attrs,txt){
+  const el=document.createElementNS('http://www.w3.org/2000/svg',tag);
+  Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));
+  if(txt!==undefined) el.textContent=txt;
+  parent.appendChild(el); return el;
+}
+
+function proj(lat,lon,b,W,H,PAD){
+  return {x:PAD+((lon-b.lon0)/(b.lon1-b.lon0))*(W-PAD*2),
+          y:PAD+((b.lat1-lat)/(b.lat1-b.lat0))*(H-PAD*2)};
+}
+
+function getBounds(segs,activeRoute,extraPts){
+  const all=[];
+  segs.forEach(s=>s.route.forEach(r=>all.push(r)));
+  if(activeRoute) activeRoute.forEach(r=>all.push(r));
+  if(extraPts) extraPts.forEach(p=>all.push({lat:p.lat,lon:p.lon}));
+  if(!all.length) return null;
+  let lat0=Math.min(...all.map(r=>r.lat))-0.22,lat1=Math.max(...all.map(r=>r.lat))+0.22;
+  let lon0=Math.min(...all.map(r=>r.lon))-0.32,lon1=Math.max(...all.map(r=>r.lon))+0.32;
+  if(lat1-lat0<0.4){lat0-=0.2;lat1+=0.2;}
+  if(lon1-lon0<0.5){lon0-=0.3;lon1+=0.3;}
+  return {lat0,lat1,lon0,lon1};
+}
+
+function fitBounds(b,W,H){
+  if(!b) return null;
+  const PAD=28,dataAR=(b.lon1-b.lon0)/(b.lat1-b.lat0),svgAR=W/H;
+  if(dataAR<svgAR){const d=((b.lat1-b.lat0)*svgAR-(b.lon1-b.lon0))/2;b.lon0-=d;b.lon1+=d;}
+  else{const d=((b.lon1-b.lon0)/svgAR-(b.lat1-b.lat0))/2;b.lat0-=d;b.lat1+=d;}
+  return b;
+}
+
+function drawBase(svg,W,H,b){
+  const PAD=28;
+  se(svg,'rect',{width:'100%',height:'100%',fill:'#060f1a'});
+  const lStep=(b.lat1-b.lat0)>3?1:0.25,loStep=(b.lon1-b.lon0)>3?1:0.5;
+  for(let la=Math.ceil(b.lat0/lStep)*lStep;la<=b.lat1;la+=lStep){
+    const p1=proj(la,b.lon0,b,W,H,PAD),p2=proj(la,b.lon1,b,W,H,PAD);
+    se(svg,'line',{x1:p1.x,y1:p1.y,x2:p2.x,y2:p2.y,stroke:'rgba(46,74,99,.35)','stroke-width':.5});
+  }
+  for(let lo=Math.ceil(b.lon0/loStep)*loStep;lo<=b.lon1;lo+=loStep){
+    const p1=proj(b.lat0,lo,b,W,H,PAD),p2=proj(b.lat1,lo,b,W,H,PAD);
+    se(svg,'line',{x1:p1.x,y1:p1.y,x2:p2.x,y2:p2.y,stroke:'rgba(46,74,99,.35)','stroke-width':.5});
+  }
+  ISLANDS.forEach(isl=>{
+    const pts=isl.pts.map(([la,lo])=>{const p=proj(la,lo,b,W,H,PAD);return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;});
+    se(svg,'polygon',{points:pts.join(' '),fill:'#152434',stroke:'#243d55','stroke-width':1});
+  });
+  const cx=W-22,cy=22;
+  se(svg,'circle',{cx,cy,r:13,fill:'rgba(6,15,26,.85)',stroke:'#2E4A63','stroke-width':1});
+  se(svg,'polygon',{points:`${cx},${cy-10} ${cx-3},${cy+2} ${cx},${cy-1} ${cx+3},${cy+2}`,fill:'#E8352A'});
+  se(svg,'text',{x:cx,y:cy-3,'text-anchor':'middle','font-size':7,fill:'#E8352A','font-weight':'bold'},'N');
+}
+
+function drawGpsDot(svg,lat,lon,b,W,H){
+  const PAD=28,p=proj(lat,lon,b,W,H,PAD);
+  se(svg,'circle',{cx:p.x,cy:p.y,r:14,fill:'none',stroke:'rgba(46,204,113,.2)','stroke-width':2});
+  se(svg,'circle',{cx:p.x,cy:p.y,r:8,fill:'none',stroke:'rgba(46,204,113,.4)','stroke-width':2});
+  se(svg,'circle',{cx:p.x,cy:p.y,r:5,fill:'#2ECC71',stroke:'white','stroke-width':2});
+  se(svg,'text',{x:p.x+9,y:p.y+4,'font-size':9,'font-family':'Noto Sans JP,sans-serif',fill:'#2ECC71','font-weight':'bold'},'現在地');
+}
+
+function drawSegLine(svg,seg,b,W,H,bright,showProg,prog){
+  const PAD=28,line=getL(seg.lineId);
+  const allPts=line.stations.map(s=>proj(s.lat,s.lon,b,W,H,PAD));
+  se(svg,'polyline',{points:allPts.map(p=>`${p.x},${p.y}`).join(' '),fill:'none',stroke:line.color+'22','stroke-width':1.5,'stroke-linecap':'round'});
+  const rPts=seg.route.map(s=>proj(s.lat,s.lon,b,W,H,PAD));
+  se(svg,'polyline',{points:rPts.map(p=>`${p.x},${p.y}`).join(' '),fill:'none',stroke:bright?line.color:line.color+'77','stroke-width':bright?4:3,'stroke-linecap':'round','stroke-linejoin':'round'});
+  if(showProg&&prog>0){
+    const n=Math.max(1,Math.floor((rPts.length-1)*prog));
+    se(svg,'polyline',{points:rPts.slice(0,n+1).map(p=>`${p.x},${p.y}`).join(' '),fill:'none',stroke:line.color,'stroke-width':5,'stroke-linecap':'round','stroke-linejoin':'round'});
+  }
+}
+
+function drawSegDots(svg,seg,b,W,H,role){
+  const PAD=28;
+  const rPts=seg.route.map(s=>proj(s.lat,s.lon,b,W,H,PAD));
+  seg.route.forEach((s,i)=>{
+    const p=rPts[i],isF=i===0,isL=i===seg.route.length-1;
+    const isTransfer=role==='done'&&isL;
+    const fillColor=isF&&role!=='done'?'#E8352A':isTransfer?'#2ECC71':isL&&role==='result'?'#F2A900':'#2E4A63';
+    if(isF||isL||isTransfer) se(svg,'circle',{cx:p.x,cy:p.y,r:11,fill:fillColor+'22'});
+    se(svg,'circle',{cx:p.x,cy:p.y,r:isF||isL?5.5:3,fill:fillColor,stroke:isF||isL||isTransfer?'white':'rgba(140,160,179,.5)','stroke-width':isF||isL||isTransfer?2:1});
+    if(isF||isL){
+      se(svg,'text',{x:p.x+8,y:p.y+4,'font-size':9,'font-family':'Noto Sans JP,sans-serif',fill:fillColor,'font-weight':'bold'},s.name);
+    }
+  });
+}
+
+// ════════════════════════════════════════════
+// SINGLE SEGMENT MAP (setup preview)
+// ════════════════════════════════════════════
+function drawSingleSeg(svgId,line,si,ei,gps){
+  const svg=document.getElementById(svgId);
+  svg.innerHTML='';
+  const W=svg.parentElement.clientWidth||448,H=parseInt(svg.getAttribute('height'))||240,PAD=28;
+  const from=Math.min(si,ei),to=Math.max(si,ei);
+  const forward=si<=ei;
+  let route=line.stations.slice(from,to+1);
+  if(!forward) route=[...route].reverse();
+  const seg={lineId:line.id,si,ei,route};
+  const extra=gps?[{lat:gps.lat,lon:gps.lon}]:null;
+  const b=fitBounds(getBounds([seg],null,extra),W,H);
+  if(!b) return;
+  drawBase(svg,W,H,b);
+  drawSegLine(svg,seg,b,W,H,true,false,0);
+  drawSegDots(svg,seg,b,W,H,'active');
+  if(gps) drawGpsDot(svg,gps.lat,gps.lon,b,W,H);
+}
+
+// ════════════════════════════════════════════
+// LIVE MAP
+// ════════════════════════════════════════════
+function renderRecMap(){
+  const svg=document.getElementById('rec-svg');
+  svg.innerHTML='';
+  const W=svg.parentElement.clientWidth||448,H=parseInt(svg.getAttribute('height'))||260,PAD=28;
+  const allSegs=[...journey.segments];
+  const active=journey.active;
+  const extra=gpsPos?[{lat:gpsPos.lat,lon:gpsPos.lon}]:null;
+  const b=fitBounds(getBounds(allSegs,active?active.route:null,extra),W,H);
+  if(!b) return;
+  drawBase(svg,W,H,b);
+  allSegs.forEach(seg=>drawSegLine(svg,seg,b,W,H,false,false,0));
+  if(active) drawSegLine(svg,active,b,W,H,true,true,journey.prog);
+  allSegs.forEach(seg=>drawSegDots(svg,seg,b,W,H,'done'));
+  if(active) drawSegDots(svg,active,b,W,H,'active');
+  // Live progress dot on active segment
+  if(active&&journey.prog>0){
+    const rPts=active.route.map(s=>proj(s.lat,s.lon,b,W,H,PAD));
+    const ni=Math.min(rPts.length-1,Math.floor((rPts.length-1)*journey.prog));
+    const cp=rPts[ni];
+    se(svg,'circle',{cx:cp.x,cy:cp.y,r:12,fill:'none',stroke:'rgba(232,53,42,.2)','stroke-width':2});
+    se(svg,'circle',{cx:cp.x,cy:cp.y,r:6,fill:'#E8352A',stroke:'white','stroke-width':2});
+  }
+  // Real GPS dot
+  if(gpsPos) drawGpsDot(svg,gpsPos.lat,gpsPos.lon,b,W,H);
+}
+
+// ════════════════════════════════════════════
+// RESULT
+// ════════════════════════════════════════════
+function buildResult(){
+  const segs=journey.segments;
+  const totalDur=segs[segs.length-1].endTime-journey.journeyStart;
+  const transfers=segs.length-1;
+  const startName=segs[0].route[0].name;
+  const endName=segs[segs.length-1].route[segs[segs.length-1].route.length-1].name;
+
+  document.getElementById('res-title').textContent=`${startName} → ${endName}`;
+  document.getElementById('res-date').textContent=fmtDate(journey.journeyStart);
+  document.getElementById('res-dur').textContent=fmtDurShort(totalDur);
+  document.getElementById('res-transfers').textContent=transfers;
+  document.getElementById('res-start').textContent=fmtTime(journey.journeyStart);
+  document.getElementById('res-end').textContent=fmtTime(segs[segs.length-1].endTime);
+
+  // Journey route visual
+  const jtrack=document.getElementById('res-journey');
+  jtrack.innerHTML='';
+  segs.forEach((seg,si)=>{
+    const line=getL(seg.lineId),r=seg.route;
+    if(si>0){
+      const d=document.createElement('div'); d.className='seg-divider';
+      d.innerHTML=`<div class="seg-divider-dot" style="background:${line.color}22;border:1px solid ${line.color}55;color:${line.color}">乗</div><span style="color:${line.color};font-size:10px">${line.name}</span>`;
+      jtrack.appendChild(d);
+    }
+    r.forEach((s,i)=>{
+      if(i>0&&i<r.length-1&&r.length>6) return;
+      const isF=i===0,isL=i===r.length-1,isTransfer=isL&&si<segs.length-1;
+      const el=document.createElement('div'); el.className='jstation';
+      const dot=document.createElement('div');
+      dot.className='jdot'+(si===0&&isF?' s':isTransfer?' tr':si===segs.length-1&&isL?' e':'');
+      el.appendChild(dot);
+      const nm=document.createElement('span'); nm.className='jname'+((!isF&&!isL)?' dim':''); nm.textContent=s.name; el.appendChild(nm);
+      if(isF&&si===0){const t=document.createElement('span');t.className='jtag s';t.textContent='出発';el.appendChild(t);}
+      else if(isTransfer){const t=document.createElement('span');t.className='jtag tr';t.textContent='乗換';el.appendChild(t);}
+      else if(isL&&si===segs.length-1){const t=document.createElement('span');t.className='jtag e';t.textContent='到着';el.appendChild(t);}
+      jtrack.appendChild(el);
+      if(isF&&r.length>6){const ell=document.createElement('div');ell.className='jstation';ell.innerHTML=`<span style="font-size:11px;color:var(--silver);padding:3px 0">… ${r.length-2}駅通過 …</span>`;jtrack.appendChild(ell);}
+    });
+  });
+
+  // Segment cards
+  const resSegs=document.getElementById('res-segs');
+  resSegs.innerHTML='';
+  segs.forEach((seg,i)=>{
+    const line=getL(seg.lineId),r=seg.route,dur=seg.endTime-seg.startTime;
+    const card=document.createElement('div'); card.className='card'; card.style.marginBottom='10px';
+    card.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <div style="width:10px;height:10px;border-radius:50%;background:${line.color};flex-shrink:0"></div>
+      <span style="font-size:13px;font-weight:600">${line.name}</span>
+      <span style="font-size:10px;color:var(--silver);margin-left:auto">${i+1}/${segs.length}区間</span></div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:6px">${r[0].name} → ${r[r.length-1].name}</div>
+      <div style="font-size:11px;color:var(--silver);font-family:'DM Mono',monospace;margin-bottom:10px">${fmtTime(seg.startTime)} → ${fmtTime(seg.endTime)}  /  ${fmtDurShort(dur)}  /  ${r.length}駅</div>
+      <div class="chips" id="chips-${i}"></div>`;
+    resSegs.appendChild(card);
+    r.forEach((s,j)=>{
+      const c=document.createElement('div');
+      c.className='chip'+(j===0?' hl':j===r.length-1?' hl2':'');
+      c.textContent=s.name; card.querySelector(`#chips-${i}`).appendChild(c);
+    });
+  });
+
+  // Result map
+  const svg=document.getElementById('res-svg');
+  svg.innerHTML='';
+  const W=svg.parentElement.clientWidth||448,H=parseInt(svg.getAttribute('height'))||300,PAD=28;
+  const b=fitBounds(getBounds(segs,null,null),W,H);
+  if(b){
+    drawBase(svg,W,H,b);
+    segs.forEach(seg=>drawSegLine(svg,seg,b,W,H,true,false,0));
+    segs.forEach((seg,i)=>drawSegDots(svg,seg,b,W,H,i===segs.length-1?'result':'done'));
+    if(gpsPos) drawGpsDot(svg,gpsPos.lat,gpsPos.lon,b,W,H);
+  }
+
+  // Share text
+  let share=`🚃 旅程記録\n━━━━━━━━━━━━━━\n${startName} → ${endName}\n${fmtDate(journey.journeyStart)}\n━━━━━━━━━━━━━━\n出発: ${fmtTime(journey.journeyStart)}\n到着: ${fmtTime(segs[segs.length-1].endTime)}\n総乗車時間: ${fmtDurShort(totalDur)}\n乗換回数: ${transfers}回\n━━━━━━━━━━━━━━\n`;
+  segs.forEach((seg,i)=>{const line=getL(seg.lineId);share+=`【${i+1}区間】${line.name}\n  ${seg.route[0].name}→${seg.route[seg.route.length-1].name}  ${fmtDurShort(seg.endTime-seg.startTime)}\n`;});
+  share+=`━━━━━━━━━━━━━━\n#乗レコ #乗り鉄`;
+  document.getElementById('share-txt').textContent=share;
+}
+
+// ════════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════════
+function copyTxt(){
+  navigator.clipboard.writeText(document.getElementById('share-txt').textContent).then(()=>{
+    const b=document.getElementById('copy-btn'); b.textContent='✓ コピーしました'; b.classList.add('ok');
+    setTimeout(()=>{b.textContent='📋 コピー';b.classList.remove('ok');},2000);
+  });
+}
+
+function resetApp(){
+  clearInterval(journey.timerIv); clearInterval(journey.progIv);
+  journey={segments:[],active:null,journeyStart:null,timerIv:null,progIv:null,prog:0};
+  sel={lineId:null,si:null,ei:null}; gpsPos=null;
+  document.getElementById('s-line').value='';
+  ['s-start','s-end','n-start','n-end'].forEach(id=>{document.getElementById(id).innerHTML='<option value="">-- 駅を選択 --</option>';});
+  document.getElementById('setup-map').style.display='none';
+  document.getElementById('setup-start').disabled=true;
+  document.getElementById('add-panel').style.display='none';
+  document.getElementById('rec-actions').style.display='flex';
+  document.getElementById('done-segs').style.display='none';
+  document.getElementById('done-seg-list').innerHTML='';
+  // Reset GPS UI
+  setGpsState('gps-dot-setup','gps-text-setup','','📍 現在地から最寄り駅を検索できます');
+  document.getElementById('gps-acc-setup').textContent='';
+  document.getElementById('candidates-setup').style.display='none';
+  document.getElementById('gps-btn-setup').textContent='📡 現在地から最寄り駅を検索';
+  document.getElementById('badge').textContent='待機中';
+  document.getElementById('badge').className='badge';
+  showPhase('setup');
+}
+
+function showPhase(n){
+  document.querySelectorAll('.phase').forEach(p=>p.classList.remove('active'));
+  document.getElementById('phase-'+n).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ════════════════════════════════════════════
+// 駅メモ機能
+// ════════════════════════════════════════════
+let memoType = '駅';
+let memoMood = '良い';
+let memoTags = [];
+
+function initMemoUI() {
+  // 旅程の路線・駅をセレクトに反映
+  const segs = journey.segments;
+  if (!segs.length) return;
+
+  // 路線セレクト
+  const lineSel = document.getElementById('memo-line-sel');
+  lineSel.innerHTML = '<option value="">-- 路線を選択 --</option>';
+  const lines = [...new Set(segs.map(s => getL(s.lineId).name))];
+  lines.forEach(name => lineSel.appendChild(new Option(name, name)));
+
+  // 駅セレクト（全区間の駅を集約）
+  const stationSel = document.getElementById('memo-station-sel');
+  stationSel.innerHTML = '<option value="">-- 駅を選択 --</option>';
+  const allStations = [];
+  segs.forEach(seg => {
+    const line = getL(seg.lineId);
+    seg.route.forEach(s => {
+      if (!allStations.find(x => x.name === s.name && x.line === line.name)) {
+        allStations.push({ name: s.name, line: line.name });
+      }
+    });
+  });
+  allStations.forEach(s => {
+    const opt = new Option(`${s.name}（${s.line}）`, s.name);
+    opt.dataset.line = s.line;
+    stationSel.appendChild(opt);
+  });
+}
+
+function onMemoStationChange() {
+  const sel = document.getElementById('memo-station-sel');
+  const opt = sel.options[sel.selectedIndex];
+  if (opt && opt.dataset.line) {
+    const lineSel = document.getElementById('memo-line-sel');
+    for (let i = 0; i < lineSel.options.length; i++) {
+      if (lineSel.options[i].value === opt.dataset.line) {
+        lineSel.selectedIndex = i; break;
+      }
+    }
+  }
+}
+
+function setMemoType(btn) {
+  document.querySelectorAll('.memo-type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  memoType = btn.dataset.type;
+  const lbl = document.getElementById('memo-target-label');
+  lbl.textContent = memoType === '路線' ? '路線名' : '駅名';
+  document.getElementById('memo-station-sel').style.display = memoType === '路線' ? 'none' : 'block';
+  document.getElementById('memo-line-sel').style.display = 'block';
+}
+
+function setMood(btn) {
+  document.querySelectorAll('.memo-mood-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  memoMood = btn.dataset.mood;
+}
+
+function toggleTag(btn) {
+  btn.classList.toggle('active');
+  const tag = btn.dataset.tag;
+  if (memoTags.includes(tag)) memoTags = memoTags.filter(t => t !== tag);
+  else memoTags.push(tag);
+}
+
+function showMemoData() {
+  const station = document.getElementById('memo-station-sel').value;
+  const line = document.getElementById('memo-line-sel').value;
+  const comment = document.getElementById('memo-comment').value.trim();
+  const photo = document.getElementById('memo-photo').value.trim();
+  const segs = journey.segments;
+  const journeyName = segs.length
+    ? `${segs[0].route[0].name} → ${segs[segs.length-1].route[segs[segs.length-1].route.length-1].name}`
+    : '';
+
+  if (!station && memoType !== '路線' && !line) {
+    alert('駅か路線を選んでください');
+    return;
+  }
+
+  const target = memoType === '路線' ? line : station;
+  const title = `${target}（${line || ''}）`;
+  const dateStr = new Date().toISOString().split('T')[0];
+
+  const payload = {
+    _type: '駅メモ_記録',
+    タイトル: title,
+    駅名: memoType !== '路線' ? station : '',
+    路線名: line,
+    種別: memoType,
+    コメント: comment,
+    写真URL: photo,
+    日付: dateStr,
+    気分: memoMood,
+    タグ: memoTags.join('、'),
+    乗レコID: journeyName,
+  };
+
+  const text = `📸駅メモデータ\n${JSON.stringify(payload)}\nこのデータをNotionの「駅メモ」DBに保存してください。`;
+
+  const wrap = document.getElementById('memo-json-wrap');
+  const ta = document.getElementById('memo-json-txt');
+  ta.value = text;
+  wrap.style.display = 'block';
+  ta.select();
+
+  const btn = document.getElementById('memo-submit-btn');
+  btn.textContent = '✓ データを表示中 - 上のテキストをコピー';
+  btn.style.background = 'rgba(46,204,113,.1)';
+  btn.style.color = 'var(--green)';
+  btn.style.borderColor = 'rgba(46,204,113,.3)';
+}
+
+function fmtTime(d){return d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
+function fmtDate(d){return d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});}
+function fmtDur(ms){const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;}
+function fmtDurShort(ms){const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60);return h>0?`${h}時間${m}分`:`${m}分${s%60}秒`;}
+
+// ════════════════════════════════════════════
+// NOTION JSON DISPLAY (iOS compatible)
+// ════════════════════════════════════════════
+function showNotionJson(){
+  const segs = journey.segments;
+  if(!segs.length){ alert('保存する記録がありません'); return; }
+
+  const totalDur = segs[segs.length-1].endTime - journey.journeyStart;
+  const totalMin = Math.round(totalDur / 60000);
+  const startName = segs[0].route[0].name;
+  const endName = segs[segs.length-1].route[segs[segs.length-1].route.length-1].name;
+  const lines = [...new Set(segs.map(s=>getL(s.lineId).name))].join('、');
+  const totalStations = segs.reduce((acc,s)=>acc+s.route.length,0);
+
+  const payload = {
+    _type: '乗レコ_記録',
+    旅程名: `${startName} → ${endName}`,
+    日付: journey.journeyStart.toISOString().split('T')[0],
+    出発駅: startName,
+    到着駅: endName,
+    出発時刻: fmtTime(journey.journeyStart),
+    到着時刻: fmtTime(segs[segs.length-1].endTime),
+    総乗車時間_分: totalMin,
+    乗換回数: segs.length - 1,
+    区間数: segs.length,
+    総駅数: totalStations,
+    路線リスト: lines,
+    区間詳細: segs.map((seg,i)=>{
+      const line=getL(seg.lineId),r=seg.route,dur=seg.endTime-seg.startTime;
+      return `[${i+1}] ${line.name} ${r[0].name}→${r[r.length-1].name} (${fmtDurShort(dur)}/${r.length}駅)`;
+    }).join(' / '),
+  };
+
+  const text = `🚃乗レコ記録データ\n${JSON.stringify(payload)}\nこのデータをNotionの「乗レコ ログ」DBに保存してください。`;
+
+  const wrap = document.getElementById('notion-json-wrap');
+  const ta = document.getElementById('notion-json-txt');
+  ta.value = text;
+  wrap.style.display = 'block';
+  ta.select();
+
+  // Change button label
+  const btn = document.getElementById('notion-btn');
+  btn.textContent = '✓ データを表示中 - 上のテキストをコピー';
+  btn.style.background = 'rgba(46,204,113,.1)';
+  btn.style.color = 'var(--green)';
+  btn.style.borderColor = 'rgba(46,204,113,.3)';
+}
+
+function setNotionStatus(type, msg){
+  const el = document.getElementById('notion-status');
+  if(!el) return;
+  const colors = { loading: 'var(--gold)', success: 'var(--green)', error: 'var(--red)' };
+  el.style.color = colors[type] || 'var(--silver)';
+  el.textContent = msg;
+}
+</script>
+</body>
+</html>
