@@ -282,18 +282,28 @@ function getPriorityThreshold(zoom) {
 
 // 路線データを非同期で読み込む
 async function loadLines(priority) {
-  if (loadedPriorities.has(priority) || pendingLoads.has(priority)) return;
+  if (loadedPriorities.has(priority)) return;
+  if (pendingLoads.has(priority)) {
+    // 既に読み込み中なら完了を待つ
+    return new Promise(resolve => {
+      const check = setInterval(() => {
+        if (loadedPriorities.has(priority) || !pendingLoads.has(priority)) {
+          clearInterval(check);
+          resolve();
+        }
+      }, 100);
+    });
+  }
   pendingLoads.add(priority);
 
   const url = PRIORITY_FILES[priority];
-  if (!url) return;
+  if (!url) { pendingLoads.delete(priority); return; }
 
   try {
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const newLines = await resp.json();
 
-    // 重複を避けて追加
     const existingIds = new Set(LINES.map(l => l.id));
     const added = newLines.filter(l => !existingIds.has(l.id));
     LINES.push(...added);
@@ -301,19 +311,20 @@ async function loadLines(priority) {
     loadedPriorities.add(priority);
     pendingLoads.delete(priority);
 
-    console.log(`[乗レコ] P${priority}読み込み完了: +${added.length}路線（計${LINES.length}路線）`);
+    console.log(`[乗レコ] P${priority}完了: +${added.length}路線（計${LINES.length}路線）`);
 
-    // 乗車済みデータを再構築
     rebuildRiddenStations();
 
-    // 地図を再描画
-    if (map) {
-      redrawNewLines(added);
+    // 地図初期化済みなら追加分を描画
+    if (map && dotLayerRef) {
+      added.forEach(line => drawSingleLine(line));
       updateOverlays();
+      if (typeof updateLOD === 'function') updateLOD();
     }
   } catch(e) {
     pendingLoads.delete(priority);
-    console.error(`[乗レコ] P${priority}読み込みエラー:`, e);
+    loadedPriorities.add(priority); // エラーでも再試行しない
+    console.error(`[乗レコ] P${priority}エラー:`, e);
   }
 }
 
@@ -444,25 +455,23 @@ function initMap(){
   // ローディング表示
   showLoadingIndicator();
 
-  // P1（主要幹線）を先に読み込む
-  loadLines(1).then(() => {
+  // P1・P2を並列で読み込み、完了後に描画
+  Promise.allSettled([loadLines(1), loadLines(2)]).then(() => {
     drawLines();
     updateOverlays();
     fitToRiddenLines();
     hideLoadingIndicator();
-    // P2も続けて読み込む
-    loadLines(2).then(() => {
-      redrawNewLines(LINES.filter(l => {
-        const p = getLinePriority(l);
-        return p === 2;
-      }));
-    });
   });
 
-  // ズーム変更時に必要なデータを追加読み込み
+  // フォールバック：5秒後には必ず消す
+  setTimeout(hideLoadingIndicator, 5000);
+
+  // ズーム変更時にP3を追加読み込み
   map.on('zoomend', () => {
     const z = map.getZoom();
-    loadLinesForZoom(z);
+    if (z >= 9 && !loadedPriorities.has(3) && !pendingLoads.has(3)) {
+      loadLines(3);
+    }
     if (typeof updateLOD === 'function') updateLOD();
   });
 
