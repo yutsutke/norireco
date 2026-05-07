@@ -325,32 +325,50 @@ select:focus{outline:none;border-color:var(--red);}
   <div class="card" style="border-color:rgba(242,169,0,.25)">
     <div class="lbl" style="color:var(--gold)">📸 駅メモを残す</div>
     <div style="font-size:12px;color:var(--silver);margin-bottom:14px;line-height:1.7">
-      乗った駅・路線にコメントや写真を記録してNotionに保存できます
+      駅・区間にコメントや写真を記録してSupabaseに保存します
     </div>
 
-    <!-- 駅・路線セレクト -->
+    <!-- 種別 -->
     <div class="sg" style="margin-bottom:10px">
       <label>種別</label>
       <div style="display:flex;gap:6px;flex-wrap:wrap" id="memo-type-btns">
         <button class="memo-type-btn active" data-type="駅" onclick="setMemoType(this)">🚉 駅</button>
-        <button class="memo-type-btn" data-type="路線" onclick="setMemoType(this)">🚃 路線</button>
+        <button class="memo-type-btn" data-type="区間" onclick="setMemoType(this)">🛤️ 区間</button>
         <button class="memo-type-btn" data-type="車内" onclick="setMemoType(this)">🪟 車内</button>
         <button class="memo-type-btn" data-type="その他" onclick="setMemoType(this)">📍 その他</button>
       </div>
     </div>
 
+    <!-- 路線選択 -->
     <div class="sg" style="margin-bottom:10px">
-      <label id="memo-target-label">駅名</label>
-      <select id="memo-station-sel" onchange="onMemoStationChange()">
+      <label>路線</label>
+      <select id="memo-line-sel" onchange="onMemoLineChange()">
+        <option value="">-- 路線を選択 --</option>
+      </select>
+    </div>
+
+    <!-- 駅選択（駅モード） -->
+    <div class="sg" style="margin-bottom:10px" id="memo-station-wrap">
+      <label>駅名</label>
+      <select id="memo-station-sel">
         <option value="">-- 駅を選択 --</option>
       </select>
     </div>
 
-    <div class="sg" style="margin-bottom:10px">
-      <label>路線</label>
-      <select id="memo-line-sel">
-        <option value="">-- 路線を選択 --</option>
-      </select>
+    <!-- 区間選択（区間モード） -->
+    <div style="display:none" id="memo-section-wrap">
+      <div class="sg" style="margin-bottom:8px">
+        <label>出発駅</label>
+        <select id="memo-from-sel">
+          <option value="">-- 出発駅を選択 --</option>
+        </select>
+      </div>
+      <div class="sg" style="margin-bottom:10px">
+        <label>到着駅</label>
+        <select id="memo-to-sel">
+          <option value="">-- 到着駅を選択 --</option>
+        </select>
+      </div>
     </div>
 
     <!-- 気分 -->
@@ -383,7 +401,7 @@ select:focus{outline:none;border-color:var(--red);}
     <div class="sg" style="margin-bottom:10px">
       <label>コメント</label>
       <textarea id="memo-comment"
-        placeholder="ここが良かった、景色が最高、など自由に..."
+        placeholder="景色、雰囲気、気づいたことなど自由に..."
         style="width:100%;height:90px;background:var(--track2);border:1.5px solid var(--track);border-radius:9px;color:var(--white);font-family:'Noto Sans JP',sans-serif;font-size:13px;padding:10px;resize:none;line-height:1.6;outline:none;"
         onfocus="this.style.borderColor='var(--gold)'"
         onblur="this.style.borderColor='var(--track)'"></textarea>
@@ -396,20 +414,14 @@ select:focus{outline:none;border-color:var(--red);}
         style="width:100%;background:var(--track2);border:1.5px solid var(--track);border-radius:9px;color:var(--white);font-family:'DM Mono',monospace;font-size:12px;padding:10px 12px;outline:none;"
         onfocus="this.style.borderColor='var(--gold)'"
         onblur="this.style.borderColor='var(--track)'">
-      <div style="font-size:10px;color:var(--silver);margin-top:4px">※ 写真は外部URLのみ対応（直接アップロードは今後対応予定）</div>
     </div>
 
-    <!-- 送信ボタン -->
-    <button class="btn-sm" id="memo-submit-btn" onclick="showMemoData()"
+    <!-- 保存ボタン -->
+    <button class="btn-sm" id="memo-submit-btn" onclick="saveMemoToSupabase()"
       style="width:100%;background:rgba(242,169,0,.15);color:var(--gold);border:1.5px solid rgba(242,169,0,.4);font-size:14px;padding:13px;border-radius:10px;font-weight:700;margin-bottom:10px">
-      📋 メモデータを表示 → Claudeに貼り付け
+      ☁️ Supabaseに保存
     </button>
-    <div id="memo-json-wrap" style="display:none">
-      <div style="font-size:10px;color:var(--gold);margin-bottom:6px;letter-spacing:1px">▼ 長押し → 全選択 → コピー してClaudeに貼り付け</div>
-      <textarea id="memo-json-txt" readonly
-        style="width:100%;height:140px;background:#060f1a;border:1.5px solid rgba(242,169,0,.4);border-radius:9px;color:var(--gold);font-family:'DM Mono',monospace;font-size:10px;padding:10px;line-height:1.6;resize:none;-webkit-user-select:all;user-select:all"
-        onclick="this.select()"></textarea>
-    </div>
+    <div id="memo-status" style="display:none;font-size:12px;padding:10px;border-radius:8px;line-height:1.7"></div>
   </div>
 
   <button class="btn btn-dim" onclick="resetApp()">＋ 新しい旅程を記録</button>
@@ -1997,56 +2009,71 @@ let memoMood = '良い';
 let memoTags = [];
 
 function initMemoUI() {
-  // 旅程の路線・駅をセレクトに反映
+  // 路線セレクトをグループ別に構築
+  // 旅程で乗った路線を先頭に、残りは通常のグループ別
   const segs = journey.segments;
-  if (!segs.length) return;
+  const riddenLineIds = new Set(segs.map(s => s.lineId));
 
-  // 路線セレクト
   const lineSel = document.getElementById('memo-line-sel');
   lineSel.innerHTML = '<option value="">-- 路線を選択 --</option>';
-  const lines = [...new Set(segs.map(s => getL(s.lineId).name))];
-  lines.forEach(name => lineSel.appendChild(new Option(name, name)));
 
-  // 駅セレクト（全区間の駅を集約）
-  const stationSel = document.getElementById('memo-station-sel');
-  stationSel.innerHTML = '<option value="">-- 駅を選択 --</option>';
-  const allStations = [];
-  segs.forEach(seg => {
-    const line = getL(seg.lineId);
-    seg.route.forEach(s => {
-      if (!allStations.find(x => x.name === s.name && x.line === line.name)) {
-        allStations.push({ name: s.name, line: line.name });
+  // 乗車済み路線を先頭グループに
+  if (riddenLineIds.size > 0) {
+    const og = document.createElement('optgroup');
+    og.label = '── 今回乗った路線 ──';
+    segs.forEach(seg => {
+      const line = getL(seg.lineId);
+      if (!og.querySelector(`option[value="${line.id}"]`)) {
+        og.appendChild(new Option(line.name, line.id));
       }
     });
+    lineSel.appendChild(og);
+  }
+
+  // 全路線をグループ別
+  const GROUP_ORDER = ['首都圏','関西','東海・中部','東北','九州','北海道','四国','中国・山陰','新幹線','その他'];
+  const grouped = {};
+  LINES.forEach(l => {
+    if (riddenLineIds.has(l.id)) return; // 乗車済みは上に出したのでスキップ
+    const g = l.group || 'その他';
+    if (!grouped[g]) grouped[g] = [];
+    grouped[g].push(l);
   });
-  allStations.forEach(s => {
-    const opt = new Option(`${s.name}（${s.line}）`, s.name);
-    opt.dataset.line = s.line;
-    stationSel.appendChild(opt);
+  GROUP_ORDER.forEach(g => {
+    if (!grouped[g]?.length) return;
+    const og = document.createElement('optgroup');
+    og.label = `── ${g} ──`;
+    grouped[g].forEach(l => og.appendChild(new Option(l.name, l.id)));
+    lineSel.appendChild(og);
   });
 }
 
-function onMemoStationChange() {
-  const sel = document.getElementById('memo-station-sel');
-  const opt = sel.options[sel.selectedIndex];
-  if (opt && opt.dataset.line) {
-    const lineSel = document.getElementById('memo-line-sel');
-    for (let i = 0; i < lineSel.options.length; i++) {
-      if (lineSel.options[i].value === opt.dataset.line) {
-        lineSel.selectedIndex = i; break;
-      }
-    }
-  }
-}
+function onMemoStationChange() {} // 新UIでは不要（onMemoLineChangeで代替）
 
 function setMemoType(btn) {
   document.querySelectorAll('.memo-type-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   memoType = btn.dataset.type;
-  const lbl = document.getElementById('memo-target-label');
-  lbl.textContent = memoType === '路線' ? '路線名' : '駅名';
-  document.getElementById('memo-station-sel').style.display = memoType === '路線' ? 'none' : 'block';
-  document.getElementById('memo-line-sel').style.display = 'block';
+  // 区間モードの切り替え
+  const isSection = memoType === '区間';
+  document.getElementById('memo-station-wrap').style.display = isSection ? 'none' : 'block';
+  document.getElementById('memo-section-wrap').style.display = isSection ? 'block' : 'none';
+}
+
+function onMemoLineChange() {
+  const lineId = document.getElementById('memo-line-sel').value;
+  const line = LINES.find(l => l.id === lineId);
+  const stations = line ? line.stations : [];
+
+  // 駅選択を更新
+  ['memo-station-sel', 'memo-from-sel', 'memo-to-sel'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const placeholder = id === 'memo-station-sel' ? '-- 駅を選択 --'
+      : id === 'memo-from-sel' ? '-- 出発駅を選択 --' : '-- 到着駅を選択 --';
+    sel.innerHTML = `<option value="">${placeholder}</option>`;
+    stations.forEach(s => sel.appendChild(new Option(s.name, s.name)));
+  });
 }
 
 function setMood(btn) {
@@ -2062,52 +2089,113 @@ function toggleTag(btn) {
   else memoTags.push(tag);
 }
 
-function showMemoData() {
-  const station = document.getElementById('memo-station-sel').value;
-  const line = document.getElementById('memo-line-sel').value;
+async function saveMemoToSupabase() {
+  const lineId = document.getElementById('memo-line-sel').value;
+  const lineName = LINES.find(l => l.id === lineId)?.name || lineId;
+  const station = document.getElementById('memo-station-sel')?.value || '';
+  const sectionFrom = document.getElementById('memo-from-sel')?.value || '';
+  const sectionTo = document.getElementById('memo-to-sel')?.value || '';
   const comment = document.getElementById('memo-comment').value.trim();
   const photo = document.getElementById('memo-photo').value.trim();
-  const segs = journey.segments;
-  const journeyName = segs.length
-    ? `${segs[0].route[0].name} → ${segs[segs.length-1].route[segs[segs.length-1].route.length-1].name}`
-    : '';
 
-  if (!station && memoType !== '路線' && !line) {
-    alert('駅か路線を選んでください');
-    return;
-  }
-
-  const target = memoType === '路線' ? line : station;
-  const title = `${target}（${line || ''}）`;
-  const dateStr = new Date().toISOString().split('T')[0];
-
-  const payload = {
-    _type: '駅メモ_記録',
-    タイトル: title,
-    駅名: memoType !== '路線' ? station : '',
-    路線名: line,
-    種別: memoType,
-    コメント: comment,
-    写真URL: photo,
-    日付: dateStr,
-    気分: memoMood,
-    タグ: memoTags.join('、'),
-    乗レコID: journeyName,
-  };
-
-  const text = `📸駅メモデータ\n${JSON.stringify(payload)}\nこのデータをNotionの「駅メモ」DBに保存してください。`;
-
-  const wrap = document.getElementById('memo-json-wrap');
-  const ta = document.getElementById('memo-json-txt');
-  ta.value = text;
-  wrap.style.display = 'block';
-  ta.select();
+  // バリデーション
+  if (!lineId) { alert('路線を選択してください'); return; }
+  if (memoType === '駅' && !station) { alert('駅を選択してください'); return; }
+  if (memoType === '区間' && (!sectionFrom || !sectionTo)) { alert('出発駅と到着駅を選択してください'); return; }
+  if (!comment && !photo) { alert('コメントか写真URLを入力してください'); return; }
 
   const btn = document.getElementById('memo-submit-btn');
-  btn.textContent = '✓ データを表示中 - 上のテキストをコピー';
-  btn.style.background = 'rgba(46,204,113,.1)';
-  btn.style.color = 'var(--green)';
-  btn.style.borderColor = 'rgba(46,204,113,.3)';
+  const statusEl = document.getElementById('memo-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ 保存中...';
+  statusEl.style.display = 'none';
+
+  // 旅程IDを取得（直近の保存済み旅程）
+  const trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
+  const tripId = trips.length ? trips[trips.length - 1].id : null;
+
+  // 駅の緯度経度を取得
+  const line = LINES.find(l => l.id === lineId);
+  let lat = null, lon = null;
+  if (line && station) {
+    const st = line.stations.find(s => s.name === station);
+    if (st) { lat = st.lat; lon = st.lon; }
+  }
+
+  const memo = {
+    id: `memo_${Date.now()}`,
+    trip_id: tripId,
+    date: new Date().toISOString().split('T')[0],
+    station: memoType === '区間' ? '' : station,
+    line_id: lineId,
+    line_name: lineName,
+    section_from: sectionFrom,
+    section_to: sectionTo,
+    memo_type: memoType,
+    mood: memoMood,
+    tags: memoTags.join('、'),
+    comment,
+    photo_url: photo,
+    lat,
+    lon,
+  };
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_memos`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify(memo),
+    });
+
+    if (res.ok) {
+      statusEl.style.display = 'block';
+      statusEl.style.background = 'rgba(46,204,113,.08)';
+      statusEl.style.border = '1px solid rgba(46,204,113,.3)';
+      statusEl.style.color = 'var(--green)';
+      statusEl.innerHTML = `✅ <strong>保存完了！</strong><br>
+        <span style="font-size:11px;color:var(--silver)">
+        ${memoType === '区間' ? `🛤️ ${lineName} ${sectionFrom}→${sectionTo}` : `🚉 ${station}（${lineName}）`}<br>
+        ${comment ? `💬 ${comment.slice(0,30)}${comment.length>30?'...':''}` : ''}<br>
+        ☁️ Supabaseに保存済み
+        </span>`;
+
+      // フォームリセット
+      btn.textContent = '✅ 保存済み - もう1件追加';
+      btn.style.background = 'rgba(46,204,113,.2)';
+      btn.style.color = 'var(--green)';
+      btn.style.borderColor = 'rgba(46,204,113,.4)';
+      btn.disabled = false;
+      btn.onclick = () => {
+        // フォームをリセットして再入力可能にする
+        document.getElementById('memo-comment').value = '';
+        document.getElementById('memo-photo').value = '';
+        document.querySelectorAll('.memo-tag-btn').forEach(b => b.classList.remove('active'));
+        memoTags = [];
+        statusEl.style.display = 'none';
+        btn.textContent = '☁️ Supabaseに保存';
+        btn.style.background = 'rgba(242,169,0,.15)';
+        btn.style.color = 'var(--gold)';
+        btn.style.borderColor = 'rgba(242,169,0,.4)';
+        btn.onclick = saveMemoToSupabase;
+      };
+    } else {
+      const err = await res.text();
+      throw new Error(err);
+    }
+  } catch(e) {
+    statusEl.style.display = 'block';
+    statusEl.style.background = 'rgba(232,53,42,.08)';
+    statusEl.style.border = '1px solid rgba(232,53,42,.3)';
+    statusEl.style.color = 'var(--red)';
+    statusEl.innerHTML = `❌ 保存に失敗しました<br><span style="font-size:11px">${e.message}</span>`;
+    btn.textContent = '☁️ Supabaseに保存';
+    btn.disabled = false;
+  }
 }
 
 function fmtTime(d){return d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
