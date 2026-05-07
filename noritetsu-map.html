@@ -1035,9 +1035,81 @@ function renderList(){
 function renderStats(){
   const c=document.getElementById('stats-content');c.innerHTML='';
   const gs=gStats();
+
+  // ── 乗りつぶし進捗 ──
   const g=document.createElement('div');g.className='stat-grid';
-  g.innerHTML=`<div class="scard"><div class="sc-l">全体達成率</div><div class="sc-v">${gs.pct}<span class="sc-u">%</span></div><div class="sc-s">${gs.rt}/${gs.ts}駅</div></div><div class="scard"><div class="sc-l">乗車路線数</div><div class="sc-v">${gs.la}<span class="sc-u">/${LINES.length}</span></div><div class="sc-s">完乗: ${gs.ld}路線</div></div>`;
+  g.innerHTML=`
+    <div class="scard"><div class="sc-l">全体達成率</div><div class="sc-v">${gs.pct}<span class="sc-u">%</span></div><div class="sc-s">${gs.rt}/${gs.ts}駅</div></div>
+    <div class="scard"><div class="sc-l">乗車路線数</div><div class="sc-v">${gs.la}<span class="sc-u">/${LINES.length}</span></div><div class="sc-s">完乗: ${gs.ld}路線</div></div>
+  `;
   c.appendChild(g);
+
+  // ── Supabaseからの旅程統計（非同期） ──
+  const tripSection = document.createElement('div');
+  tripSection.innerHTML = `<div class="sec-lbl">旅程統計 <span style="font-size:9px;color:var(--silver)">☁️ Supabase</span></div>
+    <div class="stat-grid" id="trip-stat-grid">
+      <div class="scard"><div class="sc-l">読み込み中...</div><div class="sc-v" style="font-size:14px">...</div></div>
+    </div>`;
+  c.appendChild(tripSection);
+
+  // Supabaseから統計を非同期取得
+  fetch(`${SUPABASE_URL}/rest/v1/norireco_trips?select=*`, {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+  }).then(r => r.json()).then(trips => {
+    const totalTrips = trips.length;
+    const totalStations = trips.reduce((s,t) => s + (t.total_stations||0), 0);
+    const totalTransfers = trips.reduce((s,t) => s + (t.transfers||0), 0);
+    const totalMinutes = trips.reduce((s,t) => s + (t.total_minutes||0), 0);
+
+    // 月別集計
+    const byMonth = {};
+    trips.forEach(t => {
+      const m = (t.date||'').slice(0,7);
+      if (!m) return;
+      if (!byMonth[m]) byMonth[m] = { trips:0, stations:0 };
+      byMonth[m].trips++;
+      byMonth[m].stations += t.total_stations||0;
+    });
+
+    const grid = document.getElementById('trip-stat-grid');
+    if (!grid) return;
+    grid.innerHTML = `
+      <div class="scard"><div class="sc-l">総旅程数</div><div class="sc-v">${totalTrips}<span class="sc-u">回</span></div></div>
+      <div class="scard"><div class="sc-l">総乗車駅数</div><div class="sc-v">${totalStations}<span class="sc-u">駅</span></div></div>
+      <div class="scard"><div class="sc-l">総乗換回数</div><div class="sc-v">${totalTransfers}<span class="sc-u">回</span></div></div>
+      <div class="scard"><div class="sc-l">総乗車時間</div><div class="sc-v">${Math.floor(totalMinutes/60)}<span class="sc-u">時間</span>${totalMinutes%60}<span class="sc-u">分</span></div></div>
+    `;
+
+    // 月別グラフ
+    if (Object.keys(byMonth).length > 0) {
+      const ch = document.createElement('div'); ch.className='bc';
+      ch.innerHTML = '<div class="bc-t">月別 旅程数</div>';
+      const maxT = Math.max(...Object.values(byMonth).map(v=>v.trips));
+      Object.entries(byMonth).sort().forEach(([m,v]) => {
+        const row = document.createElement('div'); row.className='bc-r';
+        row.innerHTML = `<div class="bc-l">${m}</div><div class="bc-bg"><div class="bc-fill" style="width:${Math.round(v.trips/maxT*100)}%;background:var(--red)"></div></div><div class="bc-n">${v.trips}回</div>`;
+        ch.appendChild(row);
+      });
+      tripSection.appendChild(ch);
+    }
+
+    // 直近の旅程
+    if (trips.length > 0) {
+      const recent = document.createElement('div'); recent.className='bc';
+      recent.innerHTML = '<div class="bc-t">直近の旅程</div>';
+      [...trips].reverse().slice(0,5).forEach(t => {
+        const row = document.createElement('div'); row.className='bc-r';
+        row.innerHTML = `<div class="bc-l" style="width:140px">${t.name||''}</div><div style="flex:1;font-size:10px;color:var(--silver)">${t.date||''}</div><div class="bc-n" style="color:var(--silver)">${t.total_stations||0}駅</div>`;
+        recent.appendChild(row);
+      });
+      tripSection.appendChild(recent);
+    }
+  }).catch(e => {
+    const grid = document.getElementById('trip-stat-grid');
+    if (grid) grid.innerHTML = `<div class="scard"><div class="sc-l">取得失敗</div><div class="sc-v" style="font-size:12px;color:var(--silver)">localStorageを使用中</div></div>`;
+  });
+
+  // ── 路線別達成率 ──
   const rLines=LINES.filter(l=>lStats(l).r>0).sort((a,b)=>lStats(b).pct-lStats(a).pct);
   if(rLines.length){
     const ch=document.createElement('div');ch.className='bc';
@@ -1045,13 +1117,15 @@ function renderStats(){
     rLines.forEach(line=>{const s=lStats(line);const row=document.createElement('div');row.className='bc-r';row.innerHTML=`<div class="bc-l">${line.name}</div><div class="bc-bg"><div class="bc-fill" style="width:${s.pct}%;background:${line.color}"></div></div><div class="bc-n">${s.pct}%</div>`;ch.appendChild(row);});
     c.appendChild(ch);
   }
+
+  // ── 実績 ──
   const at=document.createElement('div');at.className='sec-lbl';at.textContent='実績';c.appendChild(at);
   const achs=[
     {ic:'🚃',nm:'乗り鉄デビュー',ds:'初めての旅程を記録',on:gs.rt>=1},
     {ic:'🔀',nm:'乗換マスター',ds:'乗換を含む旅程を記録',on:RIDDEN_SEGS.length>=2},
     {ic:'🗾',nm:'2路線制覇',ds:'2路線以上に乗車',on:gs.la>=2},
     {ic:'🚄',nm:'新幹線デビュー',ds:'新幹線に初乗車',on:!!riddenSt['tokaido-shinkansen']||!!riddenSt['tohoku']||!!riddenSt['hokuriku']},
-    {ic:'⚡',nm:'東海道新幹線完乗',ds:'東京〜博多を全駅乗車',on:lStats(LINES.find(l=>l.id==='tokaido-shinkansen')).pct===100},
+    {ic:'⚡',nm:'東海道新幹線完乗',ds:'東京〜博多を全駅乗車',on:lStats(LINES.find(l=>l.id==='tokaido-shinkansen')||{stations:[]}).pct===100},
     {ic:'🌐',nm:'3路線制覇',ds:'3路線以上に乗車',on:gs.la>=3},
     {ic:'🏅',nm:'5路線制覇',ds:'5路線以上に乗車',on:gs.la>=5},
     {ic:'🏆',nm:'乗りつぶし50%',ds:'全路線の50%達成',on:gs.pct>=50},

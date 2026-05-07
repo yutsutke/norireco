@@ -2129,22 +2129,32 @@ function saveToLocalStorage(segs, payload) {
       name: payload.旅程名,
       from_station: payload.出発駅,
       to_station: payload.到着駅,
+      total_stations: payload.総駅数 || 0,
+      transfers: payload.乗換回数 || 0,
+      line_list: payload.路線リスト || '',
+      total_minutes: payload.総乗車時間_分 || 0,
+      depart_time: payload.出発時刻 || '',
+      arrive_time: payload.到着時刻 || '',
       segments: segs.map(seg => ({
         lineId: seg.lineId,
         from: seg.route[0].name,
         to: seg.route[seg.route.length-1].name,
       }))
     };
-    // localStorage に保存
+
+    // localStorageに保存
     existing.push(newTrip);
     localStorage.setItem('norireco_trips', JSON.stringify(existing));
     console.log(`[乗レコ] localStorage保存: ${newTrip.name}（計${existing.length}件）`);
 
-    // Supabase にも非同期で保存
+    // Supabaseにも非同期で保存
     saveToSupabase(newTrip).then(ok => {
       const btn = document.getElementById('notion-btn');
       if (ok && btn) {
-        btn.textContent = '✓ Supabase保存済 - テキストをClaudeに送ってNotionにも保存';
+        btn.textContent = '✓ Supabase保存済 ☁️ - テキストをClaudeに送ってNotionにも保存';
+        btn.style.background = 'rgba(46,204,113,.15)';
+        btn.style.color = 'var(--green)';
+        btn.style.borderColor = 'rgba(46,204,113,.4)';
       }
     });
   } catch(e) {
