@@ -307,23 +307,17 @@ select:focus{outline:none;border-color:var(--red);}
     <div class="share-txt" id="share-txt"></div>
     <button class="btn-copy" id="copy-btn" onclick="copyTxt()">📋 コピー</button>
   </div>
-  <!-- Notion Save -->
-  <div class="card" id="notion-card" style="border-color:rgba(99,102,241,.3)">
-    <div class="lbl" style="color:#818cf8">Notionに保存</div>
+  <!-- Supabase Save -->
+  <div class="card" id="notion-card" style="border-color:rgba(62,207,142,.3)">
+    <div class="lbl" style="color:#3ECF8E">☁️ 保存状況</div>
     <div style="font-size:12px;color:var(--silver);margin-bottom:12px;line-height:1.7">
-      ① 下のボタンを押す<br>
-      ② 表示されたテキストを<strong style="color:var(--white)">長押し→全選択→コピー</strong><br>
-      ③ Claudeのチャットに貼り付けて送信
+      旅程終了と同時に自動でSupabaseに保存されます。
     </div>
-    <button class="btn-sm" id="notion-btn" onclick="showNotionJson()" style="width:100%;background:rgba(99,102,241,.2);color:#818cf8;border:1.5px solid rgba(99,102,241,.4);font-size:14px;padding:13px;border-radius:10px;font-weight:700;margin-bottom:10px">
-      ✦ 記録データを表示
+    <button class="btn-sm" id="notion-btn" onclick="showNotionJson()" style="width:100%;background:rgba(62,207,142,.15);color:#3ECF8E;border:1.5px solid rgba(62,207,142,.4);font-size:14px;padding:13px;border-radius:10px;font-weight:700;margin-bottom:10px">
+      ☁️ 保存して地図に反映
     </button>
     <div id="notion-json-wrap" style="display:none">
-      <div style="font-size:10px;color:var(--green);margin-bottom:6px;letter-spacing:1px">▼ 長押し → 全選択 → コピー してClaudeに貼り付け</div>
-      <textarea id="notion-json-txt" readonly
-        style="width:100%;height:160px;background:#060f1a;border:1.5px solid rgba(46,204,113,.4);border-radius:9px;color:var(--green);font-family:'DM Mono',monospace;font-size:10px;padding:10px;line-height:1.6;resize:none;-webkit-user-select:all;user-select:all"
-        onclick="this.select()"
-      ></textarea>
+      <div id="save-status" style="font-size:12px;color:var(--green);padding:10px;background:rgba(46,204,113,.08);border-radius:8px;border:1px solid rgba(46,204,113,.3);line-height:1.7"></div>
     </div>
   </div>
 
@@ -1609,6 +1603,91 @@ function endJourney(){
   buildResult(); showPhase('result');
   // 駅メモUIを旅程の駅・路線で初期化
   setTimeout(initMemoUI, 100);
+
+  // ══ 旅程終了と同時にSupabaseへ自動保存 ══
+  autoSaveJourney(journey.segments);
+}
+
+// 旅程終了時の自動保存
+async function autoSaveJourney(segs) {
+  const totalDur = segs[segs.length-1].endTime - journey.journeyStart;
+  const totalMin = Math.round(totalDur / 60000);
+  const startName = segs[0].route[0].name;
+  const endName = segs[segs.length-1].route[segs[segs.length-1].route.length-1].name;
+  const lines = [...new Set(segs.map(s=>getL(s.lineId).name))].join('、');
+  const totalStations = segs.reduce((acc,s)=>acc+s.route.length,0);
+
+  const payload = {
+    旅程名: `${startName} → ${endName}`,
+    日付: journey.journeyStart.toISOString().split('T')[0],
+    出発駅: startName,
+    到着駅: endName,
+    出発時刻: fmtTime(journey.journeyStart),
+    到着時刻: fmtTime(segs[segs.length-1].endTime),
+    総乗車時間_分: totalMin,
+    乗換回数: segs.length - 1,
+    区間数: segs.length,
+    総駅数: totalStations,
+    路線リスト: lines,
+  };
+
+  // localStorage + Supabase に保存
+  saveToLocalStorage(segs, payload);
+
+  // 保存ボタンのUIを更新
+  const btn = document.getElementById('notion-btn');
+  const wrap = document.getElementById('notion-json-wrap');
+  const status = document.getElementById('save-status');
+  if(btn) {
+    btn.textContent = '⏳ 保存中...';
+    btn.disabled = true;
+  }
+  if(wrap) wrap.style.display = 'block';
+  if(status) status.innerHTML = '📡 Supabaseに自動保存中...';
+
+  // Supabase保存確認（最大5秒待つ）
+  const trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
+  const savedTrip = trips[trips.length - 1];
+  let retries = 0;
+
+  const check = setInterval(async () => {
+    retries++;
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/norireco_trips?id=eq.${savedTrip?.id}&select=id`,
+        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+      );
+      const data = await res.json();
+      if (data.length > 0 || retries > 8) {
+        clearInterval(check);
+        const ok = data.length > 0;
+        if(status) status.innerHTML = ok
+          ? `✅ <strong style="color:#3ECF8E">自動保存完了！</strong><br>
+             <span style="color:var(--silver);font-size:11px">
+             📍 ${payload.旅程名}<br>
+             📅 ${payload.日付}<br>
+             🚃 ${payload.路線リスト}<br>
+             🔢 ${totalStations}駅 / 乗換${segs.length-1}回<br>
+             ☁️ Supabase同期済み・地図に自動反映
+             </span>`
+          : `📱 localStorageに保存済み。<br><span style="font-size:11px;color:var(--silver)">次回ネット接続時に自動同期</span>`;
+        if(btn) {
+          btn.textContent = ok ? '✅ 自動保存完了' : '📱 ローカル保存済み';
+          btn.style.background = ok ? 'rgba(62,207,142,.2)' : 'rgba(242,169,0,.1)';
+          btn.style.color = ok ? '#3ECF8E' : 'var(--gold)';
+          btn.style.borderColor = ok ? 'rgba(62,207,142,.5)' : 'rgba(242,169,0,.3)';
+          btn.disabled = false;
+          btn.onclick = null; // 重複保存を防ぐ（ボタンを無効化）
+        }
+      }
+    } catch(e) {
+      if(retries > 5) {
+        clearInterval(check);
+        if(status) status.innerHTML = `📱 localStorageに保存済みです。`;
+        if(btn) { btn.textContent = '📱 ローカル保存済み'; btn.disabled = false; }
+      }
+    }
+  }, 600);
 }
 
 // ════════════════════════════════════════════
@@ -2039,9 +2118,18 @@ function fmtDurShort(ms){const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math
 // ════════════════════════════════════════════
 // NOTION JSON DISPLAY (iOS compatible)
 // ════════════════════════════════════════════
-function showNotionJson(){
+async function showNotionJson(){
   const segs = journey.segments;
   if(!segs.length){ alert('保存する記録がありません'); return; }
+
+  const btn = document.getElementById('notion-btn');
+  const wrap = document.getElementById('notion-json-wrap');
+  const status = document.getElementById('save-status');
+
+  btn.textContent = '⏳ 保存中...';
+  btn.disabled = true;
+  wrap.style.display = 'block';
+  if(status) status.innerHTML = '📡 Supabaseに接続中...';
 
   const totalDur = segs[segs.length-1].endTime - journey.journeyStart;
   const totalMin = Math.round(totalDur / 60000);
@@ -2051,7 +2139,6 @@ function showNotionJson(){
   const totalStations = segs.reduce((acc,s)=>acc+s.route.length,0);
 
   const payload = {
-    _type: '乗レコ_記録',
     旅程名: `${startName} → ${endName}`,
     日付: journey.journeyStart.toISOString().split('T')[0],
     出発駅: startName,
@@ -2063,28 +2150,55 @@ function showNotionJson(){
     区間数: segs.length,
     総駅数: totalStations,
     路線リスト: lines,
-    区間詳細: segs.map((seg,i)=>{
-      const line=getL(seg.lineId),r=seg.route,dur=seg.endTime-seg.startTime;
-      return `[${i+1}] ${line.name} ${r[0].name}→${r[r.length-1].name} (${fmtDurShort(dur)}/${r.length}駅)`;
-    }).join(' / '),
   };
 
-  // ══ localStorageに保存（地図への自動反映用）══
+  // localStorage + Supabase に保存
   saveToLocalStorage(segs, payload);
 
-  const text = `🚃乗レコ記録データ\n${JSON.stringify(payload)}\nこのデータをNotionの「乗レコ ログ」DBに保存してください。`;
+  // 保存結果を待ってUIを更新
+  const trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
+  const savedTrip = trips[trips.length - 1];
+  let retries = 0;
 
-  const wrap = document.getElementById('notion-json-wrap');
-  const ta = document.getElementById('notion-json-txt');
-  ta.value = text;
-  wrap.style.display = 'block';
-  ta.select();
-
-  const btn = document.getElementById('notion-btn');
-  btn.textContent = '✓ データを表示中 - 上のテキストをコピー';
-  btn.style.background = 'rgba(46,204,113,.1)';
-  btn.style.color = 'var(--green)';
-  btn.style.borderColor = 'rgba(46,204,113,.3)';
+  const checkSaved = setInterval(async () => {
+    retries++;
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/norireco_trips?id=eq.${savedTrip?.id}&select=id`,
+        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+      );
+      const data = await res.json();
+      if (data.length > 0 || retries > 10) {
+        clearInterval(checkSaved);
+        if (data.length > 0) {
+          if(status) status.innerHTML = `
+            ✅ <strong style="color:#3ECF8E">保存完了！</strong><br>
+            <span style="color:var(--silver);font-size:11px">
+            📍 ${payload.旅程名}<br>
+            📅 ${payload.日付}<br>
+            🚃 ${payload.路線リスト}<br>
+            🔢 ${totalStations}駅 / 乗換${segs.length-1}回<br>
+            ☁️ Supabaseに同期済み ・ 地図に自動反映
+            </span>`;
+          btn.textContent = '✅ 保存完了';
+          btn.style.background = 'rgba(62,207,142,.2)';
+          btn.style.color = '#3ECF8E';
+          btn.style.borderColor = 'rgba(62,207,142,.5)';
+        } else {
+          if(status) status.innerHTML = `📱 localStorageに保存済み。<br><span style="font-size:11px;color:var(--silver)">次回ネット接続時に自動同期されます。</span>`;
+          btn.textContent = '📱 ローカル保存済み';
+        }
+        btn.disabled = false;
+      }
+    } catch(e) {
+      if (retries > 5) {
+        clearInterval(checkSaved);
+        if(status) status.innerHTML = `📱 localStorageに保存済みです。`;
+        btn.textContent = '📱 ローカル保存済み';
+        btn.disabled = false;
+      }
+    }
+  }, 600);
 }
 
 // ══════════════════════════════════════════════
