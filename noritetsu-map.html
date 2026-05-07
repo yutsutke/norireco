@@ -187,6 +187,10 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
       <div class="ms-row"><span class="ms-lbl">全体</span><span class="ms-val" id="ms-pct">0%</span></div>
       <div class="ms-row"><span class="ms-lbl">乗車路線</span><span class="ms-val" id="ms-ln">0路線</span></div>
       <div class="ms-row"><span class="ms-lbl">完乗</span><span class="ms-val" id="ms-dn">0路線</span></div>
+      <div class="ms-row" id="storage-row" style="margin-top:4px;padding-top:4px;border-top:1px solid var(--track)">
+        <span class="ms-lbl" style="font-size:9px" id="storage-lbl">📱 local</span>
+        <span style="font-size:9px;color:var(--silver)" id="storage-count"></span>
+      </div>
     </div>
     <div class="map-legend-box">
       <div style="font-size:9px;color:var(--silver);letter-spacing:1px;margin-bottom:7px;text-transform:uppercase">凡例</div>
@@ -201,7 +205,38 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
       <div id="legend-lines"></div>
     </div>
     <button class="memo-fab" id="memo-btn" onclick="toggleMemoMode()" title="メモ投稿">📸</button>
+    <!-- 復元ボタン（localStorageが空のときのみ表示） -->
+    <div id="restore-hint" style="display:none;position:absolute;bottom:70px;left:50%;transform:translateX(-50%);z-index:1000;white-space:nowrap">
+      <button onclick="openRestoreModal()" style="background:rgba(242,169,0,.15);border:1.5px solid var(--gold);color:var(--gold);border-radius:12px;padding:10px 16px;font-family:'Zen Kaku Gothic New',sans-serif;font-size:13px;cursor:pointer;backdrop-filter:blur(8px)">
+        📲 新端末？Notionから記録を復元
+      </button>
+    </div>
   </div>
+
+<!-- 復元モーダル -->
+<div class="memo-modal" id="restore-modal" onclick="if(event.target===this)closeRestoreModal()">
+  <div class="memo-sheet">
+    <div class="sh"></div>
+    <div class="modal-title">📲 記録を復元する</div>
+    <div class="modal-sub" style="color:var(--silver);font-size:12px;margin-bottom:16px;line-height:1.6">
+      新しい端末では記録がリセットされます。<br>
+      Claudeに「乗レコ復元データを出して」と送ると<br>
+      復元用JSONが出力されます。それを下に貼り付けてください。
+    </div>
+    <div class="fg">
+      <div class="fl">ClaudeからのJSONを貼り付け</div>
+      <textarea class="mta" id="restore-json-input" style="height:140px;font-family:'DM Mono',monospace;font-size:11px" placeholder='[{"id":"trip_xxx","date":"2026-05-06",...}]'></textarea>
+    </div>
+    <button class="btn-gen" onclick="restoreFromJson(document.getElementById('restore-json-input').value)">
+      📥 この端末に復元する
+    </button>
+    <div style="margin-top:12px;padding:10px;background:rgba(255,255,255,.04);border-radius:8px;font-size:11px;color:var(--silver);line-height:1.6">
+      <b style="color:var(--gold)">現在の記録数：</b><span id="current-trip-count">0</span>件<br>
+      <b style="color:var(--gold)">データ元：</b><span id="current-data-source">-</span>
+    </div>
+    <button class="btn-cls" onclick="closeRestoreModal()">閉じる</button>
+  </div>
+</div>
   <div class="pane" id="pane-list"><div class="pane-inner" id="list-content"></div></div>
   <div class="pane" id="pane-stats"><div class="pane-inner" id="stats-content"></div></div>
 </div>
@@ -392,7 +427,12 @@ function redrawNewLines(newLines) {
   if (typeof updateLOD === 'function') updateLOD();
 }
 
-const RIDDEN_SEGS=[
+// ══════════════════════════════════════════════
+// 乗車記録：localStorage優先、フォールバックとして静的データ
+// ══════════════════════════════════════════════
+
+// 静的フォールバック（localStorageが空の端末用）
+const RIDDEN_SEGS_STATIC=[
   // 2026/4/29 四ツ谷→西川口
   {lineId:'chuo',from:'四ツ谷',to:'中野'},
   {lineId:'keihin',from:'中野',to:'西川口'},
@@ -402,16 +442,92 @@ const RIDDEN_SEGS=[
   {lineId:'tokaido-shinkansen',from:'東京',to:'博多'},
   // 2026/5/1 田町→高田馬場
   {lineId:'yamanote',from:'田町',to:'高田馬場'},
-  // 2026/5/4 東京→敦賀（北陸新幹線）
+  // 2026/5/4 東京→敦賀
   {lineId:'hokuriku',from:'東京',to:'敦賀'},
-  // 2026/5/5 東京→高尾（中央線）
+  // 2026/5/5 東京→高尾
   {lineId:'chuo',from:'東京',to:'高尾'},
   // 2026/5/6 高麗川→横浜
   {lineId:'hachioji',from:'高麗川',to:'八王子'},
   {lineId:'yokohama',from:'八王子',to:'東神奈川'},
   {lineId:'keikyu-kurihama',from:'堀ノ内',to:'三崎口'},
   {lineId:'yokosuka',from:'横須賀',to:'横浜'},
+  // 2026/5/6 東京→本郷三丁目
+  {lineId:'sobu',from:'東京',to:'千葉'},
+  {lineId:'saikyo',from:'大崎',to:'戸田公園'},
+  {lineId:'yokosuka',from:'東京',to:'横須賀'},
+  {lineId:'yamanote',from:'東京',to:'神田'},
+  {lineId:'shonan',from:'赤羽',to:'小田原'},
+  {lineId:'tokyometro-ginza',from:'浅草',to:'渋谷'},
+  {lineId:'tokyometro-marunouchi',from:'東京',to:'荻窪'},
+  {lineId:'tokyometro-hibiya',from:'上野',to:'茅場町'},
+  {lineId:'toei-asakusa',from:'押上',to:'東銀座'},
+  {lineId:'toei-oedo',from:'都庁前',to:'本郷三丁目'},
 ];
+
+// localStorageから乗車記録を読み込んでRIDDEN_SEGSを生成
+function loadRiddenSegsFromStorage() {
+  try {
+    const trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
+    if (trips.length === 0) return null;
+    const segs = [];
+    trips.forEach(trip => {
+      trip.segments.forEach(seg => {
+        segs.push({ lineId: seg.lineId, from: seg.from, to: seg.to });
+      });
+    });
+    console.log(`[乗レコ] localStorage: ${trips.length}件 → ${segs.length}区間`);
+    return segs;
+  } catch(e) {
+    console.error('[乗レコ] localStorage読み込みエラー:', e);
+    return null;
+  }
+}
+
+// RIDDEN_SEGS = localStorage優先、なければ静的データ
+const RIDDEN_SEGS = loadRiddenSegsFromStorage() || RIDDEN_SEGS_STATIC;
+
+// ══════════════════════════════════════════════
+// localStorage管理UI（復元・状態表示）
+// ══════════════════════════════════════════════
+function getStorageStats() {
+  try {
+    const trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
+    return { count: trips.length, source: trips.length > 0 ? 'local' : 'static' };
+  } catch(e) { return { count: 0, source: 'static' }; }
+}
+
+// 復元モーダル（新端末用）
+function openRestoreModal() {
+  const modal = document.getElementById('restore-modal');
+  if (modal) modal.classList.add('open');
+}
+function closeRestoreModal() {
+  const modal = document.getElementById('restore-modal');
+  if (modal) modal.classList.remove('open');
+}
+
+function restoreFromJson(jsonText) {
+  try {
+    const data = JSON.parse(jsonText);
+    if (!Array.isArray(data)) throw new Error('配列形式でありません');
+    // 既存データにマージ（重複IDはスキップ）
+    const existing = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
+    const existingIds = new Set(existing.map(t => t.id));
+    let added = 0;
+    data.forEach(trip => {
+      if (!existingIds.has(trip.id)) {
+        existing.push(trip);
+        added++;
+      }
+    });
+    localStorage.setItem('norireco_trips', JSON.stringify(existing));
+    alert(`✅ ${added}件の記録を復元しました。地図を再読み込みすると反映されます。`);
+    closeRestoreModal();
+    location.reload();
+  } catch(e) {
+    alert('❌ JSONの形式が正しくありません: ' + e.message);
+  }
+}
 
 // Mercator projection（SVGと同じ座標系）
 const PAD=22;
@@ -496,6 +612,29 @@ function initMap(){
   drawLines();
   updateOverlays();
   fitToRiddenLines();
+
+  // ストレージ状態を表示
+  const stats = getStorageStats();
+  const storageRow = document.getElementById('storage-row');
+  const storageLbl = document.getElementById('storage-lbl');
+  const storageCount = document.getElementById('storage-count');
+  if (stats.source === 'local') {
+    storageLbl.textContent = '📱 このiPhone';
+    storageCount.textContent = `${stats.count}件`;
+    storageCount.style.color = 'var(--green)';
+  } else {
+    storageLbl.textContent = '☁️ Notion同期待ち';
+    storageCount.textContent = '未同期';
+    storageCount.style.color = 'var(--gold)';
+    // 復元ヒントを表示
+    const hint = document.getElementById('restore-hint');
+    if (hint) hint.style.display = 'block';
+  }
+  // 復元モーダルの情報更新
+  const tripCount = document.getElementById('current-trip-count');
+  const dataSource = document.getElementById('current-data-source');
+  if (tripCount) tripCount.textContent = stats.count;
+  if (dataSource) dataSource.textContent = stats.source === 'local' ? 'このiPhoneのlocalStorage' : '静的データ（Notionから復元可能）';
 
   // P2をバックグラウンドで読み込み（UIブロックなし）
   loadLines(2);

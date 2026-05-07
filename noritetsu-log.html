@@ -2069,6 +2069,9 @@ function showNotionJson(){
     }).join(' / '),
   };
 
+  // ══ localStorageに保存（地図への自動反映用）══
+  saveToLocalStorage(segs, payload);
+
   const text = `🚃乗レコ記録データ\n${JSON.stringify(payload)}\nこのデータをNotionの「乗レコ ログ」DBに保存してください。`;
 
   const wrap = document.getElementById('notion-json-wrap');
@@ -2077,12 +2080,38 @@ function showNotionJson(){
   wrap.style.display = 'block';
   ta.select();
 
-  // Change button label
   const btn = document.getElementById('notion-btn');
   btn.textContent = '✓ データを表示中 - 上のテキストをコピー';
   btn.style.background = 'rgba(46,204,113,.1)';
   btn.style.color = 'var(--green)';
   btn.style.borderColor = 'rgba(46,204,113,.3)';
+}
+
+// ══════════════════════════════════════════════
+// localStorage 保存・管理
+// ══════════════════════════════════════════════
+function saveToLocalStorage(segs, payload) {
+  try {
+    const existing = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
+    const tripId = `trip_${Date.now()}`;
+    const newTrip = {
+      id: tripId,
+      date: payload.日付,
+      from: payload.出発駅,
+      to: payload.到着駅,
+      name: payload.旅程名,
+      segments: segs.map(seg => ({
+        lineId: seg.lineId,
+        from: seg.route[0].name,
+        to: seg.route[seg.route.length-1].name,
+      }))
+    };
+    existing.push(newTrip);
+    localStorage.setItem('norireco_trips', JSON.stringify(existing));
+    console.log(`[乗レコ] localStorage保存: ${newTrip.name}（計${existing.length}件）`);
+  } catch(e) {
+    console.error('[乗レコ] localStorage保存エラー:', e);
+  }
 }
 
 function setNotionStatus(type, msg){
