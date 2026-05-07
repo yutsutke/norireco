@@ -464,31 +464,73 @@ const RIDDEN_SEGS_STATIC=[
   {lineId:'toei-oedo',from:'都庁前',to:'本郷三丁目'},
 ];
 
-// localStorageから乗車記録を読み込んでRIDDEN_SEGSを生成
+// ══════════════════════════════════════════════
+// Supabase 設定
+// ══════════════════════════════════════════════
+const SUPABASE_URL = 'https://zkscxhhlyhdaanisjhdi.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inprc2N4aGhseWhkYWFuaXNqaGRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNTAzNjcsImV4cCI6MjA5MzcyNjM2N30.rGOli3UJjjBtF8caD7NXaoCYdfgbIyv4j_GCdjmPpsU';
+
+function tripsToSegs(trips) {
+  const segs = [];
+  trips.forEach(trip => {
+    (trip.segments || []).forEach(seg => {
+      segs.push({ lineId: seg.lineId, from: seg.from, to: seg.to });
+    });
+  });
+  return segs;
+}
+
+// Supabaseから全旅程を取得して地図を更新
+async function syncFromSupabase() {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/norireco_trips?select=*&order=created_at.asc`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const trips = await res.json();
+    if (!trips.length) return;
+
+    console.log(`[乗レコ] Supabase同期: ${trips.length}件`);
+    localStorage.setItem('norireco_trips', JSON.stringify(trips));
+
+    // RIDDEN_SEGSを再構築
+    const newSegs = tripsToSegs(trips);
+    RIDDEN_SEGS.length = 0;
+    newSegs.forEach(s => RIDDEN_SEGS.push(s));
+    rebuildRiddenStations();
+
+    // 地図を再描画
+    if (map && dotLayerRef) {
+      allLayers.forEach(l => { try { map.removeLayer(l); } catch(e){} });
+      allLayers.length = 0;
+      dotLayerRef.clearLayers();
+      if (labelLayerRef) labelLayerRef.clearLayers();
+      drawLines();
+      updateOverlays();
+    }
+    updateStorageUI(trips.length, 'supabase');
+  } catch(e) {
+    console.error('[乗レコ] Supabase同期エラー:', e);
+  }
+}
+
+// localStorageから読み込み
 function loadRiddenSegsFromStorage() {
   try {
     const trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
     if (trips.length === 0) return null;
-    const segs = [];
-    trips.forEach(trip => {
-      trip.segments.forEach(seg => {
-        segs.push({ lineId: seg.lineId, from: seg.from, to: seg.to });
-      });
-    });
+    const segs = tripsToSegs(trips);
     console.log(`[乗レコ] localStorage: ${trips.length}件 → ${segs.length}区間`);
     return segs;
   } catch(e) {
-    console.error('[乗レコ] localStorage読み込みエラー:', e);
     return null;
   }
 }
 
-// RIDDEN_SEGS = localStorage優先、なければ静的データ
-const RIDDEN_SEGS = loadRiddenSegsFromStorage() || RIDDEN_SEGS_STATIC;
+// RIDDEN_SEGS = localStorage優先、なければ静的データ（可変配列）
+const RIDDEN_SEGS = loadRiddenSegsFromStorage() || [...RIDDEN_SEGS_STATIC];
 
-// ══════════════════════════════════════════════
-// localStorage管理UI（復元・状態表示）
-// ══════════════════════════════════════════════
 function getStorageStats() {
   try {
     const trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
@@ -496,39 +538,49 @@ function getStorageStats() {
   } catch(e) { return { count: 0, source: 'static' }; }
 }
 
-// 復元モーダル（新端末用）
+function updateStorageUI(count, source) {
+  const lbl = document.getElementById('storage-lbl');
+  const cnt = document.getElementById('storage-count');
+  if (!lbl || !cnt) return;
+  if (source === 'supabase') {
+    lbl.textContent = '☁️ Supabase同期済';
+    cnt.textContent = `${count}件`;
+    cnt.style.color = 'var(--green)';
+  } else if (source === 'local') {
+    lbl.textContent = '📱 このiPhone';
+    cnt.textContent = `${count}件`;
+    cnt.style.color = 'var(--gold)';
+  } else {
+    lbl.textContent = '📄 静的データ';
+    cnt.textContent = '';
+  }
+}
+
 function openRestoreModal() {
-  const modal = document.getElementById('restore-modal');
-  if (modal) modal.classList.add('open');
+  document.getElementById('restore-modal')?.classList.add('open');
 }
 function closeRestoreModal() {
-  const modal = document.getElementById('restore-modal');
-  if (modal) modal.classList.remove('open');
+  document.getElementById('restore-modal')?.classList.remove('open');
 }
 
 function restoreFromJson(jsonText) {
   try {
     const data = JSON.parse(jsonText);
     if (!Array.isArray(data)) throw new Error('配列形式でありません');
-    // 既存データにマージ（重複IDはスキップ）
     const existing = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
     const existingIds = new Set(existing.map(t => t.id));
     let added = 0;
     data.forEach(trip => {
-      if (!existingIds.has(trip.id)) {
-        existing.push(trip);
-        added++;
-      }
+      if (!existingIds.has(trip.id)) { existing.push(trip); added++; }
     });
     localStorage.setItem('norireco_trips', JSON.stringify(existing));
-    alert(`✅ ${added}件の記録を復元しました。地図を再読み込みすると反映されます。`);
+    alert(`✅ ${added}件復元しました`);
     closeRestoreModal();
     location.reload();
   } catch(e) {
-    alert('❌ JSONの形式が正しくありません: ' + e.message);
+    alert('❌ ' + e.message);
   }
 }
-
 // Mercator projection（SVGと同じ座標系）
 const PAD=22;
 function merc(lat,lon){
@@ -613,28 +665,25 @@ function initMap(){
   updateOverlays();
   fitToRiddenLines();
 
-  // ストレージ状態を表示
+  // ストレージ状態を表示（まずlocalStorageの状態を反映）
   const stats = getStorageStats();
-  const storageRow = document.getElementById('storage-row');
-  const storageLbl = document.getElementById('storage-lbl');
-  const storageCount = document.getElementById('storage-count');
-  if (stats.source === 'local') {
-    storageLbl.textContent = '📱 このiPhone';
-    storageCount.textContent = `${stats.count}件`;
-    storageCount.style.color = 'var(--green)';
-  } else {
-    storageLbl.textContent = '☁️ Notion同期待ち';
-    storageCount.textContent = '未同期';
-    storageCount.style.color = 'var(--gold)';
-    // 復元ヒントを表示
+  updateStorageUI(stats.count, stats.source);
+
+  // Supabaseから最新データを非同期で取得・同期（バックグラウンド）
+  syncFromSupabase();
+
+  // 復元ヒント表示
+  if (stats.source === 'static') {
     const hint = document.getElementById('restore-hint');
     if (hint) hint.style.display = 'block';
   }
+
   // 復元モーダルの情報更新
   const tripCount = document.getElementById('current-trip-count');
   const dataSource = document.getElementById('current-data-source');
   if (tripCount) tripCount.textContent = stats.count;
-  if (dataSource) dataSource.textContent = stats.source === 'local' ? 'このiPhoneのlocalStorage' : '静的データ（Notionから復元可能）';
+  if (dataSource) dataSource.textContent = stats.source === 'local'
+    ? 'このiPhoneのlocalStorage' : '静的データ（Supabaseから自動同期）';
 
   // P2をバックグラウンドで読み込み（UIブロックなし）
   loadLines(2);

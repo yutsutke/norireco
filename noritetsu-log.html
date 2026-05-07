@@ -2088,8 +2088,37 @@ function showNotionJson(){
 }
 
 // ══════════════════════════════════════════════
-// localStorage 保存・管理
+// Supabase 設定
 // ══════════════════════════════════════════════
+const SUPABASE_URL = 'https://zkscxhhlyhdaanisjhdi.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inprc2N4aGhseWhkYWFuaXNqaGRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNTAzNjcsImV4cCI6MjA5MzcyNjM2N30.rGOli3UJjjBtF8caD7NXaoCYdfgbIyv4j_GCdjmPpsU';
+
+async function saveToSupabase(tripData) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_trips`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify(tripData),
+    });
+    if (res.ok) {
+      console.log('[乗レコ] Supabase保存成功:', tripData.name);
+      return true;
+    } else {
+      const err = await res.text();
+      console.error('[乗レコ] Supabase保存失敗:', err);
+      return false;
+    }
+  } catch(e) {
+    console.error('[乗レコ] Supabase接続エラー:', e);
+    return false;
+  }
+}
+
 function saveToLocalStorage(segs, payload) {
   try {
     const existing = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
@@ -2097,18 +2126,27 @@ function saveToLocalStorage(segs, payload) {
     const newTrip = {
       id: tripId,
       date: payload.日付,
-      from: payload.出発駅,
-      to: payload.到着駅,
       name: payload.旅程名,
+      from_station: payload.出発駅,
+      to_station: payload.到着駅,
       segments: segs.map(seg => ({
         lineId: seg.lineId,
         from: seg.route[0].name,
         to: seg.route[seg.route.length-1].name,
       }))
     };
+    // localStorage に保存
     existing.push(newTrip);
     localStorage.setItem('norireco_trips', JSON.stringify(existing));
     console.log(`[乗レコ] localStorage保存: ${newTrip.name}（計${existing.length}件）`);
+
+    // Supabase にも非同期で保存
+    saveToSupabase(newTrip).then(ok => {
+      const btn = document.getElementById('notion-btn');
+      if (ok && btn) {
+        btn.textContent = '✓ Supabase保存済 - テキストをClaudeに送ってNotionにも保存';
+      }
+    });
   } catch(e) {
     console.error('[乗レコ] localStorage保存エラー:', e);
   }
