@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>乗レコ Supabase移行ツール</title>
+<style>
+body{background:#0d1b2a;color:#f4f7fa;font-family:sans-serif;padding:30px;max-width:600px;margin:0 auto}
+h1{color:#e8352a;font-size:20px}
+.btn{background:#e8352a;color:#fff;border:none;padding:14px 28px;border-radius:10px;font-size:15px;cursor:pointer;margin-top:16px;width:100%}
+.btn:disabled{background:#444;cursor:not-allowed}
+pre{background:#111827;padding:12px;border-radius:8px;font-size:11px;overflow-x:auto;max-height:300px;overflow-y:auto}
+.ok{color:#2ecc71}.err{color:#e8352a}.info{color:#f2a900}
+</style>
+</head>
+<body>
+<h1>🚃 乗レコ Notion → Supabase 移行ツール</h1>
+<p style="color:#8ca0b3;font-size:13px">Notionの全記録をSupabaseに移行します。一度だけ実行してください。</p>
+<div id="log"></div>
+<button class="btn" id="btn" onclick="migrate()">🔄 移行を開始する</button>
+
+<script>
+const SUPABASE_URL = 'https://zkscxhhlyhdaanisjhdi.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inprc2N4aGhseWhkYWFuaXNqaGRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNTAzNjcsImV4cCI6MjA5MzcyNjM2N30.rGOli3UJjjBtF8caD7NXaoCYdfgbIyv4j_GCdjmPpsU';
+
+const NOTION_TRIPS = [
+  {id:"trip_notion_001",date:"2026-04-29",name:"四ツ谷 → 西川口",from_station:"四ツ谷",to_station:"西川口",total_stations:8,transfers:1,line_list:"JR中央線（快速）、JR京浜東北線",total_minutes:0,depart_time:"",arrive_time:"",segments:[{lineId:"chuo",from:"四ツ谷",to:"中野"},{lineId:"keihin",from:"中野",to:"西川口"}]},
+  {id:"trip_notion_002",date:"2026-04-29",name:"与野 → 横浜",from_station:"与野",to_station:"横浜",total_stations:9,transfers:0,line_list:"JR京浜東北線",total_minutes:0,depart_time:"",arrive_time:"",segments:[{lineId:"keihin",from:"与野",to:"横浜"}]},
+  {id:"trip_notion_003",date:"2026-04-29",name:"東京 → 博多",from_station:"東京",to_station:"博多",total_stations:19,transfers:0,line_list:"東海道新幹線",total_minutes:0,depart_time:"",arrive_time:"",segments:[{lineId:"tokaido-shinkansen",from:"東京",to:"博多"}]},
+  {id:"trip_notion_004",date:"2026-05-01",name:"田町 → 高田馬場",from_station:"田町",to_station:"高田馬場",total_stations:13,transfers:0,line_list:"JR山手線",total_minutes:0,depart_time:"",arrive_time:"",segments:[{lineId:"yamanote",from:"田町",to:"高田馬場"}]},
+  {id:"trip_notion_005",date:"2026-05-04",name:"東京 → 敦賀",from_station:"東京",to_station:"敦賀",total_stations:13,transfers:0,line_list:"北陸新幹線",total_minutes:0,depart_time:"15:19:08",arrive_time:"15:19:10",segments:[{lineId:"hokuriku",from:"東京",to:"敦賀"}]},
+  {id:"trip_notion_006",date:"2026-05-05",name:"東京 → 高尾",from_station:"東京",to_station:"高尾",total_stations:20,transfers:0,line_list:"JR中央線（快速）",total_minutes:0,depart_time:"07:33:38",arrive_time:"07:33:42",segments:[{lineId:"chuo",from:"東京",to:"高尾"}]},
+  {id:"trip_notion_007",date:"2026-05-06",name:"高麗川 → 横浜",from_station:"高麗川",to_station:"横浜",total_stations:50,transfers:3,line_list:"JR八高線（八王子〜高麗川）、JR横浜線、京急久里浜線、JR横須賀線",total_minutes:3,depart_time:"21:16:37",arrive_time:"21:19:42",segments:[{lineId:"hachioji",from:"高麗川",to:"八王子"},{lineId:"yokohama",from:"八王子",to:"東神奈川"},{lineId:"keikyu-kurihama",from:"堀ノ内",to:"三崎口"},{lineId:"yokosuka",from:"横須賀",to:"横浜"}]},
+  {id:"trip_notion_008",date:"2026-05-06",name:"東京 → 本郷三丁目",from_station:"東京",to_station:"本郷三丁目",total_stations:157,transfers:10,line_list:"JR総武線（快速）、JR埼京線、JR横須賀線、JR山手線、JR中央線（快速）、JR湘南新宿ライン、東京メトロ銀座線、東京メトロ丸ノ内線、東京メトロ日比谷線、都営浅草線、都営大江戸線",total_minutes:7,depart_time:"08:06:46",arrive_time:"08:13:38",segments:[{lineId:"sobu",from:"東京",to:"千葉"},{lineId:"saikyo",from:"大崎",to:"戸田公園"},{lineId:"yokosuka",from:"東京",to:"横須賀"},{lineId:"yamanote",from:"東京",to:"神田"},{lineId:"shonan",from:"赤羽",to:"小田原"},{lineId:"tokyometro-ginza",from:"浅草",to:"渋谷"},{lineId:"tokyometro-marunouchi",from:"東京",to:"荻窪"},{lineId:"tokyometro-hibiya",from:"上野",to:"茅場町"},{lineId:"toei-asakusa",from:"押上",to:"東銀座"},{lineId:"toei-oedo",from:"都庁前",to:"本郷三丁目"}]},
+];
+
+function log(msg, cls=''){
+  const d=document.getElementById('log');
+  d.innerHTML+=`<div class="${cls}">${msg}</div>`;
+}
+
+async function migrate(){
+  const btn=document.getElementById('btn');
+  btn.disabled=true;
+  btn.textContent='移行中...';
+  document.getElementById('log').innerHTML='';
+
+  log(`📦 移行対象: ${NOTION_TRIPS.length}件`, 'info');
+
+  try {
+    // まず既存データを確認
+    const check = await fetch(`${SUPABASE_URL}/rest/v1/norireco_trips?select=id`, {
+      headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}
+    });
+    const existing = await check.json();
+    const existingIds = new Set(existing.map(t=>t.id));
+    log(`☁️ Supabase既存: ${existing.length}件`, 'info');
+
+    const toInsert = NOTION_TRIPS.filter(t => !existingIds.has(t.id));
+    log(`➕ 新規追加対象: ${toInsert.length}件`, 'info');
+
+    if(toInsert.length === 0){
+      log('✅ 全件既に移行済みです', 'ok');
+      btn.textContent='✅ 移行済み';
+      return;
+    }
+
+    // 一括insert
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_trips`, {
+      method:'POST',
+      headers:{
+        'apikey':SUPABASE_KEY,
+        'Authorization':`Bearer ${SUPABASE_KEY}`,
+        'Content-Type':'application/json',
+        'Prefer':'resolution=merge-duplicates,return=minimal',
+      },
+      body: JSON.stringify(toInsert)
+    });
+
+    if(res.ok){
+      log(`✅ ${toInsert.length}件の移行成功！`, 'ok');
+      toInsert.forEach(t => log(`  ✓ ${t.date} ${t.name}`, 'ok'));
+      log('', '');
+      log('🎉 移行完了！このページは閉じてください。', 'ok');
+
+      // localStorageにも保存
+      const all = [...NOTION_TRIPS, ...existing.filter(e=>!NOTION_TRIPS.find(t=>t.id===e.id))];
+      localStorage.setItem('norireco_trips', JSON.stringify(all));
+      log('📱 localStorageにも保存しました', 'info');
+
+      btn.textContent='✅ 移行完了';
+    } else {
+      const err = await res.text();
+      log(`❌ エラー: ${res.status} - ${err}`, 'err');
+      btn.disabled=false;
+      btn.textContent='🔄 再試行';
+    }
+  } catch(e) {
+    log(`❌ 接続エラー: ${e.message}`, 'err');
+    btn.disabled=false;
+    btn.textContent='🔄 再試行';
+  }
+}
+</script>
+</body>
+</html>
