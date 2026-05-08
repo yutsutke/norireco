@@ -502,24 +502,38 @@ function resolveLineId(legacyId) {
 function rebuildRiddenStations() {
   Object.keys(riddenSt).forEach(k => delete riddenSt[k]);
   let resolvedCount = 0;
-  let unresolvedCount = 0;
+  const lineNotFound = [];   // 路線が見つからない
+  const stationNotFound = []; // 路線はあるが駅が見つからない
   RIDDEN_SEGS.forEach(seg => {
     const resolvedId = resolveLineId(seg.lineId);
     const line = LINES.find(l => l.id === resolvedId);
     if (!line) {
-      unresolvedCount++;
+      lineNotFound.push(`${seg.lineId} (${seg.from}→${seg.to})`);
+      return;
+    }
+    const fi = line.stations.findIndex(s => s.n === seg.from);
+    const ti = line.stations.findIndex(s => s.n === seg.to);
+    if (fi < 0 || ti < 0) {
+      const missing = [];
+      if (fi < 0) missing.push(`from='${seg.from}'`);
+      if (ti < 0) missing.push(`to='${seg.to}'`);
+      stationNotFound.push(`${seg.lineId}→${resolvedId}: ${missing.join(', ')}`);
       return;
     }
     resolvedCount++;
     if (!riddenSt[resolvedId]) riddenSt[resolvedId] = new Set();
-    const fi = line.stations.findIndex(s => s.n === seg.from);
-    const ti = line.stations.findIndex(s => s.n === seg.to);
-    if (fi < 0 || ti < 0) return;
     for (let i = Math.min(fi,ti); i <= Math.max(fi,ti); i++)
       riddenSt[resolvedId].add(line.stations[i].n);
   });
   if (RIDDEN_SEGS.length > 0) {
-    console.log(`[乗レコ] 乗車記録 ${resolvedCount}/${RIDDEN_SEGS.length} 件マッチ（${unresolvedCount}件未解決）`);
+    const total = RIDDEN_SEGS.length;
+    console.log(`[乗レコ] 乗車記録 ${resolvedCount}/${total} 件マッチ`);
+    if (lineNotFound.length > 0) {
+      console.warn(`  路線見つからず (${lineNotFound.length}件):`, lineNotFound);
+    }
+    if (stationNotFound.length > 0) {
+      console.warn(`  駅名マッチせず (${stationNotFound.length}件):`, stationNotFound);
+    }
   }
 }
 
@@ -1048,24 +1062,27 @@ function drawSingleLine(line){
 function drawRiddenSeg(line,from,to,canvas){
   // polylineがある場合は対応する補間点も含めて描画
   let latlngs;
-  if(line.polyline){
-    // 駅fromと駅toのpolyline内インデックスを探す
+  if(line.polyline && line.polyline.length>0){
+    // 駅fromと駅toにpolyline内で最も近い点のインデックスを探す
     const fromSt = line.stations[from];
     const toSt = line.stations[to];
-    let pi1=-1, pi2=-1;
+    let pi1=0, pi2=0;
+    let bestD1=Infinity, bestD2=Infinity;
     for(let i=0;i<line.polyline.length;i++){
       const p=line.polyline[i];
-      if(p.lat===fromSt.lat && p.lon===fromSt.lon){pi1=i; break;}
+      const d1=(p.lat-fromSt.lat)**2+(p.lon-fromSt.lon)**2;
+      const d2=(p.lat-toSt.lat)**2+(p.lon-toSt.lon)**2;
+      if(d1<bestD1){bestD1=d1; pi1=i;}
+      if(d2<bestD2){bestD2=d2; pi2=i;}
     }
-    for(let i=line.polyline.length-1;i>=0;i--){
-      const p=line.polyline[i];
-      if(p.lat===toSt.lat && p.lon===toSt.lon){pi2=i; break;}
+    const lo=Math.min(pi1,pi2), hi=Math.max(pi1,pi2);
+    latlngs = line.polyline.slice(lo,hi+1).map(p=>[p.lat,p.lon]);
+    // 始点と終点の駅座標を補強（polyline簡略化で削られていた場合の保険）
+    if(latlngs.length===0 || Math.abs(latlngs[0][0]-fromSt.lat)+Math.abs(latlngs[0][1]-fromSt.lon)>0.001){
+      latlngs.unshift([fromSt.lat,fromSt.lon]);
     }
-    if(pi1>=0 && pi2>=0){
-      const lo=Math.min(pi1,pi2), hi=Math.max(pi1,pi2);
-      latlngs = line.polyline.slice(lo,hi+1).map(p=>[p.lat,p.lon]);
-    } else {
-      latlngs = line.stations.slice(from,to+1).map(s=>[s.lat,s.lon]);
+    if(Math.abs(latlngs[latlngs.length-1][0]-toSt.lat)+Math.abs(latlngs[latlngs.length-1][1]-toSt.lon)>0.001){
+      latlngs.push([toSt.lat,toSt.lon]);
     }
   } else {
     latlngs=line.stations.slice(from,to+1).map(s=>[s.lat,s.lon]);
