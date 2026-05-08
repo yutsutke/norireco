@@ -304,10 +304,10 @@ const pendingLoads = new Set();
 
 // 優先度別JSONファイル（N02-25 全国データ・606路線・10154駅）
 const PRIORITY_FILES = {
-  1: 'lines-p1.new.json',  // 新幹線（ズーム5〜）
-  2: 'lines-p2.new.json',  // JR在来線（ズーム7〜）
-  3: 'lines-p3.new.json',  // 大手私鉄・都市鉄道（ズーム8〜）
-  4: 'lines-p4.new.json',  // 地方鉄道・路面電車（ズーム10〜）
+  1: 'lines-p1.json',  // 新幹線（ズーム5〜）
+  2: 'lines-p2.json',  // JR在来線（ズーム7〜）
+  3: 'lines-p3.json',  // 大手私鉄・都市鉄道（ズーム8〜）
+  4: 'lines-p4.json',  // 地方鉄道・路面電車（ズーム10〜）
 };
 
 // ズームレベル→読み込む優先度の閾値
@@ -1289,4 +1289,5 @@ function renderStats(){
     {ic:'🗾',nm:'2路線制覇',ds:'2路線以上に乗車',on:gs.la>=2},
     {ic:'🚄',nm:'新幹線デビュー',ds:'新幹線に初乗車',on:!!riddenSt['tokaido-shinkansen']||!!riddenSt['tohoku']||!!riddenSt['hokuriku']},
     {ic:'⚡',nm:'東海道新幹線完乗',ds:'東京〜博多を全駅乗車',on:lStats(LINES.find(l=>l.id==='tokaido-shinkansen')||{stations:[]}).pct===100},
-    {ic:'🌐',nm:'3路線制覇',ds:'3路線以上に乗車',on:
+    {ic:'🌐',nm:'3路線制覇',ds:'3路線以上に乗車',on:gs.la>=3},
+    {
