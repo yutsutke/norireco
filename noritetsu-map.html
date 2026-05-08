@@ -304,10 +304,10 @@ const pendingLoads = new Set();
 
 // 優先度別JSONファイル（N02-25 全国データ・606路線・10154駅）
 const PRIORITY_FILES = {
-  1: 'lines-p1.json',  // 新幹線（ズーム5〜）
-  2: 'lines-p2.json',  // JR在来線（ズーム7〜）
-  3: 'lines-p3.json',  // 大手私鉄・都市鉄道（ズーム8〜）
-  4: 'lines-p4.json',  // 地方鉄道・路面電車（ズーム10〜）
+  1: 'lines-p1.new.json',  // 新幹線（ズーム5〜）
+  2: 'lines-p2.new.json',  // JR在来線（ズーム7〜）
+  3: 'lines-p3.new.json',  // 大手私鉄・都市鉄道（ズーム8〜）
+  4: 'lines-p4.new.json',  // 地方鉄道・路面電車（ズーム10〜）
 };
 
 // ズームレベル→読み込む優先度の閾値
@@ -939,7 +939,24 @@ function updateLOD() {
   }
 }
 
+// 路線の駅を branch ごとにグルーピングし、駅順 o でソート
+// branch=99 の駅は除外（N02-25誤登録などの孤立駅）
+function getBranchedStations(line){
+  const branches={};
+  line.stations.forEach(s=>{
+    const b=(s.branch===undefined?0:s.branch);
+    if(b===99) return;
+    if(!branches[b]) branches[b]=[];
+    branches[b].push(s);
+  });
+  Object.keys(branches).forEach(b=>{
+    branches[b].sort((a,b)=>(a.o||0)-(b.o||0));
+  });
+  return branches;
+}
+
 // 1路線を描画（遅延読み込み時にも呼ばれる）
+// branch + o のシンプル方式：駅同士を番号順に直線で結ぶ
 function drawSingleLine(line){
   const canvas=CANVAS;
   const dotLayer=dotLayerRef;
@@ -947,148 +964,148 @@ function drawSingleLine(line){
   if(!dotLayer||!labelLayer)return;
 
   const rd=riddenSt[line.id];
-  // polyline（補間点付き座標列）があればそれを使う、なければ駅のみ
-  const polylineCoords = line.polyline 
-    ? line.polyline.map(p=>[p.lat,p.lon])
-    : line.stations.map(s=>[s.lat,s.lon]);
-  const allLatLng=polylineCoords;
   const stats=lStats(line);
   const priority=getLinePriority(line);
   const isRidden=rd&&rd.size>0;
+  const branches=getBranchedStations(line);
 
-  if(!isRidden){
-    // 未乗車：Canvasで描画
-    const glowLine=L.polyline(allLatLng,{
-      color:line.color, weight:5, opacity:0.08,
-      lineCap:'round', renderer:canvas,
-    });
-    const mainLine=L.polyline(allLatLng,{
-      color:line.color, weight:2.5, opacity:0.55,
-      dashArray:'6 5', lineCap:'round', renderer:canvas,
-    }).bindTooltip(
-      `<b style="color:${line.color}">${line.name}</b><br><span style="color:rgba(140,160,179,.7)">${line.region} · 未乗車 ${stats.t}駅</span>`,
-      {className:'norireco-tooltip',sticky:true,offset:[10,0]}
-    );
+  Object.entries(branches).forEach(([bid,bsts])=>{
+    if(bsts.length===0) return;
+    const isCircular=bsts.some(s=>s._circular_branch);
+    const latlngs=bsts.map(s=>[s.lat,s.lon]);
+    if(isCircular && latlngs.length>0) latlngs.push(latlngs[0]);
 
-    glowLine._norireco_priority=priority;
-    mainLine._norireco_priority=priority;
-    allLayers.push(glowLine, mainLine);
+    if(!isRidden){
+      // 未乗車：点線
+      const glowLine=L.polyline(latlngs,{
+        color:line.color, weight:5, opacity:0.08,
+        lineCap:'round', renderer:canvas,
+      });
+      const mainLine=L.polyline(latlngs,{
+        color:line.color, weight:2.5, opacity:0.55,
+        dashArray:'6 5', lineCap:'round', renderer:canvas,
+      }).bindTooltip(
+        `<b style="color:${line.color}">${line.name}</b><br><span style="color:rgba(140,160,179,.7)">${line.region} · 未乗車 ${stats.t}駅</span>`,
+        {className:'norireco-tooltip',sticky:true,offset:[10,0]}
+      );
+      glowLine._norireco_priority=priority;
+      mainLine._norireco_priority=priority;
+      allLayers.push(glowLine, mainLine);
+      const z=map?map.getZoom():5;
+      if(priority<=getVisiblePriority(z)){
+        glowLine.addTo(map);
+        mainLine.addTo(map);
+      }
+    } else {
+      // 乗車済み路線：背景の薄い線 + 乗車済み区間のグロー
+      L.polyline(latlngs,{
+        color:line.color+'28',weight:1.5,lineCap:'round',renderer:canvas
+      }).addTo(map);
 
-    // 現在のズームで表示すべきか判定してから追加
-    const z = map ? map.getZoom() : 5;
-    if (priority <= getVisiblePriority(z)) {
-      glowLine.addTo(map);
-      mainLine.addTo(map);
+      let ss=null;
+      for(let i=0;i<bsts.length;i++){
+        const ir=rd.has(bsts[i].n);
+        if(ir&&ss===null) ss=i;
+        if(!ir&&ss!==null){
+          drawRiddenSegBranch(line,bsts,ss,i-1,canvas);
+          ss=null;
+        }
+        if(i===bsts.length-1&&ss!==null){
+          drawRiddenSegBranch(line,bsts,ss,i,canvas);
+        }
+      }
+      if(isCircular && bsts.length>=2 && rd.has(bsts[0].n) && rd.has(bsts[bsts.length-1].n)){
+        drawRiddenWrap(line,bsts,canvas);
+      }
+
+      L.polyline(latlngs,{color:'transparent',weight:20,lineCap:'round'})
+        .addTo(map)
+        .bindTooltip(
+          `<b style="color:${line.color}">${line.name}</b><br><span style="color:rgba(140,160,179,.8)">${line.region}</span><br><span style="color:rgba(242,169,0,.9);font-family:monospace">${stats.r}/${stats.t}駅 — ${stats.pct}%</span>`,
+          {className:'norireco-tooltip',sticky:true,offset:[12,0]}
+        )
+        .on('click',e=>{
+          if(!memoMode)return;
+          let bSt=null,bD=Infinity;
+          bsts.forEach(s=>{
+            const d=map.distance([s.lat,s.lon],e.latlng);
+            if(d<bD){bD=d;bSt=s;}
+          });
+          clickInfo={line,station:bSt,lat:e.latlng.lat.toFixed(5),lon:e.latlng.lng.toFixed(5)};
+          openMemo();
+        });
     }
 
-    // 未乗車駅ドット
-    line.stations.forEach(s=>{
-      const dot=L.circleMarker([s.lat,s.lon],{
-        radius:2.5, fillColor:line.color,
-        color:'rgba(255,255,255,0.4)', weight:0.8,
-        fillOpacity:0.4, renderer:canvas,
-      }).bindTooltip(
-        `<b style="color:${line.color}">${s.n}</b><br><span style="color:rgba(140,160,179,.7)">${line.name}${s.o?` ${s.o}駅目`:''} · 未乗車</span>`,
-        {className:'norireco-tooltip',offset:[8,0]}
-      );
-      dot._norireco_priority=priority;
-      dotLayer.addLayer(dot);
-
-      const label=L.marker([s.lat,s.lon],{
-        icon:L.divIcon({
-          className:'',
-          html:`<div style="font-family:'Zen Kaku Gothic New',sans-serif;font-size:9px;font-weight:400;color:rgba(255,255,255,0.6);text-shadow:0 0 4px rgba(0,0,0,1);white-space:nowrap;pointer-events:none;padding-left:6px;margin-top:-5px">${s.n}</div>`,
-          iconSize:[0,0],iconAnchor:[0,0],
-        }),interactive:false,
-      });
-      label._norireco_priority=priority;
-      labelLayer.addLayer(label);
+    // 各駅のドット & ラベル
+    bsts.forEach(s=>{
+      const ir=isRidden && rd.has(s.n);
+      if(!isRidden){
+        const dot=L.circleMarker([s.lat,s.lon],{
+          radius:2.5, fillColor:line.color,
+          color:'rgba(255,255,255,0.4)', weight:0.8,
+          fillOpacity:0.4, renderer:canvas,
+        }).bindTooltip(
+          `<b style="color:${line.color}">${s.n}</b><br><span style="color:rgba(140,160,179,.7)">${line.name}${s.o?` ${s.o}駅目`:''} · 未乗車</span>`,
+          {className:'norireco-tooltip',offset:[8,0]}
+        );
+        dot._norireco_priority=priority;
+        dotLayer.addLayer(dot);
+        const label=L.marker([s.lat,s.lon],{
+          icon:L.divIcon({
+            className:'',
+            html:`<div style="font-family:'Zen Kaku Gothic New',sans-serif;font-size:9px;font-weight:400;color:rgba(255,255,255,0.6);text-shadow:0 0 4px rgba(0,0,0,1);white-space:nowrap;pointer-events:none;padding-left:6px;margin-top:-5px">${s.n}</div>`,
+            iconSize:[0,0],iconAnchor:[0,0],
+          }),interactive:false,
+        });
+        label._norireco_priority=priority;
+        labelLayer.addLayer(label);
+      } else if(ir){
+        const dot=L.circleMarker([s.lat,s.lon],{
+          radius:4,fillColor:line.color,
+          color:'rgba(255,255,255,0.85)',weight:1.2,fillOpacity:1,
+          renderer:canvas,
+        }).bindTooltip(`<b>${s.n}</b><br><span style="color:rgba(140,160,179,.8)">${line.name}${s.o?` - ${s.o}駅目`:''}</span>`,
+          {className:'norireco-tooltip',offset:[8,0]});
+        dotLayer.addLayer(dot);
+        const label=L.marker([s.lat,s.lon],{
+          icon:L.divIcon({
+            className:'',
+            html:`<div style="font-family:'Zen Kaku Gothic New',sans-serif;font-size:10px;font-weight:700;color:#fff;text-shadow:0 0 4px rgba(0,0,0,1),0 0 8px rgba(0,0,0,1);white-space:nowrap;pointer-events:none;padding-left:7px;margin-top:-6px">${s.n}</div>`,
+            iconSize:[0,0],iconAnchor:[0,0],
+          }),interactive:false,
+        });
+        labelLayer.addLayer(label);
+      } else {
+        // 乗車済み路線の未乗車駅
+        const dot=L.circleMarker([s.lat,s.lon],{
+          radius:2.5, fillColor:line.color,
+          color:'rgba(255,255,255,0.4)', weight:0.8,
+          fillOpacity:0.5, renderer:canvas,
+        }).bindTooltip(
+          `<b style="color:${line.color}">${s.n}</b><br><span style="color:rgba(140,160,179,.7)">${line.name}${s.o?` ${s.o}駅目`:''} · 未乗車</span>`,
+          {className:'norireco-tooltip',offset:[8,0]}
+        );
+        dotLayer.addLayer(dot);
+      }
     });
-    return;
-  }
-
-  // 乗車済み
-  L.polyline(allLatLng,{
-    color:line.color+'28',weight:1.5,lineCap:'round',renderer:canvas
-  }).addTo(map);
-
-  let ss=null;
-  line.stations.forEach((s,i)=>{
-    const ir=rd.has(s.n);
-    if(ir&&ss===null) ss=i;
-    if(!ir&&ss!==null){drawRiddenSeg(line,ss,i-1,canvas);ss=null;}
-    if(i===line.stations.length-1&&ss!==null)drawRiddenSeg(line,ss,i,canvas);
-  });
-
-  L.polyline(allLatLng,{color:'transparent',weight:20,lineCap:'round'})
-    .addTo(map)
-    .bindTooltip(
-      `<b style="color:${line.color}">${line.name}</b><br><span style="color:rgba(140,160,179,.8)">${line.region}</span><br><span style="color:rgba(242,169,0,.9);font-family:monospace">${stats.r}/${stats.t}駅 — ${stats.pct}%</span>`,
-      {className:'norireco-tooltip',sticky:true,offset:[12,0]}
-    )
-    .on('click',e=>{
-      if(!memoMode)return;
-      let bSt=null,bD=Infinity;
-      line.stations.forEach(s=>{
-        const d=map.distance([s.lat,s.lon],e.latlng);
-        if(d<bD){bD=d;bSt=s;}
-      });
-      clickInfo={line,station:bSt,lat:e.latlng.lat.toFixed(5),lon:e.latlng.lng.toFixed(5)};
-      openMemo();
-    });
-
-  line.stations.forEach(s=>{
-    if(!rd.has(s.n))return;
-    const dot=L.circleMarker([s.lat,s.lon],{
-      radius:4,fillColor:line.color,
-      color:'rgba(255,255,255,0.85)',weight:1.2,fillOpacity:1,
-      renderer:canvas,
-    }).bindTooltip(`<b>${s.n}</b><br><span style="color:rgba(140,160,179,.8)">${line.name}${s.o?` - ${s.o}駅目`:''}</span>`,
-      {className:'norireco-tooltip',offset:[8,0]});
-    dotLayer.addLayer(dot);
-
-    const label=L.marker([s.lat,s.lon],{
-      icon:L.divIcon({
-        className:'',
-        html:`<div style="font-family:'Zen Kaku Gothic New',sans-serif;font-size:10px;font-weight:700;color:#fff;text-shadow:0 0 4px rgba(0,0,0,1),0 0 8px rgba(0,0,0,1);white-space:nowrap;pointer-events:none;padding-left:7px;margin-top:-6px">${s.n}</div>`,
-        iconSize:[0,0],iconAnchor:[0,0],
-      }),interactive:false,
-    });
-    labelLayer.addLayer(label);
   });
 }
 
-
-function drawRiddenSeg(line,from,to,canvas){
-  // polylineがある場合は対応する補間点も含めて描画
-  let latlngs;
-  if(line.polyline && line.polyline.length>0){
-    // 駅fromと駅toにpolyline内で最も近い点のインデックスを探す
-    const fromSt = line.stations[from];
-    const toSt = line.stations[to];
-    let pi1=0, pi2=0;
-    let bestD1=Infinity, bestD2=Infinity;
-    for(let i=0;i<line.polyline.length;i++){
-      const p=line.polyline[i];
-      const d1=(p.lat-fromSt.lat)**2+(p.lon-fromSt.lon)**2;
-      const d2=(p.lat-toSt.lat)**2+(p.lon-toSt.lon)**2;
-      if(d1<bestD1){bestD1=d1; pi1=i;}
-      if(d2<bestD2){bestD2=d2; pi2=i;}
-    }
-    const lo=Math.min(pi1,pi2), hi=Math.max(pi1,pi2);
-    latlngs = line.polyline.slice(lo,hi+1).map(p=>[p.lat,p.lon]);
-    // 始点と終点の駅座標を補強（polyline簡略化で削られていた場合の保険）
-    if(latlngs.length===0 || Math.abs(latlngs[0][0]-fromSt.lat)+Math.abs(latlngs[0][1]-fromSt.lon)>0.001){
-      latlngs.unshift([fromSt.lat,fromSt.lon]);
-    }
-    if(Math.abs(latlngs[latlngs.length-1][0]-toSt.lat)+Math.abs(latlngs[latlngs.length-1][1]-toSt.lon)>0.001){
-      latlngs.push([toSt.lat,toSt.lon]);
-    }
-  } else {
-    latlngs=line.stations.slice(from,to+1).map(s=>[s.lat,s.lon]);
-  }
+// ブランチ内の連続乗車区間を駅順で結ぶ
+function drawRiddenSegBranch(line,bsts,fromIdx,toIdx,canvas){
+  if(toIdx-fromIdx<1) return; // 1駅のみは線無し
+  const latlngs=bsts.slice(fromIdx,toIdx+1).map(s=>[s.lat,s.lon]);
   L.polyline(latlngs,{color:line.color,weight:10,opacity:0.12,lineCap:'round',lineJoin:'round',renderer:canvas}).addTo(map);
   L.polyline(latlngs,{color:line.color,weight:3.5,opacity:0.95,lineCap:'round',lineJoin:'round',renderer:canvas}).addTo(map);
+  L.polyline(latlngs,{color:'rgba(255,255,255,0.4)',weight:0.8,lineCap:'round',renderer:canvas}).addTo(map);
+}
+
+// 環状線：最終駅と始点を結ぶ
+function drawRiddenWrap(line,bsts,canvas){
+  const latlngs=[[bsts[bsts.length-1].lat,bsts[bsts.length-1].lon],
+                 [bsts[0].lat,bsts[0].lon]];
+  L.polyline(latlngs,{color:line.color,weight:10,opacity:0.12,lineCap:'round',renderer:canvas}).addTo(map);
+  L.polyline(latlngs,{color:line.color,weight:3.5,opacity:0.95,lineCap:'round',renderer:canvas}).addTo(map);
   L.polyline(latlngs,{color:'rgba(255,255,255,0.4)',weight:0.8,lineCap:'round',renderer:canvas}).addTo(map);
 }
 
@@ -1272,23 +1289,4 @@ function renderStats(){
     {ic:'🗾',nm:'2路線制覇',ds:'2路線以上に乗車',on:gs.la>=2},
     {ic:'🚄',nm:'新幹線デビュー',ds:'新幹線に初乗車',on:!!riddenSt['tokaido-shinkansen']||!!riddenSt['tohoku']||!!riddenSt['hokuriku']},
     {ic:'⚡',nm:'東海道新幹線完乗',ds:'東京〜博多を全駅乗車',on:lStats(LINES.find(l=>l.id==='tokaido-shinkansen')||{stations:[]}).pct===100},
-    {ic:'🌐',nm:'3路線制覇',ds:'3路線以上に乗車',on:gs.la>=3},
-    {ic:'🏅',nm:'5路線制覇',ds:'5路線以上に乗車',on:gs.la>=5},
-    {ic:'🏆',nm:'乗りつぶし50%',ds:'全路線の50%達成',on:gs.pct>=50},
-    {ic:'👑',nm:'完全乗りつぶし',ds:'全路線・全駅に乗車',on:gs.pct===100},
-  ];
-  const al=document.createElement('div');al.className='ach-list';
-  achs.forEach(a=>{const el=document.createElement('div');el.className='ach'+(a.on?' on':'');el.innerHTML=`<div class="ach-ic">${a.ic}</div><div><div class="ach-nm">${a.nm}</div><div class="ach-ds">${a.ds}</div></div>${a.on?'<div class="ach-bj">UNLOCKED</div>':''}`;al.appendChild(el);});
-  c.appendChild(al);
-}
-
-// ══════════════════════════════════════
-// INIT
-// ══════════════════════════════════════
-window.addEventListener('load',()=>{
-  initMap();
-  if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-});
-</script>
-</body>
-</html>
+    {ic:'🌐',nm:'3路線制覇',ds:'3路線以上に乗車',on:
