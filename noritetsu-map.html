@@ -337,6 +337,7 @@ async function loadLines(priority) {
   const url = PRIORITY_FILES[priority];
   if (!url) { pendingLoads.delete(priority); return; }
 
+  console.log(`[乗レコ] P${priority} fetch開始: ${url}`);
   try {
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -450,19 +451,76 @@ async function loadLinesForZoom(zoom) {
   }
 }
 
+// 旧ID（v1のローマ字ID）→ 新ID（N02-25 路線名_会社名）のマッピング
+// localStorage や Supabase に旧形式の lineId が残っていても新データと紐づくように
+const LEGACY_ID_MAP = {
+  'chuo':                    '中央線_東日本旅客鉄道',
+  'keihin':                  '東北線_東日本旅客鉄道',
+  'tokaido-shinkansen':      '東海道新幹線_東海旅客鉄道',
+  'tohoku-shinkansen':       '東北新幹線_東日本旅客鉄道',
+  'joetsu-shinkansen':       '上越新幹線_東日本旅客鉄道',
+  'yamanote':                '山手線_東日本旅客鉄道',
+  'hokuriku':                '北陸新幹線_東日本旅客鉄道',
+  'hachioji':                '八高線_東日本旅客鉄道',
+  'yokohama':                '横浜線_東日本旅客鉄道',
+  'keikyu-kurihama':         '本線_京浜急行電鉄',
+  'keikyu':                  '本線_京浜急行電鉄',
+  'yokosuka':                '横須賀線_東日本旅客鉄道',
+  'sobu':                    '総武線_東日本旅客鉄道',
+  'saikyo':                  '東北線_東日本旅客鉄道',
+  'shonan':                  '東海道線_東日本旅客鉄道',
+  'tokaido':                 '東海道線_東日本旅客鉄道',
+  'tokyometro-ginza':        '3号線銀座線_東京地下鉄',
+  'tokyometro-marunouchi':   '4号線丸ノ内線_東京地下鉄',
+  'tokyometro-hibiya':       '2号線日比谷線_東京地下鉄',
+  'tokyometro-tozai':        '5号線東西線_東京地下鉄',
+  'tokyometro-chiyoda':      '9号線千代田線_東京地下鉄',
+  'tokyometro-yurakucho':    '8号線有楽町線_東京地下鉄',
+  'tokyometro-hanzomon':     '11号線半蔵門線_東京地下鉄',
+  'tokyometro-namboku':      '7号線南北線_東京地下鉄',
+  'tokyometro-fukutoshin':   '13号線副都心線_東京地下鉄',
+  'toei-asakusa':            '1号線浅草線_東京都',
+  'toei-mita':               '6号線三田線_東京都',
+  'toei-shinjuku':           '10号線新宿線_東京都',
+  'toei-oedo':               '12号線大江戸線_東京都',
+  'tobu-skytree':            '伊勢崎線_東武鉄道',
+  'tobu-isesaki':            '伊勢崎線_東武鉄道',
+  'odakyu':                  '小田原線_小田急電鉄',
+  'tokyu-toyoko':            '東横線_東急電鉄',
+  'tokyu-denentoshi':        '田園都市線_東急電鉄',
+  'keio':                    '京王線_京王電鉄',
+  'tobu-tojo':               '東上本線_東武鉄道',
+  'seibu-ikebukuro':         '池袋線_西武鉄道',
+  'seibu-shinjuku':          '新宿線_西武鉄道',
+};
+
+function resolveLineId(legacyId) {
+  return LEGACY_ID_MAP[legacyId] || legacyId;
+}
+
 // 乗車済みデータを再構築（路線追加後に呼ぶ）
 function rebuildRiddenStations() {
   Object.keys(riddenSt).forEach(k => delete riddenSt[k]);
+  let resolvedCount = 0;
+  let unresolvedCount = 0;
   RIDDEN_SEGS.forEach(seg => {
-    const line = LINES.find(l => l.id === seg.lineId);
-    if (!line) return;
-    if (!riddenSt[seg.lineId]) riddenSt[seg.lineId] = new Set();
+    const resolvedId = resolveLineId(seg.lineId);
+    const line = LINES.find(l => l.id === resolvedId);
+    if (!line) {
+      unresolvedCount++;
+      return;
+    }
+    resolvedCount++;
+    if (!riddenSt[resolvedId]) riddenSt[resolvedId] = new Set();
     const fi = line.stations.findIndex(s => s.n === seg.from);
     const ti = line.stations.findIndex(s => s.n === seg.to);
     if (fi < 0 || ti < 0) return;
     for (let i = Math.min(fi,ti); i <= Math.max(fi,ti); i++)
-      riddenSt[seg.lineId].add(line.stations[i].n);
+      riddenSt[resolvedId].add(line.stations[i].n);
   });
+  if (RIDDEN_SEGS.length > 0) {
+    console.log(`[乗レコ] 乗車記録 ${resolvedCount}/${RIDDEN_SEGS.length} 件マッチ（${unresolvedCount}件未解決）`);
+  }
 }
 
 // 新しく読み込んだ路線だけを地図に追加描画
@@ -645,16 +703,8 @@ function toSvg(lat,lon){
   };
 }
 
-// 乗車済み駅セット
+// 乗車済み駅セット（rebuildRiddenStations()で構築される）
 const riddenSt={};
-RIDDEN_SEGS.forEach(seg=>{
-  const line=LINES.find(l=>l.id===seg.lineId);if(!line)return;
-  if(!riddenSt[seg.lineId])riddenSt[seg.lineId]=new Set();
-  const fi=line.stations.findIndex(s=>s.n===seg.from);
-  const ti=line.stations.findIndex(s=>s.n===seg.to);
-  if(fi<0||ti<0)return;
-  for(let i=Math.min(fi,ti);i<=Math.max(fi,ti);i++)riddenSt[seg.lineId].add(line.stations[i].n);
-});
 
 function lStats(line){const t=line.stations.length,r=riddenSt[line.id]?riddenSt[line.id].size:0;return{t,r,pct:t>0?Math.round(r/t*100):0};}
 function gStats(){let ts=0,rt=0,la=0,ld=0;LINES.forEach(l=>{const s=lStats(l);ts+=s.t;rt+=s.r;if(s.r>0)la++;if(s.pct===100)ld++;});return{ts,rt,la,ld,pct:ts>0?Math.round(rt/ts*100):0};}
@@ -707,11 +757,9 @@ function initMap(){
   dotLayerRef = L.layerGroup();
   labelLayerRef = L.layerGroup();
 
-  // P1はHTMLに埋め込み済みなので即描画
-  loadedPriorities.add(1);
+  // 初期描画（LINES空でも問題なし、JSONロード後に再描画される）
   drawLines();
   updateOverlays();
-  fitToRiddenLines();
 
   // ストレージ状態を表示（まずlocalStorageの状態を反映）
   const stats = getStorageStats();
@@ -734,9 +782,15 @@ function initMap(){
     ? 'このiPhoneのlocalStorage' : '静的データ（Supabaseから自動同期）';
 
   // 路線データをJSONファイルから読み込み
-  // 初期表示: P1（新幹線）+ P2（JR在来）
-  loadLines(1);
-  loadLines(2);
+  // 初期表示: P1（新幹線）+ P2（JR在来）+ P3（大手私鉄）
+  (async () => {
+    console.log('[乗レコ] 初期ロード開始');
+    await loadLines(1);
+    await loadLines(2);
+    await loadLines(3);
+    console.log(`[乗レコ] 初期ロード完了: 計${LINES.length}路線`);
+    fitToRiddenLines();
+  })();
 
   // ズーム変更時にP3/P4を追加読み込み + LOD更新
   map.on('zoomend', () => {
