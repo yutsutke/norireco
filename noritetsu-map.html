@@ -1198,13 +1198,20 @@ function getBranchedStations(line){
   return branches;
 }
 
-// 駅の重要度ティア (乗り入れ路線数による)
-// tier 5: 7+路線(東京・新宿等の超ターミナル)
+// 三大都市圏の中心駅 (最も低ズームから表示)
+const SUPER_MEGA_STATIONS = new Set([
+  '東京', '名古屋', '新大阪',
+]);
+
+// 駅の重要度ティア
+// tier 6: 三大都市中心 (東京・名古屋・新大阪)
+// tier 5: 7+路線(新宿・渋谷・池袋・横浜・大宮等の超ターミナル)
 // tier 4: 4-6路線(主要ターミナル)
 // tier 3: 3路線(中規模junction)
 // tier 2: 2路線(小junction)
 // tier 1: 1路線(通常駅)
-function stationTier(nLines) {
+function stationTier(nLines, name) {
+  if (name && SUPER_MEGA_STATIONS.has(name)) return 6;
   if (nLines >= 7) return 5;
   if (nLines >= 4) return 4;
   if (nLines >= 3) return 3;
@@ -1212,14 +1219,14 @@ function stationTier(nLines) {
   return 1;
 }
 // ズームレベルで表示するべき最小ティア (ドット用)
-// 首都圏の高密度を考慮し、1段階厳しめに
 function getDotMinTier(z) {
   if (z >= 12) return 1;  // 全駅
   if (z >= 11) return 2;  // 2路線+
   if (z >= 10) return 3;  // 3路線+
-  if (z >= 8)  return 4;  // 4路線+
-  if (z >= 6)  return 5;  // 7路線+(東京・新宿等)
-  return 99;              // ズーム5以下: 駅マーカー無し (路線だけ)
+  if (z >= 9)  return 4;  // 4路線+ (主要junction)
+  if (z >= 7)  return 5;  // 7路線+ (新宿・渋谷等)
+  if (z >= 5)  return 6;  // 三大都市中心のみ (東京・名古屋・新大阪)
+  return 99;
 }
 // ラベル用 (さらに厳しめ)
 function getLabelMinTier(z) {
@@ -1228,6 +1235,7 @@ function getLabelMinTier(z) {
   if (z >= 12) return 3;
   if (z >= 11) return 4;
   if (z >= 9)  return 5;
+  if (z >= 7)  return 6;
   return 99;
 }
 // マーカー(circleMarker or divIcon)の表示/非表示切り替え
@@ -1382,7 +1390,7 @@ function drawSingleLine(line){
       }
       // 乗り入れ路線数 (1なら通常、>1なら拡大)
       const _nLines = _ms ? _ms.lines.length : 1;
-      const _tier = stationTier(_nLines);
+      const _tier = stationTier(_nLines, s.n);
       // マーカー拡大係数 (1路線=1.0, 2路線=1.3, 3=1.5, 5=1.8, 7=2.0)
       const _mScale = _nLines === 1 ? 1.0 : Math.min(2.5, 1.0 + Math.log2(_nLines) * 0.5);
       // tooltip用 路線リストHTML
