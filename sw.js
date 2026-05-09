@@ -9,7 +9,7 @@
 //   2. GitHubにpush
 //   3. ユーザーがハードリロード or アプリ再起動で更新が反映される
 
-const CACHE_VERSION = 'v32';
+const CACHE_VERSION = 'v33';
 const CACHE_NAME = `norireco-${CACHE_VERSION}`;
 
 // 起動時にプリキャッシュする静的アセット
@@ -105,8 +105,11 @@ async function networkFirst(request) {
   try {
     const response = await fetch(request);
     if (response.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, response.clone()).catch(() => {});
+      // clone は同期的に行う (await を挟むと body が消費される可能性)
+      const respClone = response.clone();
+      caches.open(CACHE_NAME).then(cache => {
+        cache.put(request, respClone).catch(() => {});
+      });
     }
     return response;
   } catch (e) {
@@ -124,8 +127,9 @@ async function cacheFirstSWR(request) {
   const cached = await caches.match(request);
   const fetchAndUpdate = fetch(request).then(response => {
     if (response.ok) {
-      const cache = caches.open(CACHE_NAME);
-      cache.then(c => c.put(request, response.clone()).catch(() => {}));
+      // clone は同期的に行う (caches.open の Promise resolve 後だと body 消費済み)
+      const respClone = response.clone();
+      caches.open(CACHE_NAME).then(c => c.put(request, respClone).catch(() => {}));
     }
     return response;
   }).catch(err => {
