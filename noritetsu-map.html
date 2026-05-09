@@ -1156,7 +1156,7 @@ function updateLOD() {
   // ドット: 重要度ティアによる段階表示
   if (dotLayerRef) {
     const dotMin = getDotMinTier(z);
-    if (z >= 6) {
+    if (dotMin <= 5) {
       if (!map.hasLayer(dotLayerRef)) map.addLayer(dotLayerRef);
       dotLayerRef.eachLayer(d => {
         const t = d._station_tier || 1;
@@ -1170,7 +1170,7 @@ function updateLOD() {
   // ラベル: より厳しめのティア
   if (labelLayerRef) {
     const labelMin = getLabelMinTier(z);
-    if (z >= 7) {
+    if (labelMin <= 5) {
       if (!map.hasLayer(labelLayerRef)) map.addLayer(labelLayerRef);
       labelLayerRef.eachLayer(l => {
         const t = l._station_tier || 1;
@@ -1212,20 +1212,23 @@ function stationTier(nLines) {
   return 1;
 }
 // ズームレベルで表示するべき最小ティア (ドット用)
+// 首都圏の高密度を考慮し、1段階厳しめに
 function getDotMinTier(z) {
-  if (z >= 11) return 1;
-  if (z >= 10) return 2;
-  if (z >= 9) return 3;
-  if (z >= 8) return 4;
-  return 5;
+  if (z >= 12) return 1;  // 全駅
+  if (z >= 11) return 2;  // 2路線+
+  if (z >= 10) return 3;  // 3路線+
+  if (z >= 8)  return 4;  // 4路線+
+  if (z >= 6)  return 5;  // 7路線+(東京・新宿等)
+  return 99;              // ズーム5以下: 駅マーカー無し (路線だけ)
 }
-// ラベル用 (より厳しめ)
+// ラベル用 (さらに厳しめ)
 function getLabelMinTier(z) {
-  if (z >= 13) return 1;
-  if (z >= 12) return 2;
-  if (z >= 11) return 3;
-  if (z >= 10) return 4;
-  return 5;
+  if (z >= 14) return 1;
+  if (z >= 13) return 2;
+  if (z >= 12) return 3;
+  if (z >= 11) return 4;
+  if (z >= 9)  return 5;
+  return 99;
 }
 // マーカー(circleMarker or divIcon)の表示/非表示切り替え
 function setStationVisible(m, visible) {
