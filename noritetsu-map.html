@@ -1031,12 +1031,28 @@ function drawSingleLine(line){
         mainLine.addTo(map);
       }
     } else {
-      // 乗車済み路線: 背景に点線(未乗車区間用)、その上に乗車済みグロー
-      L.polyline(latlngs,{
+      // 乗車済み路線: 背景に点線(未乗車区間用) + tooltip
+      const bgLine = L.polyline(latlngs,{
         color:line.color, weight:2.5, opacity:0.45,
         dashArray:'6 5', lineCap:'round', renderer:canvas
-      }).addTo(map);
+      });
+      bgLine.bindTooltip(
+        `<b style="color:${line.color}">${line.name}</b><br><span style="color:rgba(140,160,179,.8)">${line.region}</span><br><span style="color:rgba(242,169,0,.9);font-family:monospace">${stats.r}/${stats.t}駅 — ${stats.pct}%</span>`,
+        {className:'norireco-tooltip',sticky:true,offset:[12,0]}
+      );
+      bgLine.on('click',e=>{
+        if(!memoMode)return;
+        let bSt=null,bD=Infinity;
+        bsts.forEach(s=>{
+          const d=map.distance([s.lat,s.lon],e.latlng);
+          if(d<bD){bD=d;bSt=s;}
+        });
+        clickInfo={line,station:bSt,lat:e.latlng.lat.toFixed(5),lon:e.latlng.lng.toFixed(5)};
+        openMemo();
+      });
+      bgLine.addTo(map);
 
+      // 乗車済みセグメント（グロー描画）
       let ss=null;
       for(let i=0;i<bsts.length;i++){
         const ir=rd.has(bsts[i].n);
@@ -1052,23 +1068,6 @@ function drawSingleLine(line){
       if(isCircular && bsts.length>=2 && rd.has(bsts[0].n) && rd.has(bsts[bsts.length-1].n)){
         drawRiddenWrap(line,bsts,canvas);
       }
-
-      L.polyline(latlngs,{color:'transparent',weight:20,lineCap:'round'})
-        .addTo(map)
-        .bindTooltip(
-          `<b style="color:${line.color}">${line.name}</b><br><span style="color:rgba(140,160,179,.8)">${line.region}</span><br><span style="color:rgba(242,169,0,.9);font-family:monospace">${stats.r}/${stats.t}駅 — ${stats.pct}%</span>`,
-          {className:'norireco-tooltip',sticky:true,offset:[12,0]}
-        )
-        .on('click',e=>{
-          if(!memoMode)return;
-          let bSt=null,bD=Infinity;
-          bsts.forEach(s=>{
-            const d=map.distance([s.lat,s.lon],e.latlng);
-            if(d<bD){bD=d;bSt=s;}
-          });
-          clickInfo={line,station:bSt,lat:e.latlng.lat.toFixed(5),lon:e.latlng.lng.toFixed(5)};
-          openMemo();
-        });
     }
 
     bsts.forEach(s=>{
