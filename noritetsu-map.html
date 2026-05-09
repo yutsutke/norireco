@@ -940,7 +940,7 @@ function updateLOD() {
 }
 
 // 路線の駅を branch ごとにグルーピングし、駅順 o でソート
-// branch=99 の駅は除外（N02-25誤登録などの孤立駅）
+// branch=99 は除外（N02-25誤登録などの孤立駅）
 function getBranchedStations(line){
   const branches={};
   line.stations.forEach(s=>{
@@ -956,7 +956,6 @@ function getBranchedStations(line){
 }
 
 // 1路線を描画（遅延読み込み時にも呼ばれる）
-// branch + o のシンプル方式：駅同士を番号順に直線で結ぶ
 function drawSingleLine(line){
   const canvas=CANVAS;
   const dotLayer=dotLayerRef;
@@ -976,7 +975,6 @@ function drawSingleLine(line){
     if(isCircular && latlngs.length>0) latlngs.push(latlngs[0]);
 
     if(!isRidden){
-      // 未乗車：点線
       const glowLine=L.polyline(latlngs,{
         color:line.color, weight:5, opacity:0.08,
         lineCap:'round', renderer:canvas,
@@ -997,7 +995,6 @@ function drawSingleLine(line){
         mainLine.addTo(map);
       }
     } else {
-      // 乗車済み路線：背景の薄い線 + 乗車済み区間のグロー
       L.polyline(latlngs,{
         color:line.color+'28',weight:1.5,lineCap:'round',renderer:canvas
       }).addTo(map);
@@ -1036,7 +1033,6 @@ function drawSingleLine(line){
         });
     }
 
-    // 各駅のドット & ラベル
     bsts.forEach(s=>{
       const ir=isRidden && rd.has(s.n);
       if(!isRidden){
@@ -1076,7 +1072,6 @@ function drawSingleLine(line){
         });
         labelLayer.addLayer(label);
       } else {
-        // 乗車済み路線の未乗車駅
         const dot=L.circleMarker([s.lat,s.lon],{
           radius:2.5, fillColor:line.color,
           color:'rgba(255,255,255,0.4)', weight:0.8,
@@ -1091,16 +1086,14 @@ function drawSingleLine(line){
   });
 }
 
-// ブランチ内の連続乗車区間を駅順で結ぶ
 function drawRiddenSegBranch(line,bsts,fromIdx,toIdx,canvas){
-  if(toIdx-fromIdx<1) return; // 1駅のみは線無し
+  if(toIdx-fromIdx<1) return;
   const latlngs=bsts.slice(fromIdx,toIdx+1).map(s=>[s.lat,s.lon]);
   L.polyline(latlngs,{color:line.color,weight:10,opacity:0.12,lineCap:'round',lineJoin:'round',renderer:canvas}).addTo(map);
   L.polyline(latlngs,{color:line.color,weight:3.5,opacity:0.95,lineCap:'round',lineJoin:'round',renderer:canvas}).addTo(map);
   L.polyline(latlngs,{color:'rgba(255,255,255,0.4)',weight:0.8,lineCap:'round',renderer:canvas}).addTo(map);
 }
 
-// 環状線：最終駅と始点を結ぶ
 function drawRiddenWrap(line,bsts,canvas){
   const latlngs=[[bsts[bsts.length-1].lat,bsts[bsts.length-1].lon],
                  [bsts[0].lat,bsts[0].lon]];
@@ -1108,6 +1101,7 @@ function drawRiddenWrap(line,bsts,canvas){
   L.polyline(latlngs,{color:line.color,weight:3.5,opacity:0.95,lineCap:'round',renderer:canvas}).addTo(map);
   L.polyline(latlngs,{color:'rgba(255,255,255,0.4)',weight:0.8,lineCap:'round',renderer:canvas}).addTo(map);
 }
+
 
 function updateOverlays(){
   const gs=gStats();
@@ -1290,4 +1284,22 @@ function renderStats(){
     {ic:'🚄',nm:'新幹線デビュー',ds:'新幹線に初乗車',on:!!riddenSt['tokaido-shinkansen']||!!riddenSt['tohoku']||!!riddenSt['hokuriku']},
     {ic:'⚡',nm:'東海道新幹線完乗',ds:'東京〜博多を全駅乗車',on:lStats(LINES.find(l=>l.id==='tokaido-shinkansen')||{stations:[]}).pct===100},
     {ic:'🌐',nm:'3路線制覇',ds:'3路線以上に乗車',on:gs.la>=3},
-    {
+    {ic:'🏅',nm:'5路線制覇',ds:'5路線以上に乗車',on:gs.la>=5},
+    {ic:'🏆',nm:'乗りつぶし50%',ds:'全路線の50%達成',on:gs.pct>=50},
+    {ic:'👑',nm:'完全乗りつぶし',ds:'全路線・全駅に乗車',on:gs.pct===100},
+  ];
+  const al=document.createElement('div');al.className='ach-list';
+  achs.forEach(a=>{const el=document.createElement('div');el.className='ach'+(a.on?' on':'');el.innerHTML=`<div class="ach-ic">${a.ic}</div><div><div class="ach-nm">${a.nm}</div><div class="ach-ds">${a.ds}</div></div>${a.on?'<div class="ach-bj">UNLOCKED</div>':''}`;al.appendChild(el);});
+  c.appendChild(al);
+}
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+window.addEventListener('load',()=>{
+  initMap();
+  if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+});
+</script>
+</body>
+</html>
