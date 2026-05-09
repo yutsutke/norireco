@@ -1153,16 +1153,32 @@ function updateLOD() {
     }
   });
 
-  // ドット：ズーム9以上
+  // ドット: 重要度ティアによる段階表示
   if (dotLayerRef) {
-    if (z >= 9) map.addLayer(dotLayerRef);
-    else map.removeLayer(dotLayerRef);
+    const dotMin = getDotMinTier(z);
+    if (z >= 6) {
+      if (!map.hasLayer(dotLayerRef)) map.addLayer(dotLayerRef);
+      dotLayerRef.eachLayer(d => {
+        const t = d._station_tier || 1;
+        setStationVisible(d, t >= dotMin);
+      });
+    } else {
+      if (map.hasLayer(dotLayerRef)) map.removeLayer(dotLayerRef);
+    }
   }
 
-  // ラベル：ズーム11以上
+  // ラベル: より厳しめのティア
   if (labelLayerRef) {
-    if (z >= 11) map.addLayer(labelLayerRef);
-    else map.removeLayer(labelLayerRef);
+    const labelMin = getLabelMinTier(z);
+    if (z >= 7) {
+      if (!map.hasLayer(labelLayerRef)) map.addLayer(labelLayerRef);
+      labelLayerRef.eachLayer(l => {
+        const t = l._station_tier || 1;
+        setStationVisible(l, t >= labelMin);
+      });
+    } else {
+      if (map.hasLayer(labelLayerRef)) map.removeLayer(labelLayerRef);
+    }
   }
 }
 
@@ -1180,6 +1196,49 @@ function getBranchedStations(line){
     branches[b].sort((a,b)=>(a.o||0)-(b.o||0));
   });
   return branches;
+}
+
+// 駅の重要度ティア (乗り入れ路線数による)
+// tier 5: 7+路線(東京・新宿等の超ターミナル)
+// tier 4: 4-6路線(主要ターミナル)
+// tier 3: 3路線(中規模junction)
+// tier 2: 2路線(小junction)
+// tier 1: 1路線(通常駅)
+function stationTier(nLines) {
+  if (nLines >= 7) return 5;
+  if (nLines >= 4) return 4;
+  if (nLines >= 3) return 3;
+  if (nLines >= 2) return 2;
+  return 1;
+}
+// ズームレベルで表示するべき最小ティア (ドット用)
+function getDotMinTier(z) {
+  if (z >= 11) return 1;
+  if (z >= 10) return 2;
+  if (z >= 9) return 3;
+  if (z >= 8) return 4;
+  return 5;
+}
+// ラベル用 (より厳しめ)
+function getLabelMinTier(z) {
+  if (z >= 13) return 1;
+  if (z >= 12) return 2;
+  if (z >= 11) return 3;
+  if (z >= 10) return 4;
+  return 5;
+}
+// マーカー(circleMarker or divIcon)の表示/非表示切り替え
+function setStationVisible(m, visible) {
+  if (!m) return;
+  if (m.setOpacity) {
+    m.setOpacity(visible ? (m._baseOpacity || 1) : 0);
+  } else if (m.setStyle) {
+    if (visible) {
+      m.setStyle({opacity: m._baseStrokeOpacity || 1, fillOpacity: m._baseFillOpacity || 1});
+    } else {
+      m.setStyle({opacity: 0, fillOpacity: 0});
+    }
+  }
 }
 
 // 統合駅(複数路線)用パイチャートSVGアイコン生成
@@ -1320,6 +1379,7 @@ function drawSingleLine(line){
       }
       // 乗り入れ路線数 (1なら通常、>1なら拡大)
       const _nLines = _ms ? _ms.lines.length : 1;
+      const _tier = stationTier(_nLines);
       // マーカー拡大係数 (1路線=1.0, 2路線=1.3, 3=1.5, 5=1.8, 7=2.0)
       const _mScale = _nLines === 1 ? 1.0 : Math.min(2.5, 1.0 + Math.log2(_nLines) * 0.5);
       // tooltip用 路線リストHTML
@@ -1352,6 +1412,7 @@ function drawSingleLine(line){
           {className:'norireco-tooltip',offset:[8,0]}
         );
         dot._norireco_priority=priority;
+        dot._station_tier = _tier;
         dotLayer.addLayer(dot);
         const label=L.marker([s.lat,s.lon],{
           icon:L.divIcon({
@@ -1361,6 +1422,7 @@ function drawSingleLine(line){
           }),interactive:false,
         });
         label._norireco_priority=priority;
+        label._station_tier = _tier;
         labelLayer.addLayer(label);
       } else if(ir){
         let dot;
@@ -1377,6 +1439,7 @@ function drawSingleLine(line){
         }
         dot.bindTooltip(`<b>${s.n}</b><br><span style="color:rgba(140,160,179,.8)">${line.name}${s.o?` - ${s.o}駅目`:''}</span>${_linesText}`,
           {className:'norireco-tooltip',offset:[8,0]});
+        dot._station_tier = _tier;
         dotLayer.addLayer(dot);
         const label=L.marker([s.lat,s.lon],{
           icon:L.divIcon({
@@ -1385,6 +1448,7 @@ function drawSingleLine(line){
             iconSize:[0,0],iconAnchor:[0,0],
           }),interactive:false,
         });
+        label._station_tier = _tier;
         labelLayer.addLayer(label);
       } else {
         // 乗車済み路線の未乗車駅: 小さい薄ドット + 薄いラベル
@@ -1404,6 +1468,7 @@ function drawSingleLine(line){
           `<b style="color:${line.color}">${s.n}</b><br><span style="color:rgba(140,160,179,.7)">${line.name}${s.o?` ${s.o}駅目`:''} · 未乗車</span>${_linesText}`,
           {className:'norireco-tooltip',offset:[8,0]}
         );
+        dot._station_tier = _tier;
         dotLayer.addLayer(dot);
         // 薄めの未乗車ラベル
         const label=L.marker([s.lat,s.lon],{
@@ -1413,6 +1478,7 @@ function drawSingleLine(line){
             iconSize:[0,0],iconAnchor:[0,0],
           }),interactive:false,
         });
+        label._station_tier = _tier;
         labelLayer.addLayer(label);
       }
     });
