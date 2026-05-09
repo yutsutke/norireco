@@ -1,101 +1,162 @@
-// 乗レコ Service Worker v1.0
-// キャッシュ戦略: Cache First（オフラインでも動作）
+// 乗レコ Service Worker v2.0
+// キャッシュ戦略:
+//   - HTML/JSON: Network-First (常に最新を優先、オフライン時のみキャッシュ)
+//   - 画像/CSS/CDN: Cache-First with Stale-While-Revalidate
+//   - CACHE_NAME を変更すると古いキャッシュが破棄されて新版が確実に反映される
+//
+// HTML/JSON更新時の手順:
+//   1. このファイルの CACHE_VERSION を上げる (例: 'v15' → 'v16')
+//   2. GitHubにpush
+//   3. ユーザーがハードリロード or アプリ再起動で更新が反映される
 
-const CACHE_NAME = 'norireco-v1';
+const CACHE_VERSION = 'v16';
+const CACHE_NAME = `norireco-${CACHE_VERSION}`;
+
+// 起動時にプリキャッシュする静的アセット
 const STATIC_ASSETS = [
   './noritetsu-log.html',
   './noritetsu-map.html',
+  './lines-p1.json',
+  './lines-p2.json',
+  './lines-p3.json',
+  './lines-p4.json',
+  './running_services.json',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
+  './icon.svg',
 ];
 
-// ── Install: 静的アセットをキャッシュ ──
+// HTML/JSON は Network-First (オンライン時は常に最新)
+const NETWORK_FIRST_PATTERNS = [
+  /\.html$/,
+  /\.json$/,
+];
+
+// ── Install ──
 self.addEventListener('install', event => {
-  console.log('[SW] Installing...');
+  console.log(`[SW] Installing ${CACHE_NAME}...`);
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      console.log('[SW] Caching static assets');
-      // アイコンは存在しない場合があるので個別にtry
-      return cache.addAll(
-        STATIC_ASSETS.filter(url => !url.endsWith('.png'))
-      ).then(() => {
-        STATIC_ASSETS.filter(url => url.endsWith('.png')).forEach(url => {
-          cache.add(url).catch(() => console.log('[SW] Icon not found, skipping:', url));
-        });
-      });
-    }).then(() => self.skipWaiting())
+      // 失敗してもインストールは続行 (個別try)
+      return Promise.all(
+        STATIC_ASSETS.map(url =>
+          cache.add(url).catch(err => {
+            console.warn(`[SW] Failed to cache ${url}:`, err.message);
+          })
+        )
+      );
+    }).then(() => {
+      console.log('[SW] Install complete, skipWaiting');
+      return self.skipWaiting();  // 新SWを即座にアクティベート
+    })
   );
 });
 
-// ── Activate: 古いキャッシュを削除 ──
+// ── Activate: 旧バージョンのキャッシュを削除 ──
 self.addEventListener('activate', event => {
-  console.log('[SW] Activating...');
+  console.log(`[SW] Activating ${CACHE_NAME}...`);
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(
         keys
-          .filter(key => key !== CACHE_NAME)
+          .filter(key => key.startsWith('norireco-') && key !== CACHE_NAME)
           .map(key => {
             console.log('[SW] Deleting old cache:', key);
             return caches.delete(key);
           })
       )
-    ).then(() => self.clients.claim())
-  );
-});
-
-// ── Fetch: キャッシュ優先、なければネットワーク ──
-self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-
-  // Googleフォントなど外部リソースはネットワーク優先
-  if (url.origin !== location.origin) {
-    event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          // フォントはキャッシュする
-          if (url.hostname.includes('fonts.')) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-          }
-          return response;
-        })
-        .catch(() => caches.match(event.request))
-    );
-    return;
-  }
-
-  // 自アセットはキャッシュ優先
-  event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
-        // 成功したレスポンスをキャッシュに追加
-        if (response.ok) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        }
-        return response;
-      });
+    ).then(() => {
+      console.log('[SW] Activation complete, clients claimed');
+      return self.clients.claim();  // 既存タブも新SWで動かす
     })
   );
 });
 
-// ── Background Sync: オフライン中のNotion保存をキュー ──
-self.addEventListener('sync', event => {
-  if (event.tag === 'notion-save') {
-    event.waitUntil(syncNotionData());
+// ── Fetch: パターンに応じて戦略切替 ──
+self.addEventListener('fetch', event => {
+  // GET 以外はキャッシュ戦略の対象外
+  if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
+  const isOwnOrigin = url.origin === location.origin;
+  const isHTMLorJSON = NETWORK_FIRST_PATTERNS.some(p => p.test(url.pathname));
+
+  // Supabase API へのリクエストは触らない (常にネットワーク直結)
+  if (url.hostname.endsWith('.supabase.co')) {
+    return;  // SWを通さない
+  }
+
+  if (isOwnOrigin && isHTMLorJSON) {
+    // 自オリジンのHTML/JSON: Network-First
+    event.respondWith(networkFirst(event.request));
+  } else if (isOwnOrigin) {
+    // 自オリジンの画像など: Cache-First with stale-while-revalidate
+    event.respondWith(cacheFirstSWR(event.request));
+  } else {
+    // 外部CDN (国土地理院タイル, Google Fonts等): Cache-First with SWR
+    event.respondWith(cacheFirstSWR(event.request));
   }
 });
 
-async function syncNotionData() {
-  // IndexedDBからペンディング記録を取得して送信
-  console.log('[SW] Background sync: Notion data');
-  // TODO: Phase 2でバックエンドと連携
+// Network-First: ネットワーク優先、失敗したらキャッシュ
+async function networkFirst(request) {
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const cache = await caches.open(CACHE_NAME);
+      cache.put(request, response.clone()).catch(() => {});
+    }
+    return response;
+  } catch (e) {
+    const cached = await caches.match(request);
+    if (cached) {
+      console.log('[SW] Network failed, serving from cache:', request.url);
+      return cached;
+    }
+    throw e;
+  }
 }
 
-// ── Push通知（Phase 2用・準備のみ）──
+// Cache-First with Stale-While-Revalidate: キャッシュ即返、裏で更新
+async function cacheFirstSWR(request) {
+  const cached = await caches.match(request);
+  const fetchAndUpdate = fetch(request).then(response => {
+    if (response.ok) {
+      const cache = caches.open(CACHE_NAME);
+      cache.then(c => c.put(request, response.clone()).catch(() => {}));
+    }
+    return response;
+  }).catch(err => {
+    if (cached) return cached;
+    throw err;
+  });
+  return cached || fetchAndUpdate;
+}
+
+// ── Background Sync (将来用) ──
+self.addEventListener('sync', event => {
+  if (event.tag === 'norireco-sync') {
+    event.waitUntil(syncPendingTrips());
+  }
+});
+
+async function syncPendingTrips() {
+  console.log('[SW] Background sync: pending trips');
+  // TODO: IndexedDB から保留中の乗車記録を Supabase に送信
+}
+
+// ── メッセージ受信 (アプリからの SW 制御) ──
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  if (event.data && event.data.type === 'CACHE_VERSION') {
+    event.ports[0]?.postMessage({ version: CACHE_VERSION });
+  }
+});
+
+// ── Push通知 (Phase 2用) ──
 self.addEventListener('push', event => {
   const data = event.data ? event.data.json() : {};
   const title = data.title || '乗レコ';
@@ -111,7 +172,5 @@ self.addEventListener('push', event => {
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  event.waitUntil(
-    clients.openWindow(event.notification.data || './')
-  );
+  event.waitUntil(clients.openWindow(event.notification.data || './'));
 });
