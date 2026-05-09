@@ -492,7 +492,6 @@ function resolveServiceTrip(serviceId, fromName, toName) {
   const fromN = normStName(fromName);
   const toN = normStName(toName);
 
-  // 各セグメントに対応する物理路線情報
   const segInfos = segments.map(seg => {
     const line = LINES.find(l => l.id === seg.line);
     if (!line) return null;
@@ -504,12 +503,10 @@ function resolveServiceTrip(serviceId, fromName, toName) {
 
   const inSegRange = (info, idx) => {
     if (!info) return false;
-    const lo = Math.min(info.segFromIdx, info.segToIdx);
-    const hi = Math.max(info.segFromIdx, info.segToIdx);
-    return idx >= lo && idx <= hi;
+    return idx >= Math.min(info.segFromIdx, info.segToIdx) &&
+           idx <= Math.max(info.segFromIdx, info.segToIdx);
   };
 
-  // from/to を含むセグメントを特定
   let fromSegIdx = -1, fromIdxInLine = -1;
   let toSegIdx = -1, toIdxInLine = -1;
   for (let i = 0; i < segInfos.length; i++) {
@@ -517,51 +514,64 @@ function resolveServiceTrip(serviceId, fromName, toName) {
     if (!info) continue;
     if (fromSegIdx < 0) {
       const idx = info.line.stations.findIndex(s => normStName(s.n) === fromN);
-      if (idx >= 0 && inSegRange(info, idx)) {
-        fromSegIdx = i;
-        fromIdxInLine = idx;
-      }
+      if (idx >= 0 && inSegRange(info, idx)) { fromSegIdx = i; fromIdxInLine = idx; }
     }
     if (toSegIdx < 0) {
       const idx = info.line.stations.findIndex(s => normStName(s.n) === toN);
-      if (idx >= 0 && inSegRange(info, idx)) {
-        toSegIdx = i;
-        toIdxInLine = idx;
-      }
+      if (idx >= 0 && inSegRange(info, idx)) { toSegIdx = i; toIdxInLine = idx; }
     }
   }
   if (fromSegIdx < 0 || toSegIdx < 0) return null;
 
-  // 進行方向 (segments配列のインデックス順 or 逆順)
-  const dir = (fromSegIdx <= toSegIdx) ? 1 : -1;
-  const lo = Math.min(fromSegIdx, toSegIdx);
-  const hi = Math.max(fromSegIdx, toSegIdx);
-  const result = [];
-  for (let i = lo; i <= hi; i++) {
-    const info = segInfos[i];
-    if (!info) continue;
-    let fi, ti;
-    if (i === fromSegIdx && i === toSegIdx) {
-      fi = fromIdxInLine;
-      ti = toIdxInLine;
-    } else if (i === fromSegIdx) {
-      fi = fromIdxInLine;
-      ti = (dir === 1) ? info.segToIdx : info.segFromIdx;
-    } else if (i === toSegIdx) {
-      fi = (dir === 1) ? info.segFromIdx : info.segToIdx;
-      ti = toIdxInLine;
-    } else {
-      // 中間セグメント: 全区間
-      fi = info.segFromIdx;
-      ti = info.segToIdx;
-    }
-    result.push({
+  // 同一セグメント内
+  if (fromSegIdx === toSegIdx) {
+    const info = segInfos[fromSegIdx];
+    return [{
       line: info.line,
-      fi: Math.min(fi, ti),
-      ti: Math.max(fi, ti),
-    });
+      fi: Math.min(fromIdxInLine, toIdxInLine),
+      ti: Math.max(fromIdxInLine, toIdxInLine),
+    }];
   }
-  return result;
+
+  const N = segInfos.length;
+  // direction: +1=forward (segments配列順), -1=backward
+  function buildPath(direction) {
+    const parts = [];
+    let i = fromSegIdx;
+    let safety = N + 1;
+    while (safety-- > 0) {
+      const info = segInfos[i];
+      if (info) {
+        let fi, ti;
+        if (i === fromSegIdx) {
+          fi = fromIdxInLine;
+          ti = (direction === 1) ? info.segToIdx : info.segFromIdx;
+        } else if (i === toSegIdx) {
+          fi = (direction === 1) ? info.segFromIdx : info.segToIdx;
+          ti = toIdxInLine;
+        } else {
+          fi = (direction === 1) ? info.segFromIdx : info.segToIdx;
+          ti = (direction === 1) ? info.segToIdx : info.segFromIdx;
+        }
+        parts.push({ line: info.line, fi: Math.min(fi,ti), ti: Math.max(fi,ti) });
+      }
+      if (i === toSegIdx) break;
+      i = (i + direction + N) % N;
+    }
+    return parts;
+  }
+  const totalSt = parts => parts.reduce((s,p) => s + (p.ti - p.fi + 1), 0);
+
+  if (service.circular) {
+    // 環状線: 両方向計算し短い方を採用
+    const fwd = buildPath(1);
+    const bwd = buildPath(-1);
+    return totalSt(fwd) <= totalSt(bwd) ? fwd : bwd;
+  } else {
+    // 非環状: 順方向のみ
+    const dir = (fromSegIdx <= toSegIdx) ? 1 : -1;
+    return buildPath(dir);
+  }
 }
 
 // ジャンクション介在マッチ: 候補路線群の中で from と to を含む路線が異なる場合、
@@ -617,23 +627,29 @@ function resolveLineId(legacyId) {
   return v || legacyId;
 }
 
+// 乗車済み運行系統セット (legendで表示する用)
+const riddenServiceIds = new Set();
+
 // 乗車済みデータを再構築（路線追加後に呼ぶ）
 function rebuildRiddenStations() {
   Object.keys(riddenSt).forEach(k => delete riddenSt[k]);
+  riddenServiceIds.clear();
   let resolvedCount = 0;
-  const unresolved = []; // 路線/駅が見つからなかった区間
+  const unresolved = [];
   RIDDEN_SEGS.forEach(seg => {
-    // 1. 運行系統(running_services.json)で解決を試みる (優先)
+    // 1. 運行系統(running_services.json)で解決
     let parts = resolveServiceTrip(seg.lineId, seg.from, seg.to);
-    // 2. 失敗時は LEGACY_ID_MAP + ジャンクション分割にフォールバック
-    if (!parts) {
-      parts = resolveSegments(seg.lineId, seg.from, seg.to);
-    }
+    let viaService = !!parts;
+    // 2. fallback
+    if (!parts) parts = resolveSegments(seg.lineId, seg.from, seg.to);
     if (!parts) {
       unresolved.push(`${seg.lineId} ${seg.from}→${seg.to}`);
       return;
     }
     resolvedCount++;
+    if (viaService && RUNNING_SERVICES[seg.lineId]) {
+      riddenServiceIds.add(seg.lineId);
+    }
     for (const part of parts) {
       const { line, fi, ti } = part;
       if (!riddenSt[line.id]) riddenSt[line.id] = new Set();
@@ -834,6 +850,43 @@ function toSvg(lat,lon){
 const riddenSt={};
 
 function lStats(line){const t=line.stations.length,r=riddenSt[line.id]?riddenSt[line.id].size:0;return{t,r,pct:t>0?Math.round(r/t*100):0};}
+
+// 運行系統の統計 (segments を全部辿って合計)
+function serviceStats(serviceId) {
+  const svc = RUNNING_SERVICES[serviceId];
+  if (!svc) return {t:0, r:0, pct:0};
+  let t=0, r=0;
+  const seen = new Set();
+  for (const seg of svc.segments) {
+    const line = LINES.find(l => l.id === seg.line);
+    if (!line) continue;
+    const fi = line.stations.findIndex(s => normStName(s.n) === normStName(seg.from));
+    const ti = line.stations.findIndex(s => normStName(s.n) === normStName(seg.to));
+    if (fi < 0 || ti < 0) continue;
+    const lo = Math.min(fi, ti), hi = Math.max(fi, ti);
+    const lr = riddenSt[line.id] || new Set();
+    for (let i = lo; i <= hi; i++) {
+      const k = line.id + ':' + line.stations[i].n;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      t++;
+      if (lr.has(line.stations[i].n)) r++;
+    }
+  }
+  return {t, r, pct: t>0 ? Math.round(r/t*100) : 0};
+}
+
+// 運行系統の代表色 (最初のsegmentの物理路線色)
+function serviceColor(serviceId) {
+  const svc = RUNNING_SERVICES[serviceId];
+  if (!svc) return '#888';
+  if (svc.color) return svc.color;
+  for (const seg of svc.segments) {
+    const line = LINES.find(l => l.id === seg.line);
+    if (line) return line.color;
+  }
+  return '#888';
+}
 function gStats(){let ts=0,rt=0,la=0,ld=0;LINES.forEach(l=>{const s=lStats(l);ts+=s.t;rt+=s.r;if(s.r>0)la++;if(s.pct===100)ld++;});return{ts,rt,la,ld,pct:ts>0?Math.round(rt/ts*100):0};}
 
 // ══════════════════════════════════════
@@ -1267,11 +1320,40 @@ function updateOverlays(){
   document.getElementById('ms-dn').textContent=gs.ld+'路線';
   const leg=document.getElementById('legend-lines');
   leg.innerHTML='';
-  LINES.filter(l=>lStats(l).r>0).forEach(line=>{
-    const d=document.createElement('div');d.className='leg-row';d.style.marginTop='3px';
-    d.innerHTML=`<div class="leg-swatch" style="background:${line.color};box-shadow:0 0 4px ${line.color}60"></div><span style="font-size:10px;color:rgba(255,255,255,.65)">${line.name}</span>`;
-    leg.appendChild(d);
-  });
+
+  // 運行系統 (京浜東北線・湘南新宿ライン等) — ridden services first
+  if (riddenServiceIds.size > 0) {
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'font-size:9px;color:rgba(255,255,255,.45);margin-top:4px;letter-spacing:.05em';
+    hdr.textContent = '── 運行系統 ──';
+    leg.appendChild(hdr);
+    const sortedSvcs = [...riddenServiceIds]
+      .map(id => ({id, svc: RUNNING_SERVICES[id], stats: serviceStats(id)}))
+      .filter(x => x.svc)
+      .sort((a,b) => b.stats.pct - a.stats.pct);
+    sortedSvcs.forEach(({id, svc, stats}) => {
+      const c = serviceColor(id);
+      const d = document.createElement('div'); d.className='leg-row'; d.style.marginTop='3px';
+      d.innerHTML = `<div class="leg-swatch" style="background:${c};box-shadow:0 0 4px ${c}60"></div>` +
+        `<span style="font-size:10px;color:rgba(255,255,255,.75)">${svc.name}</span>` +
+        `<span style="font-size:9px;color:rgba(242,169,0,.85);margin-left:6px;font-family:monospace">${stats.r}/${stats.t} ${stats.pct}%</span>`;
+      leg.appendChild(d);
+    });
+  }
+
+  // 物理路線
+  const ridLines = LINES.filter(l=>lStats(l).r>0);
+  if (ridLines.length > 0) {
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'font-size:9px;color:rgba(255,255,255,.45);margin-top:8px;letter-spacing:.05em';
+    hdr.textContent = '── 物理路線 (N02-25) ──';
+    leg.appendChild(hdr);
+    ridLines.forEach(line=>{
+      const d=document.createElement('div');d.className='leg-row';d.style.marginTop='3px';
+      d.innerHTML=`<div class="leg-swatch" style="background:${line.color};box-shadow:0 0 4px ${line.color}60"></div><span style="font-size:10px;color:rgba(255,255,255,.65)">${line.name}</span>`;
+      leg.appendChild(d);
+    });
+  }
 }
 
 // Memo mode

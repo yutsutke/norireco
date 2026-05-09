@@ -1,0 +1,618 @@
+{
+  "_format": "v1",
+  "_description": "運行系統定義: 列車の運転系統を物理路線(N02-25)の区間連鎖として定義",
+  "services": {
+    "chuo": {
+      "name": "JR中央線(快速)",
+      "segments": [
+        {
+          "line": "東北線_東日本旅客鉄道",
+          "from": "東京",
+          "to": "神田"
+        },
+        {
+          "line": "中央線_東日本旅客鉄道",
+          "from": "神田",
+          "to": "高尾"
+        }
+      ]
+    },
+    "chuo-honsen": {
+      "name": "JR中央本線",
+      "segments": [
+        {
+          "line": "中央線_東日本旅客鉄道",
+          "from": "神田",
+          "to": "塩尻"
+        },
+        {
+          "line": "中央線_東海旅客鉄道",
+          "from": "塩尻",
+          "to": "名古屋"
+        }
+      ]
+    },
+    "keihin": {
+      "name": "JR京浜東北線",
+      "segments": [
+        {
+          "line": "東北線_東日本旅客鉄道",
+          "from": "大宮",
+          "to": "東京"
+        },
+        {
+          "line": "東海道線_東日本旅客鉄道",
+          "from": "東京",
+          "to": "横浜"
+        },
+        {
+          "line": "根岸線_東日本旅客鉄道",
+          "from": "横浜",
+          "to": "大船"
+        }
+      ]
+    },
+    "yamanote": {
+      "name": "JR山手線",
+      "circular": true,
+      "segments": [
+        {
+          "line": "東海道線_東日本旅客鉄道",
+          "from": "東京",
+          "to": "品川"
+        },
+        {
+          "line": "山手線_東日本旅客鉄道",
+          "from": "品川",
+          "to": "田端"
+        },
+        {
+          "line": "東北線_東日本旅客鉄道",
+          "from": "田端",
+          "to": "東京"
+        }
+      ]
+    },
+    "saikyo": {
+      "name": "JR埼京線",
+      "segments": [
+        {
+          "line": "東北線_東日本旅客鉄道",
+          "from": "大宮",
+          "to": "赤羽"
+        },
+        {
+          "line": "赤羽線_東日本旅客鉄道",
+          "from": "赤羽",
+          "to": "池袋"
+        },
+        {
+          "line": "山手線_東日本旅客鉄道",
+          "from": "池袋",
+          "to": "大崎"
+        },
+        {
+          "line": "臨海副都心線_東京臨海高速鉄道",
+          "from": "大崎",
+          "to": "新木場"
+        }
+      ]
+    },
+    "shonan": {
+      "name": "JR湘南新宿ライン",
+      "_note": "大崎-武蔵小杉間は品鶴線(N02-25未定義)。視覚的に切れるが許容",
+      "segments": [
+        {
+          "line": "東北線_東日本旅客鉄道",
+          "from": "宇都宮",
+          "to": "赤羽"
+        },
+        {
+          "line": "赤羽線_東日本旅客鉄道",
+          "from": "赤羽",
+          "to": "池袋"
+        },
+        {
+          "line": "山手線_東日本旅客鉄道",
+          "from": "池袋",
+          "to": "大崎"
+        },
+        {
+          "line": "東海道線_東日本旅客鉄道",
+          "from": "武蔵小杉",
+          "to": "小田原"
+        }
+      ]
+    },
+    "shonan-shinjuku": {
+      "name": "JR湘南新宿ライン",
+      "segments": [
+        {
+          "line": "東北線_東日本旅客鉄道",
+          "from": "宇都宮",
+          "to": "赤羽"
+        },
+        {
+          "line": "赤羽線_東日本旅客鉄道",
+          "from": "赤羽",
+          "to": "池袋"
+        },
+        {
+          "line": "山手線_東日本旅客鉄道",
+          "from": "池袋",
+          "to": "大崎"
+        },
+        {
+          "line": "東海道線_東日本旅客鉄道",
+          "from": "武蔵小杉",
+          "to": "小田原"
+        }
+      ]
+    },
+    "yokosuka": {
+      "name": "JR横須賀線",
+      "segments": [
+        {
+          "line": "総武線_東日本旅客鉄道",
+          "from": "千葉",
+          "to": "東京"
+        },
+        {
+          "line": "東海道線_東日本旅客鉄道",
+          "from": "東京",
+          "to": "横浜"
+        },
+        {
+          "line": "横須賀線_東日本旅客鉄道",
+          "from": "大船",
+          "to": "久里浜"
+        }
+      ]
+    },
+    "sobu": {
+      "name": "JR総武線",
+      "segments": [
+        {
+          "line": "総武線_東日本旅客鉄道",
+          "from": "東京",
+          "to": "千葉"
+        }
+      ]
+    },
+    "tokaido": {
+      "name": "JR東海道線(東日本)",
+      "segments": [
+        {
+          "line": "東海道線_東日本旅客鉄道",
+          "from": "東京",
+          "to": "熱海"
+        }
+      ]
+    },
+    "yokohama": {
+      "name": "JR横浜線",
+      "segments": [
+        {
+          "line": "横浜線_東日本旅客鉄道",
+          "from": "八王子",
+          "to": "東神奈川"
+        }
+      ]
+    },
+    "hachioji": {
+      "name": "JR八高線",
+      "segments": [
+        {
+          "line": "八高線_東日本旅客鉄道",
+          "from": "八王子",
+          "to": "高麗川"
+        }
+      ]
+    },
+    "ome": {
+      "name": "JR青梅線",
+      "segments": [
+        {
+          "line": "青梅線_東日本旅客鉄道",
+          "from": "立川",
+          "to": "奥多摩"
+        }
+      ]
+    },
+    "sagami": {
+      "name": "JR相模線",
+      "segments": [
+        {
+          "line": "相模線_東日本旅客鉄道",
+          "from": "茅ヶ崎",
+          "to": "橋本"
+        }
+      ]
+    },
+    "linie": {
+      "name": "JR相模線(linie alias)",
+      "segments": [
+        {
+          "line": "相模線_東日本旅客鉄道",
+          "from": "茅ヶ崎",
+          "to": "橋本"
+        }
+      ]
+    },
+    "minobu": {
+      "name": "JR身延線",
+      "segments": [
+        {
+          "line": "身延線_東海旅客鉄道",
+          "from": "富士",
+          "to": "甲府"
+        }
+      ]
+    },
+    "musashino": {
+      "name": "JR武蔵野線",
+      "segments": [
+        {
+          "line": "武蔵野線_東日本旅客鉄道",
+          "from": "府中本町",
+          "to": "西船橋"
+        }
+      ]
+    },
+    "keiyo": {
+      "name": "JR京葉線",
+      "segments": [
+        {
+          "line": "京葉線_東日本旅客鉄道",
+          "from": "蘇我",
+          "to": "東京"
+        }
+      ]
+    },
+    "tokaido-shinkansen": {
+      "name": "東海道・山陽新幹線",
+      "segments": [
+        {
+          "line": "東海道新幹線_東海旅客鉄道",
+          "from": "東京",
+          "to": "新大阪"
+        },
+        {
+          "line": "山陽新幹線_西日本旅客鉄道",
+          "from": "新大阪",
+          "to": "博多"
+        }
+      ]
+    },
+    "tohoku-shinkansen": {
+      "name": "東北・北海道新幹線",
+      "segments": [
+        {
+          "line": "東北新幹線_東日本旅客鉄道",
+          "from": "東京",
+          "to": "新青森"
+        },
+        {
+          "line": "北海道新幹線_北海道旅客鉄道",
+          "from": "新青森",
+          "to": "新函館北斗"
+        }
+      ]
+    },
+    "joetsu-shinkansen": {
+      "name": "上越新幹線",
+      "segments": [
+        {
+          "line": "東北新幹線_東日本旅客鉄道",
+          "from": "東京",
+          "to": "大宮"
+        },
+        {
+          "line": "上越新幹線_東日本旅客鉄道",
+          "from": "大宮",
+          "to": "新潟"
+        }
+      ]
+    },
+    "hokuriku": {
+      "name": "北陸新幹線",
+      "segments": [
+        {
+          "line": "東北新幹線_東日本旅客鉄道",
+          "from": "東京",
+          "to": "大宮"
+        },
+        {
+          "line": "上越新幹線_東日本旅客鉄道",
+          "from": "大宮",
+          "to": "高崎"
+        },
+        {
+          "line": "北陸新幹線_東日本旅客鉄道",
+          "from": "高崎",
+          "to": "上越妙高"
+        },
+        {
+          "line": "北陸新幹線_西日本旅客鉄道",
+          "from": "上越妙高",
+          "to": "敦賀"
+        }
+      ]
+    },
+    "kyushu-shinkansen": {
+      "name": "九州新幹線",
+      "segments": [
+        {
+          "line": "九州新幹線_九州旅客鉄道",
+          "from": "博多",
+          "to": "鹿児島中央"
+        }
+      ]
+    },
+    "nishi-kyushu-shinkansen": {
+      "name": "西九州新幹線",
+      "segments": [
+        {
+          "line": "西九州新幹線_九州旅客鉄道",
+          "from": "武雄温泉",
+          "to": "長崎"
+        }
+      ]
+    },
+    "hokkaido-shinkansen": {
+      "name": "北海道新幹線",
+      "segments": [
+        {
+          "line": "北海道新幹線_北海道旅客鉄道",
+          "from": "新青森",
+          "to": "新函館北斗"
+        }
+      ]
+    },
+    "tokyometro-ginza": {
+      "name": "東京メトロ銀座線",
+      "segments": [
+        {
+          "line": "3号線銀座線_東京地下鉄",
+          "from": "渋谷",
+          "to": "浅草"
+        }
+      ]
+    },
+    "tokyometro-marunouchi": {
+      "name": "東京メトロ丸ノ内線",
+      "segments": [
+        {
+          "line": "4号線丸ノ内線_東京地下鉄",
+          "from": "荻窪",
+          "to": "池袋"
+        }
+      ]
+    },
+    "tokyometro-hibiya": {
+      "name": "東京メトロ日比谷線",
+      "segments": [
+        {
+          "line": "2号線日比谷線_東京地下鉄",
+          "from": "中目黒",
+          "to": "北千住"
+        }
+      ]
+    },
+    "tokyometro-tozai": {
+      "name": "東京メトロ東西線",
+      "segments": [
+        {
+          "line": "5号線東西線_東京地下鉄",
+          "from": "中野",
+          "to": "西船橋"
+        }
+      ]
+    },
+    "tokyometro-chiyoda": {
+      "name": "東京メトロ千代田線",
+      "segments": [
+        {
+          "line": "9号線千代田線_東京地下鉄",
+          "from": "代々木上原",
+          "to": "綾瀬"
+        }
+      ]
+    },
+    "tokyometro-yurakucho": {
+      "name": "東京メトロ有楽町線",
+      "segments": [
+        {
+          "line": "8号線有楽町線_東京地下鉄",
+          "from": "和光市",
+          "to": "新木場"
+        }
+      ]
+    },
+    "tokyometro-hanzomon": {
+      "name": "東京メトロ半蔵門線",
+      "segments": [
+        {
+          "line": "11号線半蔵門線_東京地下鉄",
+          "from": "渋谷",
+          "to": "押上"
+        }
+      ]
+    },
+    "tokyometro-namboku": {
+      "name": "東京メトロ南北線",
+      "segments": [
+        {
+          "line": "7号線南北線_東京地下鉄",
+          "from": "目黒",
+          "to": "赤羽岩淵"
+        }
+      ]
+    },
+    "tokyometro-fukutoshin": {
+      "name": "東京メトロ副都心線",
+      "segments": [
+        {
+          "line": "13号線副都心線_東京地下鉄",
+          "from": "和光市",
+          "to": "渋谷"
+        }
+      ]
+    },
+    "toei-asakusa": {
+      "name": "都営浅草線",
+      "segments": [
+        {
+          "line": "1号線浅草線_東京都",
+          "from": "西馬込",
+          "to": "押上"
+        }
+      ]
+    },
+    "toei-mita": {
+      "name": "都営三田線",
+      "segments": [
+        {
+          "line": "6号線三田線_東京都",
+          "from": "目黒",
+          "to": "西高島平"
+        }
+      ]
+    },
+    "toei-shinjuku": {
+      "name": "都営新宿線",
+      "segments": [
+        {
+          "line": "10号線新宿線_東京都",
+          "from": "新宿",
+          "to": "本八幡"
+        }
+      ]
+    },
+    "toei-oedo": {
+      "name": "都営大江戸線",
+      "segments": [
+        {
+          "line": "12号線大江戸線_東京都",
+          "from": "光が丘",
+          "to": "東新宿"
+        }
+      ]
+    },
+    "odakyu": {
+      "name": "小田急小田原線",
+      "segments": [
+        {
+          "line": "小田原線_小田急電鉄",
+          "from": "新宿",
+          "to": "小田原"
+        }
+      ]
+    },
+    "keikyu": {
+      "name": "京急本線",
+      "segments": [
+        {
+          "line": "本線_京浜急行電鉄",
+          "from": "泉岳寺",
+          "to": "浦賀"
+        }
+      ]
+    },
+    "keikyu-kurihama": {
+      "name": "京急久里浜線",
+      "segments": [
+        {
+          "line": "本線_京浜急行電鉄",
+          "from": "泉岳寺",
+          "to": "堀ノ内"
+        },
+        {
+          "line": "久里浜線_京浜急行電鉄",
+          "from": "堀ノ内",
+          "to": "三崎口"
+        }
+      ]
+    },
+    "tokyu-toyoko": {
+      "name": "東急東横線",
+      "segments": [
+        {
+          "line": "東横線_東急電鉄",
+          "from": "渋谷",
+          "to": "横浜"
+        }
+      ]
+    },
+    "tokyu-denentoshi": {
+      "name": "東急田園都市線",
+      "segments": [
+        {
+          "line": "田園都市線_東急電鉄",
+          "from": "渋谷",
+          "to": "中央林間"
+        }
+      ]
+    },
+    "keio": {
+      "name": "京王線",
+      "segments": [
+        {
+          "line": "京王線_京王電鉄",
+          "from": "新宿",
+          "to": "京王八王子"
+        }
+      ]
+    },
+    "tobu-tojo": {
+      "name": "東武東上線",
+      "segments": [
+        {
+          "line": "東上本線_東武鉄道",
+          "from": "池袋",
+          "to": "寄居"
+        }
+      ]
+    },
+    "tobu-skytree": {
+      "name": "東武スカイツリーライン",
+      "segments": [
+        {
+          "line": "伊勢崎線_東武鉄道",
+          "from": "浅草",
+          "to": "東武動物公園"
+        }
+      ]
+    },
+    "tobu-isesaki": {
+      "name": "東武伊勢崎線",
+      "segments": [
+        {
+          "line": "伊勢崎線_東武鉄道",
+          "from": "浅草",
+          "to": "伊勢崎"
+        }
+      ]
+    },
+    "seibu-ikebukuro": {
+      "name": "西武池袋線",
+      "segments": [
+        {
+          "line": "池袋線_西武鉄道",
+          "from": "池袋",
+          "to": "吾野"
+        }
+      ]
+    },
+    "seibu-shinjuku": {
+      "name": "西武新宿線",
+      "segments": [
+        {
+          "line": "新宿線_西武鉄道",
+          "from": "西武新宿",
+          "to": "本川越"
+        }
+      ]
+    }
+  }
+}
