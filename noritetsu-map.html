@@ -1338,13 +1338,13 @@ function drawSingleLine(line){
         let dot;
         if (_nLines > 1 && _ms) {
           const _colors = _ms.colors || _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
-          const _size = Math.round(18 * _mScale);
+          const _size = Math.round(11 * _mScale);
           dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, false), opacity:0.7, interactive:true});
         } else {
           dot = L.circleMarker([s.lat,s.lon],{
-            radius:2.5 * _mScale, fillColor:line.color,
-            color:'rgba(255,255,255,0.4)', weight:0.8,
-            fillOpacity:0.4, renderer:canvas,
+            radius:4 * _mScale, fillColor:line.color,
+            color:'rgba(255,255,255,0.5)', weight:1.0,
+            fillOpacity:0.55, renderer:canvas,
           });
         }
         dot.bindTooltip(
@@ -1366,12 +1366,12 @@ function drawSingleLine(line){
         let dot;
         if (_nLines > 1 && _ms) {
           const _colors = _ms.colors || _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
-          const _size = Math.round(22 * _mScale);  // 路線数で大きく
+          const _size = Math.round(14 * _mScale);
           dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, true), interactive:true});
         } else {
           dot = L.circleMarker([s.lat,s.lon],{
-            radius:4 * _mScale,fillColor:line.color,
-            color:'rgba(255,255,255,0.85)',weight:1.2,fillOpacity:1,
+            radius:6 * _mScale,fillColor:line.color,
+            color:'rgba(255,255,255,0.9)',weight:1.4,fillOpacity:1,
             renderer:canvas,
           });
         }
@@ -1391,13 +1391,13 @@ function drawSingleLine(line){
         let dot;
         if (_nLines > 1 && _ms) {
           const _colors = _ms.colors || _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
-          const _size = Math.round(16 * _mScale);
+          const _size = Math.round(10 * _mScale);
           dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, false), opacity:0.6, interactive:true});
         } else {
           dot = L.circleMarker([s.lat,s.lon],{
-            radius:1.8 * _mScale, fillColor:line.color,
-            color:'rgba(255,255,255,0.25)', weight:0.5,
-            fillOpacity:0.4, renderer:canvas,
+            radius:3 * _mScale, fillColor:line.color,
+            color:'rgba(255,255,255,0.4)', weight:0.7,
+            fillOpacity:0.55, renderer:canvas,
           });
         }
         dot.bindTooltip(
