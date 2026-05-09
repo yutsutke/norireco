@@ -1019,17 +1019,23 @@ function drawSingleLine(line){
       const mainLine=L.polyline(latlngs,{
         color:line.color, weight:2.5, opacity:0.55,
         dashArray:'6 5', lineCap:'round', renderer:canvas,
+      });
+      // hover 用の透明太線 (未乗車も路線名が見えるように)
+      const hoverLine=L.polyline(latlngs,{
+        color:'transparent', weight:20, lineCap:'round', renderer:canvas,
       }).bindTooltip(
         `<b style="color:${line.color}">${line.name}</b><br><span style="color:rgba(140,160,179,.7)">${line.region} · 未乗車 ${stats.t}駅</span>`,
         {className:'norireco-tooltip',sticky:true,offset:[10,0]}
       );
       glowLine._norireco_priority=priority;
       mainLine._norireco_priority=priority;
-      allLayers.push(glowLine, mainLine);
+      hoverLine._norireco_priority=priority;
+      allLayers.push(glowLine, mainLine, hoverLine);
       const z=map?map.getZoom():5;
       if(priority<=getVisiblePriority(z)){
         glowLine.addTo(map);
         mainLine.addTo(map);
+        hoverLine.addTo(map);
       }
     } else {
       L.polyline(latlngs,{
