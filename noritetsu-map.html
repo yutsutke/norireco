@@ -1215,14 +1215,14 @@ const SUPER_MEGA_STATIONS = new Set([
 ]);
 
 // 三大都市圏の判定 (lat/lon境界ボックス)
-// 首都圏: 概ね山手線~外環圏内 / 京阪神 / 中京圏
+// 都心の超密集エリアのみ (山手線~周辺の半径10km程度)
 function isMetroArea(lat, lon) {
-  // 首都圏 (東京23区+周辺の高密度エリア)
-  if (lat >= 35.45 && lat <= 35.85 && lon >= 139.40 && lon <= 140.00) return true;
-  // 京阪神 (大阪・京都・神戸)
-  if (lat >= 34.55 && lat <= 35.05 && lon >= 135.00 && lon <= 135.85) return true;
-  // 中京圏 (名古屋周辺)
-  if (lat >= 35.05 && lat <= 35.35 && lon >= 136.75 && lon <= 137.05) return true;
+  // 首都圏 (山手線+周辺): 約25km × 25km
+  if (lat >= 35.60 && lat <= 35.78 && lon >= 139.60 && lon <= 139.85) return true;
+  // 大阪都心 (大阪・京都・神戸の中心部のみ): 約20km × 20km
+  if (lat >= 34.65 && lat <= 34.78 && lon >= 135.40 && lon <= 135.60) return true;
+  // 名古屋都心 (名古屋駅周辺のみ): 約15km × 15km
+  if (lat >= 35.13 && lat <= 35.22 && lon >= 136.85 && lon <= 136.97) return true;
   return false;
 }
 
@@ -1267,11 +1267,12 @@ function getDotMinTier(z, isMetro) {
 // ラベル用 (さらに厳しめ)
 function getLabelMinTier(z, isMetro) {
   if (isMetro) {
-    if (z >= 15) return 1;
-    if (z >= 14) return 2;
-    if (z >= 13) return 3;
-    if (z >= 12) return 4;
-    if (z >= 10) return 5;
+    // 首都圏でもz=13で全駅名が見えるように緩和
+    if (z >= 13) return 1;  // 全駅名 (was z>=15)
+    if (z >= 12) return 2;
+    if (z >= 11) return 3;
+    if (z >= 10) return 4;
+    if (z >= 9)  return 5;
     if (z >= 7)  return 6;
     return 99;
   } else {
