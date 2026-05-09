@@ -241,19 +241,6 @@
       "region": "",
       "group": "首都圏"
     },
-    "linie": {
-      "name": "JR相模線 (lineId エイリアス)",
-      "segments": [
-        {
-          "line": "相模線_東日本旅客鉄道",
-          "from": "茅ヶ崎",
-          "to": "橋本"
-        }
-      ],
-      "color": "#68BE8D",
-      "region": "",
-      "group": "首都圏"
-    },
     "minobu": {
       "name": "JR身延線",
       "segments": [
