@@ -1764,5 +1764,35 @@ function renderStats(){
   const rLines=LINES.filter(l=>lStats(l).r>0).sort((a,b)=>lStats(b).pct-lStats(a).pct);
   if(rLines.length){
     const ch=document.createElement('div');ch.className='bc';
-    ch.innerHTML='<div class="bc-t">路線別 達成率</div>';
-    rLines.forEach(line=>{const s=lStats(line);const row=document.createElement('div');row.className='bc-r';row.innerHTML=`<div class="bc-l">${line.name}</div><div class=
+    rLines.forEach(line=>{const s=lStats(line);const row=document.createElement('div');row.className='bc-r';row.innerHTML=`<div class="bc-l">${line.name}</div><div class="bc-bg"><div class="bc-fill" style="width:${s.pct}%;background:${line.color}"></div></div><div class="bc-n">${s.pct}%</div>`;ch.appendChild(row);});
+    c.appendChild(ch);
+  }
+
+  // ── 実績 ──
+  const at=document.createElement('div');at.className='sec-lbl';at.textContent='実績';c.appendChild(at);
+  const achs=[
+    {ic:'🚃',nm:'乗り鉄デビュー',ds:'初めての旅程を記録',on:gs.rt>=1},
+    {ic:'🔀',nm:'乗換マスター',ds:'乗換を含む旅程を記録',on:RIDDEN_SEGS.length>=2},
+    {ic:'🗾',nm:'2路線制覇',ds:'2路線以上に乗車',on:gs.la>=2},
+    {ic:'🚄',nm:'新幹線デビュー',ds:'新幹線に初乗車',on:!!riddenSt['tokaido-shinkansen']||!!riddenSt['tohoku']||!!riddenSt['hokuriku']},
+    {ic:'⚡',nm:'東海道新幹線完乗',ds:'東京〜博多を全駅乗車',on:lStats(LINES.find(l=>l.id==='tokaido-shinkansen')||{stations:[]}).pct===100},
+    {ic:'🌐',nm:'3路線制覇',ds:'3路線以上に乗車',on:gs.la>=3},
+    {ic:'🏅',nm:'5路線制覇',ds:'5路線以上に乗車',on:gs.la>=5},
+    {ic:'🏆',nm:'乗りつぶし50%',ds:'全路線の50%達成',on:gs.pct>=50},
+    {ic:'👑',nm:'完全乗りつぶし',ds:'全路線・全駅に乗車',on:gs.pct===100},
+  ];
+  const al=document.createElement('div');al.className='ach-list';
+  achs.forEach(a=>{const el=document.createElement('div');el.className='ach'+(a.on?' on':'');el.innerHTML=`<div class="ach-ic">${a.ic}</div><div><div class="ach-nm">${a.nm}</div><div class="ach-ds">${a.ds}</div></div>${a.on?'<div class="ach-bj">UNLOCKED</div>':''}`;al.appendChild(el);});
+  c.appendChild(al);
+}
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+window.addEventListener('load',()=>{
+  initMap();
+  if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+});
+</script>
+</body>
+</html>
