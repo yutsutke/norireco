@@ -1173,6 +1173,40 @@ function getBranchedStations(line){
   return branches;
 }
 
+// 統合駅(複数路線)用パイチャートSVGアイコン生成
+function makePieIcon(lineColors, sizePx, ridden) {
+  const n = lineColors.length;
+  const r = sizePx / 2;
+  const cx = r, cy = r;
+  let svgInner = '';
+  if (n === 1) {
+    svgInner = `<circle cx="${cx}" cy="${cy}" r="${r-1}" fill="${lineColors[0]}"/>`;
+  } else {
+    for (let i = 0; i < n; i++) {
+      const a1 = (i / n) * 2 * Math.PI - Math.PI/2;
+      const a2 = ((i+1) / n) * 2 * Math.PI - Math.PI/2;
+      const rr = r - 1;
+      const x1 = cx + rr * Math.cos(a1);
+      const y1 = cy + rr * Math.sin(a1);
+      const x2 = cx + rr * Math.cos(a2);
+      const y2 = cy + rr * Math.sin(a2);
+      const largeArc = (a2 - a1) > Math.PI ? 1 : 0;
+      svgInner += `<path d="M ${cx} ${cy} L ${x1} ${y1} A ${rr} ${rr} 0 ${largeArc} 1 ${x2} ${y2} Z" fill="${lineColors[i]}"/>`;
+    }
+  }
+  const ringColor = ridden ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)';
+  const ringWidth = ridden ? 1.4 : 1.0;
+  return L.divIcon({
+    className: 'merged-pie-marker',
+    html: `<svg width="${sizePx}" height="${sizePx}" viewBox="0 0 ${sizePx} ${sizePx}" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 3px rgba(0,0,0,0.6));">
+      ${svgInner}
+      <circle cx="${cx}" cy="${cy}" r="${r-0.5}" fill="none" stroke="${ringColor}" stroke-width="${ringWidth}"/>
+    </svg>`,
+    iconSize: [sizePx, sizePx],
+    iconAnchor: [r, r],
+  });
+}
+
 // 1路線を描画（遅延読み込み時にも呼ばれる）
 function drawSingleLine(line){
   const canvas=CANVAS;
@@ -1290,11 +1324,19 @@ function drawSingleLine(line){
                      `<span style="font-size:10px;color:rgba(255,255,255,.85);line-height:1.5">${_lineNames}</span>`;
       }
       if(!isRidden){
-        const dot=L.circleMarker([s.lat,s.lon],{
-          radius:2.5 * _mScale, fillColor:line.color,
-          color:'rgba(255,255,255,0.4)', weight:_nLines>1 ? 1.2 : 0.8,
-          fillOpacity:0.4, renderer:canvas,
-        }).bindTooltip(
+        let dot;
+        if (_nLines > 1 && _ms) {
+          const _colors = _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
+          const _size = Math.round(8 * _mScale);
+          dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, false), opacity:0.7, interactive:true});
+        } else {
+          dot = L.circleMarker([s.lat,s.lon],{
+            radius:2.5 * _mScale, fillColor:line.color,
+            color:'rgba(255,255,255,0.4)', weight:0.8,
+            fillOpacity:0.4, renderer:canvas,
+          });
+        }
+        dot.bindTooltip(
           `<b style="color:${line.color}">${s.n}</b><br><span style="color:rgba(140,160,179,.7)">${line.name}${s.o?` ${s.o}駅目`:''} · 未乗車</span>${_linesText}`,
           {className:'norireco-tooltip',offset:[8,0]}
         );
@@ -1310,11 +1352,19 @@ function drawSingleLine(line){
         label._norireco_priority=priority;
         labelLayer.addLayer(label);
       } else if(ir){
-        const dot=L.circleMarker([s.lat,s.lon],{
-          radius:4 * _mScale,fillColor:line.color,
-          color:'rgba(255,255,255,0.85)',weight:_nLines>1 ? 1.5 : 1.2,fillOpacity:1,
-          renderer:canvas,
-        }).bindTooltip(`<b>${s.n}</b><br><span style="color:rgba(140,160,179,.8)">${line.name}${s.o?` - ${s.o}駅目`:''}</span>${_linesText}`,
+        let dot;
+        if (_nLines > 1 && _ms) {
+          const _colors = _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
+          const _size = Math.round(11 * _mScale);
+          dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, true), interactive:true});
+        } else {
+          dot = L.circleMarker([s.lat,s.lon],{
+            radius:4 * _mScale,fillColor:line.color,
+            color:'rgba(255,255,255,0.85)',weight:1.2,fillOpacity:1,
+            renderer:canvas,
+          });
+        }
+        dot.bindTooltip(`<b>${s.n}</b><br><span style="color:rgba(140,160,179,.8)">${line.name}${s.o?` - ${s.o}駅目`:''}</span>${_linesText}`,
           {className:'norireco-tooltip',offset:[8,0]});
         dotLayer.addLayer(dot);
         const label=L.marker([s.lat,s.lon],{
@@ -1327,11 +1377,19 @@ function drawSingleLine(line){
         labelLayer.addLayer(label);
       } else {
         // 乗車済み路線の未乗車駅: 小さい薄ドット + 薄いラベル
-        const dot=L.circleMarker([s.lat,s.lon],{
-          radius:1.8 * _mScale, fillColor:line.color,
-          color:'rgba(255,255,255,0.25)', weight:_nLines>1 ? 0.8 : 0.5,
-          fillOpacity:0.4, renderer:canvas,
-        }).bindTooltip(
+        let dot;
+        if (_nLines > 1 && _ms) {
+          const _colors = _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
+          const _size = Math.round(7 * _mScale);
+          dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, false), opacity:0.6, interactive:true});
+        } else {
+          dot = L.circleMarker([s.lat,s.lon],{
+            radius:1.8 * _mScale, fillColor:line.color,
+            color:'rgba(255,255,255,0.25)', weight:0.5,
+            fillOpacity:0.4, renderer:canvas,
+          });
+        }
+        dot.bindTooltip(
           `<b style="color:${line.color}">${s.n}</b><br><span style="color:rgba(140,160,179,.7)">${line.name}${s.o?` ${s.o}駅目`:''} · 未乗車</span>${_linesText}`,
           {className:'norireco-tooltip',offset:[8,0]}
         );
