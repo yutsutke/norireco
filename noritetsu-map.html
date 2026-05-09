@@ -1031,8 +1031,10 @@ function drawSingleLine(line){
         mainLine.addTo(map);
       }
     } else {
+      // 乗車済み路線: 背景に点線(未乗車区間用)、その上に乗車済みグロー
       L.polyline(latlngs,{
-        color:line.color+'28',weight:1.5,lineCap:'round',renderer:canvas
+        color:line.color, weight:2.5, opacity:0.45,
+        dashArray:'6 5', lineCap:'round', renderer:canvas
       }).addTo(map);
 
       let ss=null;
