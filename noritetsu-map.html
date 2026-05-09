@@ -1071,17 +1071,8 @@ function drawSingleLine(line){
           }),interactive:false,
         });
         labelLayer.addLayer(label);
-      } else {
-        const dot=L.circleMarker([s.lat,s.lon],{
-          radius:2.5, fillColor:line.color,
-          color:'rgba(255,255,255,0.4)', weight:0.8,
-          fillOpacity:0.5, renderer:canvas,
-        }).bindTooltip(
-          `<b style="color:${line.color}">${s.n}</b><br><span style="color:rgba(140,160,179,.7)">${line.name}${s.o?` ${s.o}駅目`:''} · 未乗車</span>`,
-          {className:'norireco-tooltip',offset:[8,0]}
-        );
-        dotLayer.addLayer(dot);
       }
+      // 乗車済み路線の未乗車駅はドット表示しない（元の挙動）
     });
   });
 }
