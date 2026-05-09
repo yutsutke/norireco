@@ -312,6 +312,20 @@ let LINES = [];
 const loadedPriorities = new Set();
 const pendingLoads = new Set();
 
+// 運行系統定義 (running_services.json から読み込み)
+let RUNNING_SERVICES = {};
+async function loadRunningServices() {
+  try {
+    const res = await fetch('running_services.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    RUNNING_SERVICES = data.services || {};
+    console.log(`[乗レコ] 運行系統 ${Object.keys(RUNNING_SERVICES).length}件 読込`);
+  } catch (e) {
+    console.warn('[乗レコ] running_services.json 読込失敗:', e.message);
+  }
+}
+
 // 優先度別JSONファイル（N02-25 全国データ・606路線・10154駅）
 const PRIORITY_FILES = {
   1: 'lines-p1.json',  // 新幹線（ズーム5〜）
@@ -467,6 +481,89 @@ function resolveLineWithStations(legacyId, fromName, toName) {
   return null;
 }
 
+// 運行系統(running_services.json)に基づき乗車区間を物理路線に展開
+// service の segments を順にたどり、from駅と to駅 を含むセグメントを特定して、
+// その間のすべての物理路線×範囲を返す
+function resolveServiceTrip(serviceId, fromName, toName) {
+  const service = RUNNING_SERVICES[serviceId];
+  if (!service || !service.segments) return null;
+
+  const segments = service.segments;
+  const fromN = normStName(fromName);
+  const toN = normStName(toName);
+
+  // 各セグメントに対応する物理路線情報
+  const segInfos = segments.map(seg => {
+    const line = LINES.find(l => l.id === seg.line);
+    if (!line) return null;
+    const segFromIdx = line.stations.findIndex(s => normStName(s.n) === normStName(seg.from));
+    const segToIdx = line.stations.findIndex(s => normStName(s.n) === normStName(seg.to));
+    if (segFromIdx < 0 || segToIdx < 0) return null;
+    return { line, segFromIdx, segToIdx };
+  });
+
+  const inSegRange = (info, idx) => {
+    if (!info) return false;
+    const lo = Math.min(info.segFromIdx, info.segToIdx);
+    const hi = Math.max(info.segFromIdx, info.segToIdx);
+    return idx >= lo && idx <= hi;
+  };
+
+  // from/to を含むセグメントを特定
+  let fromSegIdx = -1, fromIdxInLine = -1;
+  let toSegIdx = -1, toIdxInLine = -1;
+  for (let i = 0; i < segInfos.length; i++) {
+    const info = segInfos[i];
+    if (!info) continue;
+    if (fromSegIdx < 0) {
+      const idx = info.line.stations.findIndex(s => normStName(s.n) === fromN);
+      if (idx >= 0 && inSegRange(info, idx)) {
+        fromSegIdx = i;
+        fromIdxInLine = idx;
+      }
+    }
+    if (toSegIdx < 0) {
+      const idx = info.line.stations.findIndex(s => normStName(s.n) === toN);
+      if (idx >= 0 && inSegRange(info, idx)) {
+        toSegIdx = i;
+        toIdxInLine = idx;
+      }
+    }
+  }
+  if (fromSegIdx < 0 || toSegIdx < 0) return null;
+
+  // 進行方向 (segments配列のインデックス順 or 逆順)
+  const dir = (fromSegIdx <= toSegIdx) ? 1 : -1;
+  const lo = Math.min(fromSegIdx, toSegIdx);
+  const hi = Math.max(fromSegIdx, toSegIdx);
+  const result = [];
+  for (let i = lo; i <= hi; i++) {
+    const info = segInfos[i];
+    if (!info) continue;
+    let fi, ti;
+    if (i === fromSegIdx && i === toSegIdx) {
+      fi = fromIdxInLine;
+      ti = toIdxInLine;
+    } else if (i === fromSegIdx) {
+      fi = fromIdxInLine;
+      ti = (dir === 1) ? info.segToIdx : info.segFromIdx;
+    } else if (i === toSegIdx) {
+      fi = (dir === 1) ? info.segFromIdx : info.segToIdx;
+      ti = toIdxInLine;
+    } else {
+      // 中間セグメント: 全区間
+      fi = info.segFromIdx;
+      ti = info.segToIdx;
+    }
+    result.push({
+      line: info.line,
+      fi: Math.min(fi, ti),
+      ti: Math.max(fi, ti),
+    });
+  }
+  return result;
+}
+
 // ジャンクション介在マッチ: 候補路線群の中で from と to を含む路線が異なる場合、
 // 両路線に共通する駅(ジャンクション)を見つけて2つの区間に分割
 // 例: tokaido-shinkansen 東京→博多 → 東海道新幹線(東京→新大阪) + 山陽新幹線(新大阪→博多)
@@ -526,14 +623,18 @@ function rebuildRiddenStations() {
   let resolvedCount = 0;
   const unresolved = []; // 路線/駅が見つからなかった区間
   RIDDEN_SEGS.forEach(seg => {
-    // 候補路線を順に試し、必要ならジャンクション分割
-    const segments = resolveSegments(seg.lineId, seg.from, seg.to);
-    if (!segments) {
+    // 1. 運行系統(running_services.json)で解決を試みる (優先)
+    let parts = resolveServiceTrip(seg.lineId, seg.from, seg.to);
+    // 2. 失敗時は LEGACY_ID_MAP + ジャンクション分割にフォールバック
+    if (!parts) {
+      parts = resolveSegments(seg.lineId, seg.from, seg.to);
+    }
+    if (!parts) {
       unresolved.push(`${seg.lineId} ${seg.from}→${seg.to}`);
       return;
     }
     resolvedCount++;
-    for (const part of segments) {
+    for (const part of parts) {
       const { line, fi, ti } = part;
       if (!riddenSt[line.id]) riddenSt[line.id] = new Set();
       for (let i = Math.min(fi,ti); i <= Math.max(fi,ti); i++)
@@ -838,6 +939,7 @@ function initMap(){
   // 初期表示: P1（新幹線）+ P2（JR在来）+ P3（大手私鉄）
   (async () => {
     console.log('[乗レコ] 初期ロード開始');
+    await loadRunningServices();
     await loadLines(1);
     await loadLines(2);
     await loadLines(3);
