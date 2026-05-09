@@ -1325,9 +1325,11 @@ function drawSingleLine(line){
       // tooltip用 路線リストHTML
       let _linesText = '';
       if (_ms && _nLines > 1) {
-        const _lineNames = _ms.lines.map(lid => {
+        const _lineNames = _ms.lines.map((lid, idx) => {
+          const c = (_ms.colors && _ms.colors[idx]) || (LINES.find(l=>l.id===lid)?.color) || '#888';
           const ln = LINES.find(l => l.id === lid);
-          return ln ? `<span style="color:${ln.color}">●</span> ${ln.name}` : lid;
+          const dispName = ln ? ln.name : lid;
+          return `<span style="color:${c}">●</span> ${dispName}`;
         }).join('<br>');
         _linesText = `<br><span style="color:rgba(242,169,0,.85);font-size:10px">🔀 乗り入れ ${_nLines}路線</span><br>` +
                      `<span style="font-size:10px;color:rgba(255,255,255,.85);line-height:1.5">${_lineNames}</span>`;
@@ -1335,7 +1337,7 @@ function drawSingleLine(line){
       if(!isRidden){
         let dot;
         if (_nLines > 1 && _ms) {
-          const _colors = _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
+          const _colors = _ms.colors || _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
           const _size = Math.round(18 * _mScale);
           dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, false), opacity:0.7, interactive:true});
         } else {
@@ -1363,7 +1365,7 @@ function drawSingleLine(line){
       } else if(ir){
         let dot;
         if (_nLines > 1 && _ms) {
-          const _colors = _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
+          const _colors = _ms.colors || _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
           const _size = Math.round(22 * _mScale);  // 路線数で大きく
           dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, true), interactive:true});
         } else {
@@ -1388,7 +1390,7 @@ function drawSingleLine(line){
         // 乗車済み路線の未乗車駅: 小さい薄ドット + 薄いラベル
         let dot;
         if (_nLines > 1 && _ms) {
-          const _colors = _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
+          const _colors = _ms.colors || _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
           const _size = Math.round(16 * _mScale);
           dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, false), opacity:0.6, interactive:true});
         } else {
