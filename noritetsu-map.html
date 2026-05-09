@@ -766,7 +766,7 @@ function initMap(){
   window._mapMode = parseInt(localStorage.getItem('mapMode') || '0');
   window._mapTiles = [gsiPaleTile, gsiPaleTile, gsiStdTile];
   const FILTERS = [
-    'brightness(0.65) contrast(1.15) saturate(0.55) hue-rotate(185deg)',  // ダーク
+    'brightness(0.40) contrast(1.30) saturate(0.45) hue-rotate(195deg)',  // ダーク (より暗く)
     'none',  // 淡色
     'none',  // 標準
   ];
@@ -1108,8 +1108,18 @@ function drawSingleLine(line){
           }),interactive:false,
         });
         labelLayer.addLayer(label);
+      } else {
+        // 乗車済み路線の未乗車駅: 小さい薄ドット (位置確認用)
+        const dot=L.circleMarker([s.lat,s.lon],{
+          radius:1.8, fillColor:line.color,
+          color:'rgba(255,255,255,0.25)', weight:0.5,
+          fillOpacity:0.4, renderer:canvas,
+        }).bindTooltip(
+          `<b style="color:${line.color}">${s.n}</b><br><span style="color:rgba(140,160,179,.7)">${line.name}${s.o?` ${s.o}駅目`:''} · 未乗車</span>`,
+          {className:'norireco-tooltip',offset:[8,0]}
+        );
+        dotLayer.addLayer(dot);
       }
-      // 乗車済み路線の未乗車駅はドット表示しない（元の挙動）
     });
   });
 }
