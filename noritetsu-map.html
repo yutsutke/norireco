@@ -922,10 +922,9 @@ function getLinePriority(line){
 
 // ズームレベルで表示する優先度の閾値
 function getVisiblePriority(zoom){
-  if(zoom>=9) return 4;
-  if(zoom>=8) return 3;
-  if(zoom>=7) return 2;
-  return 1;
+  // 大手私鉄まで(priority 3)は常時表示。地方鉄道(priority 4)はズーム10+で
+  if(zoom>=10) return 4;
+  return 3;
 }
 
 // 全Leafletレイヤーを管理
@@ -1017,25 +1016,19 @@ function drawSingleLine(line){
         lineCap:'round', renderer:canvas,
       });
       const mainLine=L.polyline(latlngs,{
-        color:line.color, weight:2.5, opacity:0.55,
+        color:line.color, weight:3, opacity:0.65,
         dashArray:'6 5', lineCap:'round', renderer:canvas,
-      });
-      // hover 用の透明太線 (未乗車も路線名が見えるように)
-      const hoverLine=L.polyline(latlngs,{
-        color:'transparent', weight:20, lineCap:'round', renderer:canvas,
       }).bindTooltip(
         `<b style="color:${line.color}">${line.name}</b><br><span style="color:rgba(140,160,179,.7)">${line.region} · 未乗車 ${stats.t}駅</span>`,
         {className:'norireco-tooltip',sticky:true,offset:[10,0]}
       );
       glowLine._norireco_priority=priority;
       mainLine._norireco_priority=priority;
-      hoverLine._norireco_priority=priority;
-      allLayers.push(glowLine, mainLine, hoverLine);
+      allLayers.push(glowLine, mainLine);
       const z=map?map.getZoom():5;
       if(priority<=getVisiblePriority(z)){
         glowLine.addTo(map);
         mainLine.addTo(map);
-        hoverLine.addTo(map);
       }
     } else {
       L.polyline(latlngs,{
