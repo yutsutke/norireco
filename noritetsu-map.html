@@ -1200,7 +1200,10 @@ function getBranchedStations(line){
 
 // 三大都市圏の中心駅 (最も低ズームから表示)
 const SUPER_MEGA_STATIONS = new Set([
+  // 三大都市圏
   '東京', '名古屋', '新大阪',
+  // 政令指定都市の中心駅
+  '札幌', '仙台', '博多', '広島',
 ]);
 
 // 駅の重要度ティア
@@ -1220,21 +1223,21 @@ function stationTier(nLines, name) {
 }
 // ズームレベルで表示するべき最小ティア (ドット用)
 function getDotMinTier(z) {
-  if (z >= 12) return 1;  // 全駅
-  if (z >= 11) return 2;  // 2路線+
-  if (z >= 10) return 3;  // 3路線+
-  if (z >= 9)  return 4;  // 4路線+ (主要junction)
-  if (z >= 7)  return 5;  // 7路線+ (新宿・渋谷等)
-  if (z >= 5)  return 6;  // 三大都市中心のみ (東京・名古屋・新大阪)
+  if (z >= 14) return 1;  // 全駅
+  if (z >= 13) return 2;  // 2路線+
+  if (z >= 12) return 3;  // 3路線+
+  if (z >= 11) return 4;  // 4路線+ (主要junction)
+  if (z >= 8)  return 5;  // 7路線+ (新宿・渋谷等)
+  if (z >= 5)  return 6;  // tier6中心のみ (東京・名古屋・新大阪・札幌・仙台・博多・広島)
   return 99;
 }
 // ラベル用 (さらに厳しめ)
 function getLabelMinTier(z) {
-  if (z >= 14) return 1;
-  if (z >= 13) return 2;
-  if (z >= 12) return 3;
-  if (z >= 11) return 4;
-  if (z >= 9)  return 5;
+  if (z >= 15) return 1;
+  if (z >= 14) return 2;
+  if (z >= 13) return 3;
+  if (z >= 12) return 4;
+  if (z >= 10) return 5;
   if (z >= 7)  return 6;
   return 99;
 }
