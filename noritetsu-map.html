@@ -1153,28 +1153,36 @@ function updateLOD() {
     }
   });
 
-  // ドット: 重要度ティアによる段階表示
+  // ドット: 重要度ティアによる段階表示 (地域別閾値)
   if (dotLayerRef) {
-    const dotMin = getDotMinTier(z);
-    if (dotMin <= 5) {
+    const dotMinMetro = getDotMinTier(z, true);
+    const dotMinRural = getDotMinTier(z, false);
+    const minOfBoth = Math.min(dotMinMetro, dotMinRural);
+    if (minOfBoth <= 6) {
       if (!map.hasLayer(dotLayerRef)) map.addLayer(dotLayerRef);
       dotLayerRef.eachLayer(d => {
         const t = d._station_tier || 1;
-        setStationVisible(d, t >= dotMin);
+        const m = d._station_isMetro;
+        const minTier = m ? dotMinMetro : dotMinRural;
+        setStationVisible(d, t >= minTier);
       });
     } else {
       if (map.hasLayer(dotLayerRef)) map.removeLayer(dotLayerRef);
     }
   }
 
-  // ラベル: より厳しめのティア
+  // ラベル: より厳しめのティア (地域別閾値)
   if (labelLayerRef) {
-    const labelMin = getLabelMinTier(z);
-    if (labelMin <= 5) {
+    const labelMinMetro = getLabelMinTier(z, true);
+    const labelMinRural = getLabelMinTier(z, false);
+    const minOfBoth = Math.min(labelMinMetro, labelMinRural);
+    if (minOfBoth <= 6) {
       if (!map.hasLayer(labelLayerRef)) map.addLayer(labelLayerRef);
       labelLayerRef.eachLayer(l => {
         const t = l._station_tier || 1;
-        setStationVisible(l, t >= labelMin);
+        const m = l._station_isMetro;
+        const minTier = m ? labelMinMetro : labelMinRural;
+        setStationVisible(l, t >= minTier);
       });
     } else {
       if (map.hasLayer(labelLayerRef)) map.removeLayer(labelLayerRef);
@@ -1206,6 +1214,18 @@ const SUPER_MEGA_STATIONS = new Set([
   '札幌', '仙台', '博多', '広島',
 ]);
 
+// 三大都市圏の判定 (lat/lon境界ボックス)
+// 首都圏: 概ね山手線~外環圏内 / 京阪神 / 中京圏
+function isMetroArea(lat, lon) {
+  // 首都圏 (東京23区+周辺の高密度エリア)
+  if (lat >= 35.45 && lat <= 35.85 && lon >= 139.40 && lon <= 140.00) return true;
+  // 京阪神 (大阪・京都・神戸)
+  if (lat >= 34.55 && lat <= 35.05 && lon >= 135.00 && lon <= 135.85) return true;
+  // 中京圏 (名古屋周辺)
+  if (lat >= 35.05 && lat <= 35.35 && lon >= 136.75 && lon <= 137.05) return true;
+  return false;
+}
+
 // 駅の重要度ティア
 // tier 6: 三大都市中心 (東京・名古屋・新大阪)
 // tier 5: 7+路線(新宿・渋谷・池袋・横浜・大宮等の超ターミナル)
@@ -1222,24 +1242,48 @@ function stationTier(nLines, name) {
   return 1;
 }
 // ズームレベルで表示するべき最小ティア (ドット用)
-function getDotMinTier(z) {
-  if (z >= 14) return 1;  // 全駅
-  if (z >= 13) return 2;  // 2路線+
-  if (z >= 12) return 3;  // 3路線+
-  if (z >= 11) return 4;  // 4路線+ (主要junction)
-  if (z >= 8)  return 5;  // 7路線+ (新宿・渋谷等)
-  if (z >= 5)  return 6;  // tier6中心のみ (東京・名古屋・新大阪・札幌・仙台・博多・広島)
-  return 99;
+// isMetro=true なら三大都市圏(密集)用の厳しめ閾値
+// isMetro=false なら地方用の早出し閾値
+function getDotMinTier(z, isMetro) {
+  if (isMetro) {
+    if (z >= 14) return 1;  // 全駅
+    if (z >= 13) return 2;  // 2路線+
+    if (z >= 12) return 3;  // 3路線+
+    if (z >= 11) return 4;  // 4路線+ (主要junction)
+    if (z >= 8)  return 5;  // 7路線+ (新宿・渋谷等)
+    if (z >= 5)  return 6;  // tier6中心のみ
+    return 99;
+  } else {
+    // 地方: 駅が疎なので早めに見える
+    if (z >= 11) return 1;  // 全駅
+    if (z >= 10) return 2;
+    if (z >= 9)  return 3;
+    if (z >= 8)  return 4;
+    if (z >= 7)  return 5;
+    if (z >= 5)  return 6;
+    return 99;
+  }
 }
 // ラベル用 (さらに厳しめ)
-function getLabelMinTier(z) {
-  if (z >= 15) return 1;
-  if (z >= 14) return 2;
-  if (z >= 13) return 3;
-  if (z >= 12) return 4;
-  if (z >= 10) return 5;
-  if (z >= 7)  return 6;
-  return 99;
+function getLabelMinTier(z, isMetro) {
+  if (isMetro) {
+    if (z >= 15) return 1;
+    if (z >= 14) return 2;
+    if (z >= 13) return 3;
+    if (z >= 12) return 4;
+    if (z >= 10) return 5;
+    if (z >= 7)  return 6;
+    return 99;
+  } else {
+    // 地方: ラベルも早めに表示
+    if (z >= 12) return 1;  // 全駅名
+    if (z >= 11) return 2;
+    if (z >= 10) return 3;
+    if (z >= 9)  return 4;
+    if (z >= 8)  return 5;
+    if (z >= 6)  return 6;
+    return 99;
+  }
 }
 // マーカー(circleMarker or divIcon)の表示/非表示切り替え
 function setStationVisible(m, visible) {
@@ -1394,6 +1438,8 @@ function drawSingleLine(line){
       // 乗り入れ路線数 (1なら通常、>1なら拡大)
       const _nLines = _ms ? _ms.lines.length : 1;
       const _tier = stationTier(_nLines, s.n);
+      // 三大都市圏かどうかを判定 (LOD閾値で使用)
+      const _isMetro = isMetroArea(s.lat, s.lon);
       // マーカー拡大係数 (1路線=1.0, 2路線=1.3, 3=1.5, 5=1.8, 7=2.0)
       const _mScale = _nLines === 1 ? 1.0 : Math.min(2.5, 1.0 + Math.log2(_nLines) * 0.5);
       // tooltip用 路線リストHTML
@@ -1427,6 +1473,7 @@ function drawSingleLine(line){
         );
         dot._norireco_priority=priority;
         dot._station_tier = _tier;
+        dot._station_isMetro = _isMetro;
         dotLayer.addLayer(dot);
         const label=L.marker([s.lat,s.lon],{
           icon:L.divIcon({
@@ -1437,6 +1484,7 @@ function drawSingleLine(line){
         });
         label._norireco_priority=priority;
         label._station_tier = _tier;
+        label._station_isMetro = _isMetro;
         labelLayer.addLayer(label);
       } else if(ir){
         let dot;
@@ -1454,6 +1502,7 @@ function drawSingleLine(line){
         dot.bindTooltip(`<b>${s.n}</b><br><span style="color:rgba(140,160,179,.8)">${line.name}${s.o?` - ${s.o}駅目`:''}</span>${_linesText}`,
           {className:'norireco-tooltip',offset:[8,0]});
         dot._station_tier = _tier;
+        dot._station_isMetro = _isMetro;
         dotLayer.addLayer(dot);
         const label=L.marker([s.lat,s.lon],{
           icon:L.divIcon({
@@ -1463,6 +1512,7 @@ function drawSingleLine(line){
           }),interactive:false,
         });
         label._station_tier = _tier;
+        label._station_isMetro = _isMetro;
         labelLayer.addLayer(label);
       } else {
         // 乗車済み路線の未乗車駅: 小さい薄ドット + 薄いラベル
@@ -1483,6 +1533,7 @@ function drawSingleLine(line){
           {className:'norireco-tooltip',offset:[8,0]}
         );
         dot._station_tier = _tier;
+        dot._station_isMetro = _isMetro;
         dotLayer.addLayer(dot);
         // 薄めの未乗車ラベル
         const label=L.marker([s.lat,s.lon],{
@@ -1493,6 +1544,7 @@ function drawSingleLine(line){
           }),interactive:false,
         });
         label._station_tier = _tier;
+        label._station_isMetro = _isMetro;
         labelLayer.addLayer(label);
       }
     });
@@ -1713,35 +1765,4 @@ function renderStats(){
   if(rLines.length){
     const ch=document.createElement('div');ch.className='bc';
     ch.innerHTML='<div class="bc-t">路線別 達成率</div>';
-    rLines.forEach(line=>{const s=lStats(line);const row=document.createElement('div');row.className='bc-r';row.innerHTML=`<div class="bc-l">${line.name}</div><div class="bc-bg"><div class="bc-fill" style="width:${s.pct}%;background:${line.color}"></div></div><div class="bc-n">${s.pct}%</div>`;ch.appendChild(row);});
-    c.appendChild(ch);
-  }
-
-  // ── 実績 ──
-  const at=document.createElement('div');at.className='sec-lbl';at.textContent='実績';c.appendChild(at);
-  const achs=[
-    {ic:'🚃',nm:'乗り鉄デビュー',ds:'初めての旅程を記録',on:gs.rt>=1},
-    {ic:'🔀',nm:'乗換マスター',ds:'乗換を含む旅程を記録',on:RIDDEN_SEGS.length>=2},
-    {ic:'🗾',nm:'2路線制覇',ds:'2路線以上に乗車',on:gs.la>=2},
-    {ic:'🚄',nm:'新幹線デビュー',ds:'新幹線に初乗車',on:!!riddenSt['tokaido-shinkansen']||!!riddenSt['tohoku']||!!riddenSt['hokuriku']},
-    {ic:'⚡',nm:'東海道新幹線完乗',ds:'東京〜博多を全駅乗車',on:lStats(LINES.find(l=>l.id==='tokaido-shinkansen')||{stations:[]}).pct===100},
-    {ic:'🌐',nm:'3路線制覇',ds:'3路線以上に乗車',on:gs.la>=3},
-    {ic:'🏅',nm:'5路線制覇',ds:'5路線以上に乗車',on:gs.la>=5},
-    {ic:'🏆',nm:'乗りつぶし50%',ds:'全路線の50%達成',on:gs.pct>=50},
-    {ic:'👑',nm:'完全乗りつぶし',ds:'全路線・全駅に乗車',on:gs.pct===100},
-  ];
-  const al=document.createElement('div');al.className='ach-list';
-  achs.forEach(a=>{const el=document.createElement('div');el.className='ach'+(a.on?' on':'');el.innerHTML=`<div class="ach-ic">${a.ic}</div><div><div class="ach-nm">${a.nm}</div><div class="ach-ds">${a.ds}</div></div>${a.on?'<div class="ach-bj">UNLOCKED</div>':''}`;al.appendChild(el);});
-  c.appendChild(al);
-}
-
-// ══════════════════════════════════════
-// INIT
-// ══════════════════════════════════════
-window.addEventListener('load',()=>{
-  initMap();
-  if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-});
-</script>
-</body>
-</html>
+    rLines.forEach(line=>{const s=lStats(line);const row=document.createElement('div');row.className='bc-r';row.innerHTML=`<div class="bc-l">${line.name}</div><div class=
