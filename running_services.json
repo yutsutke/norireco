@@ -141,34 +141,6 @@
       "region": "",
       "group": "首都圏"
     },
-    "shonan-shinjuku": {
-      "name": "JR湘南新宿ライン",
-      "segments": [
-        {
-          "line": "東北線_東日本旅客鉄道",
-          "from": "宇都宮",
-          "to": "赤羽"
-        },
-        {
-          "line": "赤羽線_東日本旅客鉄道",
-          "from": "赤羽",
-          "to": "池袋"
-        },
-        {
-          "line": "山手線_東日本旅客鉄道",
-          "from": "池袋",
-          "to": "大崎"
-        },
-        {
-          "line": "東海道線_東日本旅客鉄道",
-          "from": "武蔵小杉",
-          "to": "小田原"
-        }
-      ],
-      "color": "#F68B1F",
-      "region": "",
-      "group": "首都圏"
-    },
     "yokosuka": {
       "name": "JR横須賀線",
       "segments": [
@@ -270,7 +242,7 @@
       "group": "首都圏"
     },
     "linie": {
-      "name": "JR相模線(linie alias)",
+      "name": "JR相模線 (lineId エイリアス)",
       "segments": [
         {
           "line": "相模線_東日本旅客鉄道",
@@ -855,7 +827,7 @@
       "group": "北海道"
     },
     "tohoku-main": {
-      "name": "JR東北本線（全線）",
+      "name": "JR東北本線",
       "segments": [
         {
           "line": "東北線_東日本旅客鉄道",
@@ -1001,7 +973,7 @@
       "group": "関西"
     },
     "yamagata-shinkansen": {
-      "name": "JR山形新幹線（奥羽本線）",
+      "name": "JR山形新幹線",
       "segments": [
         {
           "line": "奥羽線_東日本旅客鉄道",
@@ -1014,7 +986,7 @@
       "group": "東北"
     },
     "akita-shinkansen": {
-      "name": "JR秋田新幹線（田沢湖線）",
+      "name": "JR秋田新幹線",
       "segments": [
         {
           "line": "田沢湖線_東日本旅客鉄道",
@@ -1810,7 +1782,7 @@
       "group": "首都圏"
     },
     "musashino-north": {
-      "name": "JR武蔵野線（北部）",
+      "name": "JR武蔵野線",
       "segments": [
         {
           "line": "武蔵野線_東日本旅客鉄道",
@@ -1849,7 +1821,7 @@
       "group": "首都圏"
     },
     "tobu-noda": {
-      "name": "東武アーバンパークライン（野田線）",
+      "name": "東武アーバンパークライン",
       "segments": [
         {
           "line": "野田線_東武鉄道",
@@ -1929,7 +1901,7 @@
       "group": "首都圏"
     },
     "keikyu-honsen-full": {
-      "name": "京急本線（全駅）",
+      "name": "京急本線",
       "segments": [
         {
           "line": "本線_京浜急行電鉄",
@@ -1970,7 +1942,7 @@
       "group": "首都圏"
     },
     "odakyu-enoshima-full": {
-      "name": "小田急江ノ島線（全駅）",
+      "name": "小田急江ノ島線",
       "segments": [
         {
           "line": "江ノ島線_小田急電鉄",
@@ -1996,7 +1968,7 @@
       "group": "首都圏"
     },
     "yokohama-subway-green": {
-      "name": "横浜市営地下鉄グリーンライン（全駅）",
+      "name": "横浜市営地下鉄グリーンライン",
       "segments": [
         {
           "line": "4号線_横浜市",
@@ -2071,7 +2043,7 @@
       "group": "首都圏"
     },
     "hitachi-dentetsu": {
-      "name": "ひたちなか海浜鉄道湊線（全駅）",
+      "name": "ひたちなか海浜鉄道湊線",
       "segments": [
         {
           "line": "湊線_ひたちなか海浜鉄道",
@@ -2097,7 +2069,7 @@
       "group": "首都圏"
     },
     "chiba-monorail-full": {
-      "name": "千葉都市モノレール（全線）",
+      "name": "千葉都市モノレール",
       "segments": [
         {
           "line": "1号線_千葉都市モノレール",
@@ -2115,7 +2087,7 @@
       "group": "首都圏"
     },
     "sotobo-full": {
-      "name": "JR外房線（全駅詳細）",
+      "name": "JR外房線",
       "segments": [
         {
           "line": "外房線_東日本旅客鉄道",
@@ -2164,7 +2136,7 @@
       "group": "首都圏"
     },
     "kaihimmakuhari": {
-      "name": "JR京葉線支線（海浜幕張周辺）",
+      "name": "JR京葉線支線",
       "segments": [
         {
           "line": "京葉線_東日本旅客鉄道",
@@ -2177,7 +2149,7 @@
       "group": "首都圏"
     },
     "enoshima-mono": {
-      "name": "湘南モノレール（全駅）",
+      "name": "湘南モノレール",
       "segments": [
         {
           "line": "江の島線_湘南モノレール",
@@ -2190,7 +2162,7 @@
       "group": "首都圏"
     },
     "yokohama-subway-blue-full": {
-      "name": "横浜市営地下鉄ブルーライン（全駅）",
+      "name": "横浜市営地下鉄ブルーライン",
       "segments": [
         {
           "line": "1号線_横浜市",
@@ -2213,7 +2185,7 @@
       "group": "首都圏"
     },
     "izuhakone-daiyuzan": {
-      "name": "伊豆箱根鉄道大雄山線（全駅）",
+      "name": "伊豆箱根鉄道大雄山線",
       "segments": [
         {
           "line": "大雄山線_伊豆箱根鉄道",
@@ -2226,7 +2198,7 @@
       "group": "首都圏"
     },
     "hakone-tozan": {
-      "name": "箱根登山鉄道（全線）",
+      "name": "箱根登山鉄道",
       "segments": [
         {
           "line": "鉄道線_小田急箱根",
@@ -2257,7 +2229,7 @@
       "group": "首都圏"
     },
     "tama-toshi-full": {
-      "name": "多摩都市モノレール（全駅）",
+      "name": "多摩都市モノレール",
       "segments": [
         {
           "line": "多摩都市モノレール線_多摩都市モノレール",
@@ -2270,7 +2242,7 @@
       "group": "首都圏"
     },
     "nippori-toneri-full": {
-      "name": "日暮里・舎人ライナー（全駅）",
+      "name": "日暮里・舎人ライナー",
       "segments": [
         {
           "line": "日暮里_舎人ライナー_東京都",
@@ -2402,7 +2374,7 @@
       "group": "四国"
     },
     "kochi-den": {
-      "name": "とさでん交通（路面電車）",
+      "name": "とさでん交通",
       "segments": [
         {
           "line": "後免線_とさでん交通",
@@ -3099,7 +3071,7 @@
       "group": "首都圏"
     },
     "odakyu-hakone": {
-      "name": "小田急箱根線（箱根登山）",
+      "name": "小田急箱根線",
       "segments": [
         {
           "line": "鉄道線_小田急箱根",
@@ -3125,7 +3097,7 @@
       "group": "首都圏"
     },
     "enoshima-dentetsu": {
-      "name": "箱根登山鉄道（鉄道線）",
+      "name": "箱根登山鉄道",
       "segments": [
         {
           "line": "鉄道線_小田急箱根",
@@ -3421,7 +3393,7 @@
       "group": "東北"
     },
     "hiroshima-dentetsu": {
-      "name": "広島電鉄（路面電車）",
+      "name": "広島電鉄",
       "segments": [
         {
           "line": "本線_広島電鉄",
@@ -6511,19 +6483,6 @@
           "line": "川越線_東日本旅客鉄道",
           "from": "高麗川",
           "to": "大宮"
-        }
-      ]
-    },
-    "相模線_東日本旅客鉄道": {
-      "name": "相模線",
-      "color": "hsl(238, 60%, 55%)",
-      "region": "",
-      "group": "JR在来",
-      "segments": [
-        {
-          "line": "相模線_東日本旅客鉄道",
-          "from": "橋本",
-          "to": "茅ヶ崎"
         }
       ]
     },
