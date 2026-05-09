@@ -326,6 +326,27 @@ async function loadRunningServices() {
   }
 }
 
+// 統合駅マスター: 同名近接駅を1点に集約 (Phase 1: 表示統合)
+let MERGED_STATIONS = [];
+let mergedStationMap = new Map();
+async function loadMergedStations() {
+  try {
+    const res = await fetch('merged_stations.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    MERGED_STATIONS = data.stations || [];
+    mergedStationMap.clear();
+    for (const ms of MERGED_STATIONS) {
+      for (const lid of ms.lines) {
+        mergedStationMap.set(`${lid}:${ms.name}`, ms);
+      }
+    }
+    console.log(`[乗レコ] 統合駅 ${MERGED_STATIONS.length}駅 (逆引き ${mergedStationMap.size}件)`);
+  } catch (e) {
+    console.warn('[乗レコ] merged_stations.json 読込失敗:', e.message);
+  }
+}
+
 // 優先度別JSONファイル（N02-25 全国データ・606路線・10154駅）
 const PRIORITY_FILES = {
   1: 'lines-p1.json',  // 新幹線（ズーム5〜）
@@ -992,7 +1013,7 @@ function initMap(){
   // 初期表示: P1（新幹線）+ P2（JR在来）+ P3（大手私鉄）
   (async () => {
     console.log('[乗レコ] 初期ロード開始');
-    await loadRunningServices();
+    await Promise.all([loadRunningServices(), loadMergedStations()]);
     await loadLines(1);
     await loadLines(2);
     await loadLines(3);
@@ -1089,7 +1110,11 @@ let allLayers=[];
 let dotLayerRef=null;
 let labelLayerRef=null;
 
+// 描画済み統合駅追跡 (重複マーカー抑制)
+const drawnMergedStations = new Map();
+
 function drawLines(){
+  drawnMergedStations.clear();
   // レイヤーグループ初期化（まだなければ）
   if (!dotLayerRef) {
     dotLayerRef = L.layerGroup();
@@ -1242,13 +1267,24 @@ function drawSingleLine(line){
 
     bsts.forEach(s=>{
       const ir=isRidden && rd.has(s.n);
+      // 統合駅単位の重複抑制
+      const _ms = mergedStationMap.get(`${line.id}:${s.n}`);
+      const _msKey = _ms ? `${_ms.lat.toFixed(5)},${_ms.lon.toFixed(5)}` : null;
+      if (_msKey) {
+        const _e = drawnMergedStations.get(_msKey);
+        if (_e && _e.drawn) return;
+        drawnMergedStations.set(_msKey, {drawn: true});
+      }
+      const _linesText = _ms && _ms.lines.length > 1
+        ? `<br><span style="color:rgba(140,160,179,.65);font-size:9px">🔀 乗り入れ ${_ms.lines.length}路線</span>`
+        : '';
       if(!isRidden){
         const dot=L.circleMarker([s.lat,s.lon],{
           radius:2.5, fillColor:line.color,
           color:'rgba(255,255,255,0.4)', weight:0.8,
           fillOpacity:0.4, renderer:canvas,
         }).bindTooltip(
-          `<b style="color:${line.color}">${s.n}</b><br><span style="color:rgba(140,160,179,.7)">${line.name}${s.o?` ${s.o}駅目`:''} · 未乗車</span>`,
+          `<b style="color:${line.color}">${s.n}</b><br><span style="color:rgba(140,160,179,.7)">${line.name}${s.o?` ${s.o}駅目`:''} · 未乗車</span>${_linesText}`,
           {className:'norireco-tooltip',offset:[8,0]}
         );
         dot._norireco_priority=priority;
@@ -1267,7 +1303,7 @@ function drawSingleLine(line){
           radius:4,fillColor:line.color,
           color:'rgba(255,255,255,0.85)',weight:1.2,fillOpacity:1,
           renderer:canvas,
-        }).bindTooltip(`<b>${s.n}</b><br><span style="color:rgba(140,160,179,.8)">${line.name}${s.o?` - ${s.o}駅目`:''}</span>`,
+        }).bindTooltip(`<b>${s.n}</b><br><span style="color:rgba(140,160,179,.8)">${line.name}${s.o?` - ${s.o}駅目`:''}</span>${_linesText}`,
           {className:'norireco-tooltip',offset:[8,0]});
         dotLayer.addLayer(dot);
         const label=L.marker([s.lat,s.lon],{
@@ -1285,7 +1321,7 @@ function drawSingleLine(line){
           color:'rgba(255,255,255,0.25)', weight:0.5,
           fillOpacity:0.4, renderer:canvas,
         }).bindTooltip(
-          `<b style="color:${line.color}">${s.n}</b><br><span style="color:rgba(140,160,179,.7)">${line.name}${s.o?` ${s.o}駅目`:''} · 未乗車</span>`,
+          `<b style="color:${line.color}">${s.n}</b><br><span style="color:rgba(140,160,179,.7)">${line.name}${s.o?` ${s.o}駅目`:''} · 未乗車</span>${_linesText}`,
           {className:'norireco-tooltip',offset:[8,0]}
         );
         dotLayer.addLayer(dot);
