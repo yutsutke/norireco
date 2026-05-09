@@ -100,6 +100,15 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 .map-mode-fab:hover{transform:scale(1.08);}
 
 /* Leaflet tooltip style */
+.merged-pie-marker {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.merged-pie-marker svg {
+  display: block;
+  pointer-events: auto;
+}
 .norireco-tooltip{
   background:rgba(4,12,24,.95) !important;border:1px solid var(--track) !important;
   border-radius:10px !important;padding:9px 12px !important;
@@ -1312,7 +1321,7 @@ function drawSingleLine(line){
       // 乗り入れ路線数 (1なら通常、>1なら拡大)
       const _nLines = _ms ? _ms.lines.length : 1;
       // マーカー拡大係数 (1路線=1.0, 2路線=1.3, 3=1.5, 5=1.8, 7=2.0)
-      const _mScale = _nLines === 1 ? 1.0 : Math.min(2.0, 1.0 + Math.log2(_nLines) * 0.4);
+      const _mScale = _nLines === 1 ? 1.0 : Math.min(2.5, 1.0 + Math.log2(_nLines) * 0.5);
       // tooltip用 路線リストHTML
       let _linesText = '';
       if (_ms && _nLines > 1) {
@@ -1327,7 +1336,7 @@ function drawSingleLine(line){
         let dot;
         if (_nLines > 1 && _ms) {
           const _colors = _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
-          const _size = Math.round(8 * _mScale);
+          const _size = Math.round(18 * _mScale);
           dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, false), opacity:0.7, interactive:true});
         } else {
           dot = L.circleMarker([s.lat,s.lon],{
@@ -1355,7 +1364,7 @@ function drawSingleLine(line){
         let dot;
         if (_nLines > 1 && _ms) {
           const _colors = _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
-          const _size = Math.round(11 * _mScale);
+          const _size = Math.round(22 * _mScale);  // 路線数で大きく
           dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, true), interactive:true});
         } else {
           dot = L.circleMarker([s.lat,s.lon],{
@@ -1380,7 +1389,7 @@ function drawSingleLine(line){
         let dot;
         if (_nLines > 1 && _ms) {
           const _colors = _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
-          const _size = Math.round(7 * _mScale);
+          const _size = Math.round(16 * _mScale);
           dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, false), opacity:0.6, interactive:true});
         } else {
           dot = L.circleMarker([s.lat,s.lon],{
