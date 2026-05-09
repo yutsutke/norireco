@@ -89,6 +89,15 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 }
 .memo-fab.on{background:rgba(242,169,0,.2);border-color:var(--gold);color:var(--gold);}
 .memo-fab:hover{transform:scale(1.08);}
+.map-mode-fab{
+  position:absolute;bottom:115px;right:8px;z-index:1000;
+  width:46px;height:46px;border-radius:50%;
+  background:rgba(30,52,72,.95);border:1.5px solid var(--track);
+  color:var(--white);font-size:18px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgba(0,0,0,.5);transition:all .2s;
+}
+.map-mode-fab:hover{transform:scale(1.08);}
 
 /* Leaflet tooltip style */
 .norireco-tooltip{
@@ -204,6 +213,7 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
       </div>
       <div id="legend-lines"></div>
     </div>
+    <button class="map-mode-fab" id="map-mode-btn" onclick="cycleMapMode()" title="背景切替">🗺️</button>
     <button class="memo-fab" id="memo-btn" onclick="toggleMemoMode()" title="メモ投稿">📸</button>
     <!-- 復元ボタン（localStorageが空のときのみ表示） -->
     <div id="restore-hint" style="display:none;position:absolute;bottom:70px;left:50%;transform:translateX(-50%);z-index:1000;white-space:nowrap">
@@ -735,8 +745,13 @@ function initMap(){
     preferCanvas:true,
   });
 
-  const gsiTile = L.tileLayer(
+  const gsiPaleTile = L.tileLayer(
     'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',{
+    maxZoom:18,
+    attribution:'<a href="https://maps.gsi.go.jp/development/ichiran.html">国土地理院</a>',
+  });
+  const gsiStdTile = L.tileLayer(
+    'https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',{
     maxZoom:18,
     attribution:'<a href="https://maps.gsi.go.jp/development/ichiran.html">国土地理院</a>',
   });
@@ -746,24 +761,46 @@ function initMap(){
     attribution:'© OpenStreetMap © CARTO',
   });
 
+  // モード: 0=ダーク(GSI淡色+フィルタ) / 1=淡色(フィルタなし) / 2=標準
+  // ダークが既定。ボタンで循環切り替え
+  window._mapMode = parseInt(localStorage.getItem('mapMode') || '0');
+  window._mapTiles = [gsiPaleTile, gsiPaleTile, gsiStdTile];
+  const FILTERS = [
+    'brightness(0.65) contrast(1.15) saturate(0.55) hue-rotate(185deg)',  // ダーク
+    'none',  // 淡色
+    'none',  // 標準
+  ];
+  const MODE_LABELS = ['🌙', '🗺️', '🌐'];
+
   let gsiErrors=0;
-  gsiTile.on('tileerror',()=>{
+  gsiPaleTile.on('tileerror',()=>{
     gsiErrors++;
-    if(gsiErrors>3&&map.hasLayer(gsiTile)){
-      map.removeLayer(gsiTile);
+    if(gsiErrors>3 && map.hasLayer(gsiPaleTile)){
+      map.removeLayer(gsiPaleTile);
       cartoTile.addTo(map);
       const tp=document.querySelector('.leaflet-tile-pane');
       if(tp) tp.style.filter='none';
     }
   });
-  gsiTile.addTo(map);
 
-  const applyFilter=()=>{
-    const tp=document.querySelector('.leaflet-tile-pane');
-    if(tp&&map.hasLayer(gsiTile))
-      tp.style.filter='brightness(0.65) contrast(1.15) saturate(0.55) hue-rotate(185deg)';
+  function applyMapMode(mode){
+    window._mapTiles.forEach(t=>{ if(map.hasLayer(t)) map.removeLayer(t); });
+    if(map.hasLayer(cartoTile)) map.removeLayer(cartoTile);
+    const tile = window._mapTiles[mode];
+    tile.addTo(map);
+    setTimeout(()=>{
+      const tp=document.querySelector('.leaflet-tile-pane');
+      if(tp) tp.style.filter = FILTERS[mode];
+    }, 50);
+    const btn=document.getElementById('map-mode-btn');
+    if(btn) btn.textContent = MODE_LABELS[mode];
+    localStorage.setItem('mapMode', String(mode));
+    window._mapMode = mode;
+  }
+  window.cycleMapMode = function(){
+    applyMapMode((window._mapMode + 1) % 3);
   };
-  setTimeout(applyFilter,300);
+  applyMapMode(window._mapMode);
 
   L.control.zoom({position:'bottomright'}).addTo(map);
 
