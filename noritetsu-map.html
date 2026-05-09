@@ -377,79 +377,9 @@ async function loadLines(priority) {
   }
 }
 
-// SupabaseからMANUAL or N02路線を一括取得してLINESに反映する
-async function loadLinesFromSupabase(dataSource, priority) {
-  try {
-    // 1. 路線一覧を取得（priorityフィルタも付ける）
-    const linesRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/norireco_lines?data_source=eq.${dataSource}&priority=eq.${priority}&select=id,name,color,region,line_group`,
-      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
-    );
-    if (!linesRes.ok) throw new Error(`lines fetch failed: ${linesRes.status}`);
-    const sbLines = await linesRes.json();
-
-    if (!sbLines.length) return;
-    console.log(`[乗レコ] Supabase ${dataSource} P${priority}路線: ${sbLines.length}件`);
-
-    // 2. 全駅を一括取得（line_idのin句で一度にまとめて取得）
-    const ids = sbLines.map(l => l.id).join(',');
-    const stRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/norireco_stations?line_id=in.(${ids})&order=line_id.asc,seq.asc&select=line_id,name,lat,lon`,
-      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
-    );
-    if (!stRes.ok) throw new Error(`stations fetch failed: ${stRes.status}`);
-    const allStations = await stRes.json();
-
-    // 3. 駅をline_idでグループ化
-    const stByLine = {};
-    for (const s of allStations) {
-      if (!stByLine[s.line_id]) stByLine[s.line_id] = [];
-      stByLine[s.line_id].push(s);
-    }
-
-    // 4. LINESに反映（なければ追加、あれば上書き）
-    const addedLines = [];
-    for (const line of sbLines) {
-      const stations = stByLine[line.id] || [];
-      const lineData = {
-        id:       line.id,
-        name:     line.name,
-        color:    line.color,
-        region:   line.region,
-        group:    line.line_group,
-        stations: stations.map(s => ({ n: s.name, lat: s.lat, lon: s.lon })),
-        polyline: stations.map(s => ({ lat: s.lat, lon: s.lon }))
-      };
-      const idx = LINES.findIndex(l => l.id === line.id);
-      if (idx >= 0) {
-        LINES[idx] = lineData;
-      } else {
-        LINES.push(lineData);
-        addedLines.push(lineData);
-      }
-    }
-
-    // 5. 地図を再描画
-    rebuildRiddenStations();
-    if (map && dotLayerRef) {
-      sbLines.forEach(line => {
-        const l = LINES.find(x => x.id === line.id);
-        if (l) drawSingleLine(l);
-      });
-      updateOverlays();
-      updateLOD();
-    }
-    console.log(`[乗レコ] ${dataSource} P${priority} 完了: ${sbLines.length}路線`);
-  } catch(e) {
-    console.warn(`[乗レコ] Supabase ${dataSource} P${priority} 取得失敗（オフラインモード）:`, e.message);
-  }
-}
-
-// MANUAL路線をSupabaseから取得（後方互換ラッパー）
-async function loadManualLinesFromSupabase() {
-  await loadLinesFromSupabase('MANUAL', 2);
-  await loadLinesFromSupabase('MANUAL', 3);
-}
+// 注: 以前 Supabase から路線・駅情報を取得する関数 (loadLinesFromSupabase /
+// loadManualLinesFromSupabase) があったが、現状は lines-p?.json が唯一のソースのため削除
+// Supabase の norireco_lines / norireco_stations テーブルも未使用
 
 // ズームに応じて必要な優先度を読み込む
 async function loadLinesForZoom(zoom) {
