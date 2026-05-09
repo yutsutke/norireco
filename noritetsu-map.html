@@ -1279,7 +1279,7 @@ function drawSingleLine(line){
         });
         labelLayer.addLayer(label);
       } else {
-        // 乗車済み路線の未乗車駅: 小さい薄ドット (位置確認用)
+        // 乗車済み路線の未乗車駅: 小さい薄ドット + 薄いラベル
         const dot=L.circleMarker([s.lat,s.lon],{
           radius:1.8, fillColor:line.color,
           color:'rgba(255,255,255,0.25)', weight:0.5,
@@ -1289,6 +1289,15 @@ function drawSingleLine(line){
           {className:'norireco-tooltip',offset:[8,0]}
         );
         dotLayer.addLayer(dot);
+        // 薄めの未乗車ラベル
+        const label=L.marker([s.lat,s.lon],{
+          icon:L.divIcon({
+            className:'',
+            html:`<div style="font-family:'Zen Kaku Gothic New',sans-serif;font-size:9px;font-weight:400;color:rgba(255,255,255,0.55);text-shadow:0 0 4px rgba(0,0,0,1);white-space:nowrap;pointer-events:none;padding-left:6px;margin-top:-5px">${s.n}</div>`,
+            iconSize:[0,0],iconAnchor:[0,0],
+          }),interactive:false,
+        });
+        labelLayer.addLayer(label);
       }
     });
   });
