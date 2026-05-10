@@ -1206,6 +1206,16 @@ function getBranchedStations(line){
   return branches;
 }
 
+// モバイル端末判定 (ズーム/パン軽量化用)
+const IS_MOBILE = (() => {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  if (/iPhone|iPad|iPod|Android/i.test(ua)) return true;
+  if (typeof window !== 'undefined' && window.innerWidth < 768) return true;
+  return false;
+})();
+console.log('[乗レコ] IS_MOBILE:', IS_MOBILE);
+
 // 三大都市圏の中心駅 (最も低ズームから表示)
 const SUPER_MEGA_STATIONS = new Set([
   // 三大都市圏
@@ -1245,6 +1255,8 @@ function stationTier(nLines, name) {
 // isMetro=true なら三大都市圏(密集)用の厳しめ閾値
 // isMetro=false なら地方用の早出し閾値
 function getDotMinTier(z, isMetro) {
+  // モバイルではズーム閾値を1段階厳しく (駅数削減で軽量化)
+  if (IS_MOBILE) z -= 1;
   if (isMetro) {
     if (z >= 14) return 1;  // 全駅
     if (z >= 13) return 2;  // 2路線+
@@ -1266,6 +1278,8 @@ function getDotMinTier(z, isMetro) {
 }
 // ラベル用 (さらに厳しめ)
 function getLabelMinTier(z, isMetro) {
+  // モバイルではズーム閾値を1段階厳しく
+  if (IS_MOBILE) z -= 1;
   if (isMetro) {
     // 首都圏でもz=13で全駅名が見えるように緩和
     if (z >= 13) return 1;  // 全駅名 (was z>=15)
@@ -1301,6 +1315,20 @@ function setStationVisible(m, visible) {
 }
 
 // 統合駅(複数路線)用パイチャートSVGアイコン生成
+// モバイル向け: 統合駅もCanvasのcircleMarkerで描画 (DOM要素ゼロ → ズーム/パン高速化)
+function makeMergedDotMobile(latLng, colors, radius, lineColor, ridden, canvas) {
+  // 一番乗り入れ多い路線色を中心、外側を白縁で囲む (統合駅と分かるように)
+  const main = colors && colors[0] ? colors[0] : lineColor;
+  return L.circleMarker(latLng, {
+    radius: radius,
+    fillColor: main,
+    color: ridden ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.7)',
+    weight: ridden ? 2.0 : 1.5,
+    fillOpacity: ridden ? 1 : 0.7,
+    renderer: canvas,
+  });
+}
+
 function makePieIcon(lineColors, sizePx, ridden) {
   const n = lineColors.length;
   const r = sizePx / 2;
@@ -1363,7 +1391,8 @@ function drawSingleLine(line){
         dashArray:'6 5', lineCap:'round', renderer:canvas,
       });
       // SVG レンダラの透明 hoverライン (canvasと独立した hit detection)
-      const hoverLine=L.polyline(latlngs,{
+      // モバイルではホバー線を作らない（DOM負荷削減）
+      const hoverLine = IS_MOBILE ? null : L.polyline(latlngs,{
         color:'transparent', weight:10, opacity:0,
         lineCap:'round',
         // renderer指定なし → デフォルトSVGを使う
@@ -1373,13 +1402,14 @@ function drawSingleLine(line){
       );
       glowLine._norireco_priority=priority;
       mainLine._norireco_priority=priority;
-      hoverLine._norireco_priority=priority;
-      allLayers.push(glowLine, mainLine, hoverLine);
+      if (hoverLine) hoverLine._norireco_priority=priority;
+      allLayers.push(glowLine, mainLine);
+      if (hoverLine) allLayers.push(hoverLine);
       const z=map?map.getZoom():5;
       if(priority<=getVisiblePriority(z)){
         glowLine.addTo(map);
         mainLine.addTo(map);
-        hoverLine.addTo(map);
+        if (hoverLine) hoverLine.addTo(map);
       }
     } else {
       // 乗車済み路線: 背景に点線(未乗車区間用)
@@ -1389,24 +1419,27 @@ function drawSingleLine(line){
       });
       bgLine.addTo(map);
       // SVG hoverライン (tooltip + click)
-      const hoverLine = L.polyline(latlngs,{
-        color:'transparent', weight:10, opacity:0,
-        lineCap:'round',
-      }).bindTooltip(
-        `<b style="color:${line.color}">${line.name}</b><br><span style="color:rgba(140,160,179,.8)">${line.region}</span><br><span style="color:rgba(242,169,0,.9);font-family:monospace">${stats.r}/${stats.t}駅 — ${stats.pct}%</span>`,
-        {className:'norireco-tooltip',sticky:true,offset:[12,0]}
-      );
-      hoverLine.on('click',e=>{
-        if(!memoMode)return;
-        let bSt=null,bD=Infinity;
-        bsts.forEach(s=>{
-          const d=map.distance([s.lat,s.lon],e.latlng);
-          if(d<bD){bD=d;bSt=s;}
+      // モバイルではホバー線を作らない（DOM負荷削減）
+      if (!IS_MOBILE) {
+        const hoverLine = L.polyline(latlngs,{
+          color:'transparent', weight:10, opacity:0,
+          lineCap:'round',
+        }).bindTooltip(
+          `<b style="color:${line.color}">${line.name}</b><br><span style="color:rgba(140,160,179,.8)">${line.region}</span><br><span style="color:rgba(242,169,0,.9);font-family:monospace">${stats.r}/${stats.t}駅 — ${stats.pct}%</span>`,
+          {className:'norireco-tooltip',sticky:true,offset:[12,0]}
+        );
+        hoverLine.on('click',e=>{
+          if(!memoMode)return;
+          let bSt=null,bD=Infinity;
+          bsts.forEach(s=>{
+            const d=map.distance([s.lat,s.lon],e.latlng);
+            if(d<bD){bD=d;bSt=s;}
+          });
+          clickInfo={line,station:bSt,lat:e.latlng.lat.toFixed(5),lon:e.latlng.lng.toFixed(5)};
+          openMemo();
         });
-        clickInfo={line,station:bSt,lat:e.latlng.lat.toFixed(5),lon:e.latlng.lng.toFixed(5)};
-        openMemo();
-      });
-      hoverLine.addTo(map);
+        hoverLine.addTo(map);
+      }
 
       // 乗車済みセグメント（グロー描画）
       let ss=null;
@@ -1459,8 +1492,14 @@ function drawSingleLine(line){
         let dot;
         if (_nLines > 1 && _ms) {
           const _colors = _ms.colors || _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
-          const _size = Math.round(11 * _mScale);
-          dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, false), opacity:0.7, interactive:true});
+          if (IS_MOBILE) {
+            // モバイル: Canvas circleMarker（DOM要素ゼロ）
+            dot = makeMergedDotMobile([s.lat,s.lon], _colors, 5 * _mScale, line.color, false, canvas);
+            dot.options.fillOpacity = 0.55;
+          } else {
+            const _size = Math.round(11 * _mScale);
+            dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, false), opacity:0.7, interactive:true});
+          }
         } else {
           dot = L.circleMarker([s.lat,s.lon],{
             radius:4 * _mScale, fillColor:line.color,
@@ -1491,8 +1530,12 @@ function drawSingleLine(line){
         let dot;
         if (_nLines > 1 && _ms) {
           const _colors = _ms.colors || _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
-          const _size = Math.round(14 * _mScale);
-          dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, true), interactive:true});
+          if (IS_MOBILE) {
+            dot = makeMergedDotMobile([s.lat,s.lon], _colors, 7 * _mScale, line.color, true, canvas);
+          } else {
+            const _size = Math.round(14 * _mScale);
+            dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, true), interactive:true});
+          }
         } else {
           dot = L.circleMarker([s.lat,s.lon],{
             radius:6 * _mScale,fillColor:line.color,
@@ -1520,8 +1563,13 @@ function drawSingleLine(line){
         let dot;
         if (_nLines > 1 && _ms) {
           const _colors = _ms.colors || _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
-          const _size = Math.round(10 * _mScale);
-          dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, false), opacity:0.6, interactive:true});
+          if (IS_MOBILE) {
+            dot = makeMergedDotMobile([s.lat,s.lon], _colors, 4 * _mScale, line.color, false, canvas);
+            dot.options.fillOpacity = 0.55;
+          } else {
+            const _size = Math.round(10 * _mScale);
+            dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, false), opacity:0.6, interactive:true});
+          }
         } else {
           dot = L.circleMarker([s.lat,s.lon],{
             radius:3 * _mScale, fillColor:line.color,
