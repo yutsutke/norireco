@@ -1564,8 +1564,8 @@ function drawSingleLine(line){
         } else {
           dot = L.circleMarker([s.lat,s.lon],{
             radius:4 * _mScale, fillColor:line.color,
-            color:'rgba(255,255,255,0.5)', weight:1.0,
-            fillOpacity:0.55, renderer:canvas,
+            color:'rgba(255,255,255,0.8)', weight:1.2,
+            fillOpacity:0.85, renderer:canvas,
           });
         }
         dot.bindTooltip(
@@ -1579,7 +1579,7 @@ function drawSingleLine(line){
         const label=L.marker([s.lat,s.lon],{
           icon:L.divIcon({
             className:'',
-            html:`<div style="font-family:'Zen Kaku Gothic New',sans-serif;font-size:9px;font-weight:400;color:rgba(255,255,255,0.6);text-shadow:0 0 4px rgba(0,0,0,1);white-space:nowrap;pointer-events:none;padding-left:6px;margin-top:-5px">${s.n}</div>`,
+            html:`<div style="font-family:'Zen Kaku Gothic New',sans-serif;font-size:9px;font-weight:400;color:rgba(255,255,255,0.85);text-shadow:0 0 4px rgba(0,0,0,1);white-space:nowrap;pointer-events:none;padding-left:6px;margin-top:-5px">${s.n}</div>`,
             iconSize:[0,0],iconAnchor:[0,0],
           }),interactive:false,
         });
