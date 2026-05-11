@@ -401,23 +401,53 @@ async function loadServiceLinesMaster() {
   }
 }
 
-// N02の駅名→座標マップ(同名複数あれば重心)を構築
-function buildN02StationCoordMap() {
-  const acc = new Map(); // name -> {latSum, lonSum, count}
+// N02 物理路線ごとの「駅名→座標」マップを構築
+// 同名駅問題を回避するため、グローバル重心ではなく路線単位で持つ
+function buildPerLineCoordMap() {
+  const m = new Map(); // n02LineName -> Map(stationName -> [lat, lon])
   for (const line of LINES) {
+    const inner = new Map();
     for (const st of (line.stations || [])) {
       const nm = st.n;
       if (!nm || typeof st.lat !== 'number' || typeof st.lon !== 'number') continue;
-      const cur = acc.get(nm);
-      if (cur) { cur.latSum += st.lat; cur.lonSum += st.lon; cur.count++; }
-      else acc.set(nm, { latSum: st.lat, lonSum: st.lon, count: 1 });
+      if (!inner.has(nm)) inner.set(nm, [st.lat, st.lon]);
+    }
+    m.set(line.name, inner);
+  }
+  return m;
+}
+
+// 営業系統 sl について、各駅の座標を「マスターと駅名一致が多い N02 物理路線」優先で解決
+function resolveServiceLineCoords(sl, perLineMap) {
+  const masterNames = new Set(sl.stations.map(s => s.name));
+  // 候補: official_line に部分一致 or マスターと駅名 2 駅以上重なる N02 路線
+  const candidates = [];
+  for (const [n02Name, stations] of perLineMap) {
+    let overlap = 0;
+    for (const n of masterNames) if (stations.has(n)) overlap++;
+    const officialMatch = sl.official_line && n02Name.startsWith(sl.official_line);
+    if (overlap >= 2 || officialMatch) {
+      candidates.push({ name: n02Name, stations, overlap, officialMatch });
     }
   }
-  const map = new Map();
-  for (const [nm, v] of acc) {
-    map.set(nm, [v.latSum / v.count, v.lonSum / v.count]);
+  // 駅名重複が多い候補を優先、同点なら official_line 一致を優先
+  candidates.sort((a, b) => (b.overlap - a.overlap) || (b.officialMatch - a.officialMatch));
+
+  const result = [];
+  let unresolved = [];
+  for (const s of sl.stations) {
+    let coord = null, src = null;
+    for (const c of candidates) {
+      if (c.stations.has(s.name)) { coord = c.stations.get(s.name); src = c.name; break; }
+    }
+    if (coord) {
+      result.push(coord);
+    } else {
+      result.push(null);
+      unresolved.push(s.name);
+    }
   }
-  return map;
+  return { coords: result, unresolved, candidateNames: candidates.slice(0, 3).map(c => `${c.name}(${c.overlap})`) };
 }
 
 function drawServiceLines() {
@@ -428,25 +458,21 @@ function drawServiceLines() {
   }
   if (!SERVICE_LINES_MASTER || !SERVICE_LINES_MASTER.length) return;
 
-  const coordMap = buildN02StationCoordMap();
+  const perLineMap = buildPerLineCoordMap();
   let drawnCount = 0, missingTotal = 0;
 
   for (const sl of SERVICE_LINES_MASTER) {
-    const pts = [];
-    let missing = 0;
-    for (const st of sl.stations) {
-      const c = coordMap.get(st.name);
-      if (c) pts.push(c);
-      else missing++;
-    }
+    const { coords, unresolved, candidateNames } = resolveServiceLineCoords(sl, perLineMap);
+    const pts = coords.filter(c => c !== null);
+    const missing = unresolved.length;
     if (sl.is_circular && pts.length > 1) pts.push(pts[0]);
     if (pts.length < 2) {
-      console.warn(`[営業系統] ${sl.name}: 座標取得不足 ${pts.length}駅 (欠 ${missing})`);
+      console.warn(`[営業系統] ${sl.name}: 座標取得不足 ${pts.length}駅 (欠 ${missing}) 候補=${candidateNames.join(',')}`);
       continue;
     }
     if (missing > 0) {
       missingTotal += missing;
-      console.warn(`[営業系統] ${sl.name}: ${missing}駅の座標欠落`);
+      console.warn(`[営業系統] ${sl.name}: ${missing}駅の座標欠落 [${unresolved.join(',')}] 候補=${candidateNames.join(',')}`);
     }
     const color = sl.color || '#ffffff';
     // 白縁取り(視認性) + メイン色の二段重ね
