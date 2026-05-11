@@ -70,12 +70,12 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 .ms-val{color:var(--white);font-weight:500;}
 
 .map-legend-box{
-  position:absolute;bottom:60px;left:8px;z-index:1000;
+  position:absolute;top:90px;left:8px;z-index:500;
   background:rgba(13,27,42,.92);border:1px solid var(--track);border-radius:12px;
   padding:9px 12px;font-size:10px;color:var(--silver);
   backdrop-filter:blur(8px);
   /* PC/iPad: スクロール可能、最大高さ画面の半分まで */
-  max-height:calc(100vh - 200px);
+  max-height:calc(100vh - 110px);
   overflow-y:auto;
   pointer-events:auto;
   /* ホイール/タッチでスクロール可能に */
@@ -89,6 +89,8 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 }
 /* タッチデバイス (iPad/スマホ) では Leaflet 拡大縮小ボタン非表示 */
 .no-zoom-control .leaflet-control-zoom{display:none !important;}
+/* ズームボタンを必ず最前面に */
+.leaflet-top.leaflet-left{z-index:1100 !important;}
 .leg-row{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
 .leg-row:last-child{margin-bottom:0;}
 .leg-swatch{height:3px;width:20px;border-radius:2px;}
@@ -1320,8 +1322,10 @@ function stationTier(nLines, name) {
 // isMetro=true なら三大都市圏(密集)用の厳しめ閾値
 // isMetro=false なら地方用の早出し閾値
 function getDotMinTier(z, isMetro) {
-  // スマホ + 首都圏は駅マーカー自体を1ズーム遅く出す (密集対策)
+  // スマホ + 首都圏は駅マーカーを1ズーム遅く出す (密集対策)
   if (IS_MOBILE && isMetro) z -= 1;
+  // スマホ + 地方は駅マーカーを2ズーム早く出す (疎なので早めに見たい)
+  if (IS_MOBILE && !isMetro) z += 2;
   if (IS_MOBILE) {
     // モバイル: 駅数削減
     if (isMetro) {
@@ -1365,13 +1369,15 @@ function getDotMinTier(z, isMetro) {
 }
 // ラベル用 (さらに厳しめ)
 function getLabelMinTier(z, isMetro) {
-  // 首都圏: ドットより1ズーム遅く駅名 (offset -1, 密集対策)
-  // 地方:   PC/iPad は1ズーム早く、スマホは2ズーム早く
+  // 一貫して「駅マーカーが先、駅名は後」
+  //   首都圏:        ドットから1ズーム後に駅名
+  //   PC/iPad+地方:  ドットから1ズーム後に駅名
+  //   スマホ+地方:   ドットから2ズーム後に駅名
   let offset;
   if (isMetro) {
-    offset = -1;  // 首都圏は密集してるので駅名は遅らせる
+    offset = -1;  // 首都圏: ドット +1ズームで駅名
   } else {
-    offset = IS_MOBILE ? 2 : 1;  // 地方はラベル早出し
+    offset = IS_MOBILE ? -2 : -1;  // 地方: PC+1ズーム / スマホ+2ズームで駅名
   }
   return getDotMinTier(z + offset, isMetro);
 }
