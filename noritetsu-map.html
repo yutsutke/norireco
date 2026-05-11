@@ -82,10 +82,13 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 }
 .map-legend-box::-webkit-scrollbar{width:5px;}
 .map-legend-box::-webkit-scrollbar-thumb{background:rgba(140,160,179,.3);border-radius:3px;}
-/* スマホでは凡例パネル非表示 */
+/* スマホでは凡例パネル＋統計ボックス非表示 */
 @media (max-width: 768px){
   .map-legend-box{display:none;}
+  .map-stats-box{display:none;}
 }
+/* タッチデバイス (iPad/スマホ) では Leaflet 拡大縮小ボタン非表示 */
+.no-zoom-control .leaflet-control-zoom{display:none !important;}
 .leg-row{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
 .leg-row:last-child{margin-bottom:0;}
 .leg-swatch{height:3px;width:20px;border-radius:2px;}
@@ -994,7 +997,14 @@ function initMap(){
   };
   applyMapMode(window._mapMode);
 
-  L.control.zoom({position:'bottomright'}).addTo(map);
+  // タッチデバイス(iPad/スマホ): Leafletの拡大縮小ボタンを出さない
+  // PC: 左上に配置 (右下のカメラ・モード切替ボタンと被らないように)
+  if (!IS_TOUCH) {
+    L.control.zoom({position:'topleft'}).addTo(map);
+  } else {
+    // bodyにクラスを付けて、もしどこかで生成されてもCSSで隠す
+    document.body.classList.add('no-zoom-control');
+  }
 
   // レイヤーグループを先に作成
   dotLayerRef = L.layerGroup();
@@ -1209,16 +1219,19 @@ function updateLOD() {
     const minOfBoth = Math.min(labelMinMetro, labelMinRural);
     if (minOfBoth <= 6) {
       if (!map.hasLayer(labelLayerRef)) map.addLayer(labelLayerRef);
-      // _allLabels (マスター) を見て、表示すべきラベルだけ実際に layer に入れる
+      // ★最重要最適化: ビューポート内のラベルだけDOMに追加
+      // 画面外の駅名は読み込まない → 巨大エリアでも軽量
+      const _bounds = map.getBounds().pad(0.15);  // 少しゆとり持つ
       (window._allLabels || []).forEach(l => {
         const t = l._station_tier || 1;
         const m = l._station_isMetro;
         const minTier = m ? labelMinMetro : labelMinRural;
-        const shouldShow = t >= minTier;
+        const passesT = t >= minTier;
+        const passesView = passesT && _bounds.contains(l.getLatLng());
         const inLayer = labelLayerRef.hasLayer(l);
-        if (shouldShow && !inLayer) {
+        if (passesView && !inLayer) {
           labelLayerRef.addLayer(l);
-        } else if (!shouldShow && inLayer) {
+        } else if (!passesView && inLayer) {
           labelLayerRef.removeLayer(l);
         }
       });
@@ -1245,14 +1258,23 @@ function getBranchedStations(line){
 }
 
 // モバイル端末判定 (ズーム/パン軽量化用)
+// IS_MOBILE: iPhone/Android スマホのみ (iPad は画面が大きいので PC 扱い)
+// IS_TOUCH: タッチデバイス全般 (iPad含む) - ズームボタン非表示等に使う
 const IS_MOBILE = (() => {
   if (typeof navigator === 'undefined') return false;
   const ua = navigator.userAgent || '';
-  if (/iPhone|iPad|iPod|Android/i.test(ua)) return true;
+  // iPhone, iPod, Android-mobile はモバイル
+  if (/iPhone|iPod/i.test(ua)) return true;
+  if (/Android/i.test(ua) && /Mobile/i.test(ua)) return true;
+  // iPad は除外 (PC扱い)
   if (typeof window !== 'undefined' && window.innerWidth < 768) return true;
   return false;
 })();
-console.log('[乗レコ] IS_MOBILE:', IS_MOBILE);
+const IS_TOUCH = (() => {
+  if (typeof navigator === 'undefined') return false;
+  return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+})();
+console.log('[乗レコ] IS_MOBILE:', IS_MOBILE, '/ IS_TOUCH:', IS_TOUCH);
 
 // 三大都市圏の中心駅 (最も低ズームから表示)
 const SUPER_MEGA_STATIONS = new Set([
