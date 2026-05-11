@@ -224,12 +224,7 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
     </div>
     <button class="map-mode-fab" id="map-mode-btn" onclick="cycleMapMode()" title="背景切替">🗺️</button>
     <button class="memo-fab" id="memo-btn" onclick="toggleMemoMode()" title="メモ投稿">📸</button>
-    <!-- 復元ボタン（localStorageが空のときのみ表示） -->
-    <div id="restore-hint" style="display:none;position:absolute;bottom:70px;left:50%;transform:translateX(-50%);z-index:1000;white-space:nowrap">
-      <button onclick="openRestoreModal()" style="background:rgba(242,169,0,.15);border:1.5px solid var(--gold);color:var(--gold);border-radius:12px;padding:10px 16px;font-family:'Zen Kaku Gothic New',sans-serif;font-size:13px;cursor:pointer;backdrop-filter:blur(8px)">
-        📲 新端末？Notionから記録を復元
-      </button>
-    </div>
+
   </div>
 
 <!-- 復元モーダル -->
@@ -1007,8 +1002,7 @@ function initMap(){
 
   // 復元ヒント表示
   if (stats.source === 'static') {
-    const hint = document.getElementById('restore-hint');
-    if (hint) hint.style.display = 'block';
+    // restore-hint は削除済み (ユーザー要望)
   }
 
   // 復元モーダルの情報更新
@@ -1261,49 +1255,88 @@ function stationTier(nLines, name) {
 // isMetro=true なら三大都市圏(密集)用の厳しめ閾値
 // isMetro=false なら地方用の早出し閾値
 function getDotMinTier(z, isMetro) {
-  // モバイルではズーム閾値を1段階厳しく (駅数削減で軽量化)
-  if (IS_MOBILE) z -= 1;
-  if (isMetro) {
-    if (z >= 14) return 1;  // 全駅
-    if (z >= 13) return 2;  // 2路線+
-    if (z >= 12) return 3;  // 3路線+
-    if (z >= 11) return 4;  // 4路線+ (主要junction)
-    if (z >= 8)  return 5;  // 7路線+ (新宿・渋谷等)
-    if (z >= 5)  return 6;  // tier6中心のみ
-    return 99;
+  if (IS_MOBILE) {
+    // モバイル: 駅数削減 (現状のまま様子見)
+    if (isMetro) {
+      if (z >= 14) return 1;
+      if (z >= 13) return 2;
+      if (z >= 12) return 3;
+      if (z >= 11) return 4;
+      if (z >= 8)  return 5;
+      if (z >= 5)  return 6;
+      return 99;
+    } else {
+      if (z >= 11) return 1;
+      if (z >= 10) return 2;
+      if (z >= 9)  return 3;
+      if (z >= 8)  return 4;
+      if (z >= 7)  return 5;
+      if (z >= 5)  return 6;
+      return 99;
+    }
   } else {
-    // 地方: 駅が疎なので早めに見える
-    if (z >= 11) return 1;  // 全駅
-    if (z >= 10) return 2;
-    if (z >= 9)  return 3;
-    if (z >= 8)  return 4;
-    if (z >= 7)  return 5;
-    if (z >= 5)  return 6;
-    return 99;
+    // PC/iPad: もっと早めに駅マーカー表示 (画面広くて性能あるので)
+    if (isMetro) {
+      if (z >= 12) return 1;  // 全駅 (was z>=14)
+      if (z >= 11) return 2;
+      if (z >= 10) return 3;
+      if (z >= 9)  return 4;
+      if (z >= 7)  return 5;
+      if (z >= 5)  return 6;
+      return 99;
+    } else {
+      // 地方
+      if (z >= 10) return 1;  // 全駅 (was z>=11)
+      if (z >= 9)  return 2;
+      if (z >= 8)  return 3;
+      if (z >= 7)  return 4;
+      if (z >= 6)  return 5;
+      if (z >= 5)  return 6;
+      return 99;
+    }
   }
 }
 // ラベル用 (さらに厳しめ)
 function getLabelMinTier(z, isMetro) {
-  // モバイル: ラベル閾値は PC と同じ (駅名は早めに見せる)
-  // ※ドット側だけは z-=1 で軽量化を維持
-  if (isMetro) {
-    // 首都圏でもz=13で全駅名が見えるように緩和
-    if (z >= 13) return 1;  // 全駅名 (was z>=15)
-    if (z >= 12) return 2;
-    if (z >= 11) return 3;
-    if (z >= 10) return 4;
-    if (z >= 9)  return 5;
-    if (z >= 7)  return 6;
-    return 99;
+  if (IS_MOBILE) {
+    // モバイル: 現状維持
+    if (isMetro) {
+      if (z >= 13) return 1;
+      if (z >= 12) return 2;
+      if (z >= 11) return 3;
+      if (z >= 10) return 4;
+      if (z >= 9)  return 5;
+      if (z >= 7)  return 6;
+      return 99;
+    } else {
+      if (z >= 12) return 1;
+      if (z >= 11) return 2;
+      if (z >= 10) return 3;
+      if (z >= 9)  return 4;
+      if (z >= 8)  return 5;
+      if (z >= 6)  return 6;
+      return 99;
+    }
   } else {
-    // 地方: ラベルも早めに表示
-    if (z >= 12) return 1;  // 全駅名
-    if (z >= 11) return 2;
-    if (z >= 10) return 3;
-    if (z >= 9)  return 4;
-    if (z >= 8)  return 5;
-    if (z >= 6)  return 6;
-    return 99;
+    // PC/iPad: もう一段早めに駅名表示
+    if (isMetro) {
+      if (z >= 12) return 1;  // 全駅名 (was z>=13)
+      if (z >= 11) return 2;
+      if (z >= 10) return 3;
+      if (z >= 9)  return 4;
+      if (z >= 8)  return 5;
+      if (z >= 6)  return 6;
+      return 99;
+    } else {
+      // 地方
+      if (z >= 11) return 1;  // 全駅名 (was z>=12)
+      if (z >= 10) return 2;
+      if (z >= 9)  return 3;
+      if (z >= 8)  return 4;
+      if (z >= 7)  return 5;
+      if (z >= 5)  return 6;
+      return 99;
+    }
   }
 }
 // マーカー(circleMarker or divIcon)の表示/非表示切り替え
