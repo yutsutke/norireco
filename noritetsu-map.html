@@ -114,6 +114,16 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
   box-shadow:0 4px 16px rgba(0,0,0,.5);transition:all .2s;
 }
 .map-mode-fab:hover{transform:scale(1.08);}
+.svc-lines-fab{
+  position:absolute;bottom:170px;right:8px;z-index:1000;
+  width:46px;height:46px;border-radius:50%;
+  background:rgba(30,52,72,.95);border:1.5px solid var(--track);
+  color:var(--white);font-size:20px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgba(0,0,0,.5);transition:all .2s;
+}
+.svc-lines-fab.on{background:rgba(140,200,255,.22);border-color:#8cc8ff;color:#8cc8ff;}
+.svc-lines-fab:hover{transform:scale(1.08);}
 
 /* Leaflet tooltip style */
 .merged-pie-marker {
@@ -240,6 +250,7 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
     </div>
     <button class="map-mode-fab" id="map-mode-btn" onclick="cycleMapMode()" title="背景切替">🗺️</button>
     <button class="memo-fab" id="memo-btn" onclick="toggleMemoMode()" title="メモ投稿">📸</button>
+    <button class="svc-lines-fab" id="svc-lines-btn" onclick="toggleServiceLines()" title="営業系統オーバーレイ（POC）">🚆</button>
 
   </div>
 
@@ -364,6 +375,113 @@ async function loadMergedStations() {
     console.log(`[乗レコ] 統合駅 ${MERGED_STATIONS.length}駅 (逆引き ${mergedStationMap.size}件)`);
   } catch (e) {
     console.warn('[乗レコ] merged_stations.json 読込失敗:', e.message);
+  }
+}
+
+// ── 営業系統マスター (POC: service_lines_master.json オーバーレイ) ──
+// 物理路線(N02)とは別に、乗客視点の「営業系統」を polyline で重ね描き
+let SERVICE_LINES_MASTER = null;
+let serviceLineLayer = null;
+let serviceLinesVisible = false;
+let serviceLinesLoaded = false;
+
+async function loadServiceLinesMaster() {
+  if (SERVICE_LINES_MASTER) return SERVICE_LINES_MASTER;
+  try {
+    const res = await fetch('service_lines_master.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    SERVICE_LINES_MASTER = data.service_lines || [];
+    console.log(`[乗レコ] 営業系統 ${SERVICE_LINES_MASTER.length}系統 読込`);
+    return SERVICE_LINES_MASTER;
+  } catch (e) {
+    console.warn('[乗レコ] service_lines_master.json 読込失敗:', e.message);
+    SERVICE_LINES_MASTER = [];
+    return SERVICE_LINES_MASTER;
+  }
+}
+
+// N02の駅名→座標マップ(同名複数あれば重心)を構築
+function buildN02StationCoordMap() {
+  const acc = new Map(); // name -> {latSum, lonSum, count}
+  for (const line of LINES) {
+    for (const st of (line.stations || [])) {
+      const nm = st.n;
+      if (!nm || typeof st.lat !== 'number' || typeof st.lon !== 'number') continue;
+      const cur = acc.get(nm);
+      if (cur) { cur.latSum += st.lat; cur.lonSum += st.lon; cur.count++; }
+      else acc.set(nm, { latSum: st.lat, lonSum: st.lon, count: 1 });
+    }
+  }
+  const map = new Map();
+  for (const [nm, v] of acc) {
+    map.set(nm, [v.latSum / v.count, v.lonSum / v.count]);
+  }
+  return map;
+}
+
+function drawServiceLines() {
+  if (serviceLineLayer) {
+    serviceLineLayer.clearLayers();
+  } else {
+    serviceLineLayer = L.layerGroup();
+  }
+  if (!SERVICE_LINES_MASTER || !SERVICE_LINES_MASTER.length) return;
+
+  const coordMap = buildN02StationCoordMap();
+  let drawnCount = 0, missingTotal = 0;
+
+  for (const sl of SERVICE_LINES_MASTER) {
+    const pts = [];
+    let missing = 0;
+    for (const st of sl.stations) {
+      const c = coordMap.get(st.name);
+      if (c) pts.push(c);
+      else missing++;
+    }
+    if (sl.is_circular && pts.length > 1) pts.push(pts[0]);
+    if (pts.length < 2) {
+      console.warn(`[営業系統] ${sl.name}: 座標取得不足 ${pts.length}駅 (欠 ${missing})`);
+      continue;
+    }
+    if (missing > 0) {
+      missingTotal += missing;
+      console.warn(`[営業系統] ${sl.name}: ${missing}駅の座標欠落`);
+    }
+    const color = sl.color || '#ffffff';
+    // 白縁取り(視認性) + メイン色の二段重ね
+    L.polyline(pts, {
+      color: '#ffffff', weight: 8, opacity: 0.55,
+      lineCap: 'round', lineJoin: 'round'
+    }).addTo(serviceLineLayer);
+    const main = L.polyline(pts, {
+      color, weight: 4.5, opacity: 0.95,
+      lineCap: 'round', lineJoin: 'round'
+    }).bindTooltip(
+      `<b style="color:${color}">${sl.name}</b><br><span style="color:rgba(140,160,179,.8)">${sl.operator} · ${sl.stations.length}駅</span>`,
+      { className: 'norireco-tooltip', sticky: true, offset: [10, 0] }
+    );
+    main.addTo(serviceLineLayer);
+    drawnCount++;
+  }
+  console.log(`[乗レコ] 営業系統描画完了: ${drawnCount}系統 (座標欠落 計${missingTotal}駅)`);
+}
+
+async function toggleServiceLines() {
+  const btn = document.getElementById('svc-lines-btn');
+  if (!serviceLinesVisible) {
+    if (!serviceLinesLoaded) {
+      await loadServiceLinesMaster();
+      serviceLinesLoaded = true;
+    }
+    drawServiceLines();
+    if (serviceLineLayer && map) serviceLineLayer.addTo(map);
+    serviceLinesVisible = true;
+    if (btn) btn.classList.add('on');
+  } else {
+    if (serviceLineLayer && map) map.removeLayer(serviceLineLayer);
+    serviceLinesVisible = false;
+    if (btn) btn.classList.remove('on');
   }
 }
 
