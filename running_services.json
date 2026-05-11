@@ -314,88 +314,6 @@
       "color": "#E60012",
       "group": "新幹線"
     },
-    "joetsu-shinkansen": {
-      "name": "上越新幹線",
-      "segments": [
-        {
-          "line": "東北新幹線_東日本旅客鉄道",
-          "from": "東京",
-          "to": "大宮"
-        },
-        {
-          "line": "上越新幹線_東日本旅客鉄道",
-          "from": "大宮",
-          "to": "新潟"
-        }
-      ],
-      "color": "#00A0E9",
-      "group": "新幹線"
-    },
-    "hokuriku": {
-      "name": "北陸新幹線",
-      "segments": [
-        {
-          "line": "東北新幹線_東日本旅客鉄道",
-          "from": "東京",
-          "to": "大宮"
-        },
-        {
-          "line": "上越新幹線_東日本旅客鉄道",
-          "from": "大宮",
-          "to": "高崎"
-        },
-        {
-          "line": "北陸新幹線_東日本旅客鉄道",
-          "from": "高崎",
-          "to": "上越妙高"
-        },
-        {
-          "line": "北陸新幹線_西日本旅客鉄道",
-          "from": "上越妙高",
-          "to": "敦賀"
-        }
-      ],
-      "color": "#005BAC",
-      "region": "",
-      "group": "新幹線"
-    },
-    "kyushu-shinkansen": {
-      "name": "九州新幹線",
-      "segments": [
-        {
-          "line": "九州新幹線_九州旅客鉄道",
-          "from": "博多",
-          "to": "鹿児島中央"
-        }
-      ],
-      "color": "#E60012",
-      "region": "",
-      "group": "九州"
-    },
-    "nishi-kyushu-shinkansen": {
-      "name": "西九州新幹線",
-      "segments": [
-        {
-          "line": "西九州新幹線_九州旅客鉄道",
-          "from": "武雄温泉",
-          "to": "長崎"
-        }
-      ],
-      "color": "#00A0E9",
-      "group": "新幹線"
-    },
-    "hokkaido-shinkansen": {
-      "name": "北海道新幹線",
-      "segments": [
-        {
-          "line": "北海道新幹線_北海道旅客鉄道",
-          "from": "新青森",
-          "to": "新函館北斗"
-        }
-      ],
-      "color": "#0072BC",
-      "group": "新幹線"
-    },
     "tokyometro-ginza": {
       "name": "東京メトロ銀座線",
       "segments": [
@@ -626,31 +544,6 @@
       "region": "",
       "group": "首都圏"
     },
-    "tokyu-denentoshi": {
-      "name": "東急田園都市線",
-      "segments": [
-        {
-          "line": "田園都市線_東急電鉄",
-          "from": "渋谷",
-          "to": "中央林間"
-        }
-      ],
-      "color": "#3DB7CD",
-      "group": "私鉄"
-    },
-    "keio": {
-      "name": "京王線",
-      "segments": [
-        {
-          "line": "京王線_京王電鉄",
-          "from": "新宿",
-          "to": "京王八王子"
-        }
-      ],
-      "color": "#CC0066",
-      "region": "",
-      "group": "首都圏"
-    },
     "tobu-tojo": {
       "name": "東武東上線",
       "segments": [
@@ -689,18 +582,6 @@
       "color": "#F77321",
       "region": "",
       "group": "首都圏"
-    },
-    "seibu-ikebukuro": {
-      "name": "西武池袋線",
-      "segments": [
-        {
-          "line": "池袋線_西武鉄道",
-          "from": "池袋",
-          "to": "吾野"
-        }
-      ],
-      "color": "#FF6F00",
-      "group": "私鉄"
     },
     "seibu-shinjuku": {
       "name": "西武新宿線",
@@ -892,19 +773,6 @@
       "region": "",
       "group": "九州"
     },
-    "nishi-kyushu": {
-      "name": "西九州新幹線",
-      "segments": [
-        {
-          "line": "西九州新幹線_九州旅客鉄道",
-          "from": "武雄温泉",
-          "to": "長崎"
-        }
-      ],
-      "color": "#00A0E9",
-      "region": "",
-      "group": "九州"
-    },
     "soya": {
       "name": "JR宗谷本線",
       "segments": [
@@ -1026,19 +894,6 @@
       "region": "",
       "group": "首都圏"
     },
-    "tohoku": {
-      "name": "東北新幹線",
-      "segments": [
-        {
-          "line": "東北新幹線_東日本旅客鉄道",
-          "from": "東京",
-          "to": "新青森"
-        }
-      ],
-      "color": "#007744",
-      "region": "",
-      "group": "新幹線"
-    },
     "kintetsu-nagoya": {
       "name": "近鉄名古屋線",
       "segments": [
@@ -1093,29 +948,6 @@
         }
       ],
       "color": "#F68B1F",
-      "region": "",
-      "group": "関西"
-    },
-    "keihan": {
-      "name": "京阪本線",
-      "segments": [
-        {
-          "line": "京阪本線_京阪電気鉄道",
-          "from": "淀屋橋",
-          "to": "丹波橋"
-        },
-        {
-          "line": "京都線_近畿日本鉄道",
-          "from": "近鉄丹波橋",
-          "to": "伏見"
-        },
-        {
-          "line": "京阪本線_京阪電気鉄道",
-          "from": "三条",
-          "to": "鳥羽街道"
-        }
-      ],
-      "color": "#009B6B",
       "region": "",
       "group": "関西"
     },
@@ -1188,39 +1020,6 @@
         }
       ],
       "color": "#E3002D",
-      "region": "",
-      "group": "関西"
-    },
-    "nankai": {
-      "name": "南海本線",
-      "segments": [
-        {
-          "line": "南海本線_南海電気鉄道",
-          "from": "難波",
-          "to": "住吉大社"
-        },
-        {
-          "line": "高野線_南海電気鉄道",
-          "from": "住吉東",
-          "to": "浅香山"
-        },
-        {
-          "line": "南海本線_南海電気鉄道",
-          "from": "堺",
-          "to": "尾崎"
-        },
-        {
-          "line": "阪和線_西日本旅客鉄道",
-          "from": "山中渓",
-          "to": "紀伊"
-        },
-        {
-          "line": "南海本線_南海電気鉄道",
-          "from": "和歌山大学前",
-          "to": "和歌山市"
-        }
-      ],
-      "color": "#009B6B",
       "region": "",
       "group": "関西"
     },
@@ -1548,19 +1347,6 @@
       "region": "",
       "group": "関西"
     },
-    "hanshin-namba": {
-      "name": "阪神なんば線",
-      "segments": [
-        {
-          "line": "阪神なんば線_阪神電気鉄道",
-          "from": "尼崎",
-          "to": "大阪難波"
-        }
-      ],
-      "color": "#F0A500",
-      "region": "",
-      "group": "関西"
-    },
     "keihan-uji": {
       "name": "京阪宇治線",
       "segments": [
@@ -1768,19 +1554,6 @@
       "region": "",
       "group": "首都圏"
     },
-    "musashino-north": {
-      "name": "JR武蔵野線",
-      "segments": [
-        {
-          "line": "武蔵野線_東日本旅客鉄道",
-          "from": "武蔵浦和",
-          "to": "新秋津"
-        }
-      ],
-      "color": "#FF9800",
-      "region": "",
-      "group": "首都圏"
-    },
     "tobu-kameido": {
       "name": "東武亀戸線",
       "segments": [
@@ -1887,34 +1660,6 @@
       "region": "",
       "group": "首都圏"
     },
-    "keikyu-honsen-full": {
-      "name": "京急本線",
-      "segments": [
-        {
-          "line": "本線_京浜急行電鉄",
-          "from": "泉岳寺",
-          "to": "六郷土手"
-        },
-        {
-          "line": "南武線_東日本旅客鉄道",
-          "from": "川崎",
-          "to": "八丁畷"
-        },
-        {
-          "line": "本線_京浜急行電鉄",
-          "from": "八丁畷",
-          "to": "堀ノ内"
-        },
-        {
-          "line": "久里浜線_京浜急行電鉄",
-          "from": "堀ノ内",
-          "to": "三崎口"
-        }
-      ],
-      "color": "#E60033",
-      "region": "",
-      "group": "首都圏"
-    },
     "tokyu-kodomonokuni": {
       "name": "東急こどもの国線",
       "segments": [
@@ -1925,19 +1670,6 @@
         }
       ],
       "color": "#009B6B",
-      "region": "",
-      "group": "首都圏"
-    },
-    "odakyu-enoshima-full": {
-      "name": "小田急江ノ島線",
-      "segments": [
-        {
-          "line": "江ノ島線_小田急電鉄",
-          "from": "相模大野",
-          "to": "片瀬江ノ島"
-        }
-      ],
-      "color": "#0072BC",
       "region": "",
       "group": "首都圏"
     },
@@ -2029,19 +1761,6 @@
       "region": "",
       "group": "首都圏"
     },
-    "hitachi-dentetsu": {
-      "name": "ひたちなか海浜鉄道湊線",
-      "segments": [
-        {
-          "line": "湊線_ひたちなか海浜鉄道",
-          "from": "勝田",
-          "to": "阿字ヶ浦"
-        }
-      ],
-      "color": "#E60033",
-      "region": "",
-      "group": "首都圏"
-    },
     "kanto-tsuchiura": {
       "name": "関東鉄道竜ヶ崎線",
       "segments": [
@@ -2070,19 +1789,6 @@
         }
       ],
       "color": "#0072BC",
-      "region": "",
-      "group": "首都圏"
-    },
-    "sotobo-full": {
-      "name": "JR外房線",
-      "segments": [
-        {
-          "line": "外房線_東日本旅客鉄道",
-          "from": "千葉",
-          "to": "安房鴨川"
-        }
-      ],
-      "color": "#F5A200",
       "region": "",
       "group": "首都圏"
     },
@@ -2148,42 +1854,6 @@
       "region": "",
       "group": "首都圏"
     },
-    "yokohama-subway-blue-full": {
-      "name": "横浜市営地下鉄ブルーライン",
-      "segments": [
-        {
-          "line": "1号線_横浜市",
-          "from": "湘南台",
-          "to": "関内"
-        },
-        {
-          "line": "3号線_横浜市",
-          "from": "関内",
-          "to": "中川"
-        },
-        {
-          "line": "4号線_横浜市",
-          "from": "都筑ふれあいの丘",
-          "to": "北山田"
-        }
-      ],
-      "color": "#0074BF",
-      "region": "",
-      "group": "首都圏"
-    },
-    "izuhakone-daiyuzan": {
-      "name": "伊豆箱根鉄道大雄山線",
-      "segments": [
-        {
-          "line": "大雄山線_伊豆箱根鉄道",
-          "from": "小田原",
-          "to": "大雄山"
-        }
-      ],
-      "color": "#009B6B",
-      "region": "",
-      "group": "首都圏"
-    },
     "hakone-tozan": {
       "name": "箱根登山鉄道",
       "segments": [
@@ -2212,32 +1882,6 @@
         }
       ],
       "color": "#E60033",
-      "region": "",
-      "group": "首都圏"
-    },
-    "tama-toshi-full": {
-      "name": "多摩都市モノレール",
-      "segments": [
-        {
-          "line": "多摩都市モノレール線_多摩都市モノレール",
-          "from": "多摩センター",
-          "to": "上北台"
-        }
-      ],
-      "color": "#E60012",
-      "region": "",
-      "group": "首都圏"
-    },
-    "nippori-toneri-full": {
-      "name": "日暮里・舎人ライナー",
-      "segments": [
-        {
-          "line": "日暮里_舎人ライナー_東京都",
-          "from": "日暮里",
-          "to": "見沼代親水公園"
-        }
-      ],
-      "color": "#009B6B",
       "region": "",
       "group": "首都圏"
     },
@@ -2811,19 +2455,6 @@
       "region": "",
       "group": "首都圏"
     },
-    "shonan-monorail": {
-      "name": "湘南モノレール",
-      "segments": [
-        {
-          "line": "江の島線_湘南モノレール",
-          "from": "大船",
-          "to": "湘南江の島"
-        }
-      ],
-      "color": "#E60033",
-      "region": "",
-      "group": "首都圏"
-    },
     "yokohama-subway-blue": {
       "name": "横浜市営地下鉄ブルーライン",
       "segments": [
@@ -3083,19 +2714,6 @@
       "region": "",
       "group": "首都圏"
     },
-    "enoshima-dentetsu": {
-      "name": "箱根登山鉄道",
-      "segments": [
-        {
-          "line": "鉄道線_小田急箱根",
-          "from": "小田原",
-          "to": "強羅"
-        }
-      ],
-      "color": "#009B6B",
-      "region": "",
-      "group": "首都圏"
-    },
     "yurikamome": {
       "name": "ゆりかもめ",
       "segments": [
@@ -3119,24 +2737,6 @@
         }
       ],
       "color": "#005BAC",
-      "region": "",
-      "group": "首都圏"
-    },
-    "tokyo-monorail": {
-      "name": "東京モノレール羽田空港線",
-      "segments": [
-        {
-          "line": "東京モノレール羽田空港線_東京モノレール",
-          "from": "天王洲アイル",
-          "to": "羽田空港第3ターミナル"
-        },
-        {
-          "line": "空港線_京浜急行電鉄",
-          "from": "羽田空港第3ターミナル",
-          "to": "羽田空港第1・第2ターミナル"
-        }
-      ],
-      "color": "#0072BC",
       "region": "",
       "group": "首都圏"
     },
@@ -4002,55 +3602,6 @@
       "region": "",
       "group": "首都圏"
     },
-    "seibu-ikebukuro-ext": {
-      "name": "西武有楽町線",
-      "segments": [
-        {
-          "line": "西武有楽町線_西武鉄道",
-          "from": "小竹向原",
-          "to": "練馬"
-        }
-      ],
-      "color": "#003087",
-      "region": "",
-      "group": "首都圏"
-    },
-    "toei-nippori-toneri": {
-      "name": "日暮里・舎人ライナー",
-      "segments": [
-        {
-          "line": "日暮里_舎人ライナー_東京都",
-          "from": "日暮里",
-          "to": "見沼代親水公園"
-        }
-      ],
-      "color": "#009B6B",
-      "region": "",
-      "group": "首都圏"
-    },
-    "yokohama-minatomirai-ext": {
-      "name": "横浜市営地下鉄グリーンライン",
-      "segments": [
-        {
-          "line": "4号線_横浜市",
-          "from": "中山",
-          "to": "東山田"
-        },
-        {
-          "line": "3号線_横浜市",
-          "from": "センター北",
-          "to": "岸根公園"
-        },
-        {
-          "line": "4号線_横浜市",
-          "from": "日吉本町",
-          "to": "日吉"
-        }
-      ],
-      "color": "#88B04B",
-      "region": "",
-      "group": "首都圏"
-    },
     "keikyu-airport": {
       "name": "京急空港線",
       "segments": [
@@ -4722,7 +4273,7 @@
       "name": "九州新幹線",
       "color": "#E60012",
       "region": "",
-      "group": "新幹線",
+      "group": "九州",
       "segments": [
         {
           "line": "九州新幹線_九州旅客鉄道",
@@ -4793,19 +4344,6 @@
           "line": "北陸新幹線_東日本旅客鉄道",
           "from": "上越妙高",
           "to": "高崎"
-        }
-      ]
-    },
-    "北陸新幹線_西日本旅客鉄道": {
-      "name": "北陸新幹線",
-      "color": "#0072BC",
-      "region": "",
-      "group": "新幹線",
-      "segments": [
-        {
-          "line": "北陸新幹線_西日本旅客鉄道",
-          "from": "上越妙高",
-          "to": "敦賀"
         }
       ]
     },
@@ -7101,7 +6639,7 @@
       "name": "京王線",
       "color": "hsl(152, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "京王線_京王電鉄",
@@ -7192,7 +6730,7 @@
       "name": "京阪本線",
       "color": "hsl(35, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "京阪本線_京阪電気鉄道",
@@ -7725,7 +7263,7 @@
       "name": "阪神なんば線",
       "color": "hsl(34, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "阪神なんば線_阪神電気鉄道",
@@ -8310,7 +7848,7 @@
       "name": "西武有楽町線",
       "color": "hsl(96, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "西武有楽町線_西武鉄道",
@@ -8596,7 +8134,7 @@
       "name": "東京モノレール羽田空港線",
       "color": "hsl(216, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "東京モノレール羽田空港線_東京モノレール",
@@ -9168,7 +8706,7 @@
       "name": "南海本線",
       "color": "hsl(163, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "南海本線_南海電気鉄道",
@@ -9701,7 +9239,7 @@
       "name": "日暮里・舎人ライナー",
       "color": "hsl(116, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "日暮里_舎人ライナー_東京都",
