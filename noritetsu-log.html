@@ -32,6 +32,11 @@ header{background:var(--steel);border-bottom:3px solid var(--red);padding:12px 1
 .sg label{display:block;font-size:11px;color:var(--silver);margin-bottom:5px;}
 select{width:100%;background:var(--steel);border:1.5px solid var(--track);color:var(--white);padding:11px 13px;border-radius:9px;font-family:'Noto Sans JP',sans-serif;font-size:14px;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238CA0B3' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;cursor:pointer;transition:border-color .2s;}
 select:focus{outline:none;border-color:var(--red);}
+.line-filter-wrap{position:relative;margin-bottom:5px;}
+.line-filter-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;pointer-events:none;}
+.line-filter{width:100%;background:var(--navy);border:1.5px solid var(--track);color:var(--white);padding:9px 13px 9px 34px;border-radius:9px;font-family:'Noto Sans JP',sans-serif;font-size:13px;outline:none;transition:border-color .2s;}
+.line-filter:focus{border-color:var(--red);}
+.line-filter::placeholder{color:var(--silver);}
 
 .btn{width:100%;padding:15px;border:none;border-radius:11px;font-family:'Noto Sans JP',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;}
 .btn-red{background:var(--red);color:#fff;box-shadow:0 4px 18px rgba(232,53,42,.4);}
@@ -172,6 +177,10 @@ select:focus{outline:none;border-color:var(--red);}
 
   <div class="card">
     <div class="sg"><label>路線</label>
+      <div class="line-filter-wrap">
+        <span class="line-filter-icon">🔍</span>
+        <input class="line-filter" type="text" placeholder="路線名で絞り込み..." oninput="filterLineSelect(this,'s-line')" autocomplete="off">
+      </div>
       <select id="s-line" onchange="onLineChange('setup')"><option value="">-- 路線を選択 --</option></select>
     </div>
     <div class="sg"><label>乗車駅（出発）</label>
@@ -252,6 +261,10 @@ select:focus{outline:none;border-color:var(--red);}
       </div>
 
       <div class="sg"><label>路線</label>
+        <div class="line-filter-wrap">
+          <span class="line-filter-icon">🔍</span>
+          <input class="line-filter" type="text" placeholder="路線名で絞り込み..." oninput="filterLineSelect(this,'n-line')" autocomplete="off">
+        </div>
         <select id="n-line" onchange="onLineChange('next')"><option value="">-- 路線を選択 --</option></select>
       </div>
       <div class="sg"><label>乗車駅（乗換駅）</label>
@@ -342,6 +355,10 @@ select:focus{outline:none;border-color:var(--red);}
     <!-- 路線選択 -->
     <div class="sg" style="margin-bottom:10px">
       <label>路線</label>
+      <div class="line-filter-wrap">
+        <span class="line-filter-icon">🔍</span>
+        <input class="line-filter" type="text" placeholder="路線名で絞り込み..." oninput="filterLineSelect(this,'memo-line-sel')" autocomplete="off">
+      </div>
       <select id="memo-line-sel" onchange="onMemoLineChange()">
         <option value="">-- 路線を選択 --</option>
       </select>
@@ -651,45 +668,48 @@ function getL(id){return LINES.find(l=>l.id===id);}
 // ════════════════════════════════════════════
 // INIT - グループ別に路線セレクトを構築
 // ════════════════════════════════════════════
+const GROUP_ORDER = ['首都圏','関西','東海・中部','東北','九州','北海道','四国','中国・山陰','新幹線','その他'];
+
+function buildGroupedSelect(el, filter) {
+  const f = (filter || '').trim().toLowerCase();
+  const prevVal = el.value;
+  el.innerHTML = '<option value="">-- 路線を選択 --</option>';
+  const grouped = {};
+  LINES.forEach(l => {
+    if (f && !l.name.toLowerCase().includes(f)) return;
+    const g = l.group || 'その他';
+    if (!grouped[g]) grouped[g] = [];
+    grouped[g].push(l);
+  });
+  GROUP_ORDER.forEach(g => {
+    if (!grouped[g] || grouped[g].length === 0) return;
+    const og = document.createElement('optgroup');
+    og.label = `── ${g} ──`;
+    grouped[g].forEach(l => {
+      og.appendChild(new Option(`${l.name}（${l.region}）`, l.id));
+    });
+    el.appendChild(og);
+  });
+  Object.keys(grouped).forEach(g => {
+    if (GROUP_ORDER.includes(g)) return;
+    const og = document.createElement('optgroup');
+    og.label = `── ${g} ──`;
+    grouped[g].forEach(l => {
+      og.appendChild(new Option(`${l.name}（${l.region}）`, l.id));
+    });
+    el.appendChild(og);
+  });
+  if (prevVal) el.value = prevVal;
+}
+
+function filterLineSelect(inputEl, selectId) {
+  buildGroupedSelect(document.getElementById(selectId), inputEl.value);
+}
+
 loadAppData().then(() => {
-  // (元 IIFE 中身、LINES ロード後実行)
-  // グループ順序
-  const GROUP_ORDER = ['首都圏','関西','東海・中部','東北','九州','北海道','四国','中国・山陰','新幹線','その他'];
-
-  function buildGroupedSelect(el) {
-    el.innerHTML = '<option value="">-- 路線を選択 --</option>';
-    const grouped = {};
-    LINES.forEach(l => {
-      const g = l.group || 'その他';
-      if (!grouped[g]) grouped[g] = [];
-      grouped[g].push(l);
-    });
-    GROUP_ORDER.forEach(g => {
-      if (!grouped[g] || grouped[g].length === 0) return;
-      const og = document.createElement('optgroup');
-      og.label = `── ${g} ──`;
-      grouped[g].forEach(l => {
-        og.appendChild(new Option(`${l.name}（${l.region}）`, l.id));
-      });
-      el.appendChild(og);
-    });
-    // 未分類
-    Object.keys(grouped).forEach(g => {
-      if (GROUP_ORDER.includes(g)) return;
-      const og = document.createElement('optgroup');
-      og.label = `── ${g} ──`;
-      grouped[g].forEach(l => {
-        og.appendChild(new Option(`${l.name}（${l.region}）`, l.id));
-      });
-      el.appendChild(og);
-    });
-  }
-
   [document.getElementById('s-line'), document.getElementById('n-line')].forEach(el => {
     buildGroupedSelect(el);
   });
-
-  // メモ路線セレクトも更新
   const memoSel = document.getElementById('memo-line-sel');
   if (memoSel) buildGroupedSelect(memoSel);
 });
