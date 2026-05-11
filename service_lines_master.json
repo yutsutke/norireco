@@ -2542,7 +2542,7 @@
       "parent_id": null,
       "branch_from": null,
       "branch_to": null,
-      "note": "豊橋〜名鉄岐阜（58駅）。豊橋〜伊奈間はJR飯田線と線路共用。",
+      "note": "豊橋〜名鉄岐阜（60駅）。豊橋〜伊奈間はJR飯田線と線路共用。",
       "stations": [
         {
           "order": 1,
@@ -2576,7 +2576,7 @@
         },
         {
           "order": 7,
-          "name": "長沢",
+          "name": "名電長沢",
           "n02_match": true
         },
         {
@@ -2586,276 +2586,261 @@
         },
         {
           "order": 9,
-          "name": "名電長沢",
+          "name": "名電山中",
           "n02_match": true
         },
         {
           "order": 10,
-          "name": "美合",
+          "name": "藤川",
           "n02_match": true
         },
         {
           "order": 11,
-          "name": "男川",
+          "name": "美合",
           "n02_match": true
         },
         {
           "order": 12,
-          "name": "東岡崎",
+          "name": "男川",
           "n02_match": true
         },
         {
           "order": 13,
-          "name": "岡崎公園前",
+          "name": "東岡崎",
           "n02_match": true
         },
         {
           "order": 14,
-          "name": "矢作橋",
+          "name": "岡崎公園前",
           "n02_match": true
         },
         {
           "order": 15,
-          "name": "宇頭",
+          "name": "矢作橋",
           "n02_match": true
         },
         {
           "order": 16,
-          "name": "新安城",
+          "name": "宇頭",
           "n02_match": true
         },
         {
           "order": 17,
-          "name": "北安城",
+          "name": "新安城",
           "n02_match": true
         },
         {
           "order": 18,
-          "name": "安城",
-          "n02_match": true
-        },
-        {
-          "order": 19,
-          "name": "碧海古井",
-          "n02_match": true
-        },
-        {
-          "order": 20,
-          "name": "南桜井",
-          "n02_match": true
-        },
-        {
-          "order": 21,
           "name": "牛田",
           "n02_match": true
         },
         {
-          "order": 22,
+          "order": 19,
           "name": "知立",
           "n02_match": true
         },
         {
-          "order": 23,
+          "order": 20,
           "name": "一ツ木",
           "n02_match": true
         },
         {
-          "order": 24,
+          "order": 21,
           "name": "富士松",
           "n02_match": true
         },
         {
-          "order": 25,
+          "order": 22,
           "name": "豊明",
           "n02_match": true
         },
         {
-          "order": 26,
+          "order": 23,
           "name": "前後",
           "n02_match": true
         },
         {
-          "order": 27,
+          "order": 24,
           "name": "中京競馬場前",
           "n02_match": true
         },
         {
-          "order": 28,
+          "order": 25,
           "name": "有松",
           "n02_match": true
         },
         {
-          "order": 29,
+          "order": 26,
           "name": "左京山",
           "n02_match": true
         },
         {
-          "order": 30,
+          "order": 27,
           "name": "鳴海",
           "n02_match": true
         },
         {
-          "order": 31,
+          "order": 28,
           "name": "本星崎",
           "n02_match": true
         },
         {
-          "order": 32,
+          "order": 29,
           "name": "本笠寺",
           "n02_match": true
         },
         {
-          "order": 33,
+          "order": 30,
           "name": "桜",
           "n02_match": true
         },
         {
-          "order": 34,
-          "name": "笠寺",
+          "order": 31,
+          "name": "呼続",
           "n02_match": true
         },
         {
-          "order": 35,
+          "order": 32,
           "name": "堀田",
           "n02_match": true
         },
         {
-          "order": 36,
+          "order": 33,
           "name": "神宮前",
           "n02_match": true
         },
         {
-          "order": 37,
+          "order": 34,
           "name": "金山",
           "n02_match": true
         },
         {
-          "order": 38,
+          "order": 35,
           "name": "山王",
           "n02_match": true
         },
         {
-          "order": 39,
+          "order": 36,
           "name": "名鉄名古屋",
           "n02_match": true
         },
         {
-          "order": 40,
+          "order": 37,
           "name": "栄生",
           "n02_match": true
         },
         {
-          "order": 41,
+          "order": 38,
           "name": "東枇杷島",
           "n02_match": true
         },
         {
-          "order": 42,
+          "order": 39,
           "name": "西枇杷島",
           "n02_match": true
         },
         {
-          "order": 43,
+          "order": 40,
           "name": "二ツ杁",
           "n02_match": true
         },
         {
-          "order": 44,
+          "order": 41,
           "name": "新川橋",
           "n02_match": true
         },
         {
-          "order": 45,
+          "order": 42,
           "name": "須ヶ口",
           "n02_match": true
         },
         {
-          "order": 46,
+          "order": 43,
           "name": "丸ノ内",
           "n02_match": true
         },
         {
-          "order": 47,
+          "order": 44,
           "name": "新清洲",
           "n02_match": true
         },
         {
-          "order": 48,
+          "order": 45,
           "name": "大里",
           "n02_match": true
         },
         {
-          "order": 49,
+          "order": 46,
           "name": "奥田",
           "n02_match": true
         },
         {
-          "order": 50,
+          "order": 47,
           "name": "国府宮",
           "n02_match": true
         },
         {
-          "order": 51,
+          "order": 48,
           "name": "島氏永",
           "n02_match": true
         },
         {
-          "order": 52,
+          "order": 49,
           "name": "妙興寺",
           "n02_match": true
         },
         {
-          "order": 53,
+          "order": 50,
           "name": "名鉄一宮",
           "n02_match": true
         },
         {
-          "order": 54,
+          "order": 51,
           "name": "今伊勢",
           "n02_match": true
         },
         {
-          "order": 55,
+          "order": 52,
           "name": "石刀",
           "n02_match": true
         },
         {
-          "order": 56,
+          "order": 53,
           "name": "新木曽川",
           "n02_match": true
         },
         {
-          "order": 57,
+          "order": 54,
           "name": "黒田",
           "n02_match": true
         },
         {
-          "order": 58,
+          "order": 55,
           "name": "木曽川堤",
           "n02_match": true
         },
         {
-          "order": 59,
+          "order": 56,
           "name": "笠松",
           "n02_match": true
         },
         {
-          "order": 60,
+          "order": 57,
           "name": "岐南",
           "n02_match": true
         },
         {
-          "order": 61,
+          "order": 58,
           "name": "茶所",
           "n02_match": true
         },
         {
-          "order": 62,
+          "order": 59,
           "name": "加納",
           "n02_match": true
         },
         {
-          "order": 63,
+          "order": 60,
           "name": "名鉄岐阜",
           "n02_match": true
         }
