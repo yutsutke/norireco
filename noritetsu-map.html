@@ -1271,8 +1271,13 @@ const IS_MOBILE = (() => {
   return false;
 })();
 const IS_TOUCH = (() => {
+  // UAベース判定: モバイル/iPadのみ true。PCのタッチパネル誤検知を防ぐ
   if (typeof navigator === 'undefined') return false;
-  return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  const ua = navigator.userAgent || '';
+  if (/iPhone|iPad|iPod|Android|Mobile/i.test(ua)) return true;
+  // iPadOS 13+ は UA に Macintosh と出る → maxTouchPoints で判別
+  if (navigator.maxTouchPoints > 1 && /Macintosh/i.test(ua)) return true;
+  return false;
 })();
 console.log('[乗レコ] IS_MOBILE:', IS_MOBILE, '/ IS_TOUCH:', IS_TOUCH);
 
@@ -1315,8 +1320,10 @@ function stationTier(nLines, name) {
 // isMetro=true なら三大都市圏(密集)用の厳しめ閾値
 // isMetro=false なら地方用の早出し閾値
 function getDotMinTier(z, isMetro) {
+  // スマホ + 首都圏は駅マーカー自体を1ズーム遅く出す (密集対策)
+  if (IS_MOBILE && isMetro) z -= 1;
   if (IS_MOBILE) {
-    // モバイル: 駅数削減 (現状のまま様子見)
+    // モバイル: 駅数削減
     if (isMetro) {
       if (z >= 14) return 1;
       if (z >= 13) return 2;
@@ -1358,9 +1365,14 @@ function getDotMinTier(z, isMetro) {
 }
 // ラベル用 (さらに厳しめ)
 function getLabelMinTier(z, isMetro) {
-  // PC/iPad はドット閾値より 1 早く、モバイルは 2 早くラベル表示
-  // (駅名は早めに見たい / 重さは pan・zoom 中の一時非表示で軽減)
-  const offset = IS_MOBILE ? 2 : 1;
+  // 首都圏: ドットより1ズーム遅く駅名 (offset -1, 密集対策)
+  // 地方:   PC/iPad は1ズーム早く、スマホは2ズーム早く
+  let offset;
+  if (isMetro) {
+    offset = -1;  // 首都圏は密集してるので駅名は遅らせる
+  } else {
+    offset = IS_MOBILE ? 2 : 1;  // 地方はラベル早出し
+  }
   return getDotMinTier(z + offset, isMetro);
 }
 // マーカー(circleMarker or divIcon)の表示/非表示切り替え
