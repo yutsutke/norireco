@@ -2629,7 +2629,7 @@
       "name": "吉都線",
       "color": "hsl(157, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "九州",
       "segments": [
         {
           "line": "吉都線_九州旅客鉄道",
@@ -2642,7 +2642,7 @@
       "name": "久大線",
       "color": "hsl(234, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "九州",
       "segments": [
         {
           "line": "久大線_九州旅客鉄道",
@@ -2655,7 +2655,7 @@
       "name": "宮崎空港線",
       "color": "hsl(128, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "九州",
       "segments": [
         {
           "line": "宮崎空港線_九州旅客鉄道",
@@ -2668,7 +2668,7 @@
       "name": "後藤寺線",
       "color": "hsl(260, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "九州",
       "segments": [
         {
           "line": "後藤寺線_九州旅客鉄道",
@@ -2681,7 +2681,7 @@
       "name": "香椎線",
       "color": "hsl(57, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "九州",
       "segments": [
         {
           "line": "香椎線_九州旅客鉄道",
@@ -2694,7 +2694,7 @@
       "name": "佐世保線",
       "color": "hsl(65, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "九州",
       "segments": [
         {
           "line": "佐世保線_九州旅客鉄道",
@@ -2707,7 +2707,7 @@
       "name": "三角線",
       "color": "hsl(350, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "九州",
       "segments": [
         {
           "line": "三角線_九州旅客鉄道",
@@ -2720,7 +2720,7 @@
       "name": "山陽線（九州旅客鉄道）",
       "color": "hsl(205, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "九州",
       "segments": [
         {
           "line": "山陽線_九州旅客鉄道",
@@ -2733,7 +2733,7 @@
       "name": "指宿枕崎線",
       "color": "hsl(102, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "九州",
       "segments": [
         {
           "line": "指宿枕崎線_九州旅客鉄道",
@@ -2746,7 +2746,7 @@
       "name": "鹿児島線",
       "color": "hsl(271, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "九州",
       "segments": [
         {
           "line": "鹿児島線_九州旅客鉄道",
@@ -2759,7 +2759,7 @@
       "name": "篠栗線",
       "color": "hsl(117, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "九州",
       "segments": [
         {
           "line": "篠栗線_九州旅客鉄道",
@@ -2785,7 +2785,7 @@
       "name": "筑肥線",
       "color": "hsl(57, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "九州",
       "segments": [
         {
           "line": "筑肥線_九州旅客鉄道",
@@ -2798,7 +2798,7 @@
       "name": "筑豊線",
       "color": "hsl(175, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "九州",
       "segments": [
         {
           "line": "筑豊線_九州旅客鉄道",
@@ -2811,7 +2811,7 @@
       "name": "長崎線",
       "color": "hsl(247, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "九州",
       "segments": [
         {
           "line": "長崎線_九州旅客鉄道",
@@ -2824,7 +2824,7 @@
       "name": "唐津線",
       "color": "hsl(285, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "九州",
       "segments": [
         {
           "line": "唐津線_九州旅客鉄道",
@@ -2837,7 +2837,7 @@
       "name": "日田彦山線",
       "color": "hsl(229, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "九州",
       "segments": [
         {
           "line": "日田彦山線_九州旅客鉄道",
@@ -2863,7 +2863,7 @@
       "name": "日豊線",
       "color": "hsl(148, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "九州",
       "segments": [
         {
           "line": "日豊線_九州旅客鉄道",
@@ -2889,7 +2889,7 @@
       "name": "豊肥線",
       "color": "hsl(246, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "九州",
       "segments": [
         {
           "line": "豊肥線_九州旅客鉄道",
@@ -2954,7 +2954,7 @@
       "name": "内子線",
       "color": "hsl(187, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "四国",
       "segments": [
         {
           "line": "内子線_四国旅客鉄道",
@@ -2967,7 +2967,7 @@
       "name": "本四備讃線（四国旅客鉄道）",
       "color": "hsl(117, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "四国",
       "segments": [
         {
           "line": "本四備讃線_四国旅客鉄道",
@@ -2993,7 +2993,7 @@
       "name": "鳴門線",
       "color": "hsl(351, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "四国",
       "segments": [
         {
           "line": "鳴門線_四国旅客鉄道",
@@ -3058,7 +3058,7 @@
       "name": "宇部線",
       "color": "hsl(276, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "宇部線_西日本旅客鉄道",
@@ -3071,7 +3071,7 @@
       "name": "宇野線",
       "color": "hsl(158, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "宇野線_西日本旅客鉄道",
@@ -3084,7 +3084,7 @@
       "name": "越美北線",
       "color": "hsl(220, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "越美北線_西日本旅客鉄道",
@@ -3097,7 +3097,7 @@
       "name": "加古川線",
       "color": "hsl(329, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "加古川線_西日本旅客鉄道",
@@ -3110,7 +3110,7 @@
       "name": "可部線",
       "color": "hsl(309, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "可部線_西日本旅客鉄道",
@@ -3123,7 +3123,7 @@
       "name": "関西空港線",
       "color": "hsl(213, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "関西空港線_西日本旅客鉄道",
@@ -3136,7 +3136,7 @@
       "name": "関西線（西日本旅客鉄道）",
       "color": "hsl(267, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "関西線_西日本旅客鉄道",
@@ -3149,7 +3149,7 @@
       "name": "岩徳線",
       "color": "hsl(143, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "岩徳線_西日本旅客鉄道",
@@ -3162,7 +3162,7 @@
       "name": "紀勢線（西日本旅客鉄道）",
       "color": "hsl(129, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "紀勢線_西日本旅客鉄道",
@@ -3175,7 +3175,7 @@
       "name": "吉備線",
       "color": "hsl(200, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "吉備線_西日本旅客鉄道",
@@ -3188,7 +3188,7 @@
       "name": "境線",
       "color": "hsl(204, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "境線_西日本旅客鉄道",
@@ -3227,7 +3227,7 @@
       "name": "呉線",
       "color": "hsl(221, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "呉線_西日本旅客鉄道",
@@ -3240,7 +3240,7 @@
       "name": "高山線（西日本旅客鉄道）",
       "color": "hsl(317, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "高山線_西日本旅客鉄道",
@@ -3253,7 +3253,7 @@
       "name": "阪和線",
       "color": "hsl(76, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "阪和線_西日本旅客鉄道",
@@ -3266,7 +3266,7 @@
       "name": "桜井線",
       "color": "hsl(257, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "桜井線_西日本旅客鉄道",
@@ -3279,7 +3279,7 @@
       "name": "桜島線",
       "color": "hsl(140, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "桜島線_西日本旅客鉄道",
@@ -3292,7 +3292,7 @@
       "name": "山陰線",
       "color": "hsl(279, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "山陰線_西日本旅客鉄道",
@@ -3305,7 +3305,7 @@
       "name": "山口線（西日本旅客鉄道）",
       "color": "hsl(293, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "山口線_西日本旅客鉄道",
@@ -3318,7 +3318,7 @@
       "name": "山陽線（西日本旅客鉄道）",
       "color": "hsl(205, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "山陽線_西日本旅客鉄道",
@@ -3331,7 +3331,7 @@
       "name": "七尾線（西日本旅客鉄道）",
       "color": "hsl(167, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "七尾線_西日本旅客鉄道",
@@ -3344,7 +3344,7 @@
       "name": "小浜線",
       "color": "hsl(2, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "小浜線_西日本旅客鉄道",
@@ -3357,7 +3357,7 @@
       "name": "小野田線",
       "color": "hsl(197, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "小野田線_西日本旅客鉄道",
@@ -3370,7 +3370,7 @@
       "name": "城端線",
       "color": "hsl(54, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "城端線_西日本旅客鉄道",
@@ -3383,7 +3383,7 @@
       "name": "赤穂線",
       "color": "hsl(266, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "赤穂線_西日本旅客鉄道",
@@ -3396,7 +3396,7 @@
       "name": "草津線",
       "color": "hsl(178, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "関西",
       "segments": [
         {
           "line": "草津線_西日本旅客鉄道",
@@ -3409,7 +3409,7 @@
       "name": "大阪環状線",
       "color": "hsl(169, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "関西",
       "segments": [
         {
           "line": "大阪環状線_西日本旅客鉄道",
@@ -3422,7 +3422,7 @@
       "name": "大糸線（西日本旅客鉄道）",
       "color": "hsl(178, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "大糸線_西日本旅客鉄道",
@@ -3435,7 +3435,7 @@
       "name": "津山線",
       "color": "hsl(253, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "津山線_西日本旅客鉄道",
@@ -3461,7 +3461,7 @@
       "name": "奈良線（西日本旅客鉄道）",
       "color": "hsl(235, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "関西",
       "segments": [
         {
           "line": "奈良線_西日本旅客鉄道",
@@ -3474,7 +3474,7 @@
       "name": "播但線",
       "color": "hsl(297, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "播但線_西日本旅客鉄道",
@@ -3500,7 +3500,7 @@
       "name": "博多南線",
       "color": "hsl(177, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "博多南線_西日本旅客鉄道",
@@ -3513,7 +3513,7 @@
       "name": "美祢線",
       "color": "hsl(264, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "美祢線_西日本旅客鉄道",
@@ -3539,7 +3539,7 @@
       "name": "氷見線",
       "color": "hsl(15, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "氷見線_西日本旅客鉄道",
@@ -3552,7 +3552,7 @@
       "name": "舞鶴線",
       "color": "hsl(300, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "舞鶴線_西日本旅客鉄道",
@@ -3565,7 +3565,7 @@
       "name": "福塩線",
       "color": "hsl(153, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "福塩線_西日本旅客鉄道",
@@ -3578,7 +3578,7 @@
       "name": "福知山線",
       "color": "hsl(76, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "福知山線_西日本旅客鉄道",
@@ -3591,7 +3591,7 @@
       "name": "片町線",
       "color": "hsl(13, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "片町線_西日本旅客鉄道",
@@ -3604,7 +3604,7 @@
       "name": "北陸線",
       "color": "hsl(248, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "北陸線_西日本旅客鉄道",
@@ -3617,7 +3617,7 @@
       "name": "本四備讃線（西日本旅客鉄道）",
       "color": "hsl(117, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "本四備讃線_西日本旅客鉄道",
@@ -3630,7 +3630,7 @@
       "name": "木次線",
       "color": "hsl(331, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "木次線_西日本旅客鉄道",
@@ -3643,7 +3643,7 @@
       "name": "和歌山線",
       "color": "hsl(299, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "関西",
       "segments": [
         {
           "line": "和歌山線_西日本旅客鉄道",
@@ -3656,7 +3656,7 @@
       "name": "関西線（東海旅客鉄道）",
       "color": "hsl(267, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "関西線_東海旅客鉄道",
@@ -3669,7 +3669,7 @@
       "name": "紀勢線（東海旅客鉄道）",
       "color": "hsl(129, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "紀勢線_東海旅客鉄道",
@@ -3695,7 +3695,7 @@
       "name": "高山線（東海旅客鉄道）",
       "color": "hsl(317, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "高山線_東海旅客鉄道",
@@ -3708,7 +3708,7 @@
       "name": "参宮線",
       "color": "hsl(5, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "参宮線_東海旅客鉄道",
@@ -3734,7 +3734,7 @@
       "name": "太多線",
       "color": "hsl(237, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "太多線_東海旅客鉄道",
@@ -3786,7 +3786,7 @@
       "name": "武豊線",
       "color": "hsl(356, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "武豊線_東海旅客鉄道",
@@ -3799,7 +3799,7 @@
       "name": "名松線",
       "color": "hsl(226, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "名松線_東海旅客鉄道",
@@ -3812,7 +3812,7 @@
       "name": "伊東線",
       "color": "hsl(206, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "伊東線_東日本旅客鉄道",
@@ -3825,7 +3825,7 @@
       "name": "烏山線",
       "color": "hsl(177, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "烏山線_東日本旅客鉄道",
@@ -3838,7 +3838,7 @@
       "name": "羽越線",
       "color": "hsl(348, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "羽越線_東日本旅客鉄道",
@@ -3851,7 +3851,7 @@
       "name": "越後線",
       "color": "hsl(95, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "越後線_東日本旅客鉄道",
@@ -3864,7 +3864,7 @@
       "name": "奥羽線",
       "color": "hsl(90, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "奥羽線_東日本旅客鉄道",
@@ -3903,7 +3903,7 @@
       "name": "花輪線",
       "color": "hsl(150, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "花輪線_東日本旅客鉄道",
@@ -3929,7 +3929,7 @@
       "name": "気仙沼線",
       "color": "hsl(52, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "気仙沼線_東日本旅客鉄道",
@@ -3942,7 +3942,7 @@
       "name": "久留里線",
       "color": "hsl(65, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "久留里線_東日本旅客鉄道",
@@ -3994,7 +3994,7 @@
       "name": "吾妻線",
       "color": "hsl(187, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "首都圏",
       "segments": [
         {
           "line": "吾妻線_東日本旅客鉄道",
@@ -4033,7 +4033,7 @@
       "name": "左沢線",
       "color": "hsl(293, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "左沢線_東日本旅客鉄道",
@@ -4059,7 +4059,7 @@
       "name": "山田線（東日本旅客鉄道）",
       "color": "hsl(68, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "山田線_東日本旅客鉄道",
@@ -4085,7 +4085,7 @@
       "name": "篠ノ井線",
       "color": "hsl(43, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "篠ノ井線_東日本旅客鉄道",
@@ -4098,7 +4098,7 @@
       "name": "小海線",
       "color": "hsl(98, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "小海線_東日本旅客鉄道",
@@ -4111,7 +4111,7 @@
       "name": "上越線",
       "color": "hsl(234, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "首都圏",
       "segments": [
         {
           "line": "上越線_東日本旅客鉄道",
@@ -4137,7 +4137,7 @@
       "name": "信越線",
       "color": "hsl(28, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "首都圏",
       "segments": [
         {
           "line": "信越線_東日本旅客鉄道",
@@ -4215,7 +4215,7 @@
       "name": "赤羽線",
       "color": "hsl(104, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "赤羽線_東日本旅客鉄道",
@@ -4228,7 +4228,7 @@
       "name": "仙山線",
       "color": "hsl(190, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "仙山線_東日本旅客鉄道",
@@ -4280,7 +4280,7 @@
       "name": "大糸線（東日本旅客鉄道）",
       "color": "hsl(178, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "大糸線_東日本旅客鉄道",
@@ -4293,7 +4293,7 @@
       "name": "BRT大船渡線",
       "color": "hsl(150, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "大船渡線_東日本旅客鉄道",
@@ -4306,7 +4306,7 @@
       "name": "大湊線",
       "color": "hsl(229, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "大湊線_東日本旅客鉄道",
@@ -4319,7 +4319,7 @@
       "name": "只見線",
       "color": "hsl(26, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "只見線_東日本旅客鉄道",
@@ -4332,7 +4332,7 @@
       "name": "男鹿線",
       "color": "hsl(309, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "男鹿線_東日本旅客鉄道",
@@ -4358,7 +4358,7 @@
       "name": "津軽線",
       "color": "hsl(348, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "津軽線_東日本旅客鉄道",
@@ -4384,7 +4384,7 @@
       "name": "田沢湖線",
       "color": "hsl(16, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "田沢湖線_東日本旅客鉄道",
@@ -4423,7 +4423,7 @@
       "name": "東北線",
       "color": "#FA9F1B",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "東北線_東日本旅客鉄道",
@@ -4475,7 +4475,7 @@
       "name": "白新線",
       "color": "hsl(14, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "白新線_東日本旅客鉄道",
@@ -4488,7 +4488,7 @@
       "name": "八戸線",
       "color": "hsl(89, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "八戸線_東日本旅客鉄道",
@@ -4514,7 +4514,7 @@
       "name": "飯山線",
       "color": "hsl(178, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "飯山線_東日本旅客鉄道",
@@ -4540,7 +4540,7 @@
       "name": "磐越東線",
       "color": "hsl(69, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "磐越東線_東日本旅客鉄道",
@@ -4566,7 +4566,7 @@
       "name": "米坂線",
       "color": "hsl(130, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "米坂線_東日本旅客鉄道",
@@ -4579,7 +4579,7 @@
       "name": "北上線",
       "color": "hsl(141, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "北上線_東日本旅客鉄道",
@@ -4592,7 +4592,7 @@
       "name": "弥彦線",
       "color": "hsl(33, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "弥彦線_東日本旅客鉄道",
@@ -4605,7 +4605,7 @@
       "name": "陸羽西線",
       "color": "hsl(107, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "東北",
       "segments": [
         {
           "line": "陸羽西線_東日本旅客鉄道",
@@ -4631,7 +4631,7 @@
       "name": "両毛線",
       "color": "hsl(115, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "首都圏",
       "segments": [
         {
           "line": "両毛線_東日本旅客鉄道",
@@ -4644,7 +4644,7 @@
       "name": "海峡線",
       "color": "hsl(204, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "北海道",
       "segments": [
         {
           "line": "海峡線_北海道旅客鉄道",
@@ -4657,7 +4657,7 @@
       "name": "釧網線",
       "color": "hsl(278, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "北海道",
       "segments": [
         {
           "line": "釧網線_北海道旅客鉄道",
@@ -4670,7 +4670,7 @@
       "name": "根室線",
       "color": "hsl(321, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "北海道",
       "segments": [
         {
           "line": "根室線_北海道旅客鉄道",
@@ -4696,7 +4696,7 @@
       "name": "室蘭線",
       "color": "hsl(88, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "北海道",
       "segments": [
         {
           "line": "室蘭線_北海道旅客鉄道",
@@ -4709,7 +4709,7 @@
       "name": "宗谷線",
       "color": "hsl(83, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "北海道",
       "segments": [
         {
           "line": "宗谷線_北海道旅客鉄道",
@@ -4735,7 +4735,7 @@
       "name": "石北線",
       "color": "hsl(287, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "北海道",
       "segments": [
         {
           "line": "石北線_北海道旅客鉄道",
@@ -4761,7 +4761,7 @@
       "name": "日高線",
       "color": "hsl(126, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "北海道",
       "segments": [
         {
           "line": "日高線_北海道旅客鉄道",
@@ -4774,7 +4774,7 @@
       "name": "函館線",
       "color": "hsl(176, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "北海道",
       "segments": [
         {
           "line": "函館線_北海道旅客鉄道",
@@ -4800,7 +4800,7 @@
       "name": "留萌線",
       "color": "hsl(156, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "北海道",
       "segments": [
         {
           "line": "留萌線_北海道旅客鉄道",
@@ -4813,7 +4813,7 @@
       "name": "おおさか東線",
       "color": "hsl(278, 60%, 55%)",
       "region": "",
-      "group": "JR在来",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "おおさか東線_西日本旅客鉄道",
@@ -4826,7 +4826,7 @@
       "name": "みなとみらい21線",
       "color": "hsl(134, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "みなとみらい21線_横浜高速鉄道",
@@ -4839,7 +4839,7 @@
       "name": "1号線（横浜市）",
       "color": "hsl(53, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "1号線_横浜市",
@@ -4852,7 +4852,7 @@
       "name": "3号線",
       "color": "hsl(333, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "3号線_横浜市",
@@ -4865,7 +4865,7 @@
       "name": "金沢シーサイドライン",
       "color": "hsl(322, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "金沢シーサイドライン_横浜シーサイドライン",
@@ -4878,7 +4878,7 @@
       "name": "井の頭線",
       "color": "hsl(201, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "井の頭線_京王電鉄",
@@ -4904,7 +4904,7 @@
       "name": "競馬場線",
       "color": "hsl(166, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "競馬場線_京王電鉄",
@@ -4917,7 +4917,7 @@
       "name": "高尾線",
       "color": "hsl(92, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "高尾線_京王電鉄",
@@ -4930,7 +4930,7 @@
       "name": "京王相模原線",
       "color": "hsl(146, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "相模原線_京王電鉄",
@@ -4943,7 +4943,7 @@
       "name": "京王動物園線",
       "color": "hsl(276, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "動物園線_京王電鉄",
@@ -4956,7 +4956,7 @@
       "name": "宇治線",
       "color": "hsl(7, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "宇治線_京阪電気鉄道",
@@ -4969,7 +4969,7 @@
       "name": "鴨東線",
       "color": "hsl(269, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "鴨東線_京阪電気鉄道",
@@ -4995,7 +4995,7 @@
       "name": "京津線",
       "color": "hsl(54, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "京津線_京阪電気鉄道",
@@ -5008,7 +5008,7 @@
       "name": "交野線",
       "color": "hsl(243, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "交野線_京阪電気鉄道",
@@ -5021,7 +5021,7 @@
       "name": "鋼索線（京阪電気鉄道）",
       "color": "hsl(291, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "鋼索線_京阪電気鉄道",
@@ -5034,7 +5034,7 @@
       "name": "京阪石山坂本線",
       "color": "hsl(273, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "石山坂本線_京阪電気鉄道",
@@ -5047,7 +5047,7 @@
       "name": "押上線",
       "color": "hsl(101, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "押上線_京成電鉄",
@@ -5060,7 +5060,7 @@
       "name": "金町線",
       "color": "hsl(268, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "金町線_京成電鉄",
@@ -5073,7 +5073,7 @@
       "name": "千原線",
       "color": "hsl(24, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "千原線_京成電鉄",
@@ -5086,7 +5086,7 @@
       "name": "千葉線",
       "color": "hsl(8, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "千葉線_京成電鉄",
@@ -5099,7 +5099,7 @@
       "name": "東成田線",
       "color": "hsl(320, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "東成田線_京成電鉄",
@@ -5112,7 +5112,7 @@
       "name": "本線（京成電鉄）",
       "color": "hsl(45, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "本線_京成電鉄",
@@ -5125,7 +5125,7 @@
       "name": "烏丸線",
       "color": "hsl(199, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "烏丸線_京都市",
@@ -5151,7 +5151,7 @@
       "name": "京急久里浜線",
       "color": "hsl(353, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "久里浜線_京浜急行電鉄",
@@ -5164,7 +5164,7 @@
       "name": "空港線（京浜急行電鉄）",
       "color": "hsl(148, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "空港線_京浜急行電鉄",
@@ -5177,7 +5177,7 @@
       "name": "逗子線",
       "color": "hsl(183, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "逗子線_京浜急行電鉄",
@@ -5190,7 +5190,7 @@
       "name": "大師線（京浜急行電鉄）",
       "color": "hsl(136, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "大師線_京浜急行電鉄",
@@ -5203,7 +5203,7 @@
       "name": "本線（京浜急行電鉄）",
       "color": "hsl(45, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "本線_京浜急行電鉄",
@@ -5255,7 +5255,7 @@
       "name": "橿原線",
       "color": "hsl(218, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "橿原線_近畿日本鉄道",
@@ -5268,7 +5268,7 @@
       "name": "吉野線",
       "color": "hsl(231, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "吉野線_近畿日本鉄道",
@@ -5294,7 +5294,7 @@
       "name": "御所線",
       "color": "hsl(206, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "御所線_近畿日本鉄道",
@@ -5307,7 +5307,7 @@
       "name": "山田線（近畿日本鉄道）",
       "color": "hsl(68, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "山田線_近畿日本鉄道",
@@ -5320,7 +5320,7 @@
       "name": "志摩線",
       "color": "hsl(135, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "志摩線_近畿日本鉄道",
@@ -5333,7 +5333,7 @@
       "name": "信貴線",
       "color": "hsl(326, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "信貴線_近畿日本鉄道",
@@ -5346,7 +5346,7 @@
       "name": "生駒鋼索線",
       "color": "hsl(65, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "生駒鋼索線_近畿日本鉄道",
@@ -5359,7 +5359,7 @@
       "name": "生駒線",
       "color": "hsl(347, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "生駒線_近畿日本鉄道",
@@ -5372,7 +5372,7 @@
       "name": "西信貴鋼索線",
       "color": "hsl(348, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "西信貴鋼索線_近畿日本鉄道",
@@ -5385,7 +5385,7 @@
       "name": "大阪線",
       "color": "hsl(41, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "大阪線_近畿日本鉄道",
@@ -5398,7 +5398,7 @@
       "name": "長野線（近畿日本鉄道）",
       "color": "hsl(0, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "長野線_近畿日本鉄道",
@@ -5411,7 +5411,7 @@
       "name": "鳥羽線",
       "color": "hsl(237, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "鳥羽線_近畿日本鉄道",
@@ -5424,7 +5424,7 @@
       "name": "天理線",
       "color": "hsl(0, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "天理線_近畿日本鉄道",
@@ -5437,7 +5437,7 @@
       "name": "田原本線",
       "color": "hsl(82, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "田原本線_近畿日本鉄道",
@@ -5450,7 +5450,7 @@
       "name": "湯の山線",
       "color": "hsl(214, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "湯の山線_近畿日本鉄道",
@@ -5463,7 +5463,7 @@
       "name": "道明寺線",
       "color": "hsl(41, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "道明寺線_近畿日本鉄道",
@@ -5476,7 +5476,7 @@
       "name": "奈良線（近畿日本鉄道）",
       "color": "hsl(235, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "奈良線_近畿日本鉄道",
@@ -5489,7 +5489,7 @@
       "name": "近鉄南大阪線",
       "color": "hsl(271, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "南大阪線_近畿日本鉄道",
@@ -5502,7 +5502,7 @@
       "name": "難波線",
       "color": "hsl(13, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "難波線_近畿日本鉄道",
@@ -5528,7 +5528,7 @@
       "name": "近鉄名古屋線",
       "color": "hsl(119, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "名古屋線_近畿日本鉄道",
@@ -5541,7 +5541,7 @@
       "name": "鈴鹿線",
       "color": "hsl(111, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "鈴鹿線_近畿日本鉄道",
@@ -5554,7 +5554,7 @@
       "name": "伊丹線",
       "color": "hsl(329, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "伊丹線_阪急電鉄",
@@ -5580,7 +5580,7 @@
       "name": "甲陽線",
       "color": "hsl(345, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "甲陽線_阪急電鉄",
@@ -5593,7 +5593,7 @@
       "name": "今津線",
       "color": "hsl(235, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "今津線_阪急電鉄",
@@ -5606,7 +5606,7 @@
       "name": "神戸高速線（阪急電鉄）",
       "color": "hsl(88, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "神戸高速線_阪急電鉄",
@@ -5632,7 +5632,7 @@
       "name": "千里線",
       "color": "hsl(14, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "千里線_阪急電鉄",
@@ -5645,7 +5645,7 @@
       "name": "宝塚線",
       "color": "hsl(298, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "宝塚線_阪急電鉄",
@@ -5658,7 +5658,7 @@
       "name": "箕面線",
       "color": "hsl(264, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "箕面線_阪急電鉄",
@@ -5671,7 +5671,7 @@
       "name": "嵐山線",
       "color": "hsl(22, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "嵐山線_阪急電鉄",
@@ -5684,7 +5684,7 @@
       "name": "神戸高速線（阪神電気鉄道）",
       "color": "hsl(88, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "神戸高速線_阪神電気鉄道",
@@ -5697,7 +5697,7 @@
       "name": "武庫川線",
       "color": "hsl(112, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "武庫川線_阪神電気鉄道",
@@ -5710,7 +5710,7 @@
       "name": "本線（阪神電気鉄道）",
       "color": "hsl(45, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "本線_阪神電気鉄道",
@@ -5723,7 +5723,7 @@
       "name": "埼玉高速鉄道",
       "color": "hsl(245, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "埼玉高速鉄道線_埼玉高速鉄道",
@@ -5762,7 +5762,7 @@
       "name": "東豊線",
       "color": "hsl(264, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "北海道",
       "segments": [
         {
           "line": "東豊線_札幌市",
@@ -5788,7 +5788,7 @@
       "name": "常磐新線",
       "color": "hsl(38, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "常磐新線_首都圏新都市鉄道",
@@ -5801,7 +5801,7 @@
       "name": "小田急江ノ島線",
       "color": "hsl(42, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "江ノ島線_小田急電鉄",
@@ -5814,7 +5814,7 @@
       "name": "小田急小田原線",
       "color": "hsl(296, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "小田原線_小田急電鉄",
@@ -5827,7 +5827,7 @@
       "name": "多摩線",
       "color": "hsl(125, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "多摩線_小田急電鉄",
@@ -5840,7 +5840,7 @@
       "name": "松戸線",
       "color": "hsl(325, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "松戸線_京成電鉄",
@@ -5853,7 +5853,7 @@
       "name": "海岸線",
       "color": "hsl(193, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "海岸線_神戸市",
@@ -5879,7 +5879,7 @@
       "name": "西神延伸線",
       "color": "hsl(224, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "西神延伸線_神戸市",
@@ -5892,7 +5892,7 @@
       "name": "西神線",
       "color": "hsl(104, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "西神線_神戸市",
@@ -5905,7 +5905,7 @@
       "name": "粟生線",
       "color": "hsl(86, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "粟生線_神戸電鉄",
@@ -5918,7 +5918,7 @@
       "name": "公園都市線",
       "color": "hsl(246, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "公園都市線_神戸電鉄",
@@ -5944,7 +5944,7 @@
       "name": "神戸高速線（神戸電鉄）",
       "color": "hsl(88, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "神戸高速線_神戸電鉄",
@@ -5957,7 +5957,7 @@
       "name": "有馬線",
       "color": "hsl(205, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "有馬線_神戸電鉄",
@@ -5970,7 +5970,7 @@
       "name": "甘木線（西日本鉄道）",
       "color": "hsl(85, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "甘木線_西日本鉄道",
@@ -5983,7 +5983,7 @@
       "name": "貝塚線",
       "color": "hsl(215, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "貝塚線_西日本鉄道",
@@ -5996,7 +5996,7 @@
       "name": "太宰府線",
       "color": "hsl(19, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "太宰府線_西日本鉄道",
@@ -6009,7 +6009,7 @@
       "name": "西日本鉄道天神大牟田線",
       "color": "hsl(354, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "天神大牟田線_西日本鉄道",
@@ -6022,7 +6022,7 @@
       "name": "狭山線",
       "color": "hsl(133, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "狭山線_西武鉄道",
@@ -6035,7 +6035,7 @@
       "name": "西武国分寺線",
       "color": "hsl(302, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "国分寺線_西武鉄道",
@@ -6048,7 +6048,7 @@
       "name": "山口線（西武鉄道）",
       "color": "hsl(293, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "山口線_西武鉄道",
@@ -6074,7 +6074,7 @@
       "name": "西武園線",
       "color": "hsl(3, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "西武園線_西武鉄道",
@@ -6087,7 +6087,7 @@
       "name": "西武秩父線",
       "color": "hsl(351, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "西武秩父線_西武鉄道",
@@ -6113,7 +6113,7 @@
       "name": "西武多摩湖線",
       "color": "hsl(187, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "多摩湖線_西武鉄道",
@@ -6126,7 +6126,7 @@
       "name": "西武多摩川線",
       "color": "hsl(331, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "多摩川線_西武鉄道",
@@ -6139,7 +6139,7 @@
       "name": "池袋線",
       "color": "hsl(194, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "池袋線_西武鉄道",
@@ -6152,7 +6152,7 @@
       "name": "拝島線",
       "color": "hsl(221, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "拝島線_西武鉄道",
@@ -6165,7 +6165,7 @@
       "name": "豊島線",
       "color": "hsl(59, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "豊島線_西武鉄道",
@@ -6191,7 +6191,7 @@
       "name": "相鉄いずみ野線",
       "color": "hsl(262, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "相鉄いずみ野線_相模鉄道",
@@ -6204,7 +6204,7 @@
       "name": "相鉄本線",
       "color": "hsl(107, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "相鉄本線_相模鉄道",
@@ -6217,7 +6217,7 @@
       "name": "多摩都市モノレール",
       "color": "hsl(199, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "多摩都市モノレール線_多摩都市モノレール",
@@ -6230,7 +6230,7 @@
       "name": "国際文化公園都市モノレール線(彩都線)",
       "color": "hsl(23, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "国際文化公園都市モノレール線(彩都線)_大阪モノレール",
@@ -6243,7 +6243,7 @@
       "name": "大阪モノレール",
       "color": "hsl(334, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "大阪モノレール線_大阪モノレール",
@@ -6256,7 +6256,7 @@
       "name": "1号線(御堂筋線)",
       "color": "hsl(75, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "1号線(御堂筋線)_大阪市高速電気軌道",
@@ -6269,7 +6269,7 @@
       "name": "2号線(谷町線)",
       "color": "hsl(195, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "2号線(谷町線)_大阪市高速電気軌道",
@@ -6282,7 +6282,7 @@
       "name": "3号線(四つ橋線)",
       "color": "hsl(140, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "3号線(四つ橋線)_大阪市高速電気軌道",
@@ -6295,7 +6295,7 @@
       "name": "4号線(中央線)",
       "color": "hsl(290, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "4号線(中央線)_大阪市高速電気軌道",
@@ -6308,7 +6308,7 @@
       "name": "5号線(千日前線)",
       "color": "hsl(145, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "5号線(千日前線)_大阪市高速電気軌道",
@@ -6321,7 +6321,7 @@
       "name": "6号線(堺筋線)",
       "color": "hsl(70, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "6号線(堺筋線)_大阪市高速電気軌道",
@@ -6334,7 +6334,7 @@
       "name": "7号線(長堀鶴見緑地線)",
       "color": "hsl(147, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "7号線(長堀鶴見緑地線)_大阪市高速電気軌道",
@@ -6347,7 +6347,7 @@
       "name": "南港ポートタウン線",
       "color": "hsl(8, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "南港ポートタウン線_大阪市高速電気軌道",
@@ -6360,7 +6360,7 @@
       "name": "泉北線",
       "color": "hsl(145, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "泉北線_南海電気鉄道",
@@ -6399,7 +6399,7 @@
       "name": "東急こどもの国線",
       "color": "hsl(97, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "こどもの国線_東急電鉄",
@@ -6412,7 +6412,7 @@
       "name": "東急世田谷線",
       "color": "hsl(294, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "世田谷線_東急電鉄",
@@ -6425,7 +6425,7 @@
       "name": "東急大井町線",
       "color": "hsl(143, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "大井町線_東急電鉄",
@@ -6438,7 +6438,7 @@
       "name": "池上線",
       "color": "hsl(230, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "池上線_東急電鉄",
@@ -6451,7 +6451,7 @@
       "name": "東急田園都市線",
       "color": "hsl(66, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "田園都市線_東急電鉄",
@@ -6464,7 +6464,7 @@
       "name": "東横線",
       "color": "hsl(247, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "東横線_東急電鉄",
@@ -6477,7 +6477,7 @@
       "name": "東急多摩川線",
       "color": "hsl(69, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "東急多摩川線_東急電鉄",
@@ -6490,7 +6490,7 @@
       "name": "目黒線",
       "color": "hsl(120, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "目黒線_東急電鉄",
@@ -6503,7 +6503,7 @@
       "name": "2号線日比谷線",
       "color": "hsl(153, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "2号線日比谷線_東京地下鉄",
@@ -6516,7 +6516,7 @@
       "name": "3号線銀座線",
       "color": "hsl(32, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "3号線銀座線_東京地下鉄",
@@ -6529,7 +6529,7 @@
       "name": "4号線丸ノ内線",
       "color": "hsl(185, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "4号線丸ノ内線_東京地下鉄",
@@ -6542,7 +6542,7 @@
       "name": "4号線丸ノ内線分岐線",
       "color": "hsl(109, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "4号線丸ノ内線分岐線_東京地下鉄",
@@ -6555,7 +6555,7 @@
       "name": "5号線東西線",
       "color": "hsl(359, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "5号線東西線_東京地下鉄",
@@ -6568,7 +6568,7 @@
       "name": "7号線南北線",
       "color": "hsl(259, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "7号線南北線_東京地下鉄",
@@ -6581,7 +6581,7 @@
       "name": "8号線有楽町線",
       "color": "hsl(260, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "8号線有楽町線_東京地下鉄",
@@ -6594,7 +6594,7 @@
       "name": "13号線副都心線",
       "color": "hsl(27, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "13号線副都心線_東京地下鉄",
@@ -6607,7 +6607,7 @@
       "name": "9号線千代田線",
       "color": "hsl(83, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "9号線千代田線_東京地下鉄",
@@ -6620,7 +6620,7 @@
       "name": "11号線半蔵門線",
       "color": "hsl(155, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "11号線半蔵門線_東京地下鉄",
@@ -6633,7 +6633,7 @@
       "name": "1号線浅草線",
       "color": "hsl(55, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "1号線浅草線_東京都",
@@ -6646,7 +6646,7 @@
       "name": "6号線三田線",
       "color": "hsl(239, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "6号線三田線_東京都",
@@ -6659,7 +6659,7 @@
       "name": "10号線新宿線",
       "color": "hsl(187, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "10号線新宿線_東京都",
@@ -6672,7 +6672,7 @@
       "name": "12号線大江戸線",
       "color": "hsl(270, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "12号線大江戸線_東京都",
@@ -6685,7 +6685,7 @@
       "name": "荒川線",
       "color": "hsl(212, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "荒川線_東京都",
@@ -6698,7 +6698,7 @@
       "name": "臨海副都心線",
       "color": "hsl(209, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "臨海副都心線_東京臨海高速鉄道",
@@ -6711,7 +6711,7 @@
       "name": "東武伊勢崎線",
       "color": "hsl(266, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "伊勢崎線_東武鉄道",
@@ -6737,7 +6737,7 @@
       "name": "越生線",
       "color": "hsl(112, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "越生線_東武鉄道",
@@ -6750,7 +6750,7 @@
       "name": "鬼怒川線",
       "color": "hsl(133, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "鬼怒川線_東武鉄道",
@@ -6763,7 +6763,7 @@
       "name": "亀戸線",
       "color": "hsl(80, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "亀戸線_東武鉄道",
@@ -6776,7 +6776,7 @@
       "name": "桐生線",
       "color": "hsl(312, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "桐生線_東武鉄道",
@@ -6789,7 +6789,7 @@
       "name": "佐野線",
       "color": "hsl(95, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "佐野線_東武鉄道",
@@ -6802,7 +6802,7 @@
       "name": "小泉線",
       "color": "hsl(44, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "小泉線_東武鉄道",
@@ -6815,7 +6815,7 @@
       "name": "大師線（東武鉄道）",
       "color": "hsl(136, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "大師線_東武鉄道",
@@ -6828,7 +6828,7 @@
       "name": "東上本線",
       "color": "hsl(155, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "東上本線_東武鉄道",
@@ -6854,7 +6854,7 @@
       "name": "野田線",
       "color": "hsl(352, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "野田線_東武鉄道",
@@ -6867,7 +6867,7 @@
       "name": "東葉高速線",
       "color": "hsl(290, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "東葉高速線_東葉高速鉄道",
@@ -6880,7 +6880,7 @@
       "name": "加太線",
       "color": "hsl(357, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "加太線_南海電気鉄道",
@@ -6893,7 +6893,7 @@
       "name": "空港線（南海電気鉄道）",
       "color": "hsl(148, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "空港線_南海電気鉄道",
@@ -6906,7 +6906,7 @@
       "name": "鋼索線（南海電気鉄道）",
       "color": "hsl(291, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "鋼索線_南海電気鉄道",
@@ -6919,7 +6919,7 @@
       "name": "高師浜線",
       "color": "hsl(258, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "高師浜線_南海電気鉄道",
@@ -6932,7 +6932,7 @@
       "name": "高野線",
       "color": "hsl(167, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "高野線_南海電気鉄道",
@@ -6945,7 +6945,7 @@
       "name": "多奈川線",
       "color": "hsl(258, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "多奈川線_南海電気鉄道",
@@ -6971,7 +6971,7 @@
       "name": "和歌山港線",
       "color": "hsl(256, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "和歌山港線_南海電気鉄道",
@@ -6984,7 +6984,7 @@
       "name": "1号線(空港線)",
       "color": "hsl(238, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "1号線(空港線)_福岡市",
@@ -6997,7 +6997,7 @@
       "name": "2号線(箱崎線)",
       "color": "hsl(336, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "2号線(箱崎線)_福岡市",
@@ -7010,7 +7010,7 @@
       "name": "3号線(七隈線)",
       "color": "hsl(93, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "3号線(七隈線)_福岡市",
@@ -7023,7 +7023,7 @@
       "name": "北神線",
       "color": "hsl(319, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "北神線_神戸市",
@@ -7036,7 +7036,7 @@
       "name": "北総線",
       "color": "hsl(7, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "北総線_北総鉄道",
@@ -7062,7 +7062,7 @@
       "name": "1号線東山線",
       "color": "hsl(80, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "1号線東山線_名古屋市",
@@ -7075,7 +7075,7 @@
       "name": "2号線名港線",
       "color": "hsl(197, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "2号線名港線_名古屋市",
@@ -7088,7 +7088,7 @@
       "name": "2号線名城線",
       "color": "hsl(224, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "2号線名城線_名古屋市",
@@ -7101,7 +7101,7 @@
       "name": "3号線鶴舞線",
       "color": "hsl(33, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "3号線鶴舞線_名古屋市",
@@ -7114,7 +7114,7 @@
       "name": "4号線名城線",
       "color": "hsl(186, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "4号線名城線_名古屋市",
@@ -7127,7 +7127,7 @@
       "name": "6号線桜通線",
       "color": "hsl(61, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "6号線桜通線_名古屋市",
@@ -7140,7 +7140,7 @@
       "name": "上飯田線",
       "color": "hsl(117, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "上飯田線_名古屋市",
@@ -7153,7 +7153,7 @@
       "name": "羽島線",
       "color": "hsl(346, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "羽島線_名古屋鉄道",
@@ -7166,7 +7166,7 @@
       "name": "河和線",
       "color": "hsl(102, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "河和線_名古屋鉄道",
@@ -7179,7 +7179,7 @@
       "name": "各務原線",
       "color": "hsl(9, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "各務原線_名古屋鉄道",
@@ -7192,7 +7192,7 @@
       "name": "蒲郡線",
       "color": "hsl(315, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "蒲郡線_名古屋鉄道",
@@ -7205,7 +7205,7 @@
       "name": "空港線（名古屋鉄道）",
       "color": "hsl(148, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "空港線_名古屋鉄道",
@@ -7218,7 +7218,7 @@
       "name": "犬山線",
       "color": "hsl(29, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "犬山線_名古屋鉄道",
@@ -7231,7 +7231,7 @@
       "name": "広見線",
       "color": "hsl(29, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "広見線_名古屋鉄道",
@@ -7244,7 +7244,7 @@
       "name": "三河線",
       "color": "hsl(233, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "三河線_名古屋鉄道",
@@ -7257,7 +7257,7 @@
       "name": "小牧線",
       "color": "hsl(103, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "小牧線_名古屋鉄道",
@@ -7270,7 +7270,7 @@
       "name": "常滑線",
       "color": "hsl(88, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "常滑線_名古屋鉄道",
@@ -7283,7 +7283,7 @@
       "name": "瀬戸線",
       "color": "hsl(80, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "瀬戸線_名古屋鉄道",
@@ -7296,7 +7296,7 @@
       "name": "西尾線",
       "color": "hsl(195, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "西尾線_名古屋鉄道",
@@ -7309,7 +7309,7 @@
       "name": "知多新線",
       "color": "hsl(242, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "知多新線_名古屋鉄道",
@@ -7322,7 +7322,7 @@
       "name": "築港線",
       "color": "hsl(183, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "築港線_名古屋鉄道",
@@ -7335,7 +7335,7 @@
       "name": "竹鼻線",
       "color": "hsl(85, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "竹鼻線_名古屋鉄道",
@@ -7348,7 +7348,7 @@
       "name": "津島線",
       "color": "hsl(314, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "津島線_名古屋鉄道",
@@ -7361,7 +7361,7 @@
       "name": "尾西線",
       "color": "hsl(265, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "尾西線_名古屋鉄道",
@@ -7374,7 +7374,7 @@
       "name": "豊川線",
       "color": "hsl(228, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "豊川線_名古屋鉄道",
@@ -7387,7 +7387,7 @@
       "name": "豊田線",
       "color": "hsl(97, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "豊田線_名古屋鉄道",
@@ -7400,7 +7400,7 @@
       "name": "名鉄名古屋本線",
       "color": "hsl(157, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "名古屋本線_名古屋鉄道",
@@ -7413,7 +7413,7 @@
       "name": "西名古屋港線",
       "color": "hsl(212, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "西名古屋港線_名古屋臨海高速鉄道",
@@ -7426,7 +7426,7 @@
       "name": "東京臨海新交通臨海線",
       "color": "hsl(302, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "東京臨海新交通臨海線_ゆりかもめ",
@@ -7439,7 +7439,7 @@
       "name": "けいはんな線",
       "color": "hsl(239, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "けいはんな線_近畿日本鉄道",
@@ -7452,7 +7452,7 @@
       "name": "8号線(今里筋線)",
       "color": "hsl(196, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "8号線(今里筋線)_大阪市高速電気軌道",
@@ -7465,7 +7465,7 @@
       "name": "中之島線",
       "color": "hsl(52, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "中之島線_京阪電気鉄道",
@@ -7478,7 +7478,7 @@
       "name": "4号線",
       "color": "hsl(159, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "4号線_横浜市",
@@ -7504,7 +7504,7 @@
       "name": "成田空港線",
       "color": "hsl(20, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "成田空港線_京成電鉄",
@@ -7530,7 +7530,7 @@
       "name": "東急新横浜線・相鉄新横浜線",
       "color": "hsl(295, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "相鉄新横浜線_相模鉄道",
@@ -7543,7 +7543,7 @@
       "name": "東急新横浜線",
       "color": "hsl(278, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "東急新横浜線_東急電鉄",
@@ -7556,7 +7556,7 @@
       "name": "沖縄都市モノレール線",
       "color": "hsl(238, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "沖縄都市モノレール線_沖縄都市モノレール",
@@ -7582,7 +7582,7 @@
       "name": "いすみ線",
       "color": "hsl(142, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "いすみ線_いすみ鉄道",
@@ -7595,7 +7595,7 @@
       "name": "三国芦原線",
       "color": "hsl(46, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "三国芦原線_えちぜん鉄道",
@@ -7608,7 +7608,7 @@
       "name": "えちぜん鉄道勝山永平寺線",
       "color": "hsl(285, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "勝山永平寺線_えちぜん鉄道",
@@ -7634,7 +7634,7 @@
       "name": "しなの鉄道",
       "color": "hsl(122, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "しなの鉄道線_しなの鉄道",
@@ -7673,7 +7673,7 @@
       "name": "阿佐東線",
       "color": "hsl(191, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "四国",
       "segments": [
         {
           "line": "阿佐東線_阿佐海岸鉄道",
@@ -7686,7 +7686,7 @@
       "name": "阿武隈急行線",
       "color": "hsl(37, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東北",
       "segments": [
         {
           "line": "阿武隈急行線_阿武隈急行",
@@ -7699,7 +7699,7 @@
       "name": "愛知環状鉄道",
       "color": "hsl(203, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "愛知環状鉄道線_愛知環状鉄道",
@@ -7712,7 +7712,7 @@
       "name": "東部丘陵線",
       "color": "hsl(4, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "東部丘陵線_愛知高速交通",
@@ -7738,7 +7738,7 @@
       "name": "伊勢線",
       "color": "hsl(23, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "伊勢線_伊勢鉄道",
@@ -7751,7 +7751,7 @@
       "name": "伊豆急行",
       "color": "hsl(70, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "伊豆急行線_伊豆急行",
@@ -7777,7 +7777,7 @@
       "name": "駿豆線",
       "color": "hsl(88, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "駿豆線_伊豆箱根鉄道",
@@ -7790,7 +7790,7 @@
       "name": "伊豆箱根鉄道大雄山線",
       "color": "hsl(156, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "大雄山線_伊豆箱根鉄道",
@@ -7803,7 +7803,7 @@
       "name": "伊予鉄道横河原線",
       "color": "hsl(109, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "四国",
       "segments": [
         {
           "line": "横河原線_伊予鉄道",
@@ -7816,7 +7816,7 @@
       "name": "花園線",
       "color": "hsl(34, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "四国",
       "segments": [
         {
           "line": "花園線_伊予鉄道",
@@ -7829,7 +7829,7 @@
       "name": "郡中線",
       "color": "hsl(273, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "四国",
       "segments": [
         {
           "line": "郡中線_伊予鉄道",
@@ -7842,7 +7842,7 @@
       "name": "高浜線",
       "color": "hsl(183, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "四国",
       "segments": [
         {
           "line": "高浜線_伊予鉄道",
@@ -7855,7 +7855,7 @@
       "name": "城南線",
       "color": "hsl(344, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "四国",
       "segments": [
         {
           "line": "城南線_伊予鉄道",
@@ -7868,7 +7868,7 @@
       "name": "連絡線",
       "color": "hsl(227, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "四国",
       "segments": [
         {
           "line": "連絡線_伊予鉄道",
@@ -7881,7 +7881,7 @@
       "name": "城北線（伊予鉄道）",
       "color": "hsl(159, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "四国",
       "segments": [
         {
           "line": "城北線_伊予鉄道",
@@ -7894,7 +7894,7 @@
       "name": "大手町線",
       "color": "hsl(21, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "四国",
       "segments": [
         {
           "line": "大手町線_伊予鉄道",
@@ -7907,7 +7907,7 @@
       "name": "本町線",
       "color": "hsl(264, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "四国",
       "segments": [
         {
           "line": "本町線_伊予鉄道",
@@ -7920,7 +7920,7 @@
       "name": "井原線",
       "color": "hsl(80, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "井原線_井原鉄道",
@@ -7933,7 +7933,7 @@
       "name": "大社線",
       "color": "hsl(356, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "大社線_一畑電車",
@@ -7946,7 +7946,7 @@
       "name": "一畑電車北松江線",
       "color": "hsl(153, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "北松江線_一畑電車",
@@ -7959,7 +7959,7 @@
       "name": "鞍馬線",
       "color": "hsl(258, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "鞍馬線_叡山電鉄",
@@ -7972,7 +7972,7 @@
       "name": "叡山本線",
       "color": "hsl(345, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "叡山本線_叡山電鉄",
@@ -7985,7 +7985,7 @@
       "name": "鉄道線（遠州鉄道）",
       "color": "hsl(176, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "鉄道線_遠州鉄道",
@@ -7998,7 +7998,7 @@
       "name": "清輝橋線",
       "color": "hsl(271, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "清輝橋線_岡山電気軌道",
@@ -8011,7 +8011,7 @@
       "name": "東山本線",
       "color": "hsl(143, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "東山本線_岡山電気軌道",
@@ -8037,7 +8037,7 @@
       "name": "岳南鉄道線",
       "color": "hsl(101, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "岳南鉄道線_岳南電車",
@@ -8050,7 +8050,7 @@
       "name": "甘木線（甘木鉄道）",
       "color": "hsl(85, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "甘木線_甘木鉄道",
@@ -8063,7 +8063,7 @@
       "name": "常総線",
       "color": "hsl(301, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "常総線_関東鉄道",
@@ -8076,7 +8076,7 @@
       "name": "関東鉄道竜ヶ崎線",
       "color": "hsl(307, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "竜ヶ崎線_関東鉄道",
@@ -8089,7 +8089,7 @@
       "name": "紀州鉄道線",
       "color": "hsl(118, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "紀州鉄道線_紀州鉄道",
@@ -8102,7 +8102,7 @@
       "name": "錦川清流線",
       "color": "hsl(13, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "錦川清流線_錦川鉄道",
@@ -8115,7 +8115,7 @@
       "name": "内部線",
       "color": "hsl(93, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "内部線_四日市あすなろう鉄道",
@@ -8128,7 +8128,7 @@
       "name": "八王子線",
       "color": "hsl(241, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "八王子線_四日市あすなろう鉄道",
@@ -8141,7 +8141,7 @@
       "name": "多賀線",
       "color": "hsl(294, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "多賀線_近江鉄道",
@@ -8154,7 +8154,7 @@
       "name": "八日市線",
       "color": "hsl(52, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "八日市線_近江鉄道",
@@ -8167,7 +8167,7 @@
       "name": "本線（近江鉄道）",
       "color": "hsl(45, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "本線_近江鉄道",
@@ -8180,7 +8180,7 @@
       "name": "幹線",
       "color": "hsl(134, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "幹線_熊本市",
@@ -8193,7 +8193,7 @@
       "name": "健軍線",
       "color": "hsl(143, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "健軍線_熊本市",
@@ -8206,7 +8206,7 @@
       "name": "上熊本線",
       "color": "hsl(331, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "上熊本線_熊本市",
@@ -8219,7 +8219,7 @@
       "name": "水前寺線",
       "color": "hsl(287, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "水前寺線_熊本市",
@@ -8232,7 +8232,7 @@
       "name": "田崎線",
       "color": "hsl(177, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "田崎線_熊本市",
@@ -8245,7 +8245,7 @@
       "name": "菊池線",
       "color": "hsl(78, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "菊池線_熊本電気鉄道",
@@ -8258,7 +8258,7 @@
       "name": "藤崎線",
       "color": "hsl(197, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "藤崎線_熊本電気鉄道",
@@ -8284,7 +8284,7 @@
       "name": "宇品線",
       "color": "hsl(164, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "宇品線_広島電鉄",
@@ -8297,7 +8297,7 @@
       "name": "横川線",
       "color": "hsl(42, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "横川線_広島電鉄",
@@ -8310,7 +8310,7 @@
       "name": "皆実線",
       "color": "hsl(211, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "皆実線_広島電鉄",
@@ -8323,7 +8323,7 @@
       "name": "宮島線",
       "color": "hsl(310, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "宮島線_広島電鉄",
@@ -8336,7 +8336,7 @@
       "name": "江波線",
       "color": "hsl(162, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "江波線_広島電鉄",
@@ -8349,7 +8349,7 @@
       "name": "白島線",
       "color": "hsl(135, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "白島線_広島電鉄",
@@ -8362,7 +8362,7 @@
       "name": "本線（広島電鉄）",
       "color": "hsl(45, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "本線_広島電鉄",
@@ -8375,7 +8375,7 @@
       "name": "弘南線",
       "color": "hsl(126, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東北",
       "segments": [
         {
           "line": "弘南線_弘南鉄道",
@@ -8388,7 +8388,7 @@
       "name": "大鰐線",
       "color": "hsl(188, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東北",
       "segments": [
         {
           "line": "大鰐線_弘南鉄道",
@@ -8401,7 +8401,7 @@
       "name": "江ノ島電鉄",
       "color": "hsl(23, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "江ノ島電鉄線_江ノ島電鉄",
@@ -8414,7 +8414,7 @@
       "name": "琴平線",
       "color": "hsl(89, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "四国",
       "segments": [
         {
           "line": "琴平線_高松琴平電気鉄道",
@@ -8427,7 +8427,7 @@
       "name": "志度線",
       "color": "hsl(265, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "四国",
       "segments": [
         {
           "line": "志度線_高松琴平電気鉄道",
@@ -8440,7 +8440,7 @@
       "name": "長尾線",
       "color": "hsl(286, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "四国",
       "segments": [
         {
           "line": "長尾線_高松琴平電気鉄道",
@@ -8492,7 +8492,7 @@
       "name": "阪堺線",
       "color": "hsl(60, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "阪堺線_阪堺電気軌道",
@@ -8505,7 +8505,7 @@
       "name": "上町線",
       "color": "hsl(257, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "上町線_阪堺電気軌道",
@@ -8557,7 +8557,7 @@
       "name": "三岐線",
       "color": "hsl(266, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "三岐線_三岐鉄道",
@@ -8570,7 +8570,7 @@
       "name": "北勢線",
       "color": "hsl(358, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "北勢線_三岐鉄道",
@@ -8583,7 +8583,7 @@
       "name": "南リアス線",
       "color": "hsl(305, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東北",
       "segments": [
         {
           "line": "南リアス線_三陸鉄道",
@@ -8596,7 +8596,7 @@
       "name": "北リアス線",
       "color": "hsl(232, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東北",
       "segments": [
         {
           "line": "北リアス線_三陸鉄道",
@@ -8609,7 +8609,7 @@
       "name": "三陸鉄道リアス線",
       "color": "hsl(166, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東北",
       "segments": [
         {
           "line": "リアス線_三陸鉄道",
@@ -8622,7 +8622,7 @@
       "name": "フラワー長井線",
       "color": "hsl(121, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東北",
       "segments": [
         {
           "line": "フラワー長井線_山形鉄道",
@@ -8648,7 +8648,7 @@
       "name": "本線（山陽電気鉄道）",
       "color": "hsl(45, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "本線_山陽電気鉄道",
@@ -8661,7 +8661,7 @@
       "name": "網干線",
       "color": "hsl(284, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "網干線_山陽電気鉄道",
@@ -8674,7 +8674,7 @@
       "name": "八栗ケーブル",
       "color": "hsl(295, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "四国",
       "segments": [
         {
           "line": "八栗ケーブル_四国ケーブル",
@@ -8687,7 +8687,7 @@
       "name": "第一期線",
       "color": "hsl(15, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "第一期線_鹿児島市",
@@ -8700,7 +8700,7 @@
       "name": "第二期線",
       "color": "hsl(55, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "第二期線_鹿児島市",
@@ -8713,7 +8713,7 @@
       "name": "谷山線",
       "color": "hsl(59, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "谷山線_鹿児島市",
@@ -8726,7 +8726,7 @@
       "name": "唐湊線",
       "color": "hsl(286, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "唐湊線_鹿児島市",
@@ -8739,7 +8739,7 @@
       "name": "鹿島臨海鉄道大洗鹿島線",
       "color": "hsl(153, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "大洗鹿島線_鹿島臨海鉄道",
@@ -8765,7 +8765,7 @@
       "name": "若桜線",
       "color": "hsl(264, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "若桜線_若桜鉄道",
@@ -8778,7 +8778,7 @@
       "name": "秋田内陸線",
       "color": "hsl(240, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東北",
       "segments": [
         {
           "line": "秋田内陸線_秋田内陸縦貫鉄道",
@@ -8804,7 +8804,7 @@
       "name": "松浦鉄道西九州線",
       "color": "hsl(329, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "西九州線_松浦鉄道",
@@ -8817,7 +8817,7 @@
       "name": "アルピコ交通上高地線",
       "color": "hsl(250, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "上高地線_アルピコ交通",
@@ -8830,7 +8830,7 @@
       "name": "江の島線",
       "color": "hsl(34, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "江の島線_湘南モノレール",
@@ -8843,7 +8843,7 @@
       "name": "上信線",
       "color": "hsl(147, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "上信線_上信電鉄",
@@ -8856,7 +8856,7 @@
       "name": "別所線",
       "color": "hsl(242, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "別所線_上田電鉄",
@@ -8869,7 +8869,7 @@
       "name": "上毛線",
       "color": "hsl(14, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "上毛線_上毛電気鉄道",
@@ -8882,7 +8882,7 @@
       "name": "信楽線",
       "color": "hsl(151, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "信楽線_信楽高原鐵道",
@@ -8895,7 +8895,7 @@
       "name": "真岡線",
       "color": "hsl(285, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "真岡線_真岡鐵道",
@@ -8921,7 +8921,7 @@
       "name": "六甲アイランド線",
       "color": "hsl(143, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "六甲アイランド線_神戸新交通",
@@ -8934,7 +8934,7 @@
       "name": "水間線",
       "color": "hsl(267, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "水間線_水間鉄道",
@@ -8947,7 +8947,7 @@
       "name": "水島本線",
       "color": "hsl(317, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "水島本線_水島臨海鉄道",
@@ -8960,7 +8960,7 @@
       "name": "えちごトキめき鉄道日本海ひすいライン",
       "color": "hsl(221, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "日本海ひすいライン_えちごトキめき鉄道",
@@ -8973,7 +8973,7 @@
       "name": "えちごトキめき鉄道妙高はねうまライン",
       "color": "hsl(134, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "妙高はねうまライン_えちごトキめき鉄道",
@@ -8986,7 +8986,7 @@
       "name": "あいの風とやま鉄道線",
       "color": "hsl(35, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "あいの風とやま鉄道線_あいの風とやま鉄道",
@@ -8999,7 +8999,7 @@
       "name": "IRいしかわ鉄道線",
       "color": "hsl(173, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "IRいしかわ鉄道線_IRいしかわ鉄道",
@@ -9012,7 +9012,7 @@
       "name": "ハピラインふくい線",
       "color": "hsl(91, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "ハピラインふくい線_ハピラインふくい",
@@ -9025,7 +9025,7 @@
       "name": "青い森鉄道",
       "color": "hsl(108, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東北",
       "segments": [
         {
           "line": "青い森鉄道線_青い森鉄道",
@@ -9038,7 +9038,7 @@
       "name": "静岡鉄道静岡清水線",
       "color": "hsl(222, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "静岡清水線_静岡鉄道",
@@ -9051,7 +9051,7 @@
       "name": "1号線（千葉都市モノレール）",
       "color": "hsl(53, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "1号線_千葉都市モノレール",
@@ -9064,7 +9064,7 @@
       "name": "2号線",
       "color": "hsl(166, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "2号線_千葉都市モノレール",
@@ -9077,7 +9077,7 @@
       "name": "流山線",
       "color": "hsl(286, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "流山線_流鉄",
@@ -9090,7 +9090,7 @@
       "name": "井川線",
       "color": "hsl(258, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "井川線_大井川鐵道",
@@ -9103,7 +9103,7 @@
       "name": "大井川本線",
       "color": "hsl(296, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "大井川本線_大井川鐵道",
@@ -9129,7 +9129,7 @@
       "name": "樽見線",
       "color": "hsl(113, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "樽見線_樽見鉄道",
@@ -9155,7 +9155,7 @@
       "name": "智頭線",
       "color": "hsl(306, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "中国・山陰",
       "segments": [
         {
           "line": "智頭線_智頭急行",
@@ -9181,7 +9181,7 @@
       "name": "筑豊電気鉄道線",
       "color": "hsl(64, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "筑豊電気鉄道線_筑豊電気鉄道",
@@ -9194,7 +9194,7 @@
       "name": "秩父本線",
       "color": "hsl(264, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "秩父本線_秩父鉄道",
@@ -9207,7 +9207,7 @@
       "name": "銚子電気鉄道",
       "color": "hsl(226, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "銚子電気鉄道線_銚子電気鉄道",
@@ -9220,7 +9220,7 @@
       "name": "蛍茶屋支線",
       "color": "hsl(41, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "蛍茶屋支線_長崎電気軌道",
@@ -9233,7 +9233,7 @@
       "name": "桜町支線",
       "color": "hsl(306, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "桜町支線_長崎電気軌道",
@@ -9246,7 +9246,7 @@
       "name": "赤迫支線",
       "color": "hsl(190, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "赤迫支線_長崎電気軌道",
@@ -9259,7 +9259,7 @@
       "name": "大浦支線",
       "color": "hsl(76, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "大浦支線_長崎電気軌道",
@@ -9272,7 +9272,7 @@
       "name": "本線（長崎電気軌道）",
       "color": "hsl(45, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "本線_長崎電気軌道",
@@ -9285,7 +9285,7 @@
       "name": "長野線（長野電鉄）",
       "color": "hsl(0, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "長野線_長野電鉄",
@@ -9298,7 +9298,7 @@
       "name": "越美南線",
       "color": "hsl(57, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "越美南線_長良川鉄道",
@@ -9311,7 +9311,7 @@
       "name": "津軽鉄道線",
       "color": "hsl(145, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東北",
       "segments": [
         {
           "line": "津軽鉄道線_津軽鉄道",
@@ -9324,7 +9324,7 @@
       "name": "天竜浜名湖線",
       "color": "hsl(173, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "天竜浜名湖線_天竜浜名湖鉄道",
@@ -9337,7 +9337,7 @@
       "name": "阿佐線",
       "color": "hsl(2, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "四国",
       "segments": [
         {
           "line": "阿佐線_土佐くろしお鉄道",
@@ -9350,7 +9350,7 @@
       "name": "宿毛線",
       "color": "hsl(247, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "四国",
       "segments": [
         {
           "line": "宿毛線_土佐くろしお鉄道",
@@ -9363,7 +9363,7 @@
       "name": "中村線",
       "color": "hsl(332, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "四国",
       "segments": [
         {
           "line": "中村線_土佐くろしお鉄道",
@@ -9428,7 +9428,7 @@
       "name": "島原鉄道",
       "color": "hsl(98, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "島原鉄道線_島原鉄道",
@@ -9441,7 +9441,7 @@
       "name": "北しなの線",
       "color": "hsl(271, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "北しなの線_しなの鉄道",
@@ -9454,7 +9454,7 @@
       "name": "高森線",
       "color": "hsl(339, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "高森線_南阿蘇鉄道",
@@ -9467,7 +9467,7 @@
       "name": "日生線",
       "color": "hsl(99, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "日生線_能勢電鉄",
@@ -9480,7 +9480,7 @@
       "name": "妙見線",
       "color": "hsl(219, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "妙見線_能勢電鉄",
@@ -9493,7 +9493,7 @@
       "name": "大森線",
       "color": "hsl(50, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "北海道",
       "segments": [
         {
           "line": "大森線_函館市",
@@ -9506,7 +9506,7 @@
       "name": "湯の川線",
       "color": "hsl(258, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "北海道",
       "segments": [
         {
           "line": "湯の川線_函館市",
@@ -9519,7 +9519,7 @@
       "name": "宝来・谷地頭線",
       "color": "hsl(64, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "北海道",
       "segments": [
         {
           "line": "宝来_谷地頭線_函館市",
@@ -9532,7 +9532,7 @@
       "name": "本線（函館市）",
       "color": "hsl(45, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "北海道",
       "segments": [
         {
           "line": "本線_函館市",
@@ -9545,7 +9545,7 @@
       "name": "鋼索線（小田急箱根）",
       "color": "hsl(291, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "鋼索線_小田急箱根",
@@ -9558,7 +9558,7 @@
       "name": "鉄道線（小田急箱根）",
       "color": "hsl(176, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "鉄道線_小田急箱根",
@@ -9597,7 +9597,7 @@
       "name": "肥薩おれんじ鉄道",
       "color": "hsl(48, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "肥薩おれんじ鉄道線_肥薩おれんじ鉄道",
@@ -9610,7 +9610,7 @@
       "name": "安野屋線",
       "color": "hsl(177, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "安野屋線_富山地方鉄道",
@@ -9623,7 +9623,7 @@
       "name": "呉羽線",
       "color": "hsl(3, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "呉羽線_富山地方鉄道",
@@ -9636,7 +9636,7 @@
       "name": "支線",
       "color": "hsl(31, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "支線_富山地方鉄道",
@@ -9649,7 +9649,7 @@
       "name": "上滝線",
       "color": "hsl(274, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "上滝線_富山地方鉄道",
@@ -9662,7 +9662,7 @@
       "name": "不二越線",
       "color": "hsl(255, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "不二越線_富山地方鉄道",
@@ -9675,7 +9675,7 @@
       "name": "本線（富山地方鉄道）",
       "color": "hsl(45, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "本線_富山地方鉄道",
@@ -9688,7 +9688,7 @@
       "name": "立山線",
       "color": "hsl(262, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "立山線_富山地方鉄道",
@@ -9740,7 +9740,7 @@
       "name": "福武線",
       "color": "hsl(275, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "福武線_福井鉄道",
@@ -9753,7 +9753,7 @@
       "name": "飯坂線",
       "color": "hsl(111, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東北",
       "segments": [
         {
           "line": "飯坂線_福島交通",
@@ -9766,7 +9766,7 @@
       "name": "伊田線",
       "color": "hsl(7, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "伊田線_平成筑豊鉄道",
@@ -9779,7 +9779,7 @@
       "name": "糸田線",
       "color": "hsl(350, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "糸田線_平成筑豊鉄道",
@@ -9792,7 +9792,7 @@
       "name": "田川線",
       "color": "hsl(30, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "田川線_平成筑豊鉄道",
@@ -9805,7 +9805,7 @@
       "name": "渥美線",
       "color": "hsl(230, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "渥美線_豊橋鉄道",
@@ -9818,7 +9818,7 @@
       "name": "東田本線",
       "color": "hsl(122, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "東田本線_豊橋鉄道",
@@ -9831,7 +9831,7 @@
       "name": "北越急行ほくほく線",
       "color": "hsl(343, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "ほくほく線_北越急行",
@@ -9844,7 +9844,7 @@
       "name": "道南いさりび鉄道線",
       "color": "hsl(263, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "北海道",
       "segments": [
         {
           "line": "道南いさりび鉄道線_道南いさりび鉄道",
@@ -9883,7 +9883,7 @@
       "name": "小倉線",
       "color": "hsl(251, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "小倉線_北九州高速鉄道",
@@ -9909,7 +9909,7 @@
       "name": "石川線",
       "color": "hsl(42, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "石川線_北陸鉄道",
@@ -9922,7 +9922,7 @@
       "name": "浅野川線",
       "color": "hsl(273, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "浅野川線_北陸鉄道",
@@ -9935,7 +9935,7 @@
       "name": "高岡軌道線",
       "color": "hsl(68, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "高岡軌道線_万葉線",
@@ -9948,7 +9948,7 @@
       "name": "新湊港線",
       "color": "hsl(264, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "新湊港線_万葉線",
@@ -9961,7 +9961,7 @@
       "name": "ガイドウェイバス志段味線",
       "color": "hsl(25, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "ガイドウェイバス志段味線_名古屋ガイドウェイバス",
@@ -9974,7 +9974,7 @@
       "name": "明知線",
       "color": "hsl(111, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "明知線_明知鉄道",
@@ -10000,7 +10000,7 @@
       "name": "鳥海山ろく線",
       "color": "hsl(172, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東北",
       "segments": [
         {
           "line": "鳥海山ろく線_由利高原鉄道",
@@ -10026,7 +10026,7 @@
       "name": "六甲ケーブル線",
       "color": "hsl(210, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "六甲ケーブル線_神戸六甲鉄道",
@@ -10039,7 +10039,7 @@
       "name": "和歌山電鐵貴志川線",
       "color": "hsl(203, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "貴志川線_和歌山電鐵",
@@ -10052,7 +10052,7 @@
       "name": "ポートアイランド線",
       "color": "hsl(335, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "ポートアイランド線_神戸新交通",
@@ -10065,7 +10065,7 @@
       "name": "富山港線",
       "color": "hsl(351, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "富山港線_富山地方鉄道",
@@ -10078,7 +10078,7 @@
       "name": "仙台空港線",
       "color": "hsl(20, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東北",
       "segments": [
         {
           "line": "仙台空港線_仙台空港鉄道",
@@ -10091,7 +10091,7 @@
       "name": "富山都心線",
       "color": "hsl(27, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "東海・中部",
       "segments": [
         {
           "line": "富山都心線_富山地方鉄道",
@@ -10104,7 +10104,7 @@
       "name": "門司港レトロ観光線",
       "color": "hsl(302, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "九州",
       "segments": [
         {
           "line": "門司港レトロ観光線_平成筑豊鉄道",
@@ -10117,7 +10117,7 @@
       "name": "湊線",
       "color": "hsl(88, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "湊線_ひたちなか海浜鉄道",
@@ -10130,7 +10130,7 @@
       "name": "養老線",
       "color": "hsl(304, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "養老線_養老鉄道",
@@ -10156,7 +10156,7 @@
       "name": "伊賀線",
       "color": "hsl(18, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "関西",
       "segments": [
         {
           "line": "伊賀線_伊賀鉄道",
@@ -10195,7 +10195,7 @@
       "name": "宇都宮芳賀ライトレール線",
       "color": "hsl(170, 60%, 55%)",
       "region": "",
-      "group": "私鉄",
+      "group": "首都圏",
       "segments": [
         {
           "line": "宇都宮芳賀ライトレール線_宇都宮ライトレール",

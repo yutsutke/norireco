@@ -671,10 +671,12 @@ function getL(id){return LINES.find(l=>l.id===id);}
 const GROUP_ORDER = [
   '首都圏・JR','東京メトロ・都営',
   '首都圏・私鉄（東・北）','首都圏・私鉄（南・西）','首都圏・ローカル',
-  '関西','東海・中部','東北','九州','北海道','四国','中国・山陰','新幹線','その他'
+  '関西','東海・中部','東北','九州','北海道','四国','中国・山陰','新幹線',
+  '私鉄','その他'
 ];
 
 function effectiveGroup(l) {
+  if (l.group === 'JR在来') return l.group; // データ側で地域割り当て済みのはずだが念のため
   if (l.group !== '首都圏') return l.group || 'その他';
   const n = l.name;
   if (n.startsWith('JR')) return '首都圏・JR';
