@@ -1123,11 +1123,17 @@ let labelLayerRef=null;
 const drawnMergedStations = new Map();
 
 function drawLines(){
+  // ラベルマスターリストもリセット (新規ロード時)
+  window._allLabels = [];
+
   drawnMergedStations.clear();
   // レイヤーグループ初期化（まだなければ）
   if (!dotLayerRef) {
     dotLayerRef = L.layerGroup();
     labelLayerRef = L.layerGroup();
+  } else {
+    // 既存のレイヤーをクリア (再描画時のDOM残留防止)
+    labelLayerRef.clearLayers();
   }
 
   // 読み込み済みの全路線を描画
@@ -1525,7 +1531,7 @@ function drawSingleLine(line){
         label._norireco_priority=priority;
         label._station_tier = _tier;
         label._station_isMetro = _isMetro;
-        labelLayer.addLayer(label);
+        (window._allLabels = window._allLabels || []).push(label); // updateLOD manages layer membership
       } else if(ir){
         let dot;
         if (_nLines > 1 && _ms) {
@@ -1557,7 +1563,7 @@ function drawSingleLine(line){
         });
         label._station_tier = _tier;
         label._station_isMetro = _isMetro;
-        labelLayer.addLayer(label);
+        (window._allLabels = window._allLabels || []).push(label); // updateLOD manages layer membership
       } else {
         // 乗車済み路線の未乗車駅: 小さい薄ドット + 薄いラベル
         let dot;
@@ -1594,7 +1600,7 @@ function drawSingleLine(line){
         });
         label._station_tier = _tier;
         label._station_isMetro = _isMetro;
-        labelLayer.addLayer(label);
+        (window._allLabels = window._allLabels || []).push(label); // updateLOD manages layer membership
       }
     });
   });
