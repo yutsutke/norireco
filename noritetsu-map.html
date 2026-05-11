@@ -1182,18 +1182,25 @@ function updateLOD() {
     }
   }
 
-  // ラベル: より厳しめのティア (地域別閾値)
+  // ラベル: addLayer/removeLayer でDOM要素自体を出し入れ (ズーム/パン高速化)
   if (labelLayerRef) {
     const labelMinMetro = getLabelMinTier(z, true);
     const labelMinRural = getLabelMinTier(z, false);
     const minOfBoth = Math.min(labelMinMetro, labelMinRural);
     if (minOfBoth <= 6) {
       if (!map.hasLayer(labelLayerRef)) map.addLayer(labelLayerRef);
-      labelLayerRef.eachLayer(l => {
+      // _allLabels (マスター) を見て、表示すべきラベルだけ実際に layer に入れる
+      (window._allLabels || []).forEach(l => {
         const t = l._station_tier || 1;
         const m = l._station_isMetro;
         const minTier = m ? labelMinMetro : labelMinRural;
-        setStationVisible(l, t >= minTier);
+        const shouldShow = t >= minTier;
+        const inLayer = labelLayerRef.hasLayer(l);
+        if (shouldShow && !inLayer) {
+          labelLayerRef.addLayer(l);
+        } else if (!shouldShow && inLayer) {
+          labelLayerRef.removeLayer(l);
+        }
       });
     } else {
       if (map.hasLayer(labelLayerRef)) map.removeLayer(labelLayerRef);
