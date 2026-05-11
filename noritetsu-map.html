@@ -1042,6 +1042,26 @@ function initMap(){
     updateLOD();
   });
 
+  // ズーム/パン中はラベル(DOM)を完全に外してDOM負荷をゼロに
+  // 操作終了後 updateLOD() で必要なラベルだけ復元
+  let _labelsHidden = false;
+  function hideLabelsTemporarily() {
+    if (_labelsHidden) return;
+    if (labelLayerRef && map.hasLayer(labelLayerRef)) {
+      map.removeLayer(labelLayerRef);
+      _labelsHidden = true;
+    }
+  }
+  function restoreLabelsAfterMove() {
+    if (!_labelsHidden) { updateLOD(); return; }
+    _labelsHidden = false;
+    updateLOD();  // updateLOD が必要なラベルを addLayer して labelLayer を map に戻す
+  }
+  map.on('movestart', hideLabelsTemporarily);
+  map.on('zoomstart', hideLabelsTemporarily);
+  map.on('moveend', restoreLabelsAfterMove);
+  // zoomend は上で既に updateLOD を呼ぶので追加処理不要
+
   // メモモード
   map.on('click',e=>{
     if(!memoMode)return;
@@ -1316,8 +1336,10 @@ function getDotMinTier(z, isMetro) {
 }
 // ラベル用 (さらに厳しめ)
 function getLabelMinTier(z, isMetro) {
-  // 駅マーカーと駅名は同じ閾値で出す (ユーザー要望:駅と駅名は同時表示)
-  return getDotMinTier(z, isMetro);
+  // PC/iPad はドット閾値より 1 早く、モバイルは 2 早くラベル表示
+  // (駅名は早めに見たい / 重さは pan・zoom 中の一時非表示で軽減)
+  const offset = IS_MOBILE ? 2 : 1;
+  return getDotMinTier(z + offset, isMetro);
 }
 // マーカー(circleMarker or divIcon)の表示/非表示切り替え
 function setStationVisible(m, visible) {
