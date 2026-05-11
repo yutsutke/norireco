@@ -1284,8 +1284,8 @@ function getDotMinTier(z, isMetro) {
 }
 // ラベル用 (さらに厳しめ)
 function getLabelMinTier(z, isMetro) {
-  // モバイルではズーム閾値を1段階厳しく
-  if (IS_MOBILE) z -= 1;
+  // モバイル: ラベル閾値は PC と同じ (駅名は早めに見せる)
+  // ※ドット側だけは z-=1 で軽量化を維持
   if (isMetro) {
     // 首都圏でもz=13で全駅名が見えるように緩和
     if (z >= 13) return 1;  // 全駅名 (was z>=15)
@@ -1321,20 +1321,6 @@ function setStationVisible(m, visible) {
 }
 
 // 統合駅(複数路線)用パイチャートSVGアイコン生成
-// モバイル向け: 統合駅もCanvasのcircleMarkerで描画 (DOM要素ゼロ → ズーム/パン高速化)
-function makeMergedDotMobile(latLng, colors, radius, lineColor, ridden, canvas) {
-  // 一番乗り入れ多い路線色を中心、外側を白縁で囲む (統合駅と分かるように)
-  const main = colors && colors[0] ? colors[0] : lineColor;
-  return L.circleMarker(latLng, {
-    radius: radius,
-    fillColor: main,
-    color: ridden ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.7)',
-    weight: ridden ? 2.0 : 1.5,
-    fillOpacity: ridden ? 1 : 0.7,
-    renderer: canvas,
-  });
-}
-
 function makePieIcon(lineColors, sizePx, ridden) {
   const n = lineColors.length;
   const r = sizePx / 2;
@@ -1498,14 +1484,8 @@ function drawSingleLine(line){
         let dot;
         if (_nLines > 1 && _ms) {
           const _colors = _ms.colors || _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
-          if (IS_MOBILE) {
-            // モバイル: Canvas circleMarker（DOM要素ゼロ）
-            dot = makeMergedDotMobile([s.lat,s.lon], _colors, 5 * _mScale, line.color, false, canvas);
-            dot.options.fillOpacity = 0.55;
-          } else {
-            const _size = Math.round(11 * _mScale);
-            dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, false), opacity:0.7, interactive:true});
-          }
+          const _size = Math.round(11 * _mScale);
+          dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, false), opacity:0.7, interactive:true});
         } else {
           dot = L.circleMarker([s.lat,s.lon],{
             radius:4 * _mScale, fillColor:line.color,
@@ -1536,12 +1516,8 @@ function drawSingleLine(line){
         let dot;
         if (_nLines > 1 && _ms) {
           const _colors = _ms.colors || _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
-          if (IS_MOBILE) {
-            dot = makeMergedDotMobile([s.lat,s.lon], _colors, 7 * _mScale, line.color, true, canvas);
-          } else {
-            const _size = Math.round(14 * _mScale);
-            dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, true), interactive:true});
-          }
+          const _size = Math.round(14 * _mScale);
+          dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, true), interactive:true});
         } else {
           dot = L.circleMarker([s.lat,s.lon],{
             radius:6 * _mScale,fillColor:line.color,
@@ -1569,13 +1545,8 @@ function drawSingleLine(line){
         let dot;
         if (_nLines > 1 && _ms) {
           const _colors = _ms.colors || _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
-          if (IS_MOBILE) {
-            dot = makeMergedDotMobile([s.lat,s.lon], _colors, 4 * _mScale, line.color, false, canvas);
-            dot.options.fillOpacity = 0.55;
-          } else {
-            const _size = Math.round(10 * _mScale);
-            dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, false), opacity:0.6, interactive:true});
-          }
+          const _size = Math.round(10 * _mScale);
+          dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, false), opacity:0.6, interactive:true});
         } else {
           dot = L.circleMarker([s.lat,s.lon],{
             radius:3 * _mScale, fillColor:line.color,
