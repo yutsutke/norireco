@@ -73,7 +73,18 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
   position:absolute;bottom:60px;left:8px;z-index:1000;
   background:rgba(13,27,42,.92);border:1px solid var(--track);border-radius:12px;
   padding:9px 12px;font-size:10px;color:var(--silver);
-  backdrop-filter:blur(8px);pointer-events:none;
+  backdrop-filter:blur(8px);
+  /* PC/iPad: スクロール可能、最大高さ画面の半分まで */
+  max-height:calc(100vh - 200px);
+  overflow-y:auto;
+  pointer-events:auto;
+  /* ホイール/タッチでスクロール可能に */
+}
+.map-legend-box::-webkit-scrollbar{width:5px;}
+.map-legend-box::-webkit-scrollbar-thumb{background:rgba(140,160,179,.3);border-radius:3px;}
+/* スマホでは凡例パネル非表示 */
+@media (max-width: 768px){
+  .map-legend-box{display:none;}
 }
 .leg-row{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
 .leg-row:last-child{margin-bottom:0;}
@@ -1298,46 +1309,8 @@ function getDotMinTier(z, isMetro) {
 }
 // ラベル用 (さらに厳しめ)
 function getLabelMinTier(z, isMetro) {
-  if (IS_MOBILE) {
-    // モバイル: 現状維持
-    if (isMetro) {
-      if (z >= 13) return 1;
-      if (z >= 12) return 2;
-      if (z >= 11) return 3;
-      if (z >= 10) return 4;
-      if (z >= 9)  return 5;
-      if (z >= 7)  return 6;
-      return 99;
-    } else {
-      if (z >= 12) return 1;
-      if (z >= 11) return 2;
-      if (z >= 10) return 3;
-      if (z >= 9)  return 4;
-      if (z >= 8)  return 5;
-      if (z >= 6)  return 6;
-      return 99;
-    }
-  } else {
-    // PC/iPad: もう一段早めに駅名表示
-    if (isMetro) {
-      if (z >= 12) return 1;  // 全駅名 (was z>=13)
-      if (z >= 11) return 2;
-      if (z >= 10) return 3;
-      if (z >= 9)  return 4;
-      if (z >= 8)  return 5;
-      if (z >= 6)  return 6;
-      return 99;
-    } else {
-      // 地方
-      if (z >= 11) return 1;  // 全駅名 (was z>=12)
-      if (z >= 10) return 2;
-      if (z >= 9)  return 3;
-      if (z >= 8)  return 4;
-      if (z >= 7)  return 5;
-      if (z >= 5)  return 6;
-      return 99;
-    }
-  }
+  // 駅マーカーと駅名は同じ閾値で出す (ユーザー要望:駅と駅名は同時表示)
+  return getDotMinTier(z, isMetro);
 }
 // マーカー(circleMarker or divIcon)の表示/非表示切り替え
 function setStationVisible(m, visible) {
