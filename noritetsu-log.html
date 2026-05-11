@@ -668,7 +668,28 @@ function getL(id){return LINES.find(l=>l.id===id);}
 // ════════════════════════════════════════════
 // INIT - グループ別に路線セレクトを構築
 // ════════════════════════════════════════════
-const GROUP_ORDER = ['首都圏','関西','東海・中部','東北','九州','北海道','四国','中国・山陰','新幹線','その他'];
+const GROUP_ORDER = [
+  '首都圏・JR','東京メトロ・都営',
+  '首都圏・私鉄（東・北）','首都圏・私鉄（南・西）','首都圏・ローカル',
+  '関西','東海・中部','東北','九州','北海道','四国','中国・山陰','新幹線','その他'
+];
+
+function effectiveGroup(l) {
+  if (l.group !== '首都圏') return l.group || 'その他';
+  const n = l.name;
+  if (n.startsWith('JR')) return '首都圏・JR';
+  if (n.includes('東京メトロ') || n.startsWith('都営') || n.startsWith('都電')) return '東京メトロ・都営';
+  if (n.startsWith('東武') || n.startsWith('西武') || n.startsWith('京成') ||
+      n.startsWith('東葉') || n.startsWith('新京成') || n.startsWith('北総') ||
+      n.startsWith('埼玉') || n.startsWith('日暮里') || n.startsWith('つくばエクスプレス'))
+    return '首都圏・私鉄（東・北）';
+  if (n.startsWith('東急') || n.startsWith('小田急') || n.startsWith('京急') ||
+      n.startsWith('京王') || n.startsWith('相模鉄道') || n.startsWith('横浜') ||
+      n.startsWith('伊豆箱根') || n.startsWith('江ノ島') || n.startsWith('湘南') ||
+      n.startsWith('多摩都市') || n.startsWith('箱根'))
+    return '首都圏・私鉄（南・西）';
+  return '首都圏・ローカル';
+}
 
 function buildGroupedSelect(el, filter) {
   const f = (filter || '').trim().toLowerCase();
@@ -677,7 +698,7 @@ function buildGroupedSelect(el, filter) {
   const grouped = {};
   LINES.forEach(l => {
     if (f && !l.name.toLowerCase().includes(f)) return;
-    const g = l.group || 'その他';
+    const g = effectiveGroup(l);
     if (!grouped[g]) grouped[g] = [];
     grouped[g].push(l);
   });
@@ -1245,11 +1266,10 @@ function initMemoUI() {
   }
 
   // 全路線をグループ別
-  const GROUP_ORDER = ['首都圏','関西','東海・中部','東北','九州','北海道','四国','中国・山陰','新幹線','その他'];
   const grouped = {};
   LINES.forEach(l => {
-    if (riddenLineIds.has(l.id)) return; // 乗車済みは上に出したのでスキップ
-    const g = l.group || 'その他';
+    if (riddenLineIds.has(l.id)) return;
+    const g = effectiveGroup(l);
     if (!grouped[g]) grouped[g] = [];
     grouped[g].push(l);
   });
