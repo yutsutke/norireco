@@ -1,0 +1,4036 @@
+{
+  "version": "1.0",
+  "updated_at": "2026-05-12",
+  "note": "駅リスト(stations)は順次追加予定。N02駅名と完全一致させること。",
+  "service_lines": [
+    {
+      "id": "tokaido_shinkansen",
+      "name": "東海道新幹線",
+      "name_kana": "とうかいどうしんかんせん",
+      "operator": "JR東海",
+      "operator_id": "jr_central",
+      "color": "#F77F00",
+      "official_line": "東海道新幹線",
+      "alias": [],
+      "through_lines": [
+        "sanyo_shinkansen"
+      ],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "stations": [
+        {
+          "order": 1,
+          "name": "東京",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "品川",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "新横浜",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "小田原",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "熱海",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "三島",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "新富士",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "静岡",
+          "n02_match": true
+        },
+        {
+          "order": 9,
+          "name": "掛川",
+          "n02_match": true
+        },
+        {
+          "order": 10,
+          "name": "浜松",
+          "n02_match": true
+        },
+        {
+          "order": 11,
+          "name": "豊橋",
+          "n02_match": true
+        },
+        {
+          "order": 12,
+          "name": "三河安城",
+          "n02_match": true
+        },
+        {
+          "order": 13,
+          "name": "名古屋",
+          "n02_match": true
+        },
+        {
+          "order": 14,
+          "name": "岐阜羽島",
+          "n02_match": true
+        },
+        {
+          "order": 15,
+          "name": "米原",
+          "n02_match": true
+        },
+        {
+          "order": 16,
+          "name": "京都",
+          "n02_match": true
+        },
+        {
+          "order": 17,
+          "name": "新大阪",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "sanyo_shinkansen",
+      "name": "山陽新幹線",
+      "name_kana": "さんようしんかんせん",
+      "operator": "JR西日本",
+      "operator_id": "jr_west",
+      "color": "#0072BC",
+      "official_line": "山陽新幹線",
+      "alias": [],
+      "through_lines": [
+        "tokaido_shinkansen",
+        "kyushu_shinkansen"
+      ],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "stations": [
+        {
+          "order": 1,
+          "name": "新大阪",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "新神戸",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "西明石",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "姫路",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "相生",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "岡山",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "新倉敷",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "福山",
+          "n02_match": true
+        },
+        {
+          "order": 9,
+          "name": "新尾道",
+          "n02_match": true
+        },
+        {
+          "order": 10,
+          "name": "三原",
+          "n02_match": true
+        },
+        {
+          "order": 11,
+          "name": "東広島",
+          "n02_match": true
+        },
+        {
+          "order": 12,
+          "name": "広島",
+          "n02_match": true
+        },
+        {
+          "order": 13,
+          "name": "新岩国",
+          "n02_match": true
+        },
+        {
+          "order": 14,
+          "name": "徳山",
+          "n02_match": true
+        },
+        {
+          "order": 15,
+          "name": "新山口",
+          "n02_match": true
+        },
+        {
+          "order": 16,
+          "name": "厚狭",
+          "n02_match": true
+        },
+        {
+          "order": 17,
+          "name": "新下関",
+          "n02_match": true
+        },
+        {
+          "order": 18,
+          "name": "小倉",
+          "n02_match": true
+        },
+        {
+          "order": 19,
+          "name": "博多",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "tohoku_shinkansen",
+      "name": "東北新幹線",
+      "name_kana": "とうほくしんかんせん",
+      "operator": "JR東日本",
+      "operator_id": "jr_east",
+      "color": "#009B6B",
+      "official_line": "東北新幹線",
+      "alias": [],
+      "through_lines": [
+        "hokkaido_shinkansen",
+        "yamagata_shinkansen",
+        "akita_shinkansen"
+      ],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "stations": [
+        {
+          "order": 1,
+          "name": "東京",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "上野",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "大宮",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "小山",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "宇都宮",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "那須塩原",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "新白河",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "郡山",
+          "n02_match": true
+        },
+        {
+          "order": 9,
+          "name": "福島",
+          "n02_match": true
+        },
+        {
+          "order": 10,
+          "name": "白石蔵王",
+          "n02_match": true
+        },
+        {
+          "order": 11,
+          "name": "仙台",
+          "n02_match": true
+        },
+        {
+          "order": 12,
+          "name": "古川",
+          "n02_match": true
+        },
+        {
+          "order": 13,
+          "name": "くりこま高原",
+          "n02_match": true
+        },
+        {
+          "order": 14,
+          "name": "一ノ関",
+          "n02_match": true
+        },
+        {
+          "order": 15,
+          "name": "水沢江刺",
+          "n02_match": true
+        },
+        {
+          "order": 16,
+          "name": "北上",
+          "n02_match": true
+        },
+        {
+          "order": 17,
+          "name": "新花巻",
+          "n02_match": true
+        },
+        {
+          "order": 18,
+          "name": "盛岡",
+          "n02_match": true
+        },
+        {
+          "order": 19,
+          "name": "いわて沼宮内",
+          "n02_match": true
+        },
+        {
+          "order": 20,
+          "name": "二戸",
+          "n02_match": true
+        },
+        {
+          "order": 21,
+          "name": "八戸",
+          "n02_match": true
+        },
+        {
+          "order": 22,
+          "name": "七戸十和田",
+          "n02_match": true
+        },
+        {
+          "order": 23,
+          "name": "新青森",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "jr_yamanote_line",
+      "name": "山手線",
+      "name_kana": "やまのてせん",
+      "operator": "JR東日本",
+      "operator_id": "jr_east",
+      "color": "#9ACD32",
+      "official_line": "山手線",
+      "alias": [],
+      "through_lines": [],
+      "is_circular": true,
+      "start_station": "東京",
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "stations": [
+        {
+          "order": 1,
+          "name": "東京",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "神田",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "秋葉原",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "御徒町",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "上野",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "鶯谷",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "日暮里",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "西日暮里",
+          "n02_match": true
+        },
+        {
+          "order": 9,
+          "name": "田端",
+          "n02_match": true
+        },
+        {
+          "order": 10,
+          "name": "駒込",
+          "n02_match": true
+        },
+        {
+          "order": 11,
+          "name": "巣鴨",
+          "n02_match": true
+        },
+        {
+          "order": 12,
+          "name": "大塚",
+          "n02_match": true
+        },
+        {
+          "order": 13,
+          "name": "池袋",
+          "n02_match": true
+        },
+        {
+          "order": 14,
+          "name": "目白",
+          "n02_match": true
+        },
+        {
+          "order": 15,
+          "name": "高田馬場",
+          "n02_match": true
+        },
+        {
+          "order": 16,
+          "name": "新大久保",
+          "n02_match": true
+        },
+        {
+          "order": 17,
+          "name": "新宿",
+          "n02_match": true
+        },
+        {
+          "order": 18,
+          "name": "代々木",
+          "n02_match": true
+        },
+        {
+          "order": 19,
+          "name": "原宿",
+          "n02_match": true
+        },
+        {
+          "order": 20,
+          "name": "渋谷",
+          "n02_match": true
+        },
+        {
+          "order": 21,
+          "name": "恵比寿",
+          "n02_match": true
+        },
+        {
+          "order": 22,
+          "name": "目黒",
+          "n02_match": true
+        },
+        {
+          "order": 23,
+          "name": "五反田",
+          "n02_match": true
+        },
+        {
+          "order": 24,
+          "name": "大崎",
+          "n02_match": true
+        },
+        {
+          "order": 25,
+          "name": "品川",
+          "n02_match": true
+        },
+        {
+          "order": 26,
+          "name": "高輪ゲートウェイ",
+          "n02_match": true
+        },
+        {
+          "order": 27,
+          "name": "田町",
+          "n02_match": true
+        },
+        {
+          "order": 28,
+          "name": "浜松町",
+          "n02_match": true
+        },
+        {
+          "order": 29,
+          "name": "新橋",
+          "n02_match": true
+        },
+        {
+          "order": 30,
+          "name": "有楽町",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "jr_chuo_rapid",
+      "name": "中央線快速",
+      "name_kana": "ちゅうおうせんかいそく",
+      "operator": "JR東日本",
+      "operator_id": "jr_east",
+      "color": "#F15A22",
+      "official_line": "中央本線",
+      "alias": [
+        "中央線"
+      ],
+      "through_lines": [
+        "jr_ome_line"
+      ],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "stations": [
+        {
+          "order": 1,
+          "name": "東京",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "神田",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "御茶ノ水",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "四ツ谷",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "新宿",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "中野",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "高円寺",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "阿佐ヶ谷",
+          "n02_match": true
+        },
+        {
+          "order": 9,
+          "name": "荻窪",
+          "n02_match": true
+        },
+        {
+          "order": 10,
+          "name": "西荻窪",
+          "n02_match": true
+        },
+        {
+          "order": 11,
+          "name": "吉祥寺",
+          "n02_match": true
+        },
+        {
+          "order": 12,
+          "name": "三鷹",
+          "n02_match": true
+        },
+        {
+          "order": 13,
+          "name": "武蔵境",
+          "n02_match": true
+        },
+        {
+          "order": 14,
+          "name": "東小金井",
+          "n02_match": true
+        },
+        {
+          "order": 15,
+          "name": "武蔵小金井",
+          "n02_match": true
+        },
+        {
+          "order": 16,
+          "name": "国分寺",
+          "n02_match": true
+        },
+        {
+          "order": 17,
+          "name": "西国分寺",
+          "n02_match": true
+        },
+        {
+          "order": 18,
+          "name": "国立",
+          "n02_match": true
+        },
+        {
+          "order": 19,
+          "name": "立川",
+          "n02_match": true
+        },
+        {
+          "order": 20,
+          "name": "日野",
+          "n02_match": true
+        },
+        {
+          "order": 21,
+          "name": "豊田",
+          "n02_match": true
+        },
+        {
+          "order": 22,
+          "name": "八王子",
+          "n02_match": true
+        },
+        {
+          "order": 23,
+          "name": "西八王子",
+          "n02_match": true
+        },
+        {
+          "order": 24,
+          "name": "高尾",
+          "n02_match": true
+        }
+      ],
+      "note": "土休日は高円寺・阿佐ケ谷・西荻窪を通過。全駅ホームあり路線として定義。"
+    },
+    {
+      "id": "jr_ueno_tokyo_line",
+      "name": "上野東京ライン",
+      "name_kana": "うえのとうきょうらいん",
+      "operator": "JR東日本",
+      "operator_id": "jr_east",
+      "color": "#F68B1F",
+      "official_line": "東海道本線",
+      "alias": [],
+      "through_lines": [
+        "jr_utsunomiya_line",
+        "jr_takasaki_line",
+        "jr_joban_line"
+      ],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "core_section": "品川〜上野",
+      "note": "コア区間は品川〜上野の4駅。宇都宮線・高崎線・常磐線・東海道線と直通。",
+      "stations": [
+        {
+          "order": 1,
+          "name": "品川",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "新橋",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "東京",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "上野",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "jr_shonan_shinjuku_line",
+      "name": "湘南新宿ライン",
+      "name_kana": "しょうなんしんじゅくらいん",
+      "operator": "JR東日本",
+      "operator_id": "jr_east",
+      "color": "#008000",
+      "official_line": "東海道本線",
+      "alias": [],
+      "through_lines": [
+        "jr_utsunomiya_line",
+        "jr_takasaki_line",
+        "jr_yokosuka_line"
+      ],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "core_section": "大崎〜赤羽",
+      "note": "コア区間は大崎〜赤羽の5駅（新宿経由）。宇都宮線・高崎線・横須賀線・東海道線と直通。",
+      "stations": [
+        {
+          "order": 1,
+          "name": "大崎",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "渋谷",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "新宿",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "池袋",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "赤羽",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "jr_kyoto_line",
+      "name": "JR京都線",
+      "name_kana": "じぇいあーるきょうとせん",
+      "operator": "JR西日本",
+      "operator_id": "jr_west",
+      "color": "#0072BC",
+      "official_line": "東海道本線",
+      "alias": [
+        "京都線"
+      ],
+      "through_lines": [
+        "jr_kobe_line",
+        "biwako_line"
+      ],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "note": "東海道本線の京都〜大阪間の愛称。全17駅。",
+      "stations": [
+        {
+          "order": 1,
+          "name": "京都",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "西大路",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "桂川",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "向日町",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "長岡京",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "山崎",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "島本",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "高槻",
+          "n02_match": true
+        },
+        {
+          "order": 9,
+          "name": "摂津富田",
+          "n02_match": true
+        },
+        {
+          "order": 10,
+          "name": "JR総持寺",
+          "n02_match": true
+        },
+        {
+          "order": 11,
+          "name": "茨木",
+          "n02_match": true
+        },
+        {
+          "order": 12,
+          "name": "千里丘",
+          "n02_match": true
+        },
+        {
+          "order": 13,
+          "name": "岸辺",
+          "n02_match": true
+        },
+        {
+          "order": 14,
+          "name": "吹田",
+          "n02_match": true
+        },
+        {
+          "order": 15,
+          "name": "東淀川",
+          "n02_match": true
+        },
+        {
+          "order": 16,
+          "name": "新大阪",
+          "n02_match": true
+        },
+        {
+          "order": 17,
+          "name": "大阪",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "jr_kobe_line",
+      "name": "JR神戸線",
+      "name_kana": "じぇいあーるこうべせん",
+      "operator": "JR西日本",
+      "operator_id": "jr_west",
+      "color": "#0072BC",
+      "official_line": "東海道本線",
+      "alias": [
+        "神戸線"
+      ],
+      "through_lines": [
+        "jr_kyoto_line",
+        "sanyo_honsen"
+      ],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "note": "東海道本線・山陽本線の大阪〜姫路間の愛称。全39駅。",
+      "stations": [
+        {
+          "order": 1,
+          "name": "大阪",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "塚本",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "尼崎",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "立花",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "甲子園口",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "西宮",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "さくら夙川",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "芦屋",
+          "n02_match": true
+        },
+        {
+          "order": 9,
+          "name": "甲南山手",
+          "n02_match": true
+        },
+        {
+          "order": 10,
+          "name": "摂津本山",
+          "n02_match": true
+        },
+        {
+          "order": 11,
+          "name": "住吉",
+          "n02_match": true
+        },
+        {
+          "order": 12,
+          "name": "六甲道",
+          "n02_match": true
+        },
+        {
+          "order": 13,
+          "name": "摩耶",
+          "n02_match": true
+        },
+        {
+          "order": 14,
+          "name": "灘",
+          "n02_match": true
+        },
+        {
+          "order": 15,
+          "name": "三ノ宮",
+          "n02_match": true
+        },
+        {
+          "order": 16,
+          "name": "元町",
+          "n02_match": true
+        },
+        {
+          "order": 17,
+          "name": "神戸",
+          "n02_match": true
+        },
+        {
+          "order": 18,
+          "name": "兵庫",
+          "n02_match": true
+        },
+        {
+          "order": 19,
+          "name": "新長田",
+          "n02_match": true
+        },
+        {
+          "order": 20,
+          "name": "鷹取",
+          "n02_match": true
+        },
+        {
+          "order": 21,
+          "name": "須磨海浜公園",
+          "n02_match": true
+        },
+        {
+          "order": 22,
+          "name": "須磨",
+          "n02_match": true
+        },
+        {
+          "order": 23,
+          "name": "塩屋",
+          "n02_match": true
+        },
+        {
+          "order": 24,
+          "name": "垂水",
+          "n02_match": true
+        },
+        {
+          "order": 25,
+          "name": "舞子",
+          "n02_match": true
+        },
+        {
+          "order": 26,
+          "name": "朝霧",
+          "n02_match": true
+        },
+        {
+          "order": 27,
+          "name": "明石",
+          "n02_match": true
+        },
+        {
+          "order": 28,
+          "name": "西明石",
+          "n02_match": true
+        },
+        {
+          "order": 29,
+          "name": "大久保",
+          "n02_match": true
+        },
+        {
+          "order": 30,
+          "name": "魚住",
+          "n02_match": true
+        },
+        {
+          "order": 31,
+          "name": "土山",
+          "n02_match": true
+        },
+        {
+          "order": 32,
+          "name": "東加古川",
+          "n02_match": true
+        },
+        {
+          "order": 33,
+          "name": "加古川",
+          "n02_match": true
+        },
+        {
+          "order": 34,
+          "name": "宝殿",
+          "n02_match": true
+        },
+        {
+          "order": 35,
+          "name": "曽根",
+          "n02_match": true
+        },
+        {
+          "order": 36,
+          "name": "ひめじ別所",
+          "n02_match": true
+        },
+        {
+          "order": 37,
+          "name": "御着",
+          "n02_match": true
+        },
+        {
+          "order": 38,
+          "name": "東姫路",
+          "n02_match": true
+        },
+        {
+          "order": 39,
+          "name": "姫路",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "osaka_loop_line",
+      "name": "大阪環状線",
+      "name_kana": "おおさかかんじょうせん",
+      "operator": "JR西日本",
+      "operator_id": "jr_west",
+      "color": "#E5171F",
+      "official_line": "大阪環状線",
+      "alias": [
+        "環状線"
+      ],
+      "through_lines": [
+        "jr_yamatoji_line",
+        "jr_hanwa_line"
+      ],
+      "is_circular": true,
+      "start_station": "大阪",
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "stations": [
+        {
+          "order": 1,
+          "name": "大阪",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "福島",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "野田",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "西九条",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "弁天町",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "大正",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "芦原橋",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "今宮",
+          "n02_match": true
+        },
+        {
+          "order": 9,
+          "name": "新今宮",
+          "n02_match": true
+        },
+        {
+          "order": 10,
+          "name": "天王寺",
+          "n02_match": true
+        },
+        {
+          "order": 11,
+          "name": "寺田町",
+          "n02_match": true
+        },
+        {
+          "order": 12,
+          "name": "桃谷",
+          "n02_match": true
+        },
+        {
+          "order": 13,
+          "name": "鶴橋",
+          "n02_match": true
+        },
+        {
+          "order": 14,
+          "name": "玉造",
+          "n02_match": true
+        },
+        {
+          "order": 15,
+          "name": "森ノ宮",
+          "n02_match": true
+        },
+        {
+          "order": 16,
+          "name": "大阪城公園",
+          "n02_match": true
+        },
+        {
+          "order": 17,
+          "name": "京橋",
+          "n02_match": true
+        },
+        {
+          "order": 18,
+          "name": "桜ノ宮",
+          "n02_match": true
+        },
+        {
+          "order": 19,
+          "name": "天満",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "jr_hakodate_line",
+      "name": "函館本線",
+      "name_kana": "はこだてほんせん",
+      "operator": "JR北海道",
+      "operator_id": "jr_hokkaido",
+      "color": "#009B6B",
+      "official_line": "函館本線",
+      "alias": [],
+      "through_lines": [],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "note": "函館〜旭川。大沼〜森間は山線（駒ヶ岳経由）をメインルートとする。",
+      "stations": [
+        {
+          "order": 1,
+          "name": "函館",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "五稜郭",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "桔梗",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "大中山",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "七飯",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "新函館北斗",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "仁山",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "大沼",
+          "n02_match": true
+        },
+        {
+          "order": 9,
+          "name": "大沼公園",
+          "n02_match": true
+        },
+        {
+          "order": 10,
+          "name": "赤井川",
+          "n02_match": true
+        },
+        {
+          "order": 11,
+          "name": "駒ヶ岳",
+          "n02_match": true
+        },
+        {
+          "order": 12,
+          "name": "森",
+          "n02_match": true
+        },
+        {
+          "order": 13,
+          "name": "石倉",
+          "n02_match": true
+        },
+        {
+          "order": 14,
+          "name": "落部",
+          "n02_match": true
+        },
+        {
+          "order": 15,
+          "name": "野田生",
+          "n02_match": true
+        },
+        {
+          "order": 16,
+          "name": "山越",
+          "n02_match": true
+        },
+        {
+          "order": 17,
+          "name": "八雲",
+          "n02_match": true
+        },
+        {
+          "order": 18,
+          "name": "山崎",
+          "n02_match": true
+        },
+        {
+          "order": 19,
+          "name": "黒岩",
+          "n02_match": true
+        },
+        {
+          "order": 20,
+          "name": "国縫",
+          "n02_match": true
+        },
+        {
+          "order": 21,
+          "name": "長万部",
+          "n02_match": true
+        },
+        {
+          "order": 22,
+          "name": "二股",
+          "n02_match": true
+        },
+        {
+          "order": 23,
+          "name": "黒松内",
+          "n02_match": true
+        },
+        {
+          "order": 24,
+          "name": "熱郛",
+          "n02_match": true
+        },
+        {
+          "order": 25,
+          "name": "目名",
+          "n02_match": true
+        },
+        {
+          "order": 26,
+          "name": "蘭越",
+          "n02_match": true
+        },
+        {
+          "order": 27,
+          "name": "昆布",
+          "n02_match": true
+        },
+        {
+          "order": 28,
+          "name": "ニセコ",
+          "n02_match": true
+        },
+        {
+          "order": 29,
+          "name": "比羅夫",
+          "n02_match": true
+        },
+        {
+          "order": 30,
+          "name": "倶知安",
+          "n02_match": true
+        },
+        {
+          "order": 31,
+          "name": "小沢",
+          "n02_match": true
+        },
+        {
+          "order": 32,
+          "name": "銀山",
+          "n02_match": true
+        },
+        {
+          "order": 33,
+          "name": "然別",
+          "n02_match": true
+        },
+        {
+          "order": 34,
+          "name": "仁木",
+          "n02_match": true
+        },
+        {
+          "order": 35,
+          "name": "余市",
+          "n02_match": true
+        },
+        {
+          "order": 36,
+          "name": "蘭島",
+          "n02_match": true
+        },
+        {
+          "order": 37,
+          "name": "塩谷",
+          "n02_match": true
+        },
+        {
+          "order": 38,
+          "name": "小樽",
+          "n02_match": true
+        },
+        {
+          "order": 39,
+          "name": "南小樽",
+          "n02_match": true
+        },
+        {
+          "order": 40,
+          "name": "小樽築港",
+          "n02_match": true
+        },
+        {
+          "order": 41,
+          "name": "朝里",
+          "n02_match": true
+        },
+        {
+          "order": 42,
+          "name": "銭函",
+          "n02_match": true
+        },
+        {
+          "order": 43,
+          "name": "ほしみ",
+          "n02_match": true
+        },
+        {
+          "order": 44,
+          "name": "星置",
+          "n02_match": true
+        },
+        {
+          "order": 45,
+          "name": "稲穂",
+          "n02_match": true
+        },
+        {
+          "order": 46,
+          "name": "手稲",
+          "n02_match": true
+        },
+        {
+          "order": 47,
+          "name": "稲積公園",
+          "n02_match": true
+        },
+        {
+          "order": 48,
+          "name": "発寒",
+          "n02_match": true
+        },
+        {
+          "order": 49,
+          "name": "発寒中央",
+          "n02_match": true
+        },
+        {
+          "order": 50,
+          "name": "琴似",
+          "n02_match": true
+        },
+        {
+          "order": 51,
+          "name": "桑園",
+          "n02_match": true
+        },
+        {
+          "order": 52,
+          "name": "札幌",
+          "n02_match": true
+        },
+        {
+          "order": 53,
+          "name": "苗穂",
+          "n02_match": true
+        },
+        {
+          "order": 54,
+          "name": "白石",
+          "n02_match": true
+        },
+        {
+          "order": 55,
+          "name": "厚別",
+          "n02_match": true
+        },
+        {
+          "order": 56,
+          "name": "森林公園",
+          "n02_match": true
+        },
+        {
+          "order": 57,
+          "name": "大麻",
+          "n02_match": true
+        },
+        {
+          "order": 58,
+          "name": "野幌",
+          "n02_match": true
+        },
+        {
+          "order": 59,
+          "name": "高砂",
+          "n02_match": true
+        },
+        {
+          "order": 60,
+          "name": "江別",
+          "n02_match": true
+        },
+        {
+          "order": 61,
+          "name": "豊幌",
+          "n02_match": true
+        },
+        {
+          "order": 62,
+          "name": "幌向",
+          "n02_match": true
+        },
+        {
+          "order": 63,
+          "name": "上幌向",
+          "n02_match": true
+        },
+        {
+          "order": 64,
+          "name": "岩見沢",
+          "n02_match": true
+        },
+        {
+          "order": 65,
+          "name": "峰延",
+          "n02_match": true
+        },
+        {
+          "order": 66,
+          "name": "光珠内",
+          "n02_match": true
+        },
+        {
+          "order": 67,
+          "name": "美唄",
+          "n02_match": true
+        },
+        {
+          "order": 68,
+          "name": "茶志内",
+          "n02_match": true
+        },
+        {
+          "order": 69,
+          "name": "奈井江",
+          "n02_match": true
+        },
+        {
+          "order": 70,
+          "name": "豊沼",
+          "n02_match": true
+        },
+        {
+          "order": 71,
+          "name": "砂川",
+          "n02_match": true
+        },
+        {
+          "order": 72,
+          "name": "滝川",
+          "n02_match": true
+        },
+        {
+          "order": 73,
+          "name": "江部乙",
+          "n02_match": true
+        },
+        {
+          "order": 74,
+          "name": "妹背牛",
+          "n02_match": true
+        },
+        {
+          "order": 75,
+          "name": "深川",
+          "n02_match": true
+        },
+        {
+          "order": 76,
+          "name": "納内",
+          "n02_match": true
+        },
+        {
+          "order": 77,
+          "name": "近文",
+          "n02_match": true
+        },
+        {
+          "order": 78,
+          "name": "旭川",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "jr_hakodate_sunabara_branch",
+      "name": "函館本線（砂原支線）",
+      "name_kana": "はこだてほんせんすなはらしせん",
+      "operator": "JR北海道",
+      "operator_id": "jr_hokkaido",
+      "color": "#009B6B",
+      "official_line": "函館本線",
+      "alias": [
+        "砂原支線"
+      ],
+      "through_lines": [],
+      "is_circular": false,
+      "parent_id": "jr_hakodate_line",
+      "branch_from": "大沼",
+      "branch_to": "森",
+      "note": "大沼〜森間の海線（砂原経由）。本線の山線ルートとは別系統。",
+      "stations": [
+        {
+          "order": 1,
+          "name": "大沼",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "鹿部",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "渡島沼尻",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "渡島砂原",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "掛澗",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "尾白内",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "東森",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "森",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "jr_yosan_line",
+      "name": "予讃線",
+      "name_kana": "よさんせん",
+      "operator": "JR四国",
+      "operator_id": "jr_shikoku",
+      "color": "#009B6B",
+      "official_line": "予讃線",
+      "alias": [],
+      "through_lines": [],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "note": "高松〜松山〜宇和島。愛ある伊予灘線（海回り）は別系統として扱う。内子線経由で松山〜宇和島を直通。",
+      "stations": [
+        {
+          "order": 1,
+          "name": "高松",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "香西",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "鬼無",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "端岡",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "国分",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "讃岐府中",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "鴨川",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "八十場",
+          "n02_match": true
+        },
+        {
+          "order": 9,
+          "name": "坂出",
+          "n02_match": true
+        },
+        {
+          "order": 10,
+          "name": "宇多津",
+          "n02_match": true
+        },
+        {
+          "order": 11,
+          "name": "丸亀",
+          "n02_match": true
+        },
+        {
+          "order": 12,
+          "name": "讃岐塩屋",
+          "n02_match": true
+        },
+        {
+          "order": 13,
+          "name": "多度津",
+          "n02_match": true
+        },
+        {
+          "order": 14,
+          "name": "海岸寺",
+          "n02_match": true
+        },
+        {
+          "order": 15,
+          "name": "津島ノ宮",
+          "n02_match": false,
+          "note": "臨時駅・年2日のみ営業"
+        },
+        {
+          "order": 16,
+          "name": "詫間",
+          "n02_match": true
+        },
+        {
+          "order": 17,
+          "name": "みの",
+          "n02_match": true
+        },
+        {
+          "order": 18,
+          "name": "高瀬",
+          "n02_match": true
+        },
+        {
+          "order": 19,
+          "name": "比地大",
+          "n02_match": true
+        },
+        {
+          "order": 20,
+          "name": "本山",
+          "n02_match": true
+        },
+        {
+          "order": 21,
+          "name": "観音寺",
+          "n02_match": true
+        },
+        {
+          "order": 22,
+          "name": "豊浜",
+          "n02_match": true
+        },
+        {
+          "order": 23,
+          "name": "箕浦",
+          "n02_match": true
+        },
+        {
+          "order": 24,
+          "name": "川之江",
+          "n02_match": true
+        },
+        {
+          "order": 25,
+          "name": "伊予三島",
+          "n02_match": true
+        },
+        {
+          "order": 26,
+          "name": "伊予寒川",
+          "n02_match": true
+        },
+        {
+          "order": 27,
+          "name": "赤星",
+          "n02_match": true
+        },
+        {
+          "order": 28,
+          "name": "伊予土居",
+          "n02_match": true
+        },
+        {
+          "order": 29,
+          "name": "関川",
+          "n02_match": true
+        },
+        {
+          "order": 30,
+          "name": "多喜浜",
+          "n02_match": true
+        },
+        {
+          "order": 31,
+          "name": "新居浜",
+          "n02_match": true
+        },
+        {
+          "order": 32,
+          "name": "中萩",
+          "n02_match": true
+        },
+        {
+          "order": 33,
+          "name": "伊予西条",
+          "n02_match": true
+        },
+        {
+          "order": 34,
+          "name": "石鎚山",
+          "n02_match": true
+        },
+        {
+          "order": 35,
+          "name": "伊予氷見",
+          "n02_match": true
+        },
+        {
+          "order": 36,
+          "name": "伊予小松",
+          "n02_match": true
+        },
+        {
+          "order": 37,
+          "name": "玉之江",
+          "n02_match": true
+        },
+        {
+          "order": 38,
+          "name": "壬生川",
+          "n02_match": true
+        },
+        {
+          "order": 39,
+          "name": "伊予三芳",
+          "n02_match": true
+        },
+        {
+          "order": 40,
+          "name": "伊予桜井",
+          "n02_match": true
+        },
+        {
+          "order": 41,
+          "name": "伊予富田",
+          "n02_match": true
+        },
+        {
+          "order": 42,
+          "name": "今治",
+          "n02_match": true
+        },
+        {
+          "order": 43,
+          "name": "波止浜",
+          "n02_match": true
+        },
+        {
+          "order": 44,
+          "name": "波方",
+          "n02_match": true
+        },
+        {
+          "order": 45,
+          "name": "大西",
+          "n02_match": true
+        },
+        {
+          "order": 46,
+          "name": "伊予亀岡",
+          "n02_match": true
+        },
+        {
+          "order": 47,
+          "name": "菊間",
+          "n02_match": true
+        },
+        {
+          "order": 48,
+          "name": "浅海",
+          "n02_match": true
+        },
+        {
+          "order": 49,
+          "name": "大浦",
+          "n02_match": true
+        },
+        {
+          "order": 50,
+          "name": "伊予北条",
+          "n02_match": true
+        },
+        {
+          "order": 51,
+          "name": "柳原",
+          "n02_match": true
+        },
+        {
+          "order": 52,
+          "name": "粟井",
+          "n02_match": true
+        },
+        {
+          "order": 53,
+          "name": "光洋台",
+          "n02_match": true
+        },
+        {
+          "order": 54,
+          "name": "堀江",
+          "n02_match": true
+        },
+        {
+          "order": 55,
+          "name": "伊予和気",
+          "n02_match": true
+        },
+        {
+          "order": 56,
+          "name": "三津浜",
+          "n02_match": true
+        },
+        {
+          "order": 57,
+          "name": "松山",
+          "n02_match": true
+        },
+        {
+          "order": 58,
+          "name": "市坪",
+          "n02_match": true
+        },
+        {
+          "order": 59,
+          "name": "北伊予",
+          "n02_match": true
+        },
+        {
+          "order": 60,
+          "name": "南伊予",
+          "n02_match": true
+        },
+        {
+          "order": 61,
+          "name": "伊予横田",
+          "n02_match": true
+        },
+        {
+          "order": 62,
+          "name": "鳥ノ木",
+          "n02_match": true
+        },
+        {
+          "order": 63,
+          "name": "伊予市",
+          "n02_match": true
+        },
+        {
+          "order": 64,
+          "name": "向井原",
+          "n02_match": true
+        },
+        {
+          "order": 65,
+          "name": "内子",
+          "n02_match": true
+        },
+        {
+          "order": 66,
+          "name": "五十崎",
+          "n02_match": true
+        },
+        {
+          "order": 67,
+          "name": "新谷",
+          "n02_match": true
+        },
+        {
+          "order": 68,
+          "name": "伊予大洲",
+          "n02_match": true
+        },
+        {
+          "order": 69,
+          "name": "西大洲",
+          "n02_match": true
+        },
+        {
+          "order": 70,
+          "name": "伊予平野",
+          "n02_match": true
+        },
+        {
+          "order": 71,
+          "name": "千丈",
+          "n02_match": true
+        },
+        {
+          "order": 72,
+          "name": "八幡浜",
+          "n02_match": true
+        },
+        {
+          "order": 73,
+          "name": "双岩",
+          "n02_match": true
+        },
+        {
+          "order": 74,
+          "name": "伊予石城",
+          "n02_match": true
+        },
+        {
+          "order": 75,
+          "name": "上宇和",
+          "n02_match": true
+        },
+        {
+          "order": 76,
+          "name": "卯之町",
+          "n02_match": true
+        },
+        {
+          "order": 77,
+          "name": "下宇和",
+          "n02_match": true
+        },
+        {
+          "order": 78,
+          "name": "立間",
+          "n02_match": true
+        },
+        {
+          "order": 79,
+          "name": "伊予吉田",
+          "n02_match": true
+        },
+        {
+          "order": 80,
+          "name": "高光",
+          "n02_match": true
+        },
+        {
+          "order": 81,
+          "name": "北宇和島",
+          "n02_match": true
+        },
+        {
+          "order": 82,
+          "name": "宇和島",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "jr_kagoshima_line",
+      "name": "鹿児島本線",
+      "name_kana": "かごしまほんせん",
+      "operator": "JR九州",
+      "operator_id": "jr_kyushu",
+      "color": "#E5171F",
+      "official_line": "鹿児島本線",
+      "alias": [],
+      "through_lines": [],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "note": "門司港〜八代（82駅）。八代〜川内間は肥薩おれんじ鉄道に移管済み。スペースワールド駅は2018年廃止のため除外。",
+      "stations": [
+        {
+          "order": 1,
+          "name": "門司港",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "小森江",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "門司",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "小倉",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "西小倉",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "九州工大前",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "戸畑",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "枝光",
+          "n02_match": true
+        },
+        {
+          "order": 9,
+          "name": "八幡",
+          "n02_match": true
+        },
+        {
+          "order": 10,
+          "name": "黒崎",
+          "n02_match": true
+        },
+        {
+          "order": 11,
+          "name": "陣原",
+          "n02_match": true
+        },
+        {
+          "order": 12,
+          "name": "折尾",
+          "n02_match": true
+        },
+        {
+          "order": 13,
+          "name": "水巻",
+          "n02_match": true
+        },
+        {
+          "order": 14,
+          "name": "遠賀川",
+          "n02_match": true
+        },
+        {
+          "order": 15,
+          "name": "海老津",
+          "n02_match": true
+        },
+        {
+          "order": 16,
+          "name": "教育大前",
+          "n02_match": true
+        },
+        {
+          "order": 17,
+          "name": "赤間",
+          "n02_match": true
+        },
+        {
+          "order": 18,
+          "name": "東郷",
+          "n02_match": true
+        },
+        {
+          "order": 19,
+          "name": "東福間",
+          "n02_match": true
+        },
+        {
+          "order": 20,
+          "name": "福間",
+          "n02_match": true
+        },
+        {
+          "order": 21,
+          "name": "千鳥",
+          "n02_match": true
+        },
+        {
+          "order": 22,
+          "name": "古賀",
+          "n02_match": true
+        },
+        {
+          "order": 23,
+          "name": "ししぶ",
+          "n02_match": true
+        },
+        {
+          "order": 24,
+          "name": "新宮中央",
+          "n02_match": true
+        },
+        {
+          "order": 25,
+          "name": "福工大前",
+          "n02_match": true
+        },
+        {
+          "order": 26,
+          "name": "九産大前",
+          "n02_match": true
+        },
+        {
+          "order": 27,
+          "name": "香椎",
+          "n02_match": true
+        },
+        {
+          "order": 28,
+          "name": "千早",
+          "n02_match": true
+        },
+        {
+          "order": 29,
+          "name": "箱崎",
+          "n02_match": true
+        },
+        {
+          "order": 30,
+          "name": "吉塚",
+          "n02_match": true
+        },
+        {
+          "order": 31,
+          "name": "博多",
+          "n02_match": true
+        },
+        {
+          "order": 32,
+          "name": "竹下",
+          "n02_match": true
+        },
+        {
+          "order": 33,
+          "name": "笹原",
+          "n02_match": true
+        },
+        {
+          "order": 34,
+          "name": "南福岡",
+          "n02_match": true
+        },
+        {
+          "order": 35,
+          "name": "春日",
+          "n02_match": true
+        },
+        {
+          "order": 36,
+          "name": "大野城",
+          "n02_match": true
+        },
+        {
+          "order": 37,
+          "name": "水城",
+          "n02_match": true
+        },
+        {
+          "order": 38,
+          "name": "都府楼南",
+          "n02_match": true
+        },
+        {
+          "order": 39,
+          "name": "二日市",
+          "n02_match": true
+        },
+        {
+          "order": 40,
+          "name": "天拝山",
+          "n02_match": true
+        },
+        {
+          "order": 41,
+          "name": "原田",
+          "n02_match": true
+        },
+        {
+          "order": 42,
+          "name": "けやき台",
+          "n02_match": true
+        },
+        {
+          "order": 43,
+          "name": "基山",
+          "n02_match": true
+        },
+        {
+          "order": 44,
+          "name": "弥生が丘",
+          "n02_match": true
+        },
+        {
+          "order": 45,
+          "name": "田代",
+          "n02_match": true
+        },
+        {
+          "order": 46,
+          "name": "鳥栖",
+          "n02_match": true
+        },
+        {
+          "order": 47,
+          "name": "肥前旭",
+          "n02_match": true
+        },
+        {
+          "order": 48,
+          "name": "久留米",
+          "n02_match": true
+        },
+        {
+          "order": 49,
+          "name": "荒木",
+          "n02_match": true
+        },
+        {
+          "order": 50,
+          "name": "西牟田",
+          "n02_match": true
+        },
+        {
+          "order": 51,
+          "name": "羽犬塚",
+          "n02_match": true
+        },
+        {
+          "order": 52,
+          "name": "筑後船小屋",
+          "n02_match": true
+        },
+        {
+          "order": 53,
+          "name": "瀬高",
+          "n02_match": true
+        },
+        {
+          "order": 54,
+          "name": "南瀬高",
+          "n02_match": true
+        },
+        {
+          "order": 55,
+          "name": "渡瀬",
+          "n02_match": true
+        },
+        {
+          "order": 56,
+          "name": "吉野",
+          "n02_match": true
+        },
+        {
+          "order": 57,
+          "name": "銀水",
+          "n02_match": true
+        },
+        {
+          "order": 58,
+          "name": "大牟田",
+          "n02_match": true
+        },
+        {
+          "order": 59,
+          "name": "荒尾",
+          "n02_match": true
+        },
+        {
+          "order": 60,
+          "name": "南荒尾",
+          "n02_match": true
+        },
+        {
+          "order": 61,
+          "name": "長洲",
+          "n02_match": true
+        },
+        {
+          "order": 62,
+          "name": "大野下",
+          "n02_match": true
+        },
+        {
+          "order": 63,
+          "name": "玉名",
+          "n02_match": true
+        },
+        {
+          "order": 64,
+          "name": "肥後伊倉",
+          "n02_match": true
+        },
+        {
+          "order": 65,
+          "name": "木葉",
+          "n02_match": true
+        },
+        {
+          "order": 66,
+          "name": "田原坂",
+          "n02_match": true
+        },
+        {
+          "order": 67,
+          "name": "植木",
+          "n02_match": true
+        },
+        {
+          "order": 68,
+          "name": "西里",
+          "n02_match": true
+        },
+        {
+          "order": 69,
+          "name": "崇城大学前",
+          "n02_match": true
+        },
+        {
+          "order": 70,
+          "name": "上熊本",
+          "n02_match": true
+        },
+        {
+          "order": 71,
+          "name": "熊本",
+          "n02_match": true
+        },
+        {
+          "order": 72,
+          "name": "西熊本",
+          "n02_match": true
+        },
+        {
+          "order": 73,
+          "name": "川尻",
+          "n02_match": true
+        },
+        {
+          "order": 74,
+          "name": "富合",
+          "n02_match": true
+        },
+        {
+          "order": 75,
+          "name": "宇土",
+          "n02_match": true
+        },
+        {
+          "order": 76,
+          "name": "松橋",
+          "n02_match": true
+        },
+        {
+          "order": 77,
+          "name": "小川",
+          "n02_match": true
+        },
+        {
+          "order": 78,
+          "name": "有佐",
+          "n02_match": true
+        },
+        {
+          "order": 79,
+          "name": "千丁",
+          "n02_match": true
+        },
+        {
+          "order": 80,
+          "name": "新八代",
+          "n02_match": true
+        },
+        {
+          "order": 81,
+          "name": "八代",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "meitetsu_nagoya_line",
+      "name": "名鉄名古屋本線",
+      "name_kana": "めいてつなごやほんせん",
+      "operator": "名古屋鉄道",
+      "operator_id": "meitetsu",
+      "color": "#CC0000",
+      "official_line": "名古屋本線",
+      "alias": [
+        "名鉄本線"
+      ],
+      "through_lines": [
+        "meitetsu_toyota_line",
+        "meitetsu_tokoname_line"
+      ],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "note": "豊橋〜名鉄岐阜（58駅）。豊橋〜伊奈間はJR飯田線と線路共用。",
+      "stations": [
+        {
+          "order": 1,
+          "name": "豊橋",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "伊奈",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "小田渕",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "国府",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "御油",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "名電赤坂",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "長沢",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "本宿",
+          "n02_match": true
+        },
+        {
+          "order": 9,
+          "name": "名電長沢",
+          "n02_match": true
+        },
+        {
+          "order": 10,
+          "name": "美合",
+          "n02_match": true
+        },
+        {
+          "order": 11,
+          "name": "男川",
+          "n02_match": true
+        },
+        {
+          "order": 12,
+          "name": "東岡崎",
+          "n02_match": true
+        },
+        {
+          "order": 13,
+          "name": "岡崎公園前",
+          "n02_match": true
+        },
+        {
+          "order": 14,
+          "name": "矢作橋",
+          "n02_match": true
+        },
+        {
+          "order": 15,
+          "name": "宇頭",
+          "n02_match": true
+        },
+        {
+          "order": 16,
+          "name": "新安城",
+          "n02_match": true
+        },
+        {
+          "order": 17,
+          "name": "北安城",
+          "n02_match": true
+        },
+        {
+          "order": 18,
+          "name": "安城",
+          "n02_match": true
+        },
+        {
+          "order": 19,
+          "name": "碧海古井",
+          "n02_match": true
+        },
+        {
+          "order": 20,
+          "name": "南桜井",
+          "n02_match": true
+        },
+        {
+          "order": 21,
+          "name": "牛田",
+          "n02_match": true
+        },
+        {
+          "order": 22,
+          "name": "知立",
+          "n02_match": true
+        },
+        {
+          "order": 23,
+          "name": "一ツ木",
+          "n02_match": true
+        },
+        {
+          "order": 24,
+          "name": "富士松",
+          "n02_match": true
+        },
+        {
+          "order": 25,
+          "name": "豊明",
+          "n02_match": true
+        },
+        {
+          "order": 26,
+          "name": "前後",
+          "n02_match": true
+        },
+        {
+          "order": 27,
+          "name": "中京競馬場前",
+          "n02_match": true
+        },
+        {
+          "order": 28,
+          "name": "有松",
+          "n02_match": true
+        },
+        {
+          "order": 29,
+          "name": "左京山",
+          "n02_match": true
+        },
+        {
+          "order": 30,
+          "name": "鳴海",
+          "n02_match": true
+        },
+        {
+          "order": 31,
+          "name": "本星崎",
+          "n02_match": true
+        },
+        {
+          "order": 32,
+          "name": "本笠寺",
+          "n02_match": true
+        },
+        {
+          "order": 33,
+          "name": "桜",
+          "n02_match": true
+        },
+        {
+          "order": 34,
+          "name": "笠寺",
+          "n02_match": true
+        },
+        {
+          "order": 35,
+          "name": "堀田",
+          "n02_match": true
+        },
+        {
+          "order": 36,
+          "name": "神宮前",
+          "n02_match": true
+        },
+        {
+          "order": 37,
+          "name": "金山",
+          "n02_match": true
+        },
+        {
+          "order": 38,
+          "name": "山王",
+          "n02_match": true
+        },
+        {
+          "order": 39,
+          "name": "名鉄名古屋",
+          "n02_match": true
+        },
+        {
+          "order": 40,
+          "name": "栄生",
+          "n02_match": true
+        },
+        {
+          "order": 41,
+          "name": "東枇杷島",
+          "n02_match": true
+        },
+        {
+          "order": 42,
+          "name": "西枇杷島",
+          "n02_match": true
+        },
+        {
+          "order": 43,
+          "name": "二ツ杁",
+          "n02_match": true
+        },
+        {
+          "order": 44,
+          "name": "新川橋",
+          "n02_match": true
+        },
+        {
+          "order": 45,
+          "name": "須ヶ口",
+          "n02_match": true
+        },
+        {
+          "order": 46,
+          "name": "丸ノ内",
+          "n02_match": true
+        },
+        {
+          "order": 47,
+          "name": "新清洲",
+          "n02_match": true
+        },
+        {
+          "order": 48,
+          "name": "大里",
+          "n02_match": true
+        },
+        {
+          "order": 49,
+          "name": "奥田",
+          "n02_match": true
+        },
+        {
+          "order": 50,
+          "name": "国府宮",
+          "n02_match": true
+        },
+        {
+          "order": 51,
+          "name": "島氏永",
+          "n02_match": true
+        },
+        {
+          "order": 52,
+          "name": "妙興寺",
+          "n02_match": true
+        },
+        {
+          "order": 53,
+          "name": "名鉄一宮",
+          "n02_match": true
+        },
+        {
+          "order": 54,
+          "name": "今伊勢",
+          "n02_match": true
+        },
+        {
+          "order": 55,
+          "name": "石刀",
+          "n02_match": true
+        },
+        {
+          "order": 56,
+          "name": "新木曽川",
+          "n02_match": true
+        },
+        {
+          "order": 57,
+          "name": "黒田",
+          "n02_match": true
+        },
+        {
+          "order": 58,
+          "name": "木曽川堤",
+          "n02_match": true
+        },
+        {
+          "order": 59,
+          "name": "笠松",
+          "n02_match": true
+        },
+        {
+          "order": 60,
+          "name": "岐南",
+          "n02_match": true
+        },
+        {
+          "order": 61,
+          "name": "茶所",
+          "n02_match": true
+        },
+        {
+          "order": 62,
+          "name": "加納",
+          "n02_match": true
+        },
+        {
+          "order": 63,
+          "name": "名鉄岐阜",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "odakyu_odawara_line",
+      "name": "小田急小田原線",
+      "name_kana": "おだきゅうおだわらせん",
+      "operator": "小田急電鉄",
+      "operator_id": "odakyu",
+      "color": "#0099CC",
+      "official_line": "小田原線",
+      "alias": [
+        "小田原線"
+      ],
+      "through_lines": [
+        "tokyo_metro_chiyoda_line"
+      ],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "note": "新宿〜小田原（47駅）。",
+      "stations": [
+        {
+          "order": 1,
+          "name": "新宿",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "南新宿",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "参宮橋",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "代々木八幡",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "代々木上原",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "東北沢",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "下北沢",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "世田谷代田",
+          "n02_match": true
+        },
+        {
+          "order": 9,
+          "name": "梅ヶ丘",
+          "n02_match": true
+        },
+        {
+          "order": 10,
+          "name": "豪徳寺",
+          "n02_match": true
+        },
+        {
+          "order": 11,
+          "name": "経堂",
+          "n02_match": true
+        },
+        {
+          "order": 12,
+          "name": "千歳船橋",
+          "n02_match": true
+        },
+        {
+          "order": 13,
+          "name": "祖師ヶ谷大蔵",
+          "n02_match": true
+        },
+        {
+          "order": 14,
+          "name": "成城学園前",
+          "n02_match": true
+        },
+        {
+          "order": 15,
+          "name": "喜多見",
+          "n02_match": true
+        },
+        {
+          "order": 16,
+          "name": "狛江",
+          "n02_match": true
+        },
+        {
+          "order": 17,
+          "name": "和泉多摩川",
+          "n02_match": true
+        },
+        {
+          "order": 18,
+          "name": "登戸",
+          "n02_match": true
+        },
+        {
+          "order": 19,
+          "name": "向ヶ丘遊園",
+          "n02_match": true
+        },
+        {
+          "order": 20,
+          "name": "生田",
+          "n02_match": true
+        },
+        {
+          "order": 21,
+          "name": "読売ランド前",
+          "n02_match": true
+        },
+        {
+          "order": 22,
+          "name": "百合ヶ丘",
+          "n02_match": true
+        },
+        {
+          "order": 23,
+          "name": "新百合ヶ丘",
+          "n02_match": true
+        },
+        {
+          "order": 24,
+          "name": "柿生",
+          "n02_match": true
+        },
+        {
+          "order": 25,
+          "name": "鶴川",
+          "n02_match": true
+        },
+        {
+          "order": 26,
+          "name": "玉川学園前",
+          "n02_match": true
+        },
+        {
+          "order": 27,
+          "name": "町田",
+          "n02_match": true
+        },
+        {
+          "order": 28,
+          "name": "相模大野",
+          "n02_match": true
+        },
+        {
+          "order": 29,
+          "name": "小田急相模原",
+          "n02_match": true
+        },
+        {
+          "order": 30,
+          "name": "相武台前",
+          "n02_match": true
+        },
+        {
+          "order": 31,
+          "name": "座間",
+          "n02_match": true
+        },
+        {
+          "order": 32,
+          "name": "海老名",
+          "n02_match": true
+        },
+        {
+          "order": 33,
+          "name": "厚木",
+          "n02_match": true
+        },
+        {
+          "order": 34,
+          "name": "本厚木",
+          "n02_match": true
+        },
+        {
+          "order": 35,
+          "name": "愛甲石田",
+          "n02_match": true
+        },
+        {
+          "order": 36,
+          "name": "伊勢原",
+          "n02_match": true
+        },
+        {
+          "order": 37,
+          "name": "鶴巻温泉",
+          "n02_match": true
+        },
+        {
+          "order": 38,
+          "name": "東海大学前",
+          "n02_match": true
+        },
+        {
+          "order": 39,
+          "name": "秦野",
+          "n02_match": true
+        },
+        {
+          "order": 40,
+          "name": "渋沢",
+          "n02_match": true
+        },
+        {
+          "order": 41,
+          "name": "新松田",
+          "n02_match": true
+        },
+        {
+          "order": 42,
+          "name": "開成",
+          "n02_match": true
+        },
+        {
+          "order": 43,
+          "name": "栢山",
+          "n02_match": true
+        },
+        {
+          "order": 44,
+          "name": "富水",
+          "n02_match": true
+        },
+        {
+          "order": 45,
+          "name": "螢田",
+          "n02_match": true
+        },
+        {
+          "order": 46,
+          "name": "足柄",
+          "n02_match": true
+        },
+        {
+          "order": 47,
+          "name": "小田原",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "tokyu_toyoko_line",
+      "name": "東急東横線",
+      "name_kana": "とうきゅうとうよこせん",
+      "operator": "東急電鉄",
+      "operator_id": "tokyu",
+      "color": "#E60012",
+      "official_line": "東横線",
+      "alias": [
+        "東横線"
+      ],
+      "through_lines": [
+        "tokyo_metro_fukutoshin_line",
+        "yokohama_minatomirai_line"
+      ],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "note": "渋谷〜横浜（21駅）。",
+      "stations": [
+        {
+          "order": 1,
+          "name": "渋谷",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "代官山",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "中目黒",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "祐天寺",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "学芸大学",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "都立大学",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "自由が丘",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "田園調布",
+          "n02_match": true
+        },
+        {
+          "order": 9,
+          "name": "多摩川",
+          "n02_match": true
+        },
+        {
+          "order": 10,
+          "name": "新丸子",
+          "n02_match": true
+        },
+        {
+          "order": 11,
+          "name": "武蔵小杉",
+          "n02_match": true
+        },
+        {
+          "order": 12,
+          "name": "元住吉",
+          "n02_match": true
+        },
+        {
+          "order": 13,
+          "name": "日吉",
+          "n02_match": true
+        },
+        {
+          "order": 14,
+          "name": "綱島",
+          "n02_match": true
+        },
+        {
+          "order": 15,
+          "name": "大倉山",
+          "n02_match": true
+        },
+        {
+          "order": 16,
+          "name": "菊名",
+          "n02_match": true
+        },
+        {
+          "order": 17,
+          "name": "妙蓮寺",
+          "n02_match": true
+        },
+        {
+          "order": 18,
+          "name": "白楽",
+          "n02_match": true
+        },
+        {
+          "order": 19,
+          "name": "東白楽",
+          "n02_match": true
+        },
+        {
+          "order": 20,
+          "name": "反町",
+          "n02_match": true
+        },
+        {
+          "order": 21,
+          "name": "横浜",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "keikyu_main_line",
+      "name": "京急本線",
+      "name_kana": "けいきゅうほんせん",
+      "operator": "京浜急行電鉄",
+      "operator_id": "keikyu",
+      "color": "#E60026",
+      "official_line": "本線",
+      "alias": [
+        "京急本線"
+      ],
+      "through_lines": [
+        "toei_asakusa_line",
+        "keikyu_airport_line"
+      ],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "note": "泉岳寺〜浦賀（56駅）。花月園前は2020年廃止→花月総持寺に改称。仲木戸は2022年→京急東神奈川に改称。",
+      "stations": [
+        {
+          "order": 1,
+          "name": "泉岳寺",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "品川",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "北品川",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "新馬場",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "青物横丁",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "鮫洲",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "立会川",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "大森海岸",
+          "n02_match": true
+        },
+        {
+          "order": 9,
+          "name": "平和島",
+          "n02_match": true
+        },
+        {
+          "order": 10,
+          "name": "大森町",
+          "n02_match": true
+        },
+        {
+          "order": 11,
+          "name": "梅屋敷",
+          "n02_match": true
+        },
+        {
+          "order": 12,
+          "name": "京急蒲田",
+          "n02_match": true
+        },
+        {
+          "order": 13,
+          "name": "雑色",
+          "n02_match": true
+        },
+        {
+          "order": 14,
+          "name": "六郷土手",
+          "n02_match": true
+        },
+        {
+          "order": 15,
+          "name": "京急川崎",
+          "n02_match": true
+        },
+        {
+          "order": 16,
+          "name": "八丁畷",
+          "n02_match": true
+        },
+        {
+          "order": 17,
+          "name": "鶴見市場",
+          "n02_match": true
+        },
+        {
+          "order": 18,
+          "name": "京急鶴見",
+          "n02_match": true
+        },
+        {
+          "order": 19,
+          "name": "花月総持寺",
+          "n02_match": true
+        },
+        {
+          "order": 20,
+          "name": "生麦",
+          "n02_match": true
+        },
+        {
+          "order": 21,
+          "name": "京急新子安",
+          "n02_match": true
+        },
+        {
+          "order": 22,
+          "name": "子安",
+          "n02_match": true
+        },
+        {
+          "order": 23,
+          "name": "神奈川新町",
+          "n02_match": true
+        },
+        {
+          "order": 24,
+          "name": "京急東神奈川",
+          "n02_match": true
+        },
+        {
+          "order": 25,
+          "name": "神奈川",
+          "n02_match": true
+        },
+        {
+          "order": 26,
+          "name": "横浜",
+          "n02_match": true
+        },
+        {
+          "order": 27,
+          "name": "戸部",
+          "n02_match": true
+        },
+        {
+          "order": 28,
+          "name": "日ノ出町",
+          "n02_match": true
+        },
+        {
+          "order": 29,
+          "name": "黄金町",
+          "n02_match": true
+        },
+        {
+          "order": 30,
+          "name": "南太田",
+          "n02_match": true
+        },
+        {
+          "order": 31,
+          "name": "井土ヶ谷",
+          "n02_match": true
+        },
+        {
+          "order": 32,
+          "name": "弘明寺",
+          "n02_match": true
+        },
+        {
+          "order": 33,
+          "name": "上大岡",
+          "n02_match": true
+        },
+        {
+          "order": 34,
+          "name": "屏風浦",
+          "n02_match": true
+        },
+        {
+          "order": 35,
+          "name": "杉田",
+          "n02_match": true
+        },
+        {
+          "order": 36,
+          "name": "新杉田",
+          "n02_match": true
+        },
+        {
+          "order": 37,
+          "name": "能見台",
+          "n02_match": true
+        },
+        {
+          "order": 38,
+          "name": "金沢文庫",
+          "n02_match": true
+        },
+        {
+          "order": 39,
+          "name": "金沢八景",
+          "n02_match": true
+        },
+        {
+          "order": 40,
+          "name": "追浜",
+          "n02_match": true
+        },
+        {
+          "order": 41,
+          "name": "京急田浦",
+          "n02_match": true
+        },
+        {
+          "order": 42,
+          "name": "安針塚",
+          "n02_match": true
+        },
+        {
+          "order": 43,
+          "name": "逸見",
+          "n02_match": true
+        },
+        {
+          "order": 44,
+          "name": "汐入",
+          "n02_match": true
+        },
+        {
+          "order": 45,
+          "name": "横須賀中央",
+          "n02_match": true
+        },
+        {
+          "order": 46,
+          "name": "県立大学",
+          "n02_match": true
+        },
+        {
+          "order": 47,
+          "name": "堀ノ内",
+          "n02_match": true
+        },
+        {
+          "order": 48,
+          "name": "京急大津",
+          "n02_match": true
+        },
+        {
+          "order": 49,
+          "name": "馬堀海岸",
+          "n02_match": true
+        },
+        {
+          "order": 50,
+          "name": "浦賀",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "hankyu_kobe_line",
+      "name": "阪急神戸本線",
+      "name_kana": "はんきゅうこうべほんせん",
+      "operator": "阪急電鉄",
+      "operator_id": "hankyu",
+      "color": "#6C3E83",
+      "official_line": "神戸本線",
+      "alias": [
+        "阪急神戸線"
+      ],
+      "through_lines": [
+        "hankyu_kyoto_line"
+      ],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "note": "大阪梅田〜神戸三宮（14駅）。",
+      "stations": [
+        {
+          "order": 1,
+          "name": "大阪梅田",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "中津",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "十三",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "神崎川",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "園田",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "塚口",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "武庫之荘",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "西宮北口",
+          "n02_match": true
+        },
+        {
+          "order": 9,
+          "name": "夙川",
+          "n02_match": true
+        },
+        {
+          "order": 10,
+          "name": "芦屋川",
+          "n02_match": true
+        },
+        {
+          "order": 11,
+          "name": "岡本",
+          "n02_match": true
+        },
+        {
+          "order": 12,
+          "name": "御影",
+          "n02_match": true
+        },
+        {
+          "order": 13,
+          "name": "六甲",
+          "n02_match": true
+        },
+        {
+          "order": 14,
+          "name": "王子公園",
+          "n02_match": true
+        },
+        {
+          "order": 15,
+          "name": "春日野道",
+          "n02_match": true
+        },
+        {
+          "order": 16,
+          "name": "神戸三宮",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "kintetsu_nara_line",
+      "name": "近鉄奈良線",
+      "name_kana": "きんてつならせん",
+      "operator": "近畿日本鉄道",
+      "operator_id": "kintetsu",
+      "color": "#FF6600",
+      "official_line": "奈良線",
+      "alias": [],
+      "through_lines": [
+        "osaka_metro_midosuji_line",
+        "osaka_metro_sennichimae_line"
+      ],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "note": "大阪難波〜近鉄奈良（24駅）。難波線（大阪難波〜大阪上本町）を含む。",
+      "stations": [
+        {
+          "order": 1,
+          "name": "大阪難波",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "近鉄日本橋",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "大阪上本町",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "鶴橋",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "今里",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "布施",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "河内永和",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "河内小阪",
+          "n02_match": true
+        },
+        {
+          "order": 9,
+          "name": "八戸ノ里",
+          "n02_match": true
+        },
+        {
+          "order": 10,
+          "name": "若江岩田",
+          "n02_match": true
+        },
+        {
+          "order": 11,
+          "name": "河内花園",
+          "n02_match": true
+        },
+        {
+          "order": 12,
+          "name": "東花園",
+          "n02_match": true
+        },
+        {
+          "order": 13,
+          "name": "瓢箪山",
+          "n02_match": true
+        },
+        {
+          "order": 14,
+          "name": "枚岡",
+          "n02_match": true
+        },
+        {
+          "order": 15,
+          "name": "額田",
+          "n02_match": true
+        },
+        {
+          "order": 16,
+          "name": "石切",
+          "n02_match": true
+        },
+        {
+          "order": 17,
+          "name": "生駒",
+          "n02_match": true
+        },
+        {
+          "order": 18,
+          "name": "東生駒",
+          "n02_match": true
+        },
+        {
+          "order": 19,
+          "name": "富雄",
+          "n02_match": true
+        },
+        {
+          "order": 20,
+          "name": "学園前",
+          "n02_match": true
+        },
+        {
+          "order": 21,
+          "name": "菖蒲池",
+          "n02_match": true
+        },
+        {
+          "order": 22,
+          "name": "大和西大寺",
+          "n02_match": true
+        },
+        {
+          "order": 23,
+          "name": "新大宮",
+          "n02_match": true
+        },
+        {
+          "order": 24,
+          "name": "近鉄奈良",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "nishitetsu_tenjin_omuta_line",
+      "name": "西鉄天神大牟田線",
+      "name_kana": "にしてつてんじんおおむたせん",
+      "operator": "西日本鉄道",
+      "operator_id": "nishitetsu",
+      "color": "#F5A200",
+      "official_line": "天神大牟田線",
+      "alias": [
+        "西鉄本線"
+      ],
+      "through_lines": [],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "note": "福岡（天神）〜大牟田（50駅）。",
+      "stations": [
+        {
+          "order": 1,
+          "name": "西鉄福岡（天神）",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "薬院",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "西鉄平尾",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "高宮",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "大橋",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "井尻",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "雑餉隈",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "桜並木",
+          "n02_match": true
+        },
+        {
+          "order": 9,
+          "name": "春日原",
+          "n02_match": true
+        },
+        {
+          "order": 10,
+          "name": "白木原",
+          "n02_match": true
+        },
+        {
+          "order": 11,
+          "name": "下大利",
+          "n02_match": true
+        },
+        {
+          "order": 12,
+          "name": "都府楼前",
+          "n02_match": true
+        },
+        {
+          "order": 13,
+          "name": "西鉄二日市",
+          "n02_match": true
+        },
+        {
+          "order": 14,
+          "name": "紫",
+          "n02_match": true
+        },
+        {
+          "order": 15,
+          "name": "朝倉街道",
+          "n02_match": true
+        },
+        {
+          "order": 16,
+          "name": "桜台",
+          "n02_match": true
+        },
+        {
+          "order": 17,
+          "name": "筑紫",
+          "n02_match": true
+        },
+        {
+          "order": 18,
+          "name": "津古",
+          "n02_match": true
+        },
+        {
+          "order": 19,
+          "name": "三国が丘",
+          "n02_match": true
+        },
+        {
+          "order": 20,
+          "name": "三沢",
+          "n02_match": true
+        },
+        {
+          "order": 21,
+          "name": "大保",
+          "n02_match": true
+        },
+        {
+          "order": 22,
+          "name": "西鉄小郡",
+          "n02_match": true
+        },
+        {
+          "order": 23,
+          "name": "端間",
+          "n02_match": true
+        },
+        {
+          "order": 24,
+          "name": "味坂",
+          "n02_match": true
+        },
+        {
+          "order": 25,
+          "name": "宮の陣",
+          "n02_match": true
+        },
+        {
+          "order": 26,
+          "name": "櫛原",
+          "n02_match": true
+        },
+        {
+          "order": 27,
+          "name": "西鉄久留米",
+          "n02_match": true
+        },
+        {
+          "order": 28,
+          "name": "花畑",
+          "n02_match": true
+        },
+        {
+          "order": 29,
+          "name": "聖マリア病院前",
+          "n02_match": true
+        },
+        {
+          "order": 30,
+          "name": "津福",
+          "n02_match": true
+        },
+        {
+          "order": 31,
+          "name": "安武",
+          "n02_match": true
+        },
+        {
+          "order": 32,
+          "name": "大善寺",
+          "n02_match": true
+        },
+        {
+          "order": 33,
+          "name": "三潴",
+          "n02_match": true
+        },
+        {
+          "order": 34,
+          "name": "犬塚",
+          "n02_match": true
+        },
+        {
+          "order": 35,
+          "name": "大溝",
+          "n02_match": true
+        },
+        {
+          "order": 36,
+          "name": "八丁牟田",
+          "n02_match": true
+        },
+        {
+          "order": 37,
+          "name": "蒲池",
+          "n02_match": true
+        },
+        {
+          "order": 38,
+          "name": "矢加部",
+          "n02_match": true
+        },
+        {
+          "order": 39,
+          "name": "西鉄柳川",
+          "n02_match": true
+        },
+        {
+          "order": 40,
+          "name": "徳益",
+          "n02_match": true
+        },
+        {
+          "order": 41,
+          "name": "塩塚",
+          "n02_match": true
+        },
+        {
+          "order": 42,
+          "name": "西鉄中島",
+          "n02_match": true
+        },
+        {
+          "order": 43,
+          "name": "江の浦",
+          "n02_match": true
+        },
+        {
+          "order": 44,
+          "name": "開",
+          "n02_match": true
+        },
+        {
+          "order": 45,
+          "name": "西鉄渡瀬",
+          "n02_match": true
+        },
+        {
+          "order": 46,
+          "name": "倉永",
+          "n02_match": true
+        },
+        {
+          "order": 47,
+          "name": "東甘木",
+          "n02_match": true
+        },
+        {
+          "order": 48,
+          "name": "西鉄銀水",
+          "n02_match": true
+        },
+        {
+          "order": 49,
+          "name": "新栄町",
+          "n02_match": true
+        },
+        {
+          "order": 50,
+          "name": "大牟田",
+          "n02_match": true
+        }
+      ]
+    }
+  ]
+}
