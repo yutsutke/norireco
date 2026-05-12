@@ -62070,6 +62070,56 @@
           "n02_match": true
         }
       ]
+    },
+    {
+      "id": "jr_chuo_main_tatsuno",
+      "name": "中央本線(辰野支線)",
+      "operator": "JR東日本",
+      "operator_id": "jr_east",
+      "color": "#F15A22",
+      "official_line": "中央線",
+      "alias": [
+        "旧中央本線",
+        "辰野経由"
+      ],
+      "through_lines": [],
+      "is_circular": false,
+      "parent_id": "jr_chuo_main",
+      "branch_from": "岡谷",
+      "branch_to": "塩尻",
+      "note": "みどり湖開業前の本線ルート。岡谷〜辰野〜塩尻間。辰野からは飯田線へ接続。",
+      "stations": [
+        {
+          "order": 1,
+          "name": "岡谷",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "川岸",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "辰野",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "信濃川島",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "小野",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "塩尻",
+          "n02_match": true
+        }
+      ]
     }
   ]
 }
