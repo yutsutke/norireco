@@ -1833,8 +1833,11 @@ function drawSingleLine(line){
       let _linesText = '';
       if (_ms && _nLines > 1) {
         const _lineNames = _ms.lines.map((lid, idx) => {
-          const c = (_ms.colors && _ms.colors[idx]) || (LINES.find(l=>l.id===lid)?.color) || '#888';
-          const ln = LINES.find(l => l.id === lid);
+          // merged_stations が service line id を持つようになったので
+          // まず SERVICE_LINES を引き、無ければ LINES(N02) を引く
+          const sl = (SERVICE_LINES && SERVICE_LINES.length) ? SERVICE_LINES.find(x => x.id === lid) : null;
+          const ln = sl || LINES.find(l => l.id === lid);
+          const c = (_ms.colors && _ms.colors[idx]) || (ln && ln.color) || '#888';
           const dispName = ln ? ln.name : lid;
           return `<span style="color:${c}">●</span> ${dispName}`;
         }).join('<br>');
@@ -1844,7 +1847,10 @@ function drawSingleLine(line){
       if(!isRidden){
         let dot;
         if (_nLines > 1 && _ms) {
-          const _colors = _ms.colors || _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
+          const _colors = _ms.colors || _ms.lines.map(lid => {
+            const sl = (SERVICE_LINES && SERVICE_LINES.length) ? SERVICE_LINES.find(x => x.id === lid) : null;
+            return (sl && sl.color) || (LINES.find(l=>l.id===lid)?.color) || '#888';
+          });
           const _size = Math.round(11 * _mScale);
           dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, false), opacity:0.7, interactive:true});
         } else {
@@ -1876,7 +1882,10 @@ function drawSingleLine(line){
       } else if(ir){
         let dot;
         if (_nLines > 1 && _ms) {
-          const _colors = _ms.colors || _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
+          const _colors = _ms.colors || _ms.lines.map(lid => {
+            const sl = (SERVICE_LINES && SERVICE_LINES.length) ? SERVICE_LINES.find(x => x.id === lid) : null;
+            return (sl && sl.color) || (LINES.find(l=>l.id===lid)?.color) || '#888';
+          });
           const _size = Math.round(14 * _mScale);
           dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, true), interactive:true});
         } else {
@@ -1905,7 +1914,10 @@ function drawSingleLine(line){
         // 乗車済み路線の未乗車駅: 小さい薄ドット + 薄いラベル
         let dot;
         if (_nLines > 1 && _ms) {
-          const _colors = _ms.colors || _ms.lines.map(lid => (LINES.find(l=>l.id===lid)?.color) || '#888');
+          const _colors = _ms.colors || _ms.lines.map(lid => {
+            const sl = (SERVICE_LINES && SERVICE_LINES.length) ? SERVICE_LINES.find(x => x.id === lid) : null;
+            return (sl && sl.color) || (LINES.find(l=>l.id===lid)?.color) || '#888';
+          });
           const _size = Math.round(10 * _mScale);
           dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, false), opacity:0.6, interactive:true});
         } else {
