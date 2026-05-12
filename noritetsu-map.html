@@ -1662,20 +1662,18 @@ async function saveRecordedTrip(serviceLine) {
 }
 
 // 地図全体のポリライン/駅ドット/ラベルを再描画 (riddenSt 更新後に呼ぶ)
+// 既存の Supabase 同期後の再描画と同じパターンを使う
 function redrawAllLinesAfterTripChange() {
   if (!map || !dotLayerRef) return;
   // 既存ポリラインを削除
-  try { allLayers.forEach(l => { try { map.removeLayer(l); } catch(e){} }); } catch(e){}
+  allLayers.forEach(l => { try { map.removeLayer(l); } catch(e){} });
   allLayers.length = 0;
   // 既存ドット/ラベルをクリア
   dotLayerRef.clearLayers();
   if (labelLayerRef) labelLayerRef.clearLayers();
-  if (window._allLabels) window._allLabels.length = 0;
-  // 各 N02 路線を描き直す
-  LINES.forEach(line => {
-    try { drawSingleLine(line); } catch(e) { console.warn('drawSingleLine 失敗', line.id, e); }
-  });
-  if (typeof updateLOD === 'function') updateLOD();
+  // drawLines() が内部で window._allLabels.length=0 と drawnMergedStations.clear()
+  // を実行するため、パイチャート(統合駅)も正しく再生成される
+  drawLines();
 }
 
 function showRecordToast(msg) {
