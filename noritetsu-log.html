@@ -462,56 +462,142 @@ const ISLANDS=[
 // ════════════════════════════════════════════
 let LINES = [];
 
-// running_services.json + lines-p?.json から LINES を構築
+// 旧 lineId(N02 物理路線 id) → 新 lineId(営業系統 id) の互換マッピング
+// 既存 trip データに残っている '東海道線_東日本旅客鉄道' を 'auto_東海道線_東日本旅客鉄道' に解決
+const LEGACY_LINE_ID_ALIAS = new Map();
+
+// 駅座標 + 名称から地域グループを推定
+function detectGroupByStations(stations, name) {
+  if (name && name.includes('新幹線')) return '新幹線';
+  if (!stations || stations.length === 0) return 'その他';
+  // 中央付近の駅で代表点を取る
+  const mid = stations[Math.floor(stations.length / 2)];
+  const lat = mid.lat, lon = mid.lon;
+  // 首都圏 (関東南部のうち、東京・神奈川・千葉・埼玉中心部)
+  if (lat >= 35.30 && lat <= 36.30 && lon >= 138.95 && lon <= 140.50) {
+    if (name) {
+      if (name.startsWith('JR') || name.includes('京浜東北') || name.includes('湘南新宿') ||
+          name.includes('上野東京') || name.includes('山手線') || name.includes('総武') ||
+          name.includes('中央') || name.includes('横須賀') || name.includes('宇都宮線') ||
+          name.includes('高崎線') || name.includes('常磐線') || name.includes('東海道線') ||
+          name.includes('埼京'))
+        return '首都圏・JR';
+      if (name.includes('東京メトロ') || name.startsWith('都営') || name.startsWith('都電'))
+        return '東京メトロ・都営';
+      if (name.startsWith('東武') || name.startsWith('西武') || name.startsWith('京成') ||
+          name.startsWith('東葉') || name.startsWith('新京成') || name.startsWith('北総') ||
+          name.startsWith('埼玉') || name.startsWith('日暮里') || name.startsWith('つくばエクスプレス'))
+        return '首都圏・私鉄（東・北）';
+      if (name.startsWith('東急') || name.startsWith('小田急') || name.startsWith('京急') ||
+          name.startsWith('京王') || name.startsWith('相模鉄道') || name.startsWith('相鉄') ||
+          name.startsWith('横浜') || name.startsWith('伊豆箱根') || name.startsWith('江ノ島') ||
+          name.startsWith('湘南') || name.startsWith('多摩都市') || name.startsWith('箱根'))
+        return '首都圏・私鉄（南・西）';
+    }
+    return '首都圏・ローカル';
+  }
+  // 北海道
+  if (lat >= 41.3) return '北海道';
+  // 東北
+  if (lat >= 37.0) return '東北';
+  // 関西 (大阪・京都・神戸・奈良・滋賀・和歌山)
+  if (lat >= 33.8 && lat <= 35.8 && lon >= 134.50 && lon <= 136.50) return '関西';
+  // 中国・山陰 (岡山・広島・山口・島根・鳥取)
+  if (lat >= 33.5 && lat <= 35.7 && lon >= 130.85 && lon <= 134.50) return '中国・山陰';
+  // 四国
+  if (lat >= 32.7 && lat <= 34.5 && lon >= 132.0 && lon <= 134.85) return '四国';
+  // 九州・沖縄
+  if (lat <= 33.7 && lon <= 132.0) return '九州';
+  if (lat <= 27.0) return '九州'; // 沖縄を含む
+  // 東海・中部
+  if (lat >= 34.5 && lat <= 37.5 && lon >= 136.0 && lon <= 139.5) return '東海・中部';
+  return 'その他';
+}
+
+// service_lines_master.json + lines-p?.json から LINES (営業系統) を構築
 async function loadAppData() {
-  const [rsRes, p1, p2, p3, p4] = await Promise.all([
-    fetch('running_services.json').then(r => r.ok ? r.json() : Promise.reject(new Error('rs failed: '+r.status))),
+  const [masterRes, p1, p2, p3, p4] = await Promise.all([
+    fetch('service_lines_master.json').then(r => r.ok ? r.json() : Promise.reject(new Error('master failed: '+r.status))),
     fetch('lines-p1.json').then(r => r.json()),
     fetch('lines-p2.json').then(r => r.json()),
     fetch('lines-p3.json').then(r => r.json()),
     fetch('lines-p4.json').then(r => r.json()),
   ]);
-  const services = rsRes.services || {};
-  const physicalLines = {};
-  [p1, p2, p3, p4].forEach(arr => arr.forEach(L => { physicalLines[L.id] = L; }));
+  const masterLines = masterRes.service_lines || [];
 
-  const norm = n => (n || '').replace(/ケ/g, 'ヶ').replace(/[ \u3000]/g, '');
+  // N02 物理路線ごとの「駅名→座標」マップ + group/region (同 id はマージ)
+  const perLineMap = new Map();
+  [p1, p2, p3, p4].forEach(arr => arr.forEach(line => {
+    let info = perLineMap.get(line.id);
+    if (!info) {
+      info = { name: line.name, group: line.group || '', region: line.region || '', stations: new Map() };
+      perLineMap.set(line.id, info);
+    }
+    for (const st of (line.stations || [])) {
+      const nm = st.n;
+      if (!nm || typeof st.lat !== 'number' || typeof st.lon !== 'number') continue;
+      if (!info.stations.has(nm)) info.stations.set(nm, [st.lat, st.lon]);
+    }
+  }));
+
+  // sl.id "auto_<n02_id>(_bN|_sN)?" → N02 id を返す
+  const deriveN02Id = slId => {
+    if (!slId || !slId.startsWith('auto_')) return null;
+    return slId.slice(5).replace(/_b\d+$/, '').replace(/_s\d+$/, '');
+  };
+
   LINES.length = 0;
-  for (const sid of Object.keys(services)) {
-    const svc = services[sid];
-    if (!svc.segments) continue;
-    const stations = [];
-    const seen = new Set();
-    for (const seg of svc.segments) {
-      const line = physicalLines[seg.line];
-      if (!line) continue;
-      const fromIdx = line.stations.findIndex(s => norm(s.n) === norm(seg.from));
-      const toIdx = line.stations.findIndex(s => norm(s.n) === norm(seg.to));
-      if (fromIdx < 0 || toIdx < 0) continue;
-      const dir = fromIdx <= toIdx ? 1 : -1;
-      let i = fromIdx;
-      while (true) {
-        const s = line.stations[i];
-        if (!seen.has(s.n)) {
-          seen.add(s.n);
-          stations.push({ name: s.n, lat: s.lat, lon: s.lon });
-        }
-        if (i === toIdx) break;
-        i += dir;
+  LEGACY_LINE_ID_ALIAS.clear();
+  let droppedCount = 0;
+  for (const sl of masterLines) {
+    const sourceN02Id = deriveN02Id(sl.id);
+    const masterNames = new Set((sl.stations || []).map(s => s.name));
+
+    // 座標候補: idMatch >> overlap >= 2 >> official_line 部分一致
+    const candidates = [];
+    for (const [n02Id, info] of perLineMap) {
+      let overlap = 0;
+      for (const n of masterNames) if (info.stations.has(n)) overlap++;
+      const idMatch = sourceN02Id && sourceN02Id === n02Id;
+      const officialMatch = sl.official_line && info.name && info.name.startsWith(sl.official_line);
+      if (idMatch || overlap >= 2 || officialMatch) {
+        candidates.push({ n02Id, info, overlap, idMatch, officialMatch });
       }
     }
-    if (stations.length === 0) continue;
+    candidates.sort((a, b) =>
+      (b.idMatch - a.idMatch) || (b.overlap - a.overlap) || (b.officialMatch - a.officialMatch)
+    );
+
+    // 各駅の座標を解決
+    const stations = [];
+    for (const s of (sl.stations || [])) {
+      let coord = null;
+      for (const c of candidates) {
+        if (c.info.stations.has(s.name)) { coord = c.info.stations.get(s.name); break; }
+      }
+      if (coord) stations.push({ name: s.name, lat: coord[0], lon: coord[1] });
+    }
+    if (stations.length < 2) { droppedCount++; continue; }
+
+    // group/region: 駅座標ベースで地域を判定 (N02 の group は 'JR在来'/'私鉄' で粗いため)
+    const group = sl.group || detectGroupByStations(stations, sl.name);
+    const top = candidates[0];
+    const region = sl.region || (top ? top.info.region : '') || '';
+
     LINES.push({
-      id: sid,
-      name: svc.name || sid,
-      color: svc.color || '#888',
-      region: svc.region || '',
-      group: svc.group || 'その他',
+      id: sl.id,
+      name: sl.name || sl.id,
+      color: sl.color || '#888',
+      region: region,
+      group: group,
       stations: stations,
-      circular: svc.circular || false,
+      circular: sl.is_circular || false,
     });
+
+    // 旧 ID 互換: auto エントリは bare N02 id も alias 登録
+    if (sourceN02Id) LEGACY_LINE_ID_ALIAS.set(sourceN02Id, sl.id);
   }
-  console.log(`[乗レコ] LINES loaded: ${LINES.length} services`);
+  console.log(`[乗レコ] LINES loaded: ${LINES.length} 営業系統 (skip ${droppedCount})`);
 }
 
 // ════════════════════════════════════════════
@@ -663,7 +749,14 @@ function selectCandidate(el,c,ctx,containerId){
 let sel={lineId:null,si:null,ei:null};
 let journey={segments:[],active:null,journeyStart:null,timerIv:null,progIv:null,prog:0};
 
-function getL(id){return LINES.find(l=>l.id===id);}
+function getL(id){
+  let l = LINES.find(x=>x.id===id);
+  if (l) return l;
+  // 旧 lineId(N02 物理路線 id) を新 lineId(営業系統 id) にエイリアス解決
+  const aliased = LEGACY_LINE_ID_ALIAS.get(id);
+  if (aliased) return LINES.find(x=>x.id===aliased);
+  return undefined;
+}
 
 // ════════════════════════════════════════════
 // INIT - グループ別に路線セレクトを構築
