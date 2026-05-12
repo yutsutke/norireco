@@ -472,19 +472,49 @@ const METRO_TOEI_IDS  = new Set(['tokyo_metro','toei']);
 const KANTO_EAST_NORTH_PRIVATE = new Set(['tobu','seibu','keisei','toyo_rapid','shin_keisei','hokuso','saitama_rapid','tx','nippori_toneri','choshi','isumi','kashima_rinkai','tobu_urban','keisei_chiba']);
 const KANTO_SOUTH_WEST_PRIVATE = new Set(['tokyu','odakyu','keikyu','keio','sotetsu','yokohama_minato_mirai','izuhakone','enoshima','tama_toshi','hakone_tozan','rinkai']);
 
+// lat/lon から地域コード(関東/東北/関西/...)を返す
+function regionOf(lat, lon) {
+  if (lat >= 41.3) return '北海道';
+  // 関東 (1都6県を広めにカバー)
+  if (lat >= 34.9 && lat <= 37.0 && lon >= 138.5 && lon <= 141.5) return '関東';
+  if (lat >= 37.0 && lat <= 41.3 && lon >= 138.5) return '東北';
+  // 関西 (大阪/京都/神戸/奈良/和歌山/滋賀/三重南部)
+  if (lat >= 33.5 && lat <= 35.8 && lon >= 134.5 && lon <= 136.5) return '関西';
+  // 東海・中部 (静岡/愛知/岐阜/長野/新潟/富山/石川/福井/山梨)
+  if (lat >= 34.5 && lat <= 37.5 && lon >= 136.0 && lon <= 139.5) return '東海・中部';
+  // 中国・山陰
+  if (lat >= 33.5 && lat <= 35.8 && lon >= 130.85 && lon <= 134.5) return '中国・山陰';
+  // 四国
+  if (lat >= 32.7 && lat <= 34.5 && lon >= 132.0 && lon <= 135.0) return '四国';
+  // 九州・沖縄
+  if (lat <= 34.0 && lon <= 132.0) return '九州';
+  if (lat <= 27.0) return '九州';
+  return null;
+}
+
 // 駅座標 + 運営会社 + 名称から地域グループを推定
 function detectGroupByStations(stations, name, operatorId) {
   if (name && name.includes('新幹線')) return '新幹線';
   if (!stations || stations.length === 0) return 'その他';
-  const mid = stations[Math.floor(stations.length / 2)];
-  const lat = mid.lat, lon = mid.lon;
-  const isKanto = (lat >= 35.30 && lat <= 36.30 && lon >= 138.95 && lon <= 140.50);
-  if (isKanto) {
+  // 先頭・中間・末尾の3点で地域判定して多数決(末尾優先度はやや低)
+  const samples = [stations[0], stations[Math.floor(stations.length / 2)], stations[stations.length - 1]];
+  const counts = {};
+  for (const s of samples) {
+    const r = regionOf(s.lat, s.lon);
+    if (r) counts[r] = (counts[r] || 0) + 1;
+  }
+  let region = null, maxCount = 0;
+  for (const [r, c] of Object.entries(counts)) {
+    if (c > maxCount) { region = r; maxCount = c; }
+  }
+  if (!region) return 'その他';
+
+  if (region === '関東') {
     if (JR_OPERATOR_IDS.has(operatorId)) return '首都圏・JR';
     if (METRO_TOEI_IDS.has(operatorId)) return '東京メトロ・都営';
     if (KANTO_EAST_NORTH_PRIVATE.has(operatorId)) return '首都圏・私鉄（東・北）';
     if (KANTO_SOUTH_WEST_PRIVATE.has(operatorId)) return '首都圏・私鉄（南・西）';
-    // operator_id が不明な場合は名称でフォールバック
+    // operator_id 不明時は名称でフォールバック
     if (name) {
       if (name.includes('東京メトロ') || name.startsWith('都営') || name.startsWith('都電'))
         return '東京メトロ・都営';
@@ -500,15 +530,7 @@ function detectGroupByStations(stations, name, operatorId) {
     }
     return '首都圏・ローカル';
   }
-  if (lat >= 41.3) return '北海道';
-  if (lat >= 37.0) return '東北';
-  if (lat >= 33.8 && lat <= 35.8 && lon >= 134.50 && lon <= 136.50) return '関西';
-  if (lat >= 33.5 && lat <= 35.7 && lon >= 130.85 && lon <= 134.50) return '中国・山陰';
-  if (lat >= 32.7 && lat <= 34.5 && lon >= 132.0 && lon <= 134.85) return '四国';
-  if (lat <= 33.7 && lon <= 132.0) return '九州';
-  if (lat <= 27.0) return '九州';
-  if (lat >= 34.5 && lat <= 37.5 && lon >= 136.0 && lon <= 139.5) return '東海・中部';
-  return 'その他';
+  return region;  // 東北/関西/東海・中部/中国・山陰/四国/九州/北海道
 }
 
 // service_lines_master.json + lines-p?.json から LINES (営業系統) を構築
