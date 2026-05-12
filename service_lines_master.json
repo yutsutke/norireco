@@ -63005,6 +63005,135 @@
           "n02_match": true
         }
       ]
+    },
+    {
+      "id": "jr_sobu_main_choshi",
+      "name": "総武本線(銚子〜千葉)",
+      "operator": "JR東日本",
+      "operator_id": "jr_east",
+      "color": "#FFD400",
+      "official_line": "総武線",
+      "alias": [
+        "総武本線"
+      ],
+      "through_lines": [],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "note": "銚子〜千葉の総武本線運行系統。千葉以西は総武快速線/各駅停車で別途。",
+      "stations": [
+        {
+          "order": 1,
+          "name": "銚子",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "松岸",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "猿田",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "倉橋",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "飯岡",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "旭",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "干潟",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "八日市場",
+          "n02_match": true
+        },
+        {
+          "order": 9,
+          "name": "飯倉",
+          "n02_match": true
+        },
+        {
+          "order": 10,
+          "name": "横芝",
+          "n02_match": true
+        },
+        {
+          "order": 11,
+          "name": "松尾",
+          "n02_match": true
+        },
+        {
+          "order": 12,
+          "name": "成東",
+          "n02_match": true
+        },
+        {
+          "order": 13,
+          "name": "日向",
+          "n02_match": true
+        },
+        {
+          "order": 14,
+          "name": "八街",
+          "n02_match": true
+        },
+        {
+          "order": 15,
+          "name": "榎戸",
+          "n02_match": true
+        },
+        {
+          "order": 16,
+          "name": "南酒々井",
+          "n02_match": true
+        },
+        {
+          "order": 17,
+          "name": "佐倉",
+          "n02_match": true
+        },
+        {
+          "order": 18,
+          "name": "物井",
+          "n02_match": true
+        },
+        {
+          "order": 19,
+          "name": "四街道",
+          "n02_match": true
+        },
+        {
+          "order": 20,
+          "name": "都賀",
+          "n02_match": true
+        },
+        {
+          "order": 21,
+          "name": "東千葉",
+          "n02_match": true
+        },
+        {
+          "order": 22,
+          "name": "千葉",
+          "n02_match": true
+        }
+      ]
     }
   ]
 }
