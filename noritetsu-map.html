@@ -378,12 +378,15 @@ async function loadMergedStations() {
   }
 }
 
-// ── 営業系統マスター (POC: service_lines_master.json オーバーレイ) ──
+// ── 営業系統マスター (service_lines_master.json) ──
 // 物理路線(N02)とは別に、乗客視点の「営業系統」を polyline で重ね描き
+// 路線一覧・統計タブの達成率計算もこちらをベースにする
 let SERVICE_LINES_MASTER = null;
+let SERVICE_LINES = []; // 駅座標解決済み + 候補 N02 id を持つ
 let serviceLineLayer = null;
 let serviceLinesVisible = false;
 let serviceLinesLoaded = false;
+let serviceLinesBuilt = false;
 
 async function loadServiceLinesMaster() {
   if (SERVICE_LINES_MASTER) return SERVICE_LINES_MASTER;
@@ -510,12 +513,7 @@ function drawServiceLines() {
 async function toggleServiceLines() {
   const btn = document.getElementById('svc-lines-btn');
   if (!serviceLinesVisible) {
-    if (!serviceLinesLoaded) {
-      await loadServiceLinesMaster();
-      serviceLinesLoaded = true;
-    }
-    // 全 N02 物理路線(P1〜P4)を読み込んでから描画(座標解決のため)
-    await Promise.all([loadLines(1), loadLines(2), loadLines(3), loadLines(4)]);
+    await buildServiceLines();
     drawServiceLines();
     if (serviceLineLayer && map) serviceLineLayer.addTo(map);
     serviceLinesVisible = true;
@@ -525,6 +523,126 @@ async function toggleServiceLines() {
     serviceLinesVisible = false;
     if (btn) btn.classList.remove('on');
   }
+}
+
+// 営業系統 sl.id "auto_<n02_id>(_bN|_sN)?" → N02 id
+function deriveN02IdFromAutoId(slId) {
+  if (!slId || !slId.startsWith('auto_')) return null;
+  return slId.slice(5).replace(/_b\d+$/, '').replace(/_s\d+$/, '');
+}
+
+// 駅 lat/lon から地域グループを推定 (路線一覧の見出し用)
+function regionOf(lat, lon) {
+  if (lat >= 41.3) return '北海道';
+  if (lat >= 34.9 && lat <= 37.0 && lon >= 138.5 && lon <= 141.5) return '関東';
+  if (lat >= 37.0 && lat <= 41.3 && lon >= 138.5) return '東北';
+  if (lat >= 34.5 && lat <= 37.5 && lon >= 136.0 && lon <= 139.5) return '東海・中部';
+  if (lat >= 33.5 && lat <= 35.8 && lon >= 134.5 && lon <= 137.0) return '関西';
+  if (lat >= 33.5 && lat <= 35.8 && lon >= 130.85 && lon <= 134.5) return '中国・山陰';
+  if (lat >= 32.7 && lat <= 34.5 && lon >= 132.0 && lon <= 135.0) return '四国';
+  if (lat <= 34.0 && lon <= 132.0) return '九州';
+  if (lat <= 27.0) return '九州';
+  return null;
+}
+const _JR_OP_IDS = new Set(['jr_east','jr_central','jr_west','jr_kyushu','jr_hokkaido','jr_shikoku']);
+const _METRO_TOEI = new Set(['tokyo_metro','toei']);
+const _KANTO_EAST_NORTH = new Set(['tobu','seibu','keisei','toyo_rapid','shin_keisei','hokuso','saitama_rapid','tx','nippori_toneri','choshi','isumi','kashima_rinkai']);
+const _KANTO_SOUTH_WEST = new Set(['tokyu','odakyu','keikyu','keio','sotetsu','yokohama_minato_mirai','izuhakone','enoshima','tama_toshi','hakone_tozan','rinkai']);
+function detectServiceLineGroup(stations, name, operatorId) {
+  if (name && name.includes('新幹線')) return '新幹線';
+  if (!stations || stations.length === 0) return 'その他';
+  const samples = [stations[0], stations[Math.floor(stations.length/2)], stations[stations.length-1]];
+  const counts = {};
+  for (const s of samples) {
+    const r = regionOf(s.lat, s.lon);
+    if (r) counts[r] = (counts[r] || 0) + 1;
+  }
+  let region = null, max = 0;
+  for (const [r, c] of Object.entries(counts)) if (c > max) { region = r; max = c; }
+  if (!region) return 'その他';
+  if (region === '関東') {
+    if (_JR_OP_IDS.has(operatorId)) return '首都圏・JR';
+    if (_METRO_TOEI.has(operatorId)) return '東京メトロ・都営';
+    if (_KANTO_EAST_NORTH.has(operatorId)) return '首都圏・私鉄（東・北）';
+    if (_KANTO_SOUTH_WEST.has(operatorId)) return '首都圏・私鉄（南・西）';
+    return '首都圏・ローカル';
+  }
+  return region;
+}
+
+// SERVICE_LINES を構築 (路線一覧・統計・🚆オーバーレイ共通)
+async function buildServiceLines() {
+  if (!serviceLinesLoaded) {
+    await loadServiceLinesMaster();
+    serviceLinesLoaded = true;
+  }
+  await Promise.all([loadLines(1), loadLines(2), loadLines(3), loadLines(4)]);
+  if (serviceLinesBuilt) return;
+  const perLineMap = buildPerLineCoordMap();
+  SERVICE_LINES = [];
+  for (const sl of (SERVICE_LINES_MASTER || [])) {
+    const sourceN02Id = deriveN02IdFromAutoId(sl.id);
+    const masterNames = new Set((sl.stations || []).map(s => s.name));
+    const candidates = [];
+    for (const [n02Id, info] of perLineMap) {
+      let overlap = 0;
+      for (const n of masterNames) if (info.stations.has(n)) overlap++;
+      const idMatch = sourceN02Id && sourceN02Id === n02Id;
+      const officialMatch = sl.official_line && info.name && info.name.startsWith(sl.official_line);
+      if (idMatch || overlap >= 2 || officialMatch) {
+        candidates.push({ n02Id, info, overlap, idMatch, officialMatch });
+      }
+    }
+    candidates.sort((a,b) => (b.idMatch-a.idMatch) || (b.overlap-a.overlap) || (b.officialMatch-a.officialMatch));
+    const stations = [];
+    for (const s of (sl.stations || [])) {
+      let coord = null;
+      for (const c of candidates) {
+        if (c.info.stations.has(s.name)) { coord = c.info.stations.get(s.name); break; }
+      }
+      if (coord) stations.push({ name: s.name, lat: coord[0], lon: coord[1] });
+    }
+    if (stations.length < 2) continue;
+    const group = detectServiceLineGroup(stations, sl.name, sl.operator_id);
+    SERVICE_LINES.push({
+      id: sl.id,
+      name: sl.name || sl.id,
+      color: sl.color || '#888',
+      group,
+      operator: sl.operator || '',
+      operator_id: sl.operator_id || '',
+      stations,
+      candidateN02Ids: candidates.map(c => c.n02Id),
+      circular: sl.is_circular || false,
+    });
+  }
+  serviceLinesBuilt = true;
+  console.log(`[乗レコ] SERVICE_LINES built: ${SERVICE_LINES.length} 系統`);
+}
+
+// 営業系統の達成率
+function slStats(sl) {
+  const t = sl.stations.length;
+  const riddenSet = new Set();
+  for (const n02Id of sl.candidateN02Ids) {
+    const rs = riddenSt[n02Id];
+    if (rs) for (const n of rs) riddenSet.add(n);
+  }
+  let r = 0;
+  for (const s of sl.stations) if (riddenSet.has(s.name)) r++;
+  return { t, r, pct: t > 0 ? Math.round(r/t*100) : 0 };
+}
+
+// 全営業系統の集計
+function slGlobalStats() {
+  let ts = 0, rt = 0, la = 0, ld = 0;
+  SERVICE_LINES.forEach(sl => {
+    const s = slStats(sl);
+    ts += s.t; rt += s.r;
+    if (s.r > 0) la++;
+    if (s.pct === 100) ld++;
+  });
+  return { ts, rt, la, ld, pct: ts > 0 ? Math.round(rt/ts*100) : 0 };
 }
 
 // 優先度別JSONファイル（N02-25 全国データ・606路線・10154駅）
@@ -1088,7 +1206,13 @@ function serviceColor(serviceId) {
   }
   return '#888';
 }
-function gStats(){let ts=0,rt=0,la=0,ld=0;LINES.forEach(l=>{const s=lStats(l);ts+=s.t;rt+=s.r;if(s.r>0)la++;if(s.pct===100)ld++;});return{ts,rt,la,ld,pct:ts>0?Math.round(rt/ts*100):0};}
+// 全体統計: SERVICE_LINES が構築済みならそちらを優先、未構築なら N02 物理路線で代用
+function gStats(){
+  if (SERVICE_LINES && SERVICE_LINES.length > 0) return slGlobalStats();
+  let ts=0,rt=0,la=0,ld=0;
+  LINES.forEach(l=>{const s=lStats(l);ts+=s.t;rt+=s.r;if(s.r>0)la++;if(s.pct===100)ld++;});
+  return{ts,rt,la,ld,pct:ts>0?Math.round(rt/ts*100):0};
+}
 
 // ══════════════════════════════════════
 // LEAFLET MAP（国土地理院タイル）
@@ -1205,6 +1329,8 @@ function initMap(){
     await loadLines(3);
     console.log(`[乗レコ] 初期ロード完了: 計${LINES.length}路線`);
     fitToRiddenLines();
+    // 営業系統(SERVICE_LINES)を構築 → ヘッダー統計を再計算
+    buildServiceLines().then(() => updateOverlays()).catch(e => console.warn('[乗レコ] SERVICE_LINES 構築失敗:', e));
   })();
 
   // ズーム変更時にP3/P4を追加読み込み + LOD更新
@@ -1834,43 +1960,30 @@ function updateOverlays(){
   document.getElementById('h-pct').textContent=gs.pct+'%';
   document.getElementById('h-ln').textContent=gs.la;
   document.getElementById('ms-pct').textContent=gs.pct+'%';
-  document.getElementById('ms-ln').textContent=gs.la+'路線';
-  document.getElementById('ms-dn').textContent=gs.ld+'路線';
+  document.getElementById('ms-ln').textContent=gs.la+'系統';
+  document.getElementById('ms-dn').textContent=gs.ld+'系統';
   const leg=document.getElementById('legend-lines');
   leg.innerHTML='';
 
-  // 運行系統 (京浜東北線・湘南新宿ライン等) — ridden services first
-  if (riddenServiceIds.size > 0) {
-    const hdr = document.createElement('div');
-    hdr.style.cssText = 'font-size:9px;color:rgba(255,255,255,.45);margin-top:4px;letter-spacing:.05em';
-    hdr.textContent = '── 運行系統 ──';
-    leg.appendChild(hdr);
-    const sortedSvcs = [...riddenServiceIds]
-      .map(id => ({id, svc: RUNNING_SERVICES[id], stats: serviceStats(id)}))
-      .filter(x => x.svc)
+  // 営業系統 — 乗車済みのみ、達成率降順
+  if (SERVICE_LINES && SERVICE_LINES.length > 0) {
+    const ridSls = SERVICE_LINES
+      .map(sl => ({sl, stats: slStats(sl)}))
+      .filter(x => x.stats.r > 0)
       .sort((a,b) => b.stats.pct - a.stats.pct);
-    sortedSvcs.forEach(({id, svc, stats}) => {
-      const c = serviceColor(id);
-      const d = document.createElement('div'); d.className='leg-row'; d.style.marginTop='3px';
-      d.innerHTML = `<div class="leg-swatch" style="background:${c};box-shadow:0 0 4px ${c}60"></div>` +
-        `<span style="font-size:10px;color:rgba(255,255,255,.75)">${svc.name}</span>` +
-        `<span style="font-size:9px;color:rgba(242,169,0,.85);margin-left:6px;font-family:monospace">${stats.r}/${stats.t} ${stats.pct}%</span>`;
-      leg.appendChild(d);
-    });
-  }
-
-  // 物理路線
-  const ridLines = LINES.filter(l=>lStats(l).r>0);
-  if (ridLines.length > 0) {
-    const hdr = document.createElement('div');
-    hdr.style.cssText = 'font-size:9px;color:rgba(255,255,255,.45);margin-top:8px;letter-spacing:.05em';
-    hdr.textContent = '── 物理路線 (N02-25) ──';
-    leg.appendChild(hdr);
-    ridLines.forEach(line=>{
-      const d=document.createElement('div');d.className='leg-row';d.style.marginTop='3px';
-      d.innerHTML=`<div class="leg-swatch" style="background:${line.color};box-shadow:0 0 4px ${line.color}60"></div><span style="font-size:10px;color:rgba(255,255,255,.65)">${line.name}</span>`;
-      leg.appendChild(d);
-    });
+    if (ridSls.length > 0) {
+      const hdr = document.createElement('div');
+      hdr.style.cssText = 'font-size:9px;color:rgba(255,255,255,.45);margin-top:4px;letter-spacing:.05em';
+      hdr.textContent = '── 営業系統 ──';
+      leg.appendChild(hdr);
+      ridSls.forEach(({sl, stats}) => {
+        const d = document.createElement('div'); d.className='leg-row'; d.style.marginTop='3px';
+        d.innerHTML = `<div class="leg-swatch" style="background:${sl.color};box-shadow:0 0 4px ${sl.color}60"></div>` +
+          `<span style="font-size:10px;color:rgba(255,255,255,.75)">${sl.name}</span>` +
+          `<span style="font-size:9px;color:rgba(242,169,0,.85);margin-left:6px;font-family:monospace">${stats.r}/${stats.t} ${stats.pct}%</span>`;
+        leg.appendChild(d);
+      });
+    }
   }
 }
 
@@ -1927,15 +2040,27 @@ function switchTab(n){
 // ══════════════════════════════════════
 // LIST
 // ══════════════════════════════════════
-function renderList(){
+const SL_GROUP_ORDER = [
+  '首都圏・JR','東京メトロ・都営',
+  '首都圏・私鉄（東・北）','首都圏・私鉄（南・西）','首都圏・ローカル',
+  '関西','東海・中部','東北','九州','北海道','四国','中国・山陰','新幹線',
+  'その他'
+];
+
+async function renderList(){
   const c=document.getElementById('list-content');c.innerHTML='';
-  const g={};LINES.forEach(l=>{if(!g[l.group])g[l.group]=[];g[l.group].push(l);});
-  Object.entries(g).forEach(([grp,lines])=>{
-    const t=document.createElement('div');t.className='sec-lbl';t.textContent=grp;c.appendChild(t);
-    lines.forEach(line=>{
-      const s=lStats(line);const card=document.createElement('div');
+  await buildServiceLines();
+  const grouped={};SERVICE_LINES.forEach(sl=>{const g=sl.group||'その他';if(!grouped[g])grouped[g]=[];grouped[g].push(sl);});
+  const groupOrder = [...SL_GROUP_ORDER, ...Object.keys(grouped).filter(g => !SL_GROUP_ORDER.includes(g))];
+  groupOrder.forEach(grp => {
+    const lines = grouped[grp]; if (!lines || lines.length === 0) return;
+    // グループ内: 達成率(降順) → 路線名
+    lines.sort((a,b) => slStats(b).pct - slStats(a).pct || a.name.localeCompare(b.name, 'ja'));
+    const t=document.createElement('div');t.className='sec-lbl';t.textContent=`${grp} (${lines.length})`;c.appendChild(t);
+    lines.forEach(sl=>{
+      const s=slStats(sl);const card=document.createElement('div');
       card.className='lcard'+(s.pct===100?' done':s.r>0?' partial':'');
-      card.innerHTML=`<div class="lc-h"><div class="lc-dot" style="background:${line.color}"></div><span class="lc-name">${line.name}</span><span class="lc-reg">${line.region}</span><span class="lc-pct" style="color:${s.r>0?line.color:'var(--silver)'}">${s.pct}%</span></div><div class="prog"><div class="prog-bar" style="width:${s.pct}%;background:${line.color}"></div></div><div class="lc-sub">${s.r}/${s.t}駅${s.pct===100?' ✓ 完乗！':''}</div>`;
+      card.innerHTML=`<div class="lc-h"><div class="lc-dot" style="background:${sl.color}"></div><span class="lc-name">${sl.name}</span><span class="lc-reg">${sl.operator||''}</span><span class="lc-pct" style="color:${s.r>0?sl.color:'var(--silver)'}">${s.pct}%</span></div><div class="prog"><div class="prog-bar" style="width:${s.pct}%;background:${sl.color}"></div></div><div class="lc-sub">${s.r}/${s.t}駅${s.pct===100?' ✓ 完乗！':''}</div>`;
       c.appendChild(card);
     });
   });
@@ -1944,15 +2069,17 @@ function renderList(){
 // ══════════════════════════════════════
 // STATS
 // ══════════════════════════════════════
-function renderStats(){
+async function renderStats(){
   const c=document.getElementById('stats-content');c.innerHTML='';
-  const gs=gStats();
+  await buildServiceLines();
+  const gs=slGlobalStats();
+  const totalLines = SERVICE_LINES.length;
 
   // ── 乗りつぶし進捗 ──
   const g=document.createElement('div');g.className='stat-grid';
   g.innerHTML=`
     <div class="scard"><div class="sc-l">全体達成率</div><div class="sc-v">${gs.pct}<span class="sc-u">%</span></div><div class="sc-s">${gs.rt}/${gs.ts}駅</div></div>
-    <div class="scard"><div class="sc-l">乗車路線数</div><div class="sc-v">${gs.la}<span class="sc-u">/${LINES.length}</span></div><div class="sc-s">完乗: ${gs.ld}路線</div></div>
+    <div class="scard"><div class="sc-l">乗車系統数</div><div class="sc-v">${gs.la}<span class="sc-u">/${totalLines}</span></div><div class="sc-s">完乗: ${gs.ld}系統</div></div>
   `;
   c.appendChild(g);
 
@@ -2021,11 +2148,12 @@ function renderStats(){
     if (grid) grid.innerHTML = `<div class="scard"><div class="sc-l">取得失敗</div><div class="sc-v" style="font-size:12px;color:var(--silver)">localStorageを使用中</div></div>`;
   });
 
-  // ── 路線別達成率 ──
-  const rLines=LINES.filter(l=>lStats(l).r>0).sort((a,b)=>lStats(b).pct-lStats(a).pct);
+  // ── 系統別達成率 (乗車済みのみ) ──
+  const rLines=SERVICE_LINES.filter(l=>slStats(l).r>0).sort((a,b)=>slStats(b).pct-slStats(a).pct);
   if(rLines.length){
+    const hdr=document.createElement('div');hdr.className='sec-lbl';hdr.textContent=`乗車系統別 達成率 (${rLines.length})`;c.appendChild(hdr);
     const ch=document.createElement('div');ch.className='bc';
-    rLines.forEach(line=>{const s=lStats(line);const row=document.createElement('div');row.className='bc-r';row.innerHTML=`<div class="bc-l">${line.name}</div><div class="bc-bg"><div class="bc-fill" style="width:${s.pct}%;background:${line.color}"></div></div><div class="bc-n">${s.pct}%</div>`;ch.appendChild(row);});
+    rLines.forEach(sl=>{const s=slStats(sl);const row=document.createElement('div');row.className='bc-r';row.innerHTML=`<div class="bc-l">${sl.name}</div><div class="bc-bg"><div class="bc-fill" style="width:${s.pct}%;background:${sl.color}"></div></div><div class="bc-n">${s.pct}%</div>`;ch.appendChild(row);});
     c.appendChild(ch);
   }
 
