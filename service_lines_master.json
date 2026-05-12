@@ -24269,7 +24269,7 @@
     },
     {
       "id": "auto_1号線_横浜市",
-      "name": "1号線",
+      "name": "横浜市営1号線",
       "operator": "横浜市",
       "operator_id": "op____",
       "color": "hsl(53, 60%, 55%)",
@@ -24371,7 +24371,7 @@
     },
     {
       "id": "auto_3号線_横浜市",
-      "name": "3号線",
+      "name": "横浜市営3号線",
       "operator": "横浜市",
       "operator_id": "op____",
       "color": "hsl(333, 60%, 55%)",
@@ -25027,7 +25027,7 @@
     },
     {
       "id": "auto_宇治線_京阪電気鉄道",
-      "name": "宇治線",
+      "name": "京阪宇治線",
       "operator": "京阪電気鉄道",
       "operator_id": "keihan",
       "color": "hsl(7, 60%, 55%)",
@@ -25084,7 +25084,7 @@
     },
     {
       "id": "auto_鴨東線_京阪電気鉄道",
-      "name": "鴨東線",
+      "name": "京阪鴨東線",
       "operator": "京阪電気鉄道",
       "operator_id": "keihan",
       "color": "hsl(269, 60%, 55%)",
@@ -25333,7 +25333,7 @@
     },
     {
       "id": "auto_京津線_京阪電気鉄道",
-      "name": "京津線",
+      "name": "京阪京津線",
       "operator": "京阪電気鉄道",
       "operator_id": "keihan",
       "color": "hsl(54, 60%, 55%)",
@@ -25385,7 +25385,7 @@
     },
     {
       "id": "auto_交野線_京阪電気鉄道",
-      "name": "交野線",
+      "name": "京阪交野線",
       "operator": "京阪電気鉄道",
       "operator_id": "keihan",
       "color": "hsl(243, 60%, 55%)",
@@ -25442,7 +25442,7 @@
     },
     {
       "id": "auto_鋼索線_京阪電気鉄道",
-      "name": "鋼索線",
+      "name": "京阪鋼索線",
       "operator": "京阪電気鉄道",
       "operator_id": "keihan",
       "color": "hsl(291, 60%, 55%)",
@@ -25469,7 +25469,7 @@
     },
     {
       "id": "auto_石山坂本線_京阪電気鉄道",
-      "name": "石山坂本線",
+      "name": "京阪石山坂本線",
       "operator": "京阪電気鉄道",
       "operator_id": "keihan",
       "color": "hsl(273, 60%, 55%)",
@@ -25591,7 +25591,7 @@
     },
     {
       "id": "auto_押上線_京成電鉄",
-      "name": "押上線",
+      "name": "京成押上線",
       "operator": "京成電鉄",
       "operator_id": "keisei",
       "color": "hsl(101, 60%, 55%)",
@@ -25638,7 +25638,7 @@
     },
     {
       "id": "auto_金町線_京成電鉄",
-      "name": "金町線",
+      "name": "京成金町線",
       "operator": "京成電鉄",
       "operator_id": "keisei",
       "color": "hsl(268, 60%, 55%)",
@@ -25670,7 +25670,7 @@
     },
     {
       "id": "auto_千原線_京成電鉄",
-      "name": "千原線",
+      "name": "京成千原線",
       "operator": "京成電鉄",
       "operator_id": "keisei",
       "color": "hsl(24, 60%, 55%)",
@@ -25717,7 +25717,7 @@
     },
     {
       "id": "auto_千葉線_京成電鉄",
-      "name": "千葉線",
+      "name": "京成千葉線",
       "operator": "京成電鉄",
       "operator_id": "keisei",
       "color": "hsl(8, 60%, 55%)",
@@ -25784,7 +25784,7 @@
     },
     {
       "id": "auto_東成田線_京成電鉄",
-      "name": "東成田線",
+      "name": "京成東成田線",
       "operator": "京成電鉄",
       "operator_id": "keisei",
       "color": "hsl(320, 60%, 55%)",
@@ -25811,7 +25811,7 @@
     },
     {
       "id": "auto_本線_京成電鉄",
-      "name": "本線",
+      "name": "京成本線",
       "operator": "京成電鉄",
       "operator_id": "keisei",
       "color": "hsl(45, 60%, 55%)",
@@ -26040,7 +26040,7 @@
     },
     {
       "id": "auto_烏丸線_京都市",
-      "name": "烏丸線",
+      "name": "京都市営烏丸線",
       "operator": "京都市",
       "operator_id": "op____",
       "color": "hsl(199, 60%, 55%)",
@@ -26132,7 +26132,7 @@
     },
     {
       "id": "auto_東西線_京都市",
-      "name": "東西線",
+      "name": "京都市営東西線",
       "operator": "京都市",
       "operator_id": "op____",
       "color": "hsl(89, 60%, 55%)",
@@ -26234,7 +26234,7 @@
     },
     {
       "id": "auto_久里浜線_京浜急行電鉄",
-      "name": "久里浜線",
+      "name": "京急久里浜線",
       "operator": "京浜急行電鉄",
       "operator_id": "keikyu",
       "color": "hsl(353, 60%, 55%)",
@@ -26296,7 +26296,7 @@
     },
     {
       "id": "auto_空港線_京浜急行電鉄",
-      "name": "空港線",
+      "name": "京急空港線",
       "operator": "京浜急行電鉄",
       "operator_id": "keikyu",
       "color": "hsl(148, 60%, 55%)",
@@ -26348,7 +26348,7 @@
     },
     {
       "id": "auto_逗子線_京浜急行電鉄",
-      "name": "逗子線",
+      "name": "京急逗子線",
       "operator": "京浜急行電鉄",
       "operator_id": "keikyu",
       "color": "hsl(183, 60%, 55%)",
@@ -26385,7 +26385,7 @@
     },
     {
       "id": "auto_大師線_京浜急行電鉄",
-      "name": "大師線",
+      "name": "京急大師線",
       "operator": "京浜急行電鉄",
       "operator_id": "keikyu",
       "color": "hsl(136, 60%, 55%)",
@@ -26437,7 +26437,7 @@
     },
     {
       "id": "auto_本線_京浜急行電鉄",
-      "name": "本線",
+      "name": "京急本線",
       "operator": "京浜急行電鉄",
       "operator_id": "keikyu",
       "color": "hsl(45, 60%, 55%)",
@@ -26706,7 +26706,7 @@
     },
     {
       "id": "auto_鋼索線_京福電気鉄道",
-      "name": "鋼索線",
+      "name": "京福鋼索線",
       "operator": "京福電気鉄道",
       "operator_id": "op_______",
       "color": "hsl(291, 60%, 55%)",
@@ -26733,7 +26733,7 @@
     },
     {
       "id": "auto_北野線_京福電気鉄道",
-      "name": "北野線",
+      "name": "京福北野線",
       "operator": "京福電気鉄道",
       "operator_id": "op_______",
       "color": "hsl(142, 60%, 55%)",
@@ -26800,7 +26800,7 @@
     },
     {
       "id": "auto_嵐山本線_京福電気鉄道",
-      "name": "嵐山本線",
+      "name": "京福嵐山本線",
       "operator": "京福電気鉄道",
       "operator_id": "op_______",
       "color": "hsl(115, 60%, 55%)",
@@ -26882,7 +26882,7 @@
     },
     {
       "id": "auto_橿原線_近畿日本鉄道",
-      "name": "橿原線",
+      "name": "近鉄橿原線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(218, 60%, 55%)",
@@ -26984,7 +26984,7 @@
     },
     {
       "id": "auto_吉野線_近畿日本鉄道",
-      "name": "吉野線",
+      "name": "近鉄吉野線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(231, 60%, 55%)",
@@ -27081,7 +27081,7 @@
     },
     {
       "id": "auto_京都線_近畿日本鉄道",
-      "name": "京都線",
+      "name": "近鉄京都線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(3, 60%, 55%)",
@@ -27228,7 +27228,7 @@
     },
     {
       "id": "auto_御所線_近畿日本鉄道",
-      "name": "御所線",
+      "name": "近鉄御所線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(206, 60%, 55%)",
@@ -27265,7 +27265,7 @@
     },
     {
       "id": "auto_山田線_近畿日本鉄道",
-      "name": "山田線",
+      "name": "近鉄山田線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(68, 60%, 55%)",
@@ -27352,7 +27352,7 @@
     },
     {
       "id": "auto_志摩線_近畿日本鉄道",
-      "name": "志摩線",
+      "name": "近鉄志摩線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(135, 60%, 55%)",
@@ -27449,7 +27449,7 @@
     },
     {
       "id": "auto_信貴線_近畿日本鉄道",
-      "name": "信貴線",
+      "name": "近鉄信貴線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(326, 60%, 55%)",
@@ -27481,7 +27481,7 @@
     },
     {
       "id": "auto_生駒鋼索線_近畿日本鉄道",
-      "name": "生駒鋼索線",
+      "name": "近鉄生駒鋼索線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(65, 60%, 55%)",
@@ -27523,7 +27523,7 @@
     },
     {
       "id": "auto_生駒線_近畿日本鉄道",
-      "name": "生駒線",
+      "name": "近鉄生駒線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(347, 60%, 55%)",
@@ -27600,7 +27600,7 @@
     },
     {
       "id": "auto_西信貴鋼索線_近畿日本鉄道",
-      "name": "西信貴鋼索線",
+      "name": "近鉄西信貴鋼索線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(348, 60%, 55%)",
@@ -27627,7 +27627,7 @@
     },
     {
       "id": "auto_大阪線_近畿日本鉄道",
-      "name": "大阪線",
+      "name": "近鉄大阪線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(41, 60%, 55%)",
@@ -27884,7 +27884,7 @@
     },
     {
       "id": "auto_長野線_近畿日本鉄道",
-      "name": "長野線",
+      "name": "近鉄長野線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(0, 60%, 55%)",
@@ -27941,7 +27941,7 @@
     },
     {
       "id": "auto_鳥羽線_近畿日本鉄道",
-      "name": "鳥羽線",
+      "name": "近鉄鳥羽線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(237, 60%, 55%)",
@@ -27983,7 +27983,7 @@
     },
     {
       "id": "auto_天理線_近畿日本鉄道",
-      "name": "天理線",
+      "name": "近鉄天理線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(0, 60%, 55%)",
@@ -28020,7 +28020,7 @@
     },
     {
       "id": "auto_田原本線_近畿日本鉄道",
-      "name": "田原本線",
+      "name": "近鉄田原本線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(82, 60%, 55%)",
@@ -28077,7 +28077,7 @@
     },
     {
       "id": "auto_湯の山線_近畿日本鉄道",
-      "name": "湯の山線",
+      "name": "近鉄湯の山線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(214, 60%, 55%)",
@@ -28144,7 +28144,7 @@
     },
     {
       "id": "auto_道明寺線_近畿日本鉄道",
-      "name": "道明寺線",
+      "name": "近鉄道明寺線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(41, 60%, 55%)",
@@ -28176,7 +28176,7 @@
     },
     {
       "id": "auto_奈良線_近畿日本鉄道",
-      "name": "奈良線",
+      "name": "近鉄奈良線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(235, 60%, 55%)",
@@ -28288,7 +28288,7 @@
     },
     {
       "id": "auto_南大阪線_近畿日本鉄道",
-      "name": "南大阪線",
+      "name": "近鉄南大阪線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(271, 60%, 55%)",
@@ -28445,7 +28445,7 @@
     },
     {
       "id": "auto_難波線_近畿日本鉄道",
-      "name": "難波線",
+      "name": "近鉄難波線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(13, 60%, 55%)",
@@ -28549,7 +28549,7 @@
     },
     {
       "id": "auto_名古屋線_近畿日本鉄道",
-      "name": "名古屋線",
+      "name": "近鉄名古屋線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(119, 60%, 55%)",
@@ -28786,7 +28786,7 @@
     },
     {
       "id": "auto_鈴鹿線_近畿日本鉄道",
-      "name": "鈴鹿線",
+      "name": "近鉄鈴鹿線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(111, 60%, 55%)",
@@ -28828,7 +28828,7 @@
     },
     {
       "id": "auto_伊丹線_阪急電鉄",
-      "name": "伊丹線",
+      "name": "阪急伊丹線",
       "operator": "阪急電鉄",
       "operator_id": "hankyu",
       "color": "hsl(329, 60%, 55%)",
@@ -28865,7 +28865,7 @@
     },
     {
       "id": "auto_京都線_阪急電鉄",
-      "name": "京都線",
+      "name": "阪急京都本線",
       "operator": "阪急電鉄",
       "operator_id": "hankyu",
       "color": "hsl(3, 60%, 55%)",
@@ -29017,7 +29017,7 @@
     },
     {
       "id": "auto_甲陽線_阪急電鉄",
-      "name": "甲陽線",
+      "name": "阪急甲陽線",
       "operator": "阪急電鉄",
       "operator_id": "hankyu",
       "color": "hsl(345, 60%, 55%)",
@@ -29049,7 +29049,7 @@
     },
     {
       "id": "auto_今津線_阪急電鉄",
-      "name": "今津線",
+      "name": "阪急今津線",
       "operator": "阪急電鉄",
       "operator_id": "hankyu",
       "color": "hsl(235, 60%, 55%)",
@@ -29116,7 +29116,7 @@
     },
     {
       "id": "auto_神戸高速線_阪急電鉄",
-      "name": "神戸高速線",
+      "name": "阪急神戸高速線",
       "operator": "阪急電鉄",
       "operator_id": "hankyu",
       "color": "hsl(88, 60%, 55%)",
@@ -29153,7 +29153,7 @@
     },
     {
       "id": "auto_神戸線_阪急電鉄",
-      "name": "神戸線",
+      "name": "阪急神戸本線",
       "operator": "阪急電鉄",
       "operator_id": "hankyu",
       "color": "hsl(144, 60%, 55%)",
@@ -29250,7 +29250,7 @@
     },
     {
       "id": "auto_千里線_阪急電鉄",
-      "name": "千里線",
+      "name": "阪急千里線",
       "operator": "阪急電鉄",
       "operator_id": "hankyu",
       "color": "hsl(14, 60%, 55%)",
@@ -29322,7 +29322,7 @@
     },
     {
       "id": "auto_宝塚線_阪急電鉄",
-      "name": "宝塚線",
+      "name": "阪急宝塚本線",
       "operator": "阪急電鉄",
       "operator_id": "hankyu",
       "color": "hsl(298, 60%, 55%)",
@@ -29434,7 +29434,7 @@
     },
     {
       "id": "auto_箕面線_阪急電鉄",
-      "name": "箕面線",
+      "name": "阪急箕面線",
       "operator": "阪急電鉄",
       "operator_id": "hankyu",
       "color": "hsl(264, 60%, 55%)",
@@ -29471,7 +29471,7 @@
     },
     {
       "id": "auto_嵐山線_阪急電鉄",
-      "name": "嵐山線",
+      "name": "阪急嵐山線",
       "operator": "阪急電鉄",
       "operator_id": "hankyu",
       "color": "hsl(22, 60%, 55%)",
@@ -29508,7 +29508,7 @@
     },
     {
       "id": "auto_神戸高速線_阪神電気鉄道",
-      "name": "神戸高速線",
+      "name": "阪神神戸高速線",
       "operator": "阪神電気鉄道",
       "operator_id": "hanshin",
       "color": "hsl(88, 60%, 55%)",
@@ -29560,7 +29560,7 @@
     },
     {
       "id": "auto_武庫川線_阪神電気鉄道",
-      "name": "武庫川線",
+      "name": "阪神武庫川線",
       "operator": "阪神電気鉄道",
       "operator_id": "hanshin",
       "color": "hsl(112, 60%, 55%)",
@@ -29597,7 +29597,7 @@
     },
     {
       "id": "auto_本線_阪神電気鉄道",
-      "name": "本線",
+      "name": "阪神本線",
       "operator": "阪神電気鉄道",
       "operator_id": "hanshin",
       "color": "hsl(45, 60%, 55%)",
@@ -29918,7 +29918,7 @@
     },
     {
       "id": "auto_東西線_札幌市",
-      "name": "東西線",
+      "name": "札幌市営東西線",
       "operator": "札幌市",
       "operator_id": "op____",
       "color": "hsl(89, 60%, 55%)",
@@ -30030,7 +30030,7 @@
     },
     {
       "id": "auto_東豊線_札幌市",
-      "name": "東豊線",
+      "name": "札幌市営東豊線",
       "operator": "札幌市",
       "operator_id": "op____",
       "color": "hsl(264, 60%, 55%)",
@@ -30117,7 +30117,7 @@
     },
     {
       "id": "auto_南北線_札幌市",
-      "name": "南北線",
+      "name": "札幌市営南北線",
       "operator": "札幌市",
       "operator_id": "op____",
       "color": "hsl(276, 60%, 55%)",
@@ -30331,7 +30331,7 @@
     },
     {
       "id": "auto_江ノ島線_小田急電鉄",
-      "name": "江ノ島線",
+      "name": "小田急江ノ島線",
       "operator": "小田急電鉄",
       "operator_id": "odakyu",
       "color": "hsl(42, 60%, 55%)",
@@ -30433,7 +30433,7 @@
     },
     {
       "id": "auto_小田原線_小田急電鉄",
-      "name": "小田原線",
+      "name": "小田急小田原線",
       "operator": "小田急電鉄",
       "operator_id": "odakyu",
       "color": "hsl(296, 60%, 55%)",
@@ -30685,7 +30685,7 @@
     },
     {
       "id": "auto_多摩線_小田急電鉄",
-      "name": "多摩線",
+      "name": "小田急多摩線",
       "operator": "小田急電鉄",
       "operator_id": "odakyu",
       "color": "hsl(125, 60%, 55%)",
@@ -30742,7 +30742,7 @@
     },
     {
       "id": "auto_松戸線_京成電鉄",
-      "name": "松戸線",
+      "name": "京成松戸線",
       "operator": "京成電鉄",
       "operator_id": "keisei",
       "color": "hsl(325, 60%, 55%)",
@@ -30879,7 +30879,7 @@
     },
     {
       "id": "auto_海岸線_神戸市",
-      "name": "海岸線",
+      "name": "神戸市営海岸線",
       "operator": "神戸市",
       "operator_id": "op____",
       "color": "hsl(193, 60%, 55%)",
@@ -30946,7 +30946,7 @@
     },
     {
       "id": "auto_山手線_神戸市",
-      "name": "山手線",
+      "name": "神戸市営山手線",
       "operator": "神戸市",
       "operator_id": "op____",
       "color": "#9ACD32",
@@ -31003,7 +31003,7 @@
     },
     {
       "id": "auto_西神延伸線_神戸市",
-      "name": "西神延伸線",
+      "name": "神戸市営西神延伸線",
       "operator": "神戸市",
       "operator_id": "op____",
       "color": "hsl(224, 60%, 55%)",
@@ -31050,7 +31050,7 @@
     },
     {
       "id": "auto_西神線_神戸市",
-      "name": "西神線",
+      "name": "神戸市営西神線",
       "operator": "神戸市",
       "operator_id": "op____",
       "color": "hsl(104, 60%, 55%)",
@@ -31427,7 +31427,7 @@
     },
     {
       "id": "auto_甘木線_西日本鉄道",
-      "name": "甘木線",
+      "name": "西鉄甘木線",
       "operator": "西日本鉄道",
       "operator_id": "nishitetsu",
       "color": "hsl(85, 60%, 55%)",
@@ -31504,7 +31504,7 @@
     },
     {
       "id": "auto_貝塚線_西日本鉄道",
-      "name": "貝塚線",
+      "name": "西鉄貝塚線",
       "operator": "西日本鉄道",
       "operator_id": "nishitetsu",
       "color": "hsl(215, 60%, 55%)",
@@ -31571,7 +31571,7 @@
     },
     {
       "id": "auto_太宰府線_西日本鉄道",
-      "name": "太宰府線",
+      "name": "西鉄太宰府線",
       "operator": "西日本鉄道",
       "operator_id": "nishitetsu",
       "color": "hsl(19, 60%, 55%)",
@@ -31603,7 +31603,7 @@
     },
     {
       "id": "auto_天神大牟田線_西日本鉄道",
-      "name": "天神大牟田線",
+      "name": "西鉄天神大牟田線",
       "operator": "西日本鉄道",
       "operator_id": "nishitetsu",
       "color": "hsl(354, 60%, 55%)",
@@ -31870,7 +31870,7 @@
     },
     {
       "id": "auto_狭山線_西武鉄道",
-      "name": "狭山線",
+      "name": "西武狭山線",
       "operator": "西武鉄道",
       "operator_id": "seibu",
       "color": "hsl(133, 60%, 55%)",
@@ -31902,7 +31902,7 @@
     },
     {
       "id": "auto_国分寺線_西武鉄道",
-      "name": "国分寺線",
+      "name": "西武国分寺線",
       "operator": "西武鉄道",
       "operator_id": "seibu",
       "color": "hsl(302, 60%, 55%)",
@@ -31944,7 +31944,7 @@
     },
     {
       "id": "auto_山口線_西武鉄道",
-      "name": "山口線",
+      "name": "西武山口線",
       "operator": "西武鉄道",
       "operator_id": "seibu",
       "color": "hsl(293, 60%, 55%)",
@@ -31976,7 +31976,7 @@
     },
     {
       "id": "auto_新宿線_西武鉄道",
-      "name": "新宿線",
+      "name": "西武新宿線",
       "operator": "西武鉄道",
       "operator_id": "seibu",
       "color": "hsl(152, 60%, 55%)",
@@ -32244,7 +32244,7 @@
     },
     {
       "id": "auto_多摩湖線_西武鉄道",
-      "name": "多摩湖線",
+      "name": "西武多摩湖線",
       "operator": "西武鉄道",
       "operator_id": "seibu",
       "color": "hsl(187, 60%, 55%)",
@@ -32296,7 +32296,7 @@
     },
     {
       "id": "auto_多摩川線_西武鉄道",
-      "name": "多摩川線",
+      "name": "西武多摩川線",
       "operator": "西武鉄道",
       "operator_id": "seibu",
       "color": "hsl(331, 60%, 55%)",
@@ -32343,7 +32343,7 @@
     },
     {
       "id": "auto_池袋線_西武鉄道",
-      "name": "池袋線",
+      "name": "西武池袋線",
       "operator": "西武鉄道",
       "operator_id": "seibu",
       "color": "hsl(194, 60%, 55%)",
@@ -32515,7 +32515,7 @@
     },
     {
       "id": "auto_拝島線_西武鉄道",
-      "name": "拝島線",
+      "name": "西武拝島線",
       "operator": "西武鉄道",
       "operator_id": "seibu",
       "color": "hsl(221, 60%, 55%)",
@@ -32572,7 +32572,7 @@
     },
     {
       "id": "auto_豊島線_西武鉄道",
-      "name": "豊島線",
+      "name": "西武豊島線",
       "operator": "西武鉄道",
       "operator_id": "seibu",
       "color": "hsl(59, 60%, 55%)",
@@ -32599,7 +32599,7 @@
     },
     {
       "id": "auto_南北線_仙台市",
-      "name": "南北線",
+      "name": "仙台市営南北線",
       "operator": "仙台市",
       "operator_id": "op____",
       "color": "hsl(276, 60%, 55%)",
@@ -33106,7 +33106,7 @@
     },
     {
       "id": "auto_1号線(御堂筋線)_大阪市高速電気軌道",
-      "name": "1号線(御堂筋線)",
+      "name": "大阪メトロ御堂筋線",
       "operator": "大阪市高速電気軌道",
       "operator_id": "op__________",
       "color": "hsl(75, 60%, 55%)",
@@ -33223,7 +33223,7 @@
     },
     {
       "id": "auto_2号線(谷町線)_大阪市高速電気軌道",
-      "name": "2号線(谷町線)",
+      "name": "大阪メトロ谷町線",
       "operator": "大阪市高速電気軌道",
       "operator_id": "op__________",
       "color": "hsl(195, 60%, 55%)",
@@ -33370,7 +33370,7 @@
     },
     {
       "id": "auto_3号線(四つ橋線)_大阪市高速電気軌道",
-      "name": "3号線(四つ橋線)",
+      "name": "大阪メトロ四つ橋線",
       "operator": "大阪市高速電気軌道",
       "operator_id": "op__________",
       "color": "hsl(140, 60%, 55%)",
@@ -33442,7 +33442,7 @@
     },
     {
       "id": "auto_4号線(中央線)_大阪市高速電気軌道_s0",
-      "name": "4号線(中央線)",
+      "name": "大阪メトロ中央線",
       "operator": "大阪市高速電気軌道",
       "operator_id": "op__________",
       "color": "hsl(290, 60%, 55%)",
@@ -33519,7 +33519,7 @@
     },
     {
       "id": "auto_4号線(中央線)_大阪市高速電気軌道_s1",
-      "name": "4号線(中央線)",
+      "name": "大阪メトロ中央線",
       "operator": "大阪市高速電気軌道",
       "operator_id": "op__________",
       "color": "hsl(290, 60%, 55%)",
@@ -33551,7 +33551,7 @@
     },
     {
       "id": "auto_5号線(千日前線)_大阪市高速電気軌道",
-      "name": "5号線(千日前線)",
+      "name": "大阪メトロ千日前線",
       "operator": "大阪市高速電気軌道",
       "operator_id": "op__________",
       "color": "hsl(145, 60%, 55%)",
@@ -33638,7 +33638,7 @@
     },
     {
       "id": "auto_6号線(堺筋線)_大阪市高速電気軌道",
-      "name": "6号線(堺筋線)",
+      "name": "大阪メトロ堺筋線",
       "operator": "大阪市高速電気軌道",
       "operator_id": "op__________",
       "color": "hsl(70, 60%, 55%)",
@@ -33705,7 +33705,7 @@
     },
     {
       "id": "auto_7号線(長堀鶴見緑地線)_大阪市高速電気軌道",
-      "name": "7号線(長堀鶴見緑地線)",
+      "name": "大阪メトロ長堀鶴見緑地線",
       "operator": "大阪市高速電気軌道",
       "operator_id": "op__________",
       "color": "hsl(147, 60%, 55%)",
@@ -33807,7 +33807,7 @@
     },
     {
       "id": "auto_南港ポートタウン線_大阪市高速電気軌道_s0",
-      "name": "南港ポートタウン線",
+      "name": "大阪メトロニュートラム南港ポートタウン線",
       "operator": "大阪市高速電気軌道",
       "operator_id": "op__________",
       "color": "hsl(8, 60%, 55%)",
@@ -33844,7 +33844,7 @@
     },
     {
       "id": "auto_南港ポートタウン線_大阪市高速電気軌道_s1",
-      "name": "南港ポートタウン線",
+      "name": "大阪メトロニュートラム南港ポートタウン線",
       "operator": "大阪市高速電気軌道",
       "operator_id": "op__________",
       "color": "hsl(8, 60%, 55%)",
@@ -33891,7 +33891,7 @@
     },
     {
       "id": "auto_泉北線_南海電気鉄道",
-      "name": "泉北線",
+      "name": "南海泉北線",
       "operator": "南海電気鉄道",
       "operator_id": "nankai",
       "color": "hsl(145, 60%, 55%)",
@@ -34723,7 +34723,7 @@
     },
     {
       "id": "auto_2号線日比谷線_東京地下鉄",
-      "name": "2号線日比谷線",
+      "name": "東京メトロ日比谷線",
       "operator": "東京地下鉄",
       "operator_id": "tokyo_metro",
       "color": "hsl(153, 60%, 55%)",
@@ -34850,7 +34850,7 @@
     },
     {
       "id": "auto_3号線銀座線_東京地下鉄",
-      "name": "3号線銀座線",
+      "name": "東京メトロ銀座線",
       "operator": "東京地下鉄",
       "operator_id": "tokyo_metro",
       "color": "hsl(32, 60%, 55%)",
@@ -34962,7 +34962,7 @@
     },
     {
       "id": "auto_4号線丸ノ内線_東京地下鉄",
-      "name": "4号線丸ノ内線",
+      "name": "東京メトロ丸ノ内線",
       "operator": "東京地下鉄",
       "operator_id": "tokyo_metro",
       "color": "hsl(185, 60%, 55%)",
@@ -35104,7 +35104,7 @@
     },
     {
       "id": "auto_4号線丸ノ内線分岐線_東京地下鉄",
-      "name": "4号線丸ノ内線分岐線",
+      "name": "東京メトロ丸ノ内線分岐線",
       "operator": "東京地下鉄",
       "operator_id": "tokyo_metro",
       "color": "hsl(109, 60%, 55%)",
@@ -35141,7 +35141,7 @@
     },
     {
       "id": "auto_5号線東西線_東京地下鉄",
-      "name": "5号線東西線",
+      "name": "東京メトロ東西線",
       "operator": "東京地下鉄",
       "operator_id": "tokyo_metro",
       "color": "hsl(359, 60%, 55%)",
@@ -35273,7 +35273,7 @@
     },
     {
       "id": "auto_7号線南北線_東京地下鉄",
-      "name": "7号線南北線",
+      "name": "東京メトロ南北線",
       "operator": "東京地下鉄",
       "operator_id": "tokyo_metro",
       "color": "hsl(259, 60%, 55%)",
@@ -35385,7 +35385,7 @@
     },
     {
       "id": "auto_8号線有楽町線_東京地下鉄",
-      "name": "8号線有楽町線",
+      "name": "東京メトロ有楽町線",
       "operator": "東京地下鉄",
       "operator_id": "tokyo_metro",
       "color": "hsl(260, 60%, 55%)",
@@ -35522,7 +35522,7 @@
     },
     {
       "id": "auto_13号線副都心線_東京地下鉄",
-      "name": "13号線副都心線",
+      "name": "東京メトロ副都心線",
       "operator": "東京地下鉄",
       "operator_id": "tokyo_metro",
       "color": "hsl(27, 60%, 55%)",
@@ -35594,7 +35594,7 @@
     },
     {
       "id": "auto_9号線千代田線_東京地下鉄",
-      "name": "9号線千代田線",
+      "name": "東京メトロ千代田線",
       "operator": "東京地下鉄",
       "operator_id": "tokyo_metro",
       "color": "hsl(83, 60%, 55%)",
@@ -35711,7 +35711,7 @@
     },
     {
       "id": "auto_11号線半蔵門線_東京地下鉄",
-      "name": "11号線半蔵門線",
+      "name": "東京メトロ半蔵門線",
       "operator": "東京地下鉄",
       "operator_id": "tokyo_metro",
       "color": "hsl(155, 60%, 55%)",
@@ -35798,7 +35798,7 @@
     },
     {
       "id": "auto_1号線浅草線_東京都",
-      "name": "1号線浅草線",
+      "name": "都営浅草線",
       "operator": "東京都",
       "operator_id": "toei",
       "color": "hsl(55, 60%, 55%)",
@@ -35915,7 +35915,7 @@
     },
     {
       "id": "auto_6号線三田線_東京都",
-      "name": "6号線三田線",
+      "name": "都営三田線",
       "operator": "東京都",
       "operator_id": "toei",
       "color": "hsl(239, 60%, 55%)",
@@ -36067,7 +36067,7 @@
     },
     {
       "id": "auto_10号線新宿線_東京都",
-      "name": "10号線新宿線",
+      "name": "都営新宿線",
       "operator": "東京都",
       "operator_id": "toei",
       "color": "hsl(187, 60%, 55%)",
@@ -36189,7 +36189,7 @@
     },
     {
       "id": "auto_12号線大江戸線_東京都",
-      "name": "12号線大江戸線",
+      "name": "都営大江戸線",
       "operator": "東京都",
       "operator_id": "toei",
       "color": "hsl(270, 60%, 55%)",
@@ -36396,7 +36396,7 @@
     },
     {
       "id": "auto_荒川線_東京都",
-      "name": "荒川線",
+      "name": "都電荒川線",
       "operator": "東京都",
       "operator_id": "toei",
       "color": "hsl(212, 60%, 55%)",
@@ -36620,7 +36620,7 @@
     },
     {
       "id": "auto_伊勢崎線_東武鉄道",
-      "name": "伊勢崎線",
+      "name": "東武伊勢崎線",
       "operator": "東武鉄道",
       "operator_id": "tobu",
       "color": "hsl(266, 60%, 55%)",
@@ -36914,7 +36914,7 @@
     },
     {
       "id": "auto_宇都宮線_東武鉄道",
-      "name": "宇都宮線",
+      "name": "東武宇都宮線",
       "operator": "東武鉄道",
       "operator_id": "tobu",
       "color": "#FA9F1B",
@@ -36986,7 +36986,7 @@
     },
     {
       "id": "auto_越生線_東武鉄道",
-      "name": "越生線",
+      "name": "東武越生線",
       "operator": "東武鉄道",
       "operator_id": "tobu",
       "color": "hsl(112, 60%, 55%)",
@@ -37043,7 +37043,7 @@
     },
     {
       "id": "auto_鬼怒川線_東武鉄道",
-      "name": "鬼怒川線",
+      "name": "東武鬼怒川線",
       "operator": "東武鉄道",
       "operator_id": "tobu",
       "color": "hsl(133, 60%, 55%)",
@@ -37105,7 +37105,7 @@
     },
     {
       "id": "auto_亀戸線_東武鉄道",
-      "name": "亀戸線",
+      "name": "東武亀戸線",
       "operator": "東武鉄道",
       "operator_id": "tobu",
       "color": "hsl(80, 60%, 55%)",
@@ -37147,7 +37147,7 @@
     },
     {
       "id": "auto_桐生線_東武鉄道",
-      "name": "桐生線",
+      "name": "東武桐生線",
       "operator": "東武鉄道",
       "operator_id": "tobu",
       "color": "hsl(312, 60%, 55%)",
@@ -37204,7 +37204,7 @@
     },
     {
       "id": "auto_佐野線_東武鉄道",
-      "name": "佐野線",
+      "name": "東武佐野線",
       "operator": "東武鉄道",
       "operator_id": "tobu",
       "color": "hsl(95, 60%, 55%)",
@@ -37271,7 +37271,7 @@
     },
     {
       "id": "auto_小泉線_東武鉄道",
-      "name": "小泉線",
+      "name": "東武小泉線",
       "operator": "東武鉄道",
       "operator_id": "tobu",
       "color": "hsl(44, 60%, 55%)",
@@ -37333,7 +37333,7 @@
     },
     {
       "id": "auto_大師線_東武鉄道",
-      "name": "大師線",
+      "name": "東武大師線",
       "operator": "東武鉄道",
       "operator_id": "tobu",
       "color": "hsl(136, 60%, 55%)",
@@ -37360,7 +37360,7 @@
     },
     {
       "id": "auto_東上本線_東武鉄道",
-      "name": "東上本線",
+      "name": "東武東上本線",
       "operator": "東武鉄道",
       "operator_id": "tobu",
       "color": "hsl(155, 60%, 55%)",
@@ -37572,7 +37572,7 @@
     },
     {
       "id": "auto_日光線_東武鉄道",
-      "name": "日光線",
+      "name": "東武日光線",
       "operator": "東武鉄道",
       "operator_id": "tobu",
       "color": "hsl(67, 60%, 55%)",
@@ -37719,7 +37719,7 @@
     },
     {
       "id": "auto_野田線_東武鉄道",
-      "name": "野田線",
+      "name": "東武野田線",
       "operator": "東武鉄道",
       "operator_id": "tobu",
       "color": "hsl(352, 60%, 55%)",
@@ -37973,7 +37973,7 @@
     },
     {
       "id": "auto_加太線_南海電気鉄道",
-      "name": "加太線",
+      "name": "南海加太線",
       "operator": "南海電気鉄道",
       "operator_id": "nankai",
       "color": "hsl(357, 60%, 55%)",
@@ -38030,7 +38030,7 @@
     },
     {
       "id": "auto_空港線_南海電気鉄道",
-      "name": "空港線",
+      "name": "南海空港線",
       "operator": "南海電気鉄道",
       "operator_id": "nankai",
       "color": "hsl(148, 60%, 55%)",
@@ -38062,7 +38062,7 @@
     },
     {
       "id": "auto_鋼索線_南海電気鉄道",
-      "name": "鋼索線",
+      "name": "南海鋼索線",
       "operator": "南海電気鉄道",
       "operator_id": "nankai",
       "color": "hsl(291, 60%, 55%)",
@@ -38089,7 +38089,7 @@
     },
     {
       "id": "auto_高師浜線_南海電気鉄道",
-      "name": "高師浜線",
+      "name": "南海高師浜線",
       "operator": "南海電気鉄道",
       "operator_id": "nankai",
       "color": "hsl(258, 60%, 55%)",
@@ -38121,7 +38121,7 @@
     },
     {
       "id": "auto_高野線_南海電気鉄道",
-      "name": "高野線",
+      "name": "南海高野線",
       "operator": "南海電気鉄道",
       "operator_id": "nankai",
       "color": "hsl(167, 60%, 55%)",
@@ -38323,7 +38323,7 @@
     },
     {
       "id": "auto_高野線_南海電気鉄道_b1",
-      "name": "高野線（支線1）",
+      "name": "南海高野線（支線1）",
       "operator": "南海電気鉄道",
       "operator_id": "nankai",
       "color": "hsl(167, 60%, 55%)",
@@ -38370,7 +38370,7 @@
     },
     {
       "id": "auto_多奈川線_南海電気鉄道",
-      "name": "多奈川線",
+      "name": "南海多奈川線",
       "operator": "南海電気鉄道",
       "operator_id": "nankai",
       "color": "hsl(258, 60%, 55%)",
@@ -38639,7 +38639,7 @@
     },
     {
       "id": "auto_和歌山港線_南海電気鉄道",
-      "name": "和歌山港線",
+      "name": "南海和歌山港線",
       "operator": "南海電気鉄道",
       "operator_id": "nankai",
       "color": "hsl(256, 60%, 55%)",
@@ -38666,7 +38666,7 @@
     },
     {
       "id": "auto_1号線(空港線)_福岡市",
-      "name": "1号線(空港線)",
+      "name": "福岡市営1号線(空港線)",
       "operator": "福岡市",
       "operator_id": "op____",
       "color": "hsl(238, 60%, 55%)",
@@ -38748,7 +38748,7 @@
     },
     {
       "id": "auto_2号線(箱崎線)_福岡市",
-      "name": "2号線(箱崎線)",
+      "name": "福岡市営2号線(箱崎線)",
       "operator": "福岡市",
       "operator_id": "op____",
       "color": "hsl(336, 60%, 55%)",
@@ -38800,7 +38800,7 @@
     },
     {
       "id": "auto_3号線(七隈線)_福岡市",
-      "name": "3号線(七隈線)",
+      "name": "福岡市営3号線(七隈線)",
       "operator": "福岡市",
       "operator_id": "op____",
       "color": "hsl(93, 60%, 55%)",
@@ -38907,7 +38907,7 @@
     },
     {
       "id": "auto_北神線_神戸市",
-      "name": "北神線",
+      "name": "神戸市営北神線",
       "operator": "神戸市",
       "operator_id": "op____",
       "color": "hsl(319, 60%, 55%)",
@@ -39063,7 +39063,7 @@
     },
     {
       "id": "auto_1号線東山線_名古屋市",
-      "name": "1号線東山線",
+      "name": "名古屋市営1号線東山線",
       "operator": "名古屋市",
       "operator_id": "op_____",
       "color": "hsl(80, 60%, 55%)",
@@ -39190,7 +39190,7 @@
     },
     {
       "id": "auto_2号線名港線_名古屋市",
-      "name": "2号線名港線",
+      "name": "名古屋市営2号線名港線",
       "operator": "名古屋市",
       "operator_id": "op_____",
       "color": "hsl(197, 60%, 55%)",
@@ -39242,7 +39242,7 @@
     },
     {
       "id": "auto_2号線名城線_名古屋市",
-      "name": "2号線名城線",
+      "name": "名古屋市営2号線名城線",
       "operator": "名古屋市",
       "operator_id": "op_____",
       "color": "hsl(224, 60%, 55%)",
@@ -39319,7 +39319,7 @@
     },
     {
       "id": "auto_3号線鶴舞線_名古屋市",
-      "name": "3号線鶴舞線",
+      "name": "名古屋市営3号線鶴舞線",
       "operator": "名古屋市",
       "operator_id": "op_____",
       "color": "hsl(33, 60%, 55%)",
@@ -39436,7 +39436,7 @@
     },
     {
       "id": "auto_4号線名城線_名古屋市",
-      "name": "4号線名城線",
+      "name": "名古屋市営4号線名城線",
       "operator": "名古屋市",
       "operator_id": "op_____",
       "color": "hsl(186, 60%, 55%)",
@@ -39543,7 +39543,7 @@
     },
     {
       "id": "auto_6号線桜通線_名古屋市",
-      "name": "6号線桜通線",
+      "name": "名古屋市営6号線桜通線",
       "operator": "名古屋市",
       "operator_id": "op_____",
       "color": "hsl(61, 60%, 55%)",
@@ -39665,7 +39665,7 @@
     },
     {
       "id": "auto_上飯田線_名古屋市",
-      "name": "上飯田線",
+      "name": "名古屋市営上飯田線",
       "operator": "名古屋市",
       "operator_id": "op_____",
       "color": "hsl(117, 60%, 55%)",
@@ -39692,7 +39692,7 @@
     },
     {
       "id": "auto_羽島線_名古屋鉄道",
-      "name": "羽島線",
+      "name": "名鉄羽島線",
       "operator": "名古屋鉄道",
       "operator_id": "meitetsu",
       "color": "hsl(346, 60%, 55%)",
@@ -39719,7 +39719,7 @@
     },
     {
       "id": "auto_河和線_名古屋鉄道",
-      "name": "河和線",
+      "name": "名鉄河和線",
       "operator": "名古屋鉄道",
       "operator_id": "meitetsu",
       "color": "hsl(102, 60%, 55%)",
@@ -39836,7 +39836,7 @@
     },
     {
       "id": "auto_各務原線_名古屋鉄道",
-      "name": "各務原線",
+      "name": "名鉄各務原線",
       "operator": "名古屋鉄道",
       "operator_id": "meitetsu",
       "color": "hsl(9, 60%, 55%)",
@@ -39943,7 +39943,7 @@
     },
     {
       "id": "auto_蒲郡線_名古屋鉄道",
-      "name": "蒲郡線",
+      "name": "名鉄蒲郡線",
       "operator": "名古屋鉄道",
       "operator_id": "meitetsu",
       "color": "hsl(315, 60%, 55%)",
@@ -40010,7 +40010,7 @@
     },
     {
       "id": "auto_空港線_名古屋鉄道",
-      "name": "空港線",
+      "name": "名鉄空港線",
       "operator": "名古屋鉄道",
       "operator_id": "meitetsu",
       "color": "hsl(148, 60%, 55%)",
@@ -40042,7 +40042,7 @@
     },
     {
       "id": "auto_犬山線_名古屋鉄道",
-      "name": "犬山線",
+      "name": "名鉄犬山線",
       "operator": "名古屋鉄道",
       "operator_id": "meitetsu",
       "color": "hsl(29, 60%, 55%)",
@@ -40144,7 +40144,7 @@
     },
     {
       "id": "auto_広見線_名古屋鉄道",
-      "name": "広見線",
+      "name": "名鉄広見線",
       "operator": "名古屋鉄道",
       "operator_id": "meitetsu",
       "color": "hsl(29, 60%, 55%)",
@@ -40216,7 +40216,7 @@
     },
     {
       "id": "auto_三河線_名古屋鉄道",
-      "name": "三河線",
+      "name": "名鉄三河線",
       "operator": "名古屋鉄道",
       "operator_id": "meitetsu",
       "color": "hsl(233, 60%, 55%)",
@@ -40348,7 +40348,7 @@
     },
     {
       "id": "auto_小牧線_名古屋鉄道",
-      "name": "小牧線",
+      "name": "名鉄小牧線",
       "operator": "名古屋鉄道",
       "operator_id": "meitetsu",
       "color": "hsl(103, 60%, 55%)",
@@ -40435,7 +40435,7 @@
     },
     {
       "id": "auto_常滑線_名古屋鉄道",
-      "name": "常滑線",
+      "name": "名鉄常滑線",
       "operator": "名古屋鉄道",
       "operator_id": "meitetsu",
       "color": "hsl(88, 60%, 55%)",
@@ -40567,7 +40567,7 @@
     },
     {
       "id": "auto_瀬戸線_名古屋鉄道",
-      "name": "瀬戸線",
+      "name": "名鉄瀬戸線",
       "operator": "名古屋鉄道",
       "operator_id": "meitetsu",
       "color": "hsl(80, 60%, 55%)",
@@ -40684,7 +40684,7 @@
     },
     {
       "id": "auto_西尾線_名古屋鉄道",
-      "name": "西尾線",
+      "name": "名鉄西尾線",
       "operator": "名古屋鉄道",
       "operator_id": "meitetsu",
       "color": "hsl(195, 60%, 55%)",
@@ -40771,7 +40771,7 @@
     },
     {
       "id": "auto_知多新線_名古屋鉄道",
-      "name": "知多新線",
+      "name": "名鉄知多新線",
       "operator": "名古屋鉄道",
       "operator_id": "meitetsu",
       "color": "hsl(242, 60%, 55%)",
@@ -40818,7 +40818,7 @@
     },
     {
       "id": "auto_築港線_名古屋鉄道",
-      "name": "築港線",
+      "name": "名鉄築港線",
       "operator": "名古屋鉄道",
       "operator_id": "meitetsu",
       "color": "hsl(183, 60%, 55%)",
@@ -40845,7 +40845,7 @@
     },
     {
       "id": "auto_竹鼻線_名古屋鉄道",
-      "name": "竹鼻線",
+      "name": "名鉄竹鼻線",
       "operator": "名古屋鉄道",
       "operator_id": "meitetsu",
       "color": "hsl(85, 60%, 55%)",
@@ -40907,7 +40907,7 @@
     },
     {
       "id": "auto_津島線_名古屋鉄道",
-      "name": "津島線",
+      "name": "名鉄津島線",
       "operator": "名古屋鉄道",
       "operator_id": "meitetsu",
       "color": "hsl(314, 60%, 55%)",
@@ -40964,7 +40964,7 @@
     },
     {
       "id": "auto_尾西線_名古屋鉄道",
-      "name": "尾西線",
+      "name": "名鉄尾西線",
       "operator": "名古屋鉄道",
       "operator_id": "meitetsu",
       "color": "hsl(265, 60%, 55%)",
@@ -41091,7 +41091,7 @@
     },
     {
       "id": "auto_豊川線_名古屋鉄道",
-      "name": "豊川線",
+      "name": "名鉄豊川線",
       "operator": "名古屋鉄道",
       "operator_id": "meitetsu",
       "color": "hsl(228, 60%, 55%)",
@@ -41133,7 +41133,7 @@
     },
     {
       "id": "auto_豊田線_名古屋鉄道",
-      "name": "豊田線",
+      "name": "名鉄豊田線",
       "operator": "名古屋鉄道",
       "operator_id": "meitetsu",
       "color": "hsl(97, 60%, 55%)",
@@ -41190,7 +41190,7 @@
     },
     {
       "id": "auto_名古屋本線_名古屋鉄道",
-      "name": "名古屋本線",
+      "name": "名鉄名古屋本線",
       "operator": "名古屋鉄道",
       "operator_id": "meitetsu",
       "color": "hsl(157, 60%, 55%)",
@@ -41676,7 +41676,7 @@
     },
     {
       "id": "auto_けいはんな線_近畿日本鉄道_s0",
-      "name": "けいはんな線",
+      "name": "近鉄けいはんな線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(239, 60%, 55%)",
@@ -41713,7 +41713,7 @@
     },
     {
       "id": "auto_けいはんな線_近畿日本鉄道_s1",
-      "name": "けいはんな線",
+      "name": "近鉄けいはんな線",
       "operator": "近畿日本鉄道",
       "operator_id": "kintetsu",
       "color": "hsl(239, 60%, 55%)",
@@ -41750,7 +41750,7 @@
     },
     {
       "id": "auto_8号線(今里筋線)_大阪市高速電気軌道",
-      "name": "8号線(今里筋線)",
+      "name": "大阪メトロ今里筋線",
       "operator": "大阪市高速電気軌道",
       "operator_id": "op__________",
       "color": "hsl(196, 60%, 55%)",
@@ -41822,7 +41822,7 @@
     },
     {
       "id": "auto_中之島線_京阪電気鉄道",
-      "name": "中之島線",
+      "name": "京阪中之島線",
       "operator": "京阪電気鉄道",
       "operator_id": "keihan",
       "color": "hsl(52, 60%, 55%)",
@@ -41864,7 +41864,7 @@
     },
     {
       "id": "auto_4号線_横浜市",
-      "name": "4号線",
+      "name": "横浜市営4号線",
       "operator": "横浜市",
       "operator_id": "op____",
       "color": "hsl(159, 60%, 55%)",
@@ -42013,7 +42013,7 @@
     },
     {
       "id": "auto_成田空港線_京成電鉄",
-      "name": "成田空港線",
+      "name": "京成成田空港線",
       "operator": "京成電鉄",
       "operator_id": "keisei",
       "color": "hsl(20, 60%, 55%)",
@@ -42070,7 +42070,7 @@
     },
     {
       "id": "auto_東西線_仙台市",
-      "name": "東西線",
+      "name": "仙台市営東西線",
       "operator": "仙台市",
       "operator_id": "op____",
       "color": "hsl(89, 60%, 55%)",
