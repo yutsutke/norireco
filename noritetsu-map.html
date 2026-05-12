@@ -368,7 +368,10 @@ async function loadMergedStations() {
     MERGED_STATIONS = data.stations || [];
     mergedStationMap.clear();
     for (const ms of MERGED_STATIONS) {
-      for (const lid of ms.lines) {
+      // 地図は N02 物理路線を回しながら描画するため、索引は N02 id で
+      // (lines は運行系統 id で視覚化用)
+      const indexKeys = ms.n02_lines || ms.lines;
+      for (const lid of indexKeys) {
         mergedStationMap.set(`${lid}:${ms.name}`, ms);
       }
     }
