@@ -153,6 +153,23 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
   color:var(--white);border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit;
 }
 .rec-line-pick button:hover{background:rgba(242,169,0,.2);border-color:var(--gold);}
+.rec-seg{
+  display:flex;align-items:center;gap:6px;margin:4px 0;flex-wrap:wrap;
+  padding:4px 8px;background:rgba(140,160,179,.1);border-radius:6px;
+}
+.rec-seg-select{
+  background:var(--navy);border:1px solid var(--track);color:var(--white);
+  padding:3px 6px;border-radius:4px;font-size:11px;font-family:inherit;
+  max-width:180px;outline:none;
+}
+.rec-seg-select:focus{border-color:var(--gold);}
+.rec-seg.err{background:rgba(242,68,68,.15);border:1px dashed #ff7070;}
+.rec-save{
+  margin-top:8px;width:100%;padding:9px;background:var(--red);
+  border:none;border-radius:8px;color:var(--white);font-size:13px;
+  cursor:pointer;font-family:inherit;
+}
+.rec-save:disabled{opacity:.4;cursor:not-allowed;}
 .svc-lines-fab{
   position:absolute;bottom:170px;right:8px;z-index:1000;
   width:46px;height:46px;border-radius:50%;
@@ -1478,6 +1495,8 @@ function initMap(){
 let recordMode = false;
 const recordSelection = [];      // [{name, lat, lon}]
 const recordHighlights = [];     // [{station, marker}]
+const pairLineChoices = new Map(); // pair index → ユーザー手動選択した運行系統 id
+let currentSegments = [];        // refreshRecPanel で計算された区間リスト
 
 function toggleRecordMode() {
   recordMode = !recordMode;
@@ -1536,6 +1555,8 @@ function clearAllRecordHighlights() {
 
 function clearRecSelection() {
   recordSelection.length = 0;
+  pairLineChoices.clear();
+  currentSegments = [];
   clearAllRecordHighlights();
   refreshRecPanel();
 }
@@ -1549,40 +1570,150 @@ function findCommonServiceLines(stations) {
   });
 }
 
+// 候補リスト群の積集合 (id ベース)
+function intersectLineLists(lists) {
+  if (!lists || lists.length === 0) return [];
+  let inter = lists[0].slice();
+  for (let i = 1; i < lists.length; i++) {
+    const ids = new Set(lists[i].map(l => l.id));
+    inter = inter.filter(l => ids.has(l.id));
+  }
+  return inter;
+}
+
+// 選択駅列から区間リストを構築
+// - 連続2駅ペアごとに共通営業系統を見つける
+// - 同一路線が連続するペアをマージして1区間にする
+// - 路線継続性を優先 (前ペアと同じ路線が候補にあればそれを使う)
+// - ユーザー手動選択 (pairLineChoices) があれば最優先
+function buildSegmentsFromSelection() {
+  if (recordSelection.length < 2) return [];
+
+  // Step 1: 各ペアの候補を計算
+  const pairs = [];
+  for (let i = 0; i < recordSelection.length - 1; i++) {
+    const a = recordSelection[i], b = recordSelection[i + 1];
+    pairs.push({a, b, cands: findCommonServiceLines([a, b])});
+  }
+
+  // Step 2: 各ペアの選択 (手動 > 継続性 > 先頭)
+  let prevLineId = null;
+  const chosen = pairs.map((p, i) => {
+    if (p.cands.length === 0) { prevLineId = null; return null; }
+    const userPick = pairLineChoices.get(i);
+    let ln = null;
+    if (userPick) ln = p.cands.find(l => l.id === userPick);
+    if (!ln && prevLineId) ln = p.cands.find(l => l.id === prevLineId);
+    if (!ln) ln = p.cands[0];
+    prevLineId = ln.id;
+    return ln;
+  });
+
+  // Step 3: 同一路線の連続ペアをマージ
+  const segs = [];
+  let i = 0;
+  while (i < pairs.length) {
+    if (chosen[i] === null) {
+      segs.push({
+        error: true,
+        from: pairs[i].a, to: pairs[i].b,
+        pairIndices: [i],
+      });
+      i++;
+      continue;
+    }
+    let j = i;
+    while (j + 1 < pairs.length && chosen[j + 1] && chosen[j + 1].id === chosen[i].id) {
+      j++;
+    }
+    const cands = intersectLineLists(pairs.slice(i, j + 1).map(p => p.cands));
+    segs.push({
+      line: chosen[i],
+      from: pairs[i].a,
+      to: pairs[j].b,
+      candidates: cands,
+      pairIndices: Array.from({length: j - i + 1}, (_, k) => i + k),
+    });
+    i = j + 1;
+  }
+  return segs;
+}
+
+// ユーザーが区間の路線を切り替え
+function changeSegmentLine(segIdx, newLineId) {
+  const seg = currentSegments[segIdx];
+  if (!seg || !seg.pairIndices) return;
+  for (const i of seg.pairIndices) pairLineChoices.set(i, newLineId);
+  refreshRecPanel();
+}
+
 function refreshRecPanel() {
   const chipsDiv = document.getElementById('rec-chips');
   const pickDiv = document.getElementById('rec-line-pick');
   const actionsDiv = document.getElementById('rec-actions');
   if (!chipsDiv) return;
 
+  // チップ表示
   if (recordSelection.length === 0) {
     chipsDiv.innerHTML = '<span style="color:var(--silver);font-size:11px">駅をタップして 2 駅以上選択してください</span>';
   } else {
     const parts = recordSelection.map((s, i) => {
       const cls = i === 0 ? 'from' : (i === recordSelection.length - 1 ? 'to' : '');
-      return `<span class="rec-chip ${cls}" onclick="onRecordStationClick({name:'${s.name.replace(/'/g,"\\'")}',lat:${s.lat},lon:${s.lon}})">${s.name}<span style="color:rgba(255,255,255,.5);margin-left:4px">×</span></span>`;
+      const sn = s.name.replace(/'/g, "\\'");
+      return `<span class="rec-chip ${cls}" onclick="onRecordStationClick({name:'${sn}',lat:${s.lat},lon:${s.lon}})">${s.name}<span style="color:rgba(255,255,255,.5);margin-left:4px">×</span></span>`;
     });
     chipsDiv.innerHTML = parts.join('<span class="rec-arrow">→</span>');
   }
 
   pickDiv.innerHTML = '';
   if (recordSelection.length >= 2) {
-    const common = findCommonServiceLines(recordSelection);
-    if (common.length === 0) {
-      pickDiv.innerHTML = '<span style="color:#ff7070;font-size:11px">⚠️ 選択した駅すべてを通る運行系統が見つかりません</span>';
-    } else {
-      common.slice(0, 12).forEach(sl => {
-        const btn = document.createElement('button');
-        btn.innerHTML = `<span style="color:${sl.color};margin-right:4px">●</span>${sl.name} に記録`;
-        btn.onclick = () => saveRecordedTrip(sl);
-        pickDiv.appendChild(btn);
-      });
-      if (common.length > 12) {
-        const span = document.createElement('span');
-        span.style.cssText = 'color:var(--silver);font-size:10px';
-        span.textContent = `+ ${common.length - 12} 系統`;
-        pickDiv.appendChild(span);
+    currentSegments = buildSegmentsFromSelection();
+    let hasError = false;
+    let totalStations = 0;
+
+    currentSegments.forEach((seg, idx) => {
+      const div = document.createElement('div');
+      if (seg.error) {
+        hasError = true;
+        div.className = 'rec-seg err';
+        div.innerHTML = `<span style="color:#ff7070;font-size:11px">⚠️ ${seg.from.name} → ${seg.to.name}: 共通する運行系統がありません(乗換可能な駅を間に追加してください)</span>`;
+      } else {
+        const ln = seg.line;
+        const fromIdx = ln.stations.findIndex(s => s.name === seg.from.name);
+        const toIdx = ln.stations.findIndex(s => s.name === seg.to.name);
+        const count = Math.abs(toIdx - fromIdx) + 1;
+        totalStations += count;
+        div.className = 'rec-seg';
+        let inner = `<span style="color:${ln.color};font-size:14px">●</span>`;
+        if (seg.candidates && seg.candidates.length > 1) {
+          const opts = seg.candidates.map(c =>
+            `<option value="${c.id}" ${c.id === ln.id ? 'selected' : ''}>${c.name}</option>`
+          ).join('');
+          inner += `<select class="rec-seg-select" onchange="changeSegmentLine(${idx}, this.value)">${opts}</select>`;
+        } else {
+          inner += `<span style="font-weight:600;font-size:12px">${ln.name}</span>`;
+        }
+        inner += `<span style="font-size:10px;color:var(--silver)">${seg.from.name}→${seg.to.name} (${count}駅)</span>`;
+        div.innerHTML = inner;
       }
+      pickDiv.appendChild(div);
+    });
+
+    if (currentSegments.length > 0) {
+      const summary = document.createElement('div');
+      summary.style.cssText = 'margin-top:6px;font-size:11px;color:var(--gold);';
+      const transferCount = currentSegments.filter(s => !s.error).length - 1;
+      summary.textContent = hasError
+        ? '⚠️ 未解決区間があります'
+        : `合計 ${totalStations}駅 / 乗換 ${Math.max(0, transferCount)}回`;
+      pickDiv.appendChild(summary);
+
+      const saveBtn = document.createElement('button');
+      saveBtn.className = 'rec-save';
+      saveBtn.disabled = hasError;
+      saveBtn.textContent = hasError ? '⚠️ 未解決区間あり' : '🔖 この経路を記録';
+      saveBtn.onclick = () => saveMultiSegmentTrip();
+      pickDiv.appendChild(saveBtn);
     }
   }
 
@@ -1591,37 +1722,42 @@ function refreshRecPanel() {
     : '';
 }
 
-async function saveRecordedTrip(serviceLine) {
-  const stations = [...recordSelection];
-  // 営業系統内の駅順に並び替え
-  const sorted = stations
-    .map(st => ({st, idx: serviceLine.stations.findIndex(s => s.name === st.name)}))
-    .filter(x => x.idx >= 0)
-    .sort((a, b) => a.idx - b.idx);
-  if (sorted.length < 2) {
-    alert('記録できる駅が不足しています'); return;
+// 経路 (複数区間) を1 trip として保存
+async function saveMultiSegmentTrip() {
+  if (!currentSegments || currentSegments.length === 0) return;
+  if (currentSegments.some(s => s.error)) {
+    alert('未解決の区間があります'); return;
   }
-  const from = sorted[0].st.name;
-  const to = sorted[sorted.length - 1].st.name;
-  const fromIdx = sorted[0].idx;
-  const toIdx = sorted[sorted.length - 1].idx;
-  const stationCount = toIdx - fromIdx + 1;
+  const tripSegments = [];
+  let totalStations = 0;
+  const lineNames = [];
+  for (const seg of currentSegments) {
+    if (!seg.line) continue;
+    const fromIdx = seg.line.stations.findIndex(s => s.name === seg.from.name);
+    const toIdx = seg.line.stations.findIndex(s => s.name === seg.to.name);
+    if (fromIdx < 0 || toIdx < 0) continue;
+    totalStations += Math.abs(toIdx - fromIdx) + 1;
+    if (lineNames[lineNames.length - 1] !== seg.line.name) lineNames.push(seg.line.name);
+    tripSegments.push({lineId: seg.line.id, from: seg.from.name, to: seg.to.name});
+  }
+  if (tripSegments.length === 0) { alert('保存できる区間がありません'); return; }
 
+  const fromStation = recordSelection[0].name;
+  const toStation = recordSelection[recordSelection.length - 1].name;
+  const lineList = lineNames.join(' ▸ ');
+  const tripName = tripSegments.length === 1
+    ? `${lineNames[0]} ${fromStation}→${toStation}`
+    : `${lineList} ${fromStation}→${toStation}`;
   const today = new Date().toISOString().slice(0, 10);
   const tripId = `trip_${Date.now()}`;
   const trip = {
-    id: tripId,
-    date: today,
-    name: `${serviceLine.name} ${from}→${to}`,
-    from_station: from,
-    to_station: to,
-    total_stations: stationCount,
-    transfers: 0,
-    line_list: serviceLine.name,
-    total_minutes: 0,
-    depart_time: '',
-    arrive_time: '',
-    segments: [{lineId: serviceLine.id, from, to}],
+    id: tripId, date: today, name: tripName,
+    from_station: fromStation, to_station: toStation,
+    total_stations: totalStations,
+    transfers: Math.max(0, tripSegments.length - 1),
+    line_list: lineList,
+    total_minutes: 0, depart_time: '', arrive_time: '',
+    segments: tripSegments,
   };
 
   let saved = false;
@@ -1642,22 +1778,18 @@ async function saveRecordedTrip(serviceLine) {
     console.warn('[乗レコ] Supabase 接続エラー:', e.message);
   }
 
-  // localStorage 二重保存（ログ画面と同じ形式）
   try {
     const existing = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
     existing.push(trip);
     localStorage.setItem('norireco_trips', JSON.stringify(existing));
-  } catch (e) {
-    console.warn('[乗レコ] localStorage 保存失敗:', e);
-  }
+  } catch (e) { console.warn('[乗レコ] localStorage 保存失敗:', e); }
 
-  // 即マップに反映
-  RIDDEN_SEGS.push({lineId: serviceLine.id, from, to});
+  for (const seg of tripSegments) RIDDEN_SEGS.push(seg);
   rebuildRiddenStations();
   redrawAllLinesAfterTripChange();
   updateOverlays();
 
-  showRecordToast(`✅ 記録${saved?'':' (オフライン)'}: ${trip.name} (${stationCount}駅)`);
+  showRecordToast(`✅ 記録${saved?'':' (オフライン)'}: ${tripSegments.length}区間 ${totalStations}駅`);
   clearRecSelection();
 }
 
