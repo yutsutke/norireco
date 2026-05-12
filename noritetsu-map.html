@@ -2163,6 +2163,20 @@ function makePieIcon(lineColors, sizePx, ridden) {
   });
 }
 
+// 駅ドットに記録モード/メモモード用のクリックハンドラを付ける
+function attachStationDotClick(dot, line, s) {
+  dot.on('click', (e) => {
+    if (recordMode) {
+      onRecordStationClick({name: s.n, lat: s.lat, lon: s.lon});
+      L.DomEvent.stopPropagation(e);
+    } else if (memoMode) {
+      clickInfo = {line, station: s, lat: (+s.lat).toFixed(5), lon: (+s.lon).toFixed(5)};
+      openMemo();
+      L.DomEvent.stopPropagation(e);
+    }
+  });
+}
+
 // 1路線を描画（遅延読み込み時にも呼ばれる）
 function drawSingleLine(line){
   const canvas=CANVAS;
@@ -2314,6 +2328,7 @@ function drawSingleLine(line){
         dot._norireco_priority=priority;
         dot._station_tier = _tier;
         dot._station_isMetro = _isMetro;
+        attachStationDotClick(dot, line, s);
         dotLayer.addLayer(dot);
         const label=L.marker([s.lat,s.lon],{
           icon:L.divIcon({
@@ -2346,6 +2361,7 @@ function drawSingleLine(line){
           {className:'norireco-tooltip',offset:[8,0]});
         dot._station_tier = _tier;
         dot._station_isMetro = _isMetro;
+        attachStationDotClick(dot, line, s);
         dotLayer.addLayer(dot);
         const label=L.marker([s.lat,s.lon],{
           icon:L.divIcon({
@@ -2380,6 +2396,7 @@ function drawSingleLine(line){
         );
         dot._station_tier = _tier;
         dot._station_isMetro = _isMetro;
+        attachStationDotClick(dot, line, s);
         dotLayer.addLayer(dot);
         // 薄めの未乗車ラベル
         const label=L.marker([s.lat,s.lon],{
