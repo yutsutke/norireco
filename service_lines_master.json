@@ -61281,6 +61281,432 @@
           "n02_match": true
         }
       ]
+    },
+    {
+      "id": "jr_tohoku_main_north",
+      "name": "東北本線(黒磯〜盛岡)",
+      "operator": "東日本旅客鉄道",
+      "operator_id": "jr_east",
+      "color": "#F4A300",
+      "official_line": "東北線",
+      "alias": [],
+      "through_lines": [],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "stations": [
+        {
+          "order": 1,
+          "name": "黒磯",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "高久",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "黒田原",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "豊原",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "白坂",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "新白河",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "白河",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "久田野",
+          "n02_match": true
+        },
+        {
+          "order": 9,
+          "name": "泉崎",
+          "n02_match": true
+        },
+        {
+          "order": 10,
+          "name": "矢吹",
+          "n02_match": true
+        },
+        {
+          "order": 11,
+          "name": "鏡石",
+          "n02_match": true
+        },
+        {
+          "order": 12,
+          "name": "須賀川",
+          "n02_match": true
+        },
+        {
+          "order": 13,
+          "name": "安積永盛",
+          "n02_match": true
+        },
+        {
+          "order": 14,
+          "name": "郡山",
+          "n02_match": true
+        },
+        {
+          "order": 15,
+          "name": "日和田",
+          "n02_match": true
+        },
+        {
+          "order": 16,
+          "name": "五百川",
+          "n02_match": true
+        },
+        {
+          "order": 17,
+          "name": "本宮",
+          "n02_match": true
+        },
+        {
+          "order": 18,
+          "name": "杉田",
+          "n02_match": true
+        },
+        {
+          "order": 19,
+          "name": "二本松",
+          "n02_match": true
+        },
+        {
+          "order": 20,
+          "name": "安達",
+          "n02_match": true
+        },
+        {
+          "order": 21,
+          "name": "松川",
+          "n02_match": true
+        },
+        {
+          "order": 22,
+          "name": "金谷川",
+          "n02_match": true
+        },
+        {
+          "order": 23,
+          "name": "南福島",
+          "n02_match": true
+        },
+        {
+          "order": 24,
+          "name": "福島",
+          "n02_match": true
+        },
+        {
+          "order": 25,
+          "name": "東福島",
+          "n02_match": true
+        },
+        {
+          "order": 26,
+          "name": "伊達",
+          "n02_match": true
+        },
+        {
+          "order": 27,
+          "name": "桑折",
+          "n02_match": true
+        },
+        {
+          "order": 28,
+          "name": "藤田",
+          "n02_match": true
+        },
+        {
+          "order": 29,
+          "name": "貝田",
+          "n02_match": true
+        },
+        {
+          "order": 30,
+          "name": "越河",
+          "n02_match": true
+        },
+        {
+          "order": 31,
+          "name": "白石",
+          "n02_match": true
+        },
+        {
+          "order": 32,
+          "name": "東白石",
+          "n02_match": true
+        },
+        {
+          "order": 33,
+          "name": "北白川",
+          "n02_match": true
+        },
+        {
+          "order": 34,
+          "name": "大河原",
+          "n02_match": true
+        },
+        {
+          "order": 35,
+          "name": "船岡",
+          "n02_match": true
+        },
+        {
+          "order": 36,
+          "name": "槻木",
+          "n02_match": true
+        },
+        {
+          "order": 37,
+          "name": "岩沼",
+          "n02_match": true
+        },
+        {
+          "order": 38,
+          "name": "館腰",
+          "n02_match": true
+        },
+        {
+          "order": 39,
+          "name": "名取",
+          "n02_match": true
+        },
+        {
+          "order": 40,
+          "name": "南仙台",
+          "n02_match": true
+        },
+        {
+          "order": 41,
+          "name": "太子堂",
+          "n02_match": true
+        },
+        {
+          "order": 42,
+          "name": "長町",
+          "n02_match": true
+        },
+        {
+          "order": 43,
+          "name": "仙台",
+          "n02_match": true
+        },
+        {
+          "order": 44,
+          "name": "東仙台",
+          "n02_match": true
+        },
+        {
+          "order": 45,
+          "name": "岩切",
+          "n02_match": true
+        },
+        {
+          "order": 46,
+          "name": "国府多賀城",
+          "n02_match": true
+        },
+        {
+          "order": 47,
+          "name": "塩釜",
+          "n02_match": true
+        },
+        {
+          "order": 48,
+          "name": "松島",
+          "n02_match": true
+        },
+        {
+          "order": 49,
+          "name": "愛宕",
+          "n02_match": true
+        },
+        {
+          "order": 50,
+          "name": "品井沼",
+          "n02_match": true
+        },
+        {
+          "order": 51,
+          "name": "鹿島台",
+          "n02_match": true
+        },
+        {
+          "order": 52,
+          "name": "松山町",
+          "n02_match": true
+        },
+        {
+          "order": 53,
+          "name": "小牛田",
+          "n02_match": true
+        },
+        {
+          "order": 54,
+          "name": "田尻",
+          "n02_match": true
+        },
+        {
+          "order": 55,
+          "name": "瀬峰",
+          "n02_match": true
+        },
+        {
+          "order": 56,
+          "name": "梅ヶ沢",
+          "n02_match": true
+        },
+        {
+          "order": 57,
+          "name": "新田",
+          "n02_match": true
+        },
+        {
+          "order": 58,
+          "name": "石越",
+          "n02_match": true
+        },
+        {
+          "order": 59,
+          "name": "油島",
+          "n02_match": true
+        },
+        {
+          "order": 60,
+          "name": "花泉",
+          "n02_match": true
+        },
+        {
+          "order": 61,
+          "name": "清水原",
+          "n02_match": true
+        },
+        {
+          "order": 62,
+          "name": "有壁",
+          "n02_match": true
+        },
+        {
+          "order": 63,
+          "name": "一ノ関",
+          "n02_match": true
+        },
+        {
+          "order": 64,
+          "name": "山ノ目",
+          "n02_match": true
+        },
+        {
+          "order": 65,
+          "name": "平泉",
+          "n02_match": true
+        },
+        {
+          "order": 66,
+          "name": "前沢",
+          "n02_match": true
+        },
+        {
+          "order": 67,
+          "name": "陸中折居",
+          "n02_match": true
+        },
+        {
+          "order": 68,
+          "name": "水沢",
+          "n02_match": true
+        },
+        {
+          "order": 69,
+          "name": "金ヶ崎",
+          "n02_match": true
+        },
+        {
+          "order": 70,
+          "name": "六原",
+          "n02_match": true
+        },
+        {
+          "order": 71,
+          "name": "北上",
+          "n02_match": true
+        },
+        {
+          "order": 72,
+          "name": "村崎野",
+          "n02_match": true
+        },
+        {
+          "order": 73,
+          "name": "花巻",
+          "n02_match": true
+        },
+        {
+          "order": 74,
+          "name": "花巻空港",
+          "n02_match": true
+        },
+        {
+          "order": 75,
+          "name": "石鳥谷",
+          "n02_match": true
+        },
+        {
+          "order": 76,
+          "name": "日詰",
+          "n02_match": true
+        },
+        {
+          "order": 77,
+          "name": "紫波中央",
+          "n02_match": true
+        },
+        {
+          "order": 78,
+          "name": "古館",
+          "n02_match": true
+        },
+        {
+          "order": 79,
+          "name": "矢幅",
+          "n02_match": true
+        },
+        {
+          "order": 80,
+          "name": "岩手飯岡",
+          "n02_match": true
+        },
+        {
+          "order": 81,
+          "name": "仙北町",
+          "n02_match": true
+        },
+        {
+          "order": 82,
+          "name": "盛岡",
+          "n02_match": true
+        }
+      ]
     }
   ]
 }

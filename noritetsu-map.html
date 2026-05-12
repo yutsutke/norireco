@@ -402,25 +402,28 @@ async function loadServiceLinesMaster() {
 }
 
 // N02 物理路線ごとの「駅名→座標」マップを構築
-// キーは line.id (同名・別会社の路線を区別、例: 関西線_西日本旅客鉄道 vs 関西線_東海旅客鉄道)
+// キーは line.id。同 id N02 エントリ(富山地方鉄道本線の鉄道線+軌道線等)はマージ
 function buildPerLineCoordMap() {
   const m = new Map(); // line.id -> { name, stations: Map(stationName -> [lat,lon]) }
   for (const line of LINES) {
-    const inner = new Map();
+    let info = m.get(line.id);
+    if (!info) {
+      info = { name: line.name, stations: new Map() };
+      m.set(line.id, info);
+    }
     for (const st of (line.stations || [])) {
       const nm = st.n;
       if (!nm || typeof st.lat !== 'number' || typeof st.lon !== 'number') continue;
-      if (!inner.has(nm)) inner.set(nm, [st.lat, st.lon]);
+      if (!info.stations.has(nm)) info.stations.set(nm, [st.lat, st.lon]);
     }
-    m.set(line.id, { name: line.name, stations: inner });
   }
   return m;
 }
 
-// sl.id が "auto_<n02_id>" または "auto_<n02_id>_bN" の場合、対応する N02 路線 id を返す
+// sl.id "auto_<n02_id>", "auto_<n02_id>_bN", "auto_<n02_id>_sN" のいずれも N02 id を返す
 function deriveN02IdFromAutoId(slId) {
   if (!slId || !slId.startsWith('auto_')) return null;
-  return slId.slice(5).replace(/_b\d+$/, '');
+  return slId.slice(5).replace(/_b\d+$/, '').replace(/_s\d+$/, '');
 }
 
 // 営業系統 sl について、各駅の座標を解決
