@@ -22032,7 +22032,7 @@
     },
     {
       "id": "auto_両毛線_東日本旅客鉄道",
-      "name": "両毛線",
+      "name": "両毛線(小山〜高崎)",
       "operator": "東日本旅客鉄道",
       "operator_id": "jr_east",
       "color": "hsl(115, 60%, 55%)",
@@ -22139,8 +22139,24 @@
           "order": 19,
           "name": "新前橋",
           "n02_match": true
+        },
+        {
+          "order": 20,
+          "name": "井野",
+          "n02_match": true
+        },
+        {
+          "order": 21,
+          "name": "高崎問屋町",
+          "n02_match": true
+        },
+        {
+          "order": 22,
+          "name": "高崎",
+          "n02_match": true
         }
-      ]
+      ],
+      "note": "小山〜新前橋が両毛線、新前橋〜高崎は上越線直通(井野・高崎問屋町・高崎)"
     },
     {
       "id": "auto_海峡線_北海道旅客鉄道",
