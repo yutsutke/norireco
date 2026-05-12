@@ -500,6 +500,8 @@ async function toggleServiceLines() {
       await loadServiceLinesMaster();
       serviceLinesLoaded = true;
     }
+    // 全 N02 物理路線(P1〜P4)を読み込んでから描画(座標解決のため)
+    await Promise.all([loadLines(1), loadLines(2), loadLines(3), loadLines(4)]);
     drawServiceLines();
     if (serviceLineLayer && map) serviceLineLayer.addTo(map);
     serviceLinesVisible = true;
