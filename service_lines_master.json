@@ -62120,6 +62120,40 @@
           "n02_match": true
         }
       ]
+    },
+    {
+      "id": "jr_tohoku_main_rifu",
+      "name": "東北本線(利府支線)",
+      "operator": "JR東日本",
+      "operator_id": "jr_east",
+      "color": "#F4A300",
+      "official_line": "東北線",
+      "alias": [
+        "利府線"
+      ],
+      "through_lines": [],
+      "is_circular": false,
+      "parent_id": "jr_tohoku_main_north",
+      "branch_from": "岩切",
+      "branch_to": "利府",
+      "note": "東北本線の支線。岩切から分岐し利府まで。",
+      "stations": [
+        {
+          "order": 1,
+          "name": "岩切",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "新利府",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "利府",
+          "n02_match": true
+        }
+      ]
     }
   ]
 }
