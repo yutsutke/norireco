@@ -998,6 +998,42 @@ function resolveLineId(legacyId) {
 // 乗車済み運行系統セット (legendで表示する用)
 const riddenServiceIds = new Set();
 
+// 営業系統(SERVICE_LINES)id から N02 路線セグメントへの解決
+// 新形式の trip (lineId='jr_chuo_main', 'auto_xxx' 等) に対応
+function resolveByServiceLine(slId, fromName, toName) {
+  if (!SERVICE_LINES || SERVICE_LINES.length === 0) return null;
+  const sl = SERVICE_LINES.find(x => x.id === slId);
+  if (!sl || !sl.stations || sl.stations.length < 2) return null;
+  const fromN = normStName(fromName), toN = normStName(toName);
+  const fromIdx = sl.stations.findIndex(s => normStName(s.name) === fromN);
+  const toIdx = sl.stations.findIndex(s => normStName(s.name) === toN);
+  if (fromIdx < 0 || toIdx < 0) return null;
+  const lo = Math.min(fromIdx, toIdx), hi = Math.max(fromIdx, toIdx);
+  const candidates = sl.candidateN02Ids || [];
+  if (candidates.length === 0) return null;
+  // 各駅を最適な候補 N02 路線に振り分け
+  const lineParts = new Map(); // n02_id → { line, fi, ti }
+  for (let i = lo; i <= hi; i++) {
+    const nm = normStName(sl.stations[i].name);
+    for (const n02Id of candidates) {
+      const ln = LINES.find(l => l.id === n02Id);
+      if (!ln) continue;
+      const idx = ln.stations.findIndex(s => normStName(s.n) === nm);
+      if (idx < 0) continue;
+      if (!lineParts.has(n02Id)) {
+        lineParts.set(n02Id, { line: ln, fi: idx, ti: idx });
+      } else {
+        const p = lineParts.get(n02Id);
+        p.fi = Math.min(p.fi, idx);
+        p.ti = Math.max(p.ti, idx);
+      }
+      break;
+    }
+  }
+  if (lineParts.size === 0) return null;
+  return [...lineParts.values()];
+}
+
 // 乗車済みデータを再構築（路線追加後に呼ぶ）
 function rebuildRiddenStations() {
   Object.keys(riddenSt).forEach(k => delete riddenSt[k]);
@@ -1005,10 +1041,15 @@ function rebuildRiddenStations() {
   let resolvedCount = 0;
   const unresolved = [];
   RIDDEN_SEGS.forEach(seg => {
-    // 1. 運行系統(running_services.json)で解決
-    let parts = resolveServiceTrip(seg.lineId, seg.from, seg.to);
-    let viaService = !!parts;
-    // 2. fallback
+    // 1. 営業系統 (service_lines_master.json) で解決 — 新形式
+    let parts = resolveByServiceLine(seg.lineId, seg.from, seg.to);
+    let viaServiceLine = !!parts;
+    // 2. 運行系統 (running_services.json) — 旧形式互換
+    if (!parts) {
+      parts = resolveServiceTrip(seg.lineId, seg.from, seg.to);
+    }
+    let viaService = !viaServiceLine && !!parts;
+    // 3. N02 直接フォールバック
     if (!parts) parts = resolveSegments(seg.lineId, seg.from, seg.to);
     if (!parts) {
       unresolved.push(`${seg.lineId} ${seg.from}→${seg.to}`);
@@ -1378,8 +1419,12 @@ function initMap(){
     await loadLines(3);
     console.log(`[乗レコ] 初期ロード完了: 計${LINES.length}路線`);
     fitToRiddenLines();
-    // 営業系統(SERVICE_LINES)を構築 → ヘッダー統計を再計算
-    buildServiceLines().then(() => updateOverlays()).catch(e => console.warn('[乗レコ] SERVICE_LINES 構築失敗:', e));
+    // 営業系統(SERVICE_LINES)を構築 → 新形式 trip(jr_xxx/auto_xxx) を再解決して再描画
+    buildServiceLines().then(() => {
+      rebuildRiddenStations();
+      if (typeof redrawAllLinesAfterTripChange === 'function') redrawAllLinesAfterTripChange();
+      updateOverlays();
+    }).catch(e => console.warn('[乗レコ] SERVICE_LINES 構築失敗:', e));
   })();
 
   // ズーム変更時にP3/P4を追加読み込み + LOD更新
