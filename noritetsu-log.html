@@ -792,18 +792,33 @@ function splitLineName(name) {
   return [name || '', ''];
 }
 
-// 路線並びのキー: 基本名で先にソートし、本線→支線/区間の順に
-function lineSortKey(l) {
-  const [base, suffix] = splitLineName(l.name);
-  // 支線/区間サフィックスがある方を後ろに
-  const order = suffix ? 1 : 0;
-  return base + ' ' + order + ' ' + suffix;
+// 運営会社名の正規化 (東日本旅客鉄道 → JR東日本 など)
+const OPERATOR_DISPLAY = {
+  '東日本旅客鉄道':'JR東日本','東海旅客鉄道':'JR東海','西日本旅客鉄道':'JR西日本',
+  '九州旅客鉄道':'JR九州','北海道旅客鉄道':'JR北海道','四国旅客鉄道':'JR四国',
+  '東京地下鉄':'東京メトロ','東京都':'都営','京浜急行電鉄':'京急電鉄',
+  '東京急行電鉄':'東急電鉄','京阪電気鉄道':'京阪電鉄','阪神電気鉄道':'阪神電鉄',
+  '名古屋鉄道':'名鉄','近畿日本鉄道':'近鉄','西日本鉄道':'西鉄',
+  '大阪市高速電気軌道':'Osaka Metro',
+};
+function canonicalOperator(op) {
+  if (!op) return '';
+  return OPERATOR_DISPLAY[op] || op;
 }
 
-// 路線の表示ラベル (region が空ならカッコを出さない)
+// 路線並びのキー: グループ内で 運営会社 → 基本名 → 本線→支線 の順
+function lineSortKey(l) {
+  const [base, suffix] = splitLineName(l.name);
+  const order = suffix ? 1 : 0;
+  const op = canonicalOperator(l.operator);
+  return op + '\t' + base + '\t' + order + '\t' + suffix;
+}
+
+// 路線の表示ラベル (運営会社名を末尾に。region が空ならカッコを出さない)
 function lineLabel(l) {
+  const op = canonicalOperator(l.operator);
+  if (op) return `${l.name} — ${op}`;
   if (l.region) return `${l.name}（${l.region}）`;
-  if (l.operator) return `${l.name} — ${l.operator}`;
   return l.name;
 }
 
