@@ -114,6 +114,45 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
   box-shadow:0 4px 16px rgba(0,0,0,.5);transition:all .2s;
 }
 .map-mode-fab:hover{transform:scale(1.08);}
+.record-fab{
+  position:absolute;bottom:225px;right:8px;z-index:1000;
+  width:46px;height:46px;border-radius:50%;
+  background:rgba(30,52,72,.95);border:1.5px solid var(--track);
+  color:var(--white);font-size:20px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgba(0,0,0,.5);transition:all .2s;
+}
+.record-fab.on{background:rgba(242,169,0,.22);border-color:var(--gold);color:var(--gold);}
+.record-fab:hover{transform:scale(1.08);}
+.rec-panel{
+  position:absolute;bottom:8px;left:8px;right:62px;z-index:1100;
+  background:rgba(20,32,46,.96);border:1.5px solid var(--gold);
+  border-radius:12px;padding:10px 12px;box-shadow:0 4px 16px rgba(0,0,0,.6);
+  color:var(--white);font-size:12px;display:none;max-height:50vh;overflow-y:auto;
+}
+.rec-panel.on{display:block;}
+.rec-title{font-size:11px;color:var(--gold);margin-bottom:6px;letter-spacing:.05em;}
+.rec-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px;line-height:1.6;}
+.rec-chip{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 8px;background:rgba(140,160,179,.2);border-radius:14px;
+  font-size:11px;cursor:pointer;color:var(--white);
+}
+.rec-chip.from{background:rgba(0,178,229,.32);}
+.rec-chip.to{background:rgba(242,169,0,.32);}
+.rec-chip:hover{background:rgba(242,68,68,.3);}
+.rec-arrow{color:var(--silver);font-size:11px;}
+.rec-btn{
+  padding:6px 12px;background:var(--red);border:none;color:var(--white);
+  border-radius:8px;cursor:pointer;font-size:11px;font-family:inherit;
+}
+.rec-btn.clear{background:transparent;border:1px solid var(--track);color:var(--silver);}
+.rec-line-pick{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.rec-line-pick button{
+  padding:6px 10px;background:rgba(140,160,179,.15);border:1px solid var(--track);
+  color:var(--white);border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit;
+}
+.rec-line-pick button:hover{background:rgba(242,169,0,.2);border-color:var(--gold);}
 .svc-lines-fab{
   position:absolute;bottom:170px;right:8px;z-index:1000;
   width:46px;height:46px;border-radius:50%;
@@ -251,6 +290,13 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
     <button class="map-mode-fab" id="map-mode-btn" onclick="cycleMapMode()" title="背景切替">🗺️</button>
     <button class="memo-fab" id="memo-btn" onclick="toggleMemoMode()" title="メモ投稿">📸</button>
     <button class="svc-lines-fab" id="svc-lines-btn" onclick="toggleServiceLines()" title="営業系統オーバーレイ（POC）">🚆</button>
+    <button class="record-fab" id="rec-btn" onclick="toggleRecordMode()" title="区間記録モード">📝</button>
+    <div class="rec-panel" id="rec-panel">
+      <div class="rec-title">📝 区間記録モード — 駅をタップして選択</div>
+      <div class="rec-row" id="rec-chips"></div>
+      <div class="rec-line-pick" id="rec-line-pick"></div>
+      <div class="rec-row" id="rec-actions" style="margin-top:6px;margin-bottom:0"></div>
+    </div>
 
   </div>
 
@@ -1363,17 +1409,231 @@ function initMap(){
   map.on('moveend', restoreLabelsAfterMove);
   // zoomend は上で既に updateLOD を呼ぶので追加処理不要
 
-  // メモモード
+  // メモモード or 記録モード のクリックハンドラ
   map.on('click',e=>{
-    if(!memoMode)return;
+    if(!memoMode && !recordMode) return;
     let bLine=null,bSt=null,bD=Infinity;
     LINES.forEach(line=>line.stations.forEach(s=>{
       const d=map.distance([s.lat,s.lon],e.latlng);
       if(d<bD){bD=d;bLine=line;bSt=s;}
     }));
-    clickInfo={line:bLine,station:bSt,lat:e.latlng.lat.toFixed(5),lon:e.latlng.lng.toFixed(5)};
-    openMemo();
+    if (!bSt || bD > 2000) return;
+    if (memoMode) {
+      clickInfo={line:bLine,station:bSt,lat:e.latlng.lat.toFixed(5),lon:e.latlng.lng.toFixed(5)};
+      openMemo();
+    } else if (recordMode) {
+      onRecordStationClick({name: bSt.n, lat: bSt.lat, lon: bSt.lon});
+    }
   });
+}
+
+// ════════════════════════════════════════════
+// 区間記録モード (RECORD MODE)
+// ════════════════════════════════════════════
+let recordMode = false;
+const recordSelection = [];      // [{name, lat, lon}]
+const recordHighlights = [];     // [{station, marker}]
+
+function toggleRecordMode() {
+  recordMode = !recordMode;
+  const btn = document.getElementById('rec-btn');
+  const panel = document.getElementById('rec-panel');
+  btn.classList.toggle('on', recordMode);
+  panel.classList.toggle('on', recordMode);
+  if (recordMode) {
+    // メモモードと排他
+    if (memoMode) toggleMemoMode();
+    refreshRecPanel();
+    if(map) map.getContainer().style.cursor='crosshair';
+  } else {
+    clearRecSelection();
+    if(map) map.getContainer().style.cursor='';
+  }
+}
+
+function sameStation(a, b) {
+  return a.name === b.name && Math.abs(a.lat - b.lat) < 1e-4 && Math.abs(a.lon - b.lon) < 1e-4;
+}
+
+function onRecordStationClick(station) {
+  const idx = recordSelection.findIndex(s => sameStation(s, station));
+  if (idx >= 0) {
+    recordSelection.splice(idx, 1);
+    removeRecordHighlight(station);
+  } else {
+    recordSelection.push(station);
+    addRecordHighlight(station);
+  }
+  refreshRecPanel();
+}
+
+function addRecordHighlight(station) {
+  const h = L.circleMarker([station.lat, station.lon], {
+    radius: 13, color: '#F2A900', weight: 3,
+    fill: false, opacity: 1,
+    interactive: false,
+  }).addTo(map);
+  recordHighlights.push({station, marker: h});
+}
+
+function removeRecordHighlight(station) {
+  const idx = recordHighlights.findIndex(h => sameStation(h.station, station));
+  if (idx >= 0) {
+    map.removeLayer(recordHighlights[idx].marker);
+    recordHighlights.splice(idx, 1);
+  }
+}
+
+function clearAllRecordHighlights() {
+  recordHighlights.forEach(h => { try { map.removeLayer(h.marker); } catch(e){} });
+  recordHighlights.length = 0;
+}
+
+function clearRecSelection() {
+  recordSelection.length = 0;
+  clearAllRecordHighlights();
+  refreshRecPanel();
+}
+
+// 選択駅すべてを含む運行系統を返す (営業系統)
+function findCommonServiceLines(stations) {
+  if (!SERVICE_LINES || SERVICE_LINES.length === 0 || stations.length < 2) return [];
+  return SERVICE_LINES.filter(sl => {
+    const slNames = new Set(sl.stations.map(s => s.name));
+    return stations.every(st => slNames.has(st.name));
+  });
+}
+
+function refreshRecPanel() {
+  const chipsDiv = document.getElementById('rec-chips');
+  const pickDiv = document.getElementById('rec-line-pick');
+  const actionsDiv = document.getElementById('rec-actions');
+  if (!chipsDiv) return;
+
+  if (recordSelection.length === 0) {
+    chipsDiv.innerHTML = '<span style="color:var(--silver);font-size:11px">駅をタップして 2 駅以上選択してください</span>';
+  } else {
+    const parts = recordSelection.map((s, i) => {
+      const cls = i === 0 ? 'from' : (i === recordSelection.length - 1 ? 'to' : '');
+      return `<span class="rec-chip ${cls}" onclick="onRecordStationClick({name:'${s.name.replace(/'/g,"\\'")}',lat:${s.lat},lon:${s.lon}})">${s.name}<span style="color:rgba(255,255,255,.5);margin-left:4px">×</span></span>`;
+    });
+    chipsDiv.innerHTML = parts.join('<span class="rec-arrow">→</span>');
+  }
+
+  pickDiv.innerHTML = '';
+  if (recordSelection.length >= 2) {
+    const common = findCommonServiceLines(recordSelection);
+    if (common.length === 0) {
+      pickDiv.innerHTML = '<span style="color:#ff7070;font-size:11px">⚠️ 選択した駅すべてを通る運行系統が見つかりません</span>';
+    } else {
+      common.slice(0, 12).forEach(sl => {
+        const btn = document.createElement('button');
+        btn.innerHTML = `<span style="color:${sl.color};margin-right:4px">●</span>${sl.name} に記録`;
+        btn.onclick = () => saveRecordedTrip(sl);
+        pickDiv.appendChild(btn);
+      });
+      if (common.length > 12) {
+        const span = document.createElement('span');
+        span.style.cssText = 'color:var(--silver);font-size:10px';
+        span.textContent = `+ ${common.length - 12} 系統`;
+        pickDiv.appendChild(span);
+      }
+    }
+  }
+
+  actionsDiv.innerHTML = recordSelection.length > 0
+    ? '<button class="rec-btn clear" onclick="clearRecSelection()">クリア</button>'
+    : '';
+}
+
+async function saveRecordedTrip(serviceLine) {
+  const stations = [...recordSelection];
+  // 営業系統内の駅順に並び替え
+  const sorted = stations
+    .map(st => ({st, idx: serviceLine.stations.findIndex(s => s.name === st.name)}))
+    .filter(x => x.idx >= 0)
+    .sort((a, b) => a.idx - b.idx);
+  if (sorted.length < 2) {
+    alert('記録できる駅が不足しています'); return;
+  }
+  const from = sorted[0].st.name;
+  const to = sorted[sorted.length - 1].st.name;
+  const fromIdx = sorted[0].idx;
+  const toIdx = sorted[sorted.length - 1].idx;
+  const stationCount = toIdx - fromIdx + 1;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const tripId = `trip_${Date.now()}`;
+  const trip = {
+    id: tripId,
+    date: today,
+    name: `${serviceLine.name} ${from}→${to}`,
+    from_station: from,
+    to_station: to,
+    total_stations: stationCount,
+    transfers: 0,
+    line_list: serviceLine.name,
+    total_minutes: 0,
+    depart_time: '',
+    arrive_time: '',
+    segments: [{lineId: serviceLine.id, from, to}],
+  };
+
+  let saved = false;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_trips`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify(trip),
+    });
+    if (res.ok) saved = true;
+    else console.warn('[乗レコ] Supabase 保存失敗 HTTP', res.status);
+  } catch (e) {
+    console.warn('[乗レコ] Supabase 接続エラー:', e.message);
+  }
+
+  // localStorage 二重保存（ログ画面と同じ形式）
+  try {
+    const existing = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
+    existing.push(trip);
+    localStorage.setItem('norireco_trips', JSON.stringify(existing));
+  } catch (e) {
+    console.warn('[乗レコ] localStorage 保存失敗:', e);
+  }
+
+  // 即マップに反映
+  RIDDEN_SEGS.push({lineId: serviceLine.id, from, to});
+  rebuildRiddenStations();
+  updateOverlays();
+  // 既存の polyline 再描画 (簡易: 該当N02路線のみ)
+  if (typeof drawSingleLine === 'function') {
+    const candidateN02Ids = (serviceLine.candidateN02Ids || []);
+    for (const n02Id of candidateN02Ids) {
+      const ln = LINES.find(l => l.id === n02Id);
+      if (ln) { /* グロー再描画は次のリロードに委譲 */ }
+    }
+  }
+
+  showRecordToast(`✅ 記録${saved?'':' (オフライン)'}: ${trip.name} (${stationCount}駅)`);
+  clearRecSelection();
+}
+
+function showRecordToast(msg) {
+  const toast = document.createElement('div');
+  toast.style.cssText =
+    'position:fixed;top:80px;left:50%;transform:translateX(-50%);' +
+    'background:rgba(0,178,229,.96);color:#fff;padding:10px 16px;border-radius:8px;' +
+    'z-index:9999;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.5);' +
+    'font-family:inherit';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity .4s'; }, 2500);
+  setTimeout(() => toast.remove(), 3000);
 }
 
 // ローディングインジケーターは廃止（P1がHTMLに埋め込まれているため不要）
