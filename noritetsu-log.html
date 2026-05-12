@@ -473,15 +473,16 @@ const KANTO_EAST_NORTH_PRIVATE = new Set(['tobu','seibu','keisei','toyo_rapid','
 const KANTO_SOUTH_WEST_PRIVATE = new Set(['tokyu','odakyu','keikyu','keio','sotetsu','yokohama_minato_mirai','izuhakone','enoshima','tama_toshi','hakone_tozan','rinkai']);
 
 // lat/lon から地域コード(関東/東北/関西/...)を返す
+// 東海・中部 を 関西 より先に判定することで、lon 重複域(136.0-137.0)では
+// 緯度で振り分け: 名古屋(34.5以上) は東海、志摩半島(34.5未満) は関西
 function regionOf(lat, lon) {
   if (lat >= 41.3) return '北海道';
-  // 関東 (1都6県を広めにカバー)
   if (lat >= 34.9 && lat <= 37.0 && lon >= 138.5 && lon <= 141.5) return '関東';
   if (lat >= 37.0 && lat <= 41.3 && lon >= 138.5) return '東北';
-  // 関西 (大阪/京都/神戸/奈良/和歌山/滋賀/三重南部)
-  if (lat >= 33.5 && lat <= 35.8 && lon >= 134.5 && lon <= 136.5) return '関西';
   // 東海・中部 (静岡/愛知/岐阜/長野/新潟/富山/石川/福井/山梨)
   if (lat >= 34.5 && lat <= 37.5 && lon >= 136.0 && lon <= 139.5) return '東海・中部';
+  // 関西 (大阪/京都/神戸/奈良/和歌山/滋賀/三重南部=志摩半島まで)
+  if (lat >= 33.5 && lat <= 35.8 && lon >= 134.5 && lon <= 137.0) return '関西';
   // 中国・山陰
   if (lat >= 33.5 && lat <= 35.8 && lon >= 130.85 && lon <= 134.5) return '中国・山陰';
   // 四国
