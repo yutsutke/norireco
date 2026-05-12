@@ -402,9 +402,9 @@ async function loadServiceLinesMaster() {
 }
 
 // N02 物理路線ごとの「駅名→座標」マップを構築
-// 同名駅問題を回避するため、グローバル重心ではなく路線単位で持つ
+// キーは line.id (同名・別会社の路線を区別、例: 関西線_西日本旅客鉄道 vs 関西線_東海旅客鉄道)
 function buildPerLineCoordMap() {
-  const m = new Map(); // n02LineName -> Map(stationName -> [lat, lon])
+  const m = new Map(); // line.id -> { name, stations: Map(stationName -> [lat,lon]) }
   for (const line of LINES) {
     const inner = new Map();
     for (const st of (line.stations || [])) {
@@ -412,42 +412,53 @@ function buildPerLineCoordMap() {
       if (!nm || typeof st.lat !== 'number' || typeof st.lon !== 'number') continue;
       if (!inner.has(nm)) inner.set(nm, [st.lat, st.lon]);
     }
-    m.set(line.name, inner);
+    m.set(line.id, { name: line.name, stations: inner });
   }
   return m;
 }
 
-// 営業系統 sl について、各駅の座標を「マスターと駅名一致が多い N02 物理路線」優先で解決
+// sl.id が "auto_<n02_id>" または "auto_<n02_id>_bN" の場合、対応する N02 路線 id を返す
+function deriveN02IdFromAutoId(slId) {
+  if (!slId || !slId.startsWith('auto_')) return null;
+  return slId.slice(5).replace(/_b\d+$/, '');
+}
+
+// 営業系統 sl について、各駅の座標を解決
+//  1. 自動生成エントリは sl.id から対応する N02 物理路線を最優先で使う
+//  2. それ以外は「official_line 一致」「駅名重なり ≥2」の候補を使う
 function resolveServiceLineCoords(sl, perLineMap) {
+  const sourceN02Id = deriveN02IdFromAutoId(sl.id);
   const masterNames = new Set(sl.stations.map(s => s.name));
-  // 候補: official_line に部分一致 or マスターと駅名 2 駅以上重なる N02 路線
   const candidates = [];
-  for (const [n02Name, stations] of perLineMap) {
+  for (const [n02Id, info] of perLineMap) {
+    const { name: n02Name, stations } = info;
     let overlap = 0;
     for (const n of masterNames) if (stations.has(n)) overlap++;
+    const idMatch = sourceN02Id && sourceN02Id === n02Id;
     const officialMatch = sl.official_line && n02Name.startsWith(sl.official_line);
-    if (overlap >= 2 || officialMatch) {
-      candidates.push({ name: n02Name, stations, overlap, officialMatch });
+    if (idMatch || overlap >= 2 || officialMatch) {
+      candidates.push({ name: n02Name, id: n02Id, stations, overlap, officialMatch, idMatch });
     }
   }
-  // 駅名重複が多い候補を優先、同点なら official_line 一致を優先
-  candidates.sort((a, b) => (b.overlap - a.overlap) || (b.officialMatch - a.officialMatch));
+  // idMatch を最優先、次に overlap、次に officialMatch
+  candidates.sort((a, b) =>
+    (b.idMatch - a.idMatch) || (b.overlap - a.overlap) || (b.officialMatch - a.officialMatch)
+  );
 
   const result = [];
-  let unresolved = [];
+  const unresolved = [];
   for (const s of sl.stations) {
-    let coord = null, src = null;
+    let coord = null;
     for (const c of candidates) {
-      if (c.stations.has(s.name)) { coord = c.stations.get(s.name); src = c.name; break; }
+      if (c.stations.has(s.name)) { coord = c.stations.get(s.name); break; }
     }
-    if (coord) {
-      result.push(coord);
-    } else {
-      result.push(null);
-      unresolved.push(s.name);
-    }
+    if (coord) result.push(coord);
+    else { result.push(null); unresolved.push(s.name); }
   }
-  return { coords: result, unresolved, candidateNames: candidates.slice(0, 3).map(c => `${c.name}(${c.overlap})`) };
+  return {
+    coords: result, unresolved,
+    candidateNames: candidates.slice(0, 3).map(c => `${c.name}(${c.overlap}${c.idMatch?'*':''})`)
+  };
 }
 
 function drawServiceLines() {
