@@ -466,22 +466,26 @@ let LINES = [];
 // 既存 trip データに残っている '東海道線_東日本旅客鉄道' を 'auto_東海道線_東日本旅客鉄道' に解決
 const LEGACY_LINE_ID_ALIAS = new Map();
 
-// 駅座標 + 名称から地域グループを推定
-function detectGroupByStations(stations, name) {
+// 運営会社 id から JR/メトロ/都営/私鉄を判別
+const JR_OPERATOR_IDS = new Set(['jr_east','jr_central','jr_west','jr_kyushu','jr_hokkaido','jr_shikoku']);
+const METRO_TOEI_IDS  = new Set(['tokyo_metro','toei']);
+const KANTO_EAST_NORTH_PRIVATE = new Set(['tobu','seibu','keisei','toyo_rapid','shin_keisei','hokuso','saitama_rapid','tx','nippori_toneri','choshi','isumi','kashima_rinkai','tobu_urban','keisei_chiba']);
+const KANTO_SOUTH_WEST_PRIVATE = new Set(['tokyu','odakyu','keikyu','keio','sotetsu','yokohama_minato_mirai','izuhakone','enoshima','tama_toshi','hakone_tozan','rinkai']);
+
+// 駅座標 + 運営会社 + 名称から地域グループを推定
+function detectGroupByStations(stations, name, operatorId) {
   if (name && name.includes('新幹線')) return '新幹線';
   if (!stations || stations.length === 0) return 'その他';
-  // 中央付近の駅で代表点を取る
   const mid = stations[Math.floor(stations.length / 2)];
   const lat = mid.lat, lon = mid.lon;
-  // 首都圏 (関東南部のうち、東京・神奈川・千葉・埼玉中心部)
-  if (lat >= 35.30 && lat <= 36.30 && lon >= 138.95 && lon <= 140.50) {
+  const isKanto = (lat >= 35.30 && lat <= 36.30 && lon >= 138.95 && lon <= 140.50);
+  if (isKanto) {
+    if (JR_OPERATOR_IDS.has(operatorId)) return '首都圏・JR';
+    if (METRO_TOEI_IDS.has(operatorId)) return '東京メトロ・都営';
+    if (KANTO_EAST_NORTH_PRIVATE.has(operatorId)) return '首都圏・私鉄（東・北）';
+    if (KANTO_SOUTH_WEST_PRIVATE.has(operatorId)) return '首都圏・私鉄（南・西）';
+    // operator_id が不明な場合は名称でフォールバック
     if (name) {
-      if (name.startsWith('JR') || name.includes('京浜東北') || name.includes('湘南新宿') ||
-          name.includes('上野東京') || name.includes('山手線') || name.includes('総武') ||
-          name.includes('中央') || name.includes('横須賀') || name.includes('宇都宮線') ||
-          name.includes('高崎線') || name.includes('常磐線') || name.includes('東海道線') ||
-          name.includes('埼京'))
-        return '首都圏・JR';
       if (name.includes('東京メトロ') || name.startsWith('都営') || name.startsWith('都電'))
         return '東京メトロ・都営';
       if (name.startsWith('東武') || name.startsWith('西武') || name.startsWith('京成') ||
@@ -496,20 +500,13 @@ function detectGroupByStations(stations, name) {
     }
     return '首都圏・ローカル';
   }
-  // 北海道
   if (lat >= 41.3) return '北海道';
-  // 東北
   if (lat >= 37.0) return '東北';
-  // 関西 (大阪・京都・神戸・奈良・滋賀・和歌山)
   if (lat >= 33.8 && lat <= 35.8 && lon >= 134.50 && lon <= 136.50) return '関西';
-  // 中国・山陰 (岡山・広島・山口・島根・鳥取)
   if (lat >= 33.5 && lat <= 35.7 && lon >= 130.85 && lon <= 134.50) return '中国・山陰';
-  // 四国
   if (lat >= 32.7 && lat <= 34.5 && lon >= 132.0 && lon <= 134.85) return '四国';
-  // 九州・沖縄
   if (lat <= 33.7 && lon <= 132.0) return '九州';
-  if (lat <= 27.0) return '九州'; // 沖縄を含む
-  // 東海・中部
+  if (lat <= 27.0) return '九州';
   if (lat >= 34.5 && lat <= 37.5 && lon >= 136.0 && lon <= 139.5) return '東海・中部';
   return 'その他';
 }
@@ -579,8 +576,8 @@ async function loadAppData() {
     }
     if (stations.length < 2) { droppedCount++; continue; }
 
-    // group/region: 駅座標ベースで地域を判定 (N02 の group は 'JR在来'/'私鉄' で粗いため)
-    const group = sl.group || detectGroupByStations(stations, sl.name);
+    // group/region: 駅座標 + 運営会社で地域を判定 (N02 の group は 'JR在来'/'私鉄' で粗いため)
+    const group = sl.group || detectGroupByStations(stations, sl.name, sl.operator_id);
     const top = candidates[0];
     const region = sl.region || (top ? top.info.region : '') || '';
 
@@ -590,6 +587,8 @@ async function loadAppData() {
       color: sl.color || '#888',
       region: region,
       group: group,
+      operator: sl.operator || '',
+      operator_id: sl.operator_id || '',
       stations: stations,
       circular: sl.is_circular || false,
     });
@@ -786,34 +785,56 @@ function effectiveGroup(l) {
   return '首都圏・ローカル';
 }
 
+// 路線名を「基本名」と「支線/区間サフィックス」に分解 (例: '京葉線（支線1）' → ['京葉線', '（支線1）'])
+function splitLineName(name) {
+  const m = /^(.+?)(?:[（(].*[)）])\s*$/.exec(name || '');
+  if (m) return [m[1].trim(), name.slice(m[1].length)];
+  return [name || '', ''];
+}
+
+// 路線並びのキー: 基本名で先にソートし、本線→支線/区間の順に
+function lineSortKey(l) {
+  const [base, suffix] = splitLineName(l.name);
+  // 支線/区間サフィックスがある方を後ろに
+  const order = suffix ? 1 : 0;
+  return base + ' ' + order + ' ' + suffix;
+}
+
+// 路線の表示ラベル (region が空ならカッコを出さない)
+function lineLabel(l) {
+  if (l.region) return `${l.name}（${l.region}）`;
+  if (l.operator) return `${l.name} — ${l.operator}`;
+  return l.name;
+}
+
 function buildGroupedSelect(el, filter) {
   const f = (filter || '').trim().toLowerCase();
   const prevVal = el.value;
   el.innerHTML = '<option value="">-- 路線を選択 --</option>';
   const grouped = {};
   LINES.forEach(l => {
-    if (f && !l.name.toLowerCase().includes(f)) return;
+    if (f && !l.name.toLowerCase().includes(f) && !(l.operator||'').toLowerCase().includes(f)) return;
     const g = effectiveGroup(l);
     if (!grouped[g]) grouped[g] = [];
     grouped[g].push(l);
   });
-  GROUP_ORDER.forEach(g => {
+  // 各グループ内をソート
+  Object.values(grouped).forEach(arr => arr.sort((a,b) => lineSortKey(a).localeCompare(lineSortKey(b), 'ja')));
+
+  const appendGroup = (g) => {
     if (!grouped[g] || grouped[g].length === 0) return;
     const og = document.createElement('optgroup');
-    og.label = `── ${g} ──`;
+    og.label = `── ${g} (${grouped[g].length}) ──`;
     grouped[g].forEach(l => {
-      og.appendChild(new Option(`${l.name}（${l.region}）`, l.id));
+      og.appendChild(new Option(lineLabel(l), l.id));
     });
     el.appendChild(og);
-  });
-  Object.keys(grouped).forEach(g => {
+  };
+  GROUP_ORDER.forEach(appendGroup);
+  // 順序リストに無いグループは末尾にあいうえお順で
+  Object.keys(grouped).sort((a,b) => a.localeCompare(b, 'ja')).forEach(g => {
     if (GROUP_ORDER.includes(g)) return;
-    const og = document.createElement('optgroup');
-    og.label = `── ${g} ──`;
-    grouped[g].forEach(l => {
-      og.appendChild(new Option(`${l.name}（${l.region}）`, l.id));
-    });
-    el.appendChild(og);
+    appendGroup(g);
   });
   if (prevVal) el.value = prevVal;
 }
