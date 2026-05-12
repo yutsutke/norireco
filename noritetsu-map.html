@@ -1832,21 +1832,20 @@ function drawSingleLine(line){
       const _isMetro = isMetroArea(s.lat, s.lon);
       // マーカー拡大係数 (1路線=1.0, 2路線=1.3, 3=1.5, 5=1.8, 7=2.0)
       const _mScale = _nLines === 1 ? 1.0 : Math.min(2.5, 1.0 + Math.log2(_nLines) * 0.5);
-      // tooltip用 路線リストHTML
-      let _linesText = '';
-      if (_ms && _nLines > 1) {
-        const _lineNames = _ms.lines.map((lid, idx) => {
-          // merged_stations が service line id を持つようになったので
-          // まず SERVICE_LINES を引き、無ければ LINES(N02) を引く
+      // tooltip 用 路線リストを「呼び出し時」に計算するクロージャ
+      // (SERVICE_LINES は初期描画後に非同期で構築されるため遅延評価が必要)
+      const _linesTextFn = () => {
+        if (!_ms || _nLines <= 1) return '';
+        const lineNames = _ms.lines.map((lid, idx) => {
           const sl = (SERVICE_LINES && SERVICE_LINES.length) ? SERVICE_LINES.find(x => x.id === lid) : null;
           const ln = sl || LINES.find(l => l.id === lid);
           const c = (_ms.colors && _ms.colors[idx]) || (ln && ln.color) || '#888';
           const dispName = ln ? ln.name : lid;
           return `<span style="color:${c}">●</span> ${dispName}`;
         }).join('<br>');
-        _linesText = `<br><span style="color:rgba(242,169,0,.85);font-size:10px">🔀 乗り入れ ${_nLines}路線</span><br>` +
-                     `<span style="font-size:10px;color:rgba(255,255,255,.85);line-height:1.5">${_lineNames}</span>`;
-      }
+        return `<br><span style="color:rgba(242,169,0,.85);font-size:10px">🔀 乗り入れ ${_nLines}路線</span><br>` +
+               `<span style="font-size:10px;color:rgba(255,255,255,.85);line-height:1.5">${lineNames}</span>`;
+      };
       if(!isRidden){
         let dot;
         if (_nLines > 1 && _ms) {
@@ -1864,7 +1863,7 @@ function drawSingleLine(line){
           });
         }
         dot.bindTooltip(
-          `<b style="color:${line.color}">${s.n}</b><br><span style="color:rgba(140,160,179,.7)">${line.name}${s.o?` ${s.o}駅目`:''} · 未乗車</span>${_linesText}`,
+          () => `<b style="color:${line.color}">${s.n}</b><br><span style="color:rgba(140,160,179,.7)">${line.name}${s.o?` ${s.o}駅目`:''} · 未乗車</span>${_linesTextFn()}`,
           {className:'norireco-tooltip',offset:[8,0]}
         );
         dot._norireco_priority=priority;
@@ -1898,7 +1897,7 @@ function drawSingleLine(line){
             renderer:canvas,
           });
         }
-        dot.bindTooltip(`<b>${s.n}</b><br><span style="color:rgba(140,160,179,.8)">${line.name}${s.o?` - ${s.o}駅目`:''}</span>${_linesText}`,
+        dot.bindTooltip(() => `<b>${s.n}</b><br><span style="color:rgba(140,160,179,.8)">${line.name}${s.o?` - ${s.o}駅目`:''}</span>${_linesTextFn()}`,
           {className:'norireco-tooltip',offset:[8,0]});
         dot._station_tier = _tier;
         dot._station_isMetro = _isMetro;
@@ -1931,7 +1930,7 @@ function drawSingleLine(line){
           });
         }
         dot.bindTooltip(
-          `<b style="color:${line.color}">${s.n}</b><br><span style="color:rgba(140,160,179,.7)">${line.name}${s.o?` ${s.o}駅目`:''} · 未乗車</span>${_linesText}`,
+          () => `<b style="color:${line.color}">${s.n}</b><br><span style="color:rgba(140,160,179,.7)">${line.name}${s.o?` ${s.o}駅目`:''} · 未乗車</span>${_linesTextFn()}`,
           {className:'norireco-tooltip',offset:[8,0]}
         );
         dot._station_tier = _tier;
