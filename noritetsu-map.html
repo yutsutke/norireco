@@ -277,6 +277,48 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
   display: block;
   pointer-events: auto;
 }
+/* Character detail modal */
+.char-modal-hero{
+  text-align:center;margin:8px auto 18px;
+}
+.char-modal-svg{
+  width:200px;height:200px;
+  filter:drop-shadow(0 6px 16px rgba(0,0,0,.45));
+}
+.char-modal-bg{
+  background:radial-gradient(circle at center, rgba(242,169,0,.18) 0%, rgba(13,27,42,0) 65%);
+  padding:8px;border-radius:50%;display:inline-block;
+}
+.char-modal-name{
+  font-size:24px;font-weight:700;text-align:center;margin-bottom:4px;color:var(--white);
+}
+.char-modal-sub{
+  font-size:11px;color:var(--silver);text-align:center;letter-spacing:1px;margin-bottom:14px;
+}
+.char-modal-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 12px;background:rgba(255,255,255,.04);border-radius:9px;margin-bottom:8px;
+}
+.char-modal-row-lbl{font-size:11px;color:var(--silver);}
+.char-modal-row-val{font-size:13px;color:var(--white);font-family:'DM Mono',monospace;}
+.char-modal-desc{
+  font-size:12px;line-height:1.7;color:rgba(255,255,255,.85);
+  padding:12px;background:rgba(242,169,0,.08);
+  border-left:3px solid var(--gold);border-radius:0 8px 8px 0;
+  margin:10px 0 14px;
+}
+.char-modal-lines{
+  font-size:11px;color:var(--silver);margin-bottom:6px;letter-spacing:1px;
+}
+.char-modal-line-row{
+  display:flex;align-items:center;gap:8px;padding:5px 8px;
+  background:rgba(255,255,255,.03);border-radius:6px;margin-bottom:3px;
+  font-size:12px;
+}
+.char-modal-line-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.char-modal-line-name{flex:1;}
+.char-modal-line-ridden{color:#5fd17a;font-size:11px;}
+
 /* Lv4 ハローのパルスアニメ (50+回訪問駅) */
 @keyframes lv4-halo-pulse {
   0%, 100% { opacity: 0.35; }
@@ -435,6 +477,15 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
     </div>
 
   </div>
+
+<!-- キャラ詳細モーダル -->
+<div class="memo-modal" id="char-modal" onclick="if(event.target===this)closeCharModal()">
+  <div class="memo-sheet">
+    <div class="sh"></div>
+    <div id="char-modal-body"></div>
+    <button class="btn-cls" onclick="closeCharModal()">閉じる</button>
+  </div>
+</div>
 
 <!-- 復元モーダル -->
 <div class="memo-modal" id="restore-modal" onclick="if(event.target===this)closeRestoreModal()">
@@ -2725,9 +2776,68 @@ function attachStationDotClickV2(dot, ms) {
       clickInfo = {line: pseudoLine, station: pseudoSt, lat: (+ms.lat).toFixed(5), lon: (+ms.lon).toFixed(5)};
       openMemo();
       L.DomEvent.stopPropagation(e);
+    } else {
+      // 通常モード: キャラ駅ならキャラ詳細モーダル
+      const character = getStationCharacter(ms.name);
+      if (character) {
+        openCharModal(ms, character);
+        L.DomEvent.stopPropagation(e);
+      }
     }
   });
 }
+
+// キャラ詳細モーダル
+function openCharModal(ms, character) {
+  const body = document.getElementById('char-modal-body');
+  if (!body) return;
+  const visits = slVisitCount[ms.name] || 0;
+  const level = getStationLevel(visits);
+  const levelStars = level >= 4 ? '⭐⭐⭐' : level >= 3 ? '⭐⭐' : level >= 2 ? '⭐' : level >= 1 ? '✓' : '';
+  // 乗り入れ系統リスト
+  const slRows = (ms.lines || []).map((lid, idx) => {
+    const sl = SERVICE_LINES.find(x => x.id === lid);
+    const color = (ms.colors && ms.colors[idx]) || (sl && sl.color) || '#888';
+    const name = sl ? sl.name : lid;
+    const rs = slRiddenSt[lid];
+    const ridden = rs && rs.has(ms.name);
+    return `<div class="char-modal-line-row">
+      <span class="char-modal-line-dot" style="background:${color}"></span>
+      <span class="char-modal-line-name">${name}</span>
+      ${ridden ? '<span class="char-modal-line-ridden">✓ 乗車</span>' : ''}
+    </div>`;
+  }).join('');
+  body.innerHTML = `
+    <div class="char-modal-hero">
+      <div class="char-modal-bg">
+        <svg class="char-modal-svg" viewBox="0 0 64 64">${character.innerSvg}</svg>
+      </div>
+    </div>
+    <div class="char-modal-name">${character.meta.name}</div>
+    <div class="char-modal-sub">${character.meta.subtitle || ''}</div>
+    <div class="char-modal-row">
+      <span class="char-modal-row-lbl">📍 駅</span>
+      <span class="char-modal-row-val">${ms.name}</span>
+    </div>
+    <div class="char-modal-row">
+      <span class="char-modal-row-lbl">🚇 訪問回数</span>
+      <span class="char-modal-row-val">${visits}回 ${levelStars}</span>
+    </div>
+    ${character.meta.description ? `<div class="char-modal-desc">${character.meta.description}</div>` : ''}
+    ${slRows ? `<div class="char-modal-lines">乗り入れ系統 (${(ms.lines || []).length})</div>${slRows}` : ''}
+  `;
+  document.getElementById('char-modal')?.classList.add('open');
+}
+function closeCharModal() {
+  document.getElementById('char-modal')?.classList.remove('open');
+}
+// ESC で閉じる
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const m = document.getElementById('char-modal');
+    if (m && m.classList.contains('open')) closeCharModal();
+  }
+});
 
 function updateOverlays(){
   const gs=gStats();
