@@ -267,6 +267,15 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
   display: block;
   pointer-events: auto;
 }
+/* Lv4 ハローのパルスアニメ (50+回訪問駅) */
+@keyframes lv4-halo-pulse {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 0.9; }
+}
+.merged-pie-marker.lv4 .lv4-halo {
+  transform-origin: center;
+  animation: lv4-halo-pulse 2.2s ease-in-out infinite;
+}
 .norireco-tooltip{
   background:rgba(4,12,24,.95) !important;border:1px solid var(--track) !important;
   border-radius:10px !important;padding:9px 12px !important;
@@ -2259,22 +2268,25 @@ function getStationLevel(visits) {
 function makePieIcon(lineColors, sizePx, ridden, level = 0) {
   const n = lineColors.length;
   const r = sizePx / 2;
-  // 高レベル時は外側マージンを追加してハロー/外輪を描画
-  const halo = level >= 4 ? 6 : (level >= 3 ? 3 : 0);
+  // 高レベル: 外側マージンでハロー/外輪 + 右上にバッジ
+  const halo = level >= 4 ? 12 : (level >= 3 ? 7 : 0);
   const outer = sizePx + halo * 2;
   const cx = halo + r;
   const cy = halo + r;
 
+  // === 外側装飾 ===
   let svgOuter = '';
   if (level >= 4) {
-    // 金色ふんわりハロー
-    svgOuter += `<circle cx="${cx}" cy="${cy}" r="${r + 5}" fill="rgba(242,169,0,0.18)" stroke="rgba(242,169,0,0.55)" stroke-width="1"/>`;
-  }
-  if (level >= 3) {
-    // 金色外輪
-    svgOuter += `<circle cx="${cx}" cy="${cy}" r="${r + 1.8}" fill="none" stroke="${level >= 4 ? '#f2a900' : 'rgba(242,169,0,0.85)'}" stroke-width="${level >= 4 ? 1.7 : 1.3}"/>`;
+    // Lv4: パルスする大きな金色ハロー (.lv4-halo)
+    svgOuter += `<circle class="lv4-halo" cx="${cx}" cy="${cy}" r="${r + 10}" fill="rgba(242,169,0,0.28)" stroke="rgba(242,169,0,0.75)" stroke-width="1.5"/>`;
+    // 固体の太い金色外輪
+    svgOuter += `<circle cx="${cx}" cy="${cy}" r="${r + 4}" fill="none" stroke="#f2a900" stroke-width="2.4"/>`;
+  } else if (level >= 3) {
+    // Lv3: はっきりした金色外輪 (太め)
+    svgOuter += `<circle cx="${cx}" cy="${cy}" r="${r + 3.5}" fill="none" stroke="#f2a900" stroke-width="2.2"/>`;
   }
 
+  // === 内側 (パイ or 単色) ===
   let svgInner = '';
   if (n === 1) {
     svgInner = `<circle cx="${cx}" cy="${cy}" r="${r-1}" fill="${lineColors[0]}"/>`;
@@ -2292,7 +2304,7 @@ function makePieIcon(lineColors, sizePx, ridden, level = 0) {
     }
   }
 
-  // 内側リング: level 2+ で金色がかる
+  // === 内側リング (level 2+ で金色) ===
   let ringColor, ringWidth;
   if (level >= 2) {
     ringColor = ridden ? 'rgba(242,169,0,0.95)' : 'rgba(242,169,0,0.65)';
@@ -2302,12 +2314,36 @@ function makePieIcon(lineColors, sizePx, ridden, level = 0) {
     ringWidth = ridden ? 1.4 : 1.0;
   }
 
+  // === 右上★バッジ (Lv3+) — 将来「ゆるキャラ」差し替え予定 ===
+  let svgBadge = '';
+  if (level >= 4) {
+    // Lv4: 大バッジ (白枠付き金丸 + 白★)
+    const br = Math.max(6, sizePx * 0.26);
+    const bx = cx + r * 0.78;
+    const by = cy - r * 0.78;
+    svgBadge = `
+      <circle cx="${bx}" cy="${by}" r="${br}" fill="#f2a900" stroke="#fff" stroke-width="1.5"/>
+      <text x="${bx}" y="${by + br * 0.38}" text-anchor="middle" font-size="${br * 1.5}" fill="#fff" font-family="Arial Black, sans-serif" font-weight="900">★</text>
+    `;
+  } else if (level >= 3) {
+    // Lv3: 小バッジ (金丸 + 白★)
+    const br = Math.max(5, sizePx * 0.22);
+    const bx = cx + r * 0.8;
+    const by = cy - r * 0.8;
+    svgBadge = `
+      <circle cx="${bx}" cy="${by}" r="${br}" fill="#f2a900" stroke="#fff" stroke-width="1.2"/>
+      <text x="${bx}" y="${by + br * 0.38}" text-anchor="middle" font-size="${br * 1.5}" fill="#fff" font-family="Arial Black, sans-serif" font-weight="900">★</text>
+    `;
+  }
+
+  const cssClass = 'merged-pie-marker' + (level >= 4 ? ' lv4' : '');
   return L.divIcon({
-    className: 'merged-pie-marker',
+    className: cssClass,
     html: `<svg width="${outer}" height="${outer}" viewBox="0 0 ${outer} ${outer}" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 3px rgba(0,0,0,0.6));">
       ${svgOuter}
       ${svgInner}
       <circle cx="${cx}" cy="${cy}" r="${r-0.5}" fill="none" stroke="${ringColor}" stroke-width="${ringWidth}"/>
+      ${svgBadge}
     </svg>`,
     iconSize: [outer, outer],
     iconAnchor: [cx, cy],
@@ -2469,8 +2505,8 @@ function drawStationsLayer() {
     if (nLines > 1) {
       // 多系統駅: 常にパイマーカー
       const baseSize = ridden ? 14 : 11;
-      // Lv が上がるとサイズもわずかに大きく
-      const levelBonus = level >= 4 ? 3 : level >= 3 ? 2 : level >= 2 ? 1 : 0;
+      // Lv が上がるとサイズも段階的に大きく
+      const levelBonus = level >= 4 ? 4 : level >= 3 ? 2 : level >= 2 ? 1 : 0;
       const size = Math.round((baseSize + levelBonus) * mScale);
       dot = L.marker([ms.lat, ms.lon], {
         icon: makePieIcon(colors, size, ridden, level),
@@ -2480,7 +2516,7 @@ function drawStationsLayer() {
     } else if (level >= 2) {
       // 単系統駅 × Lv2+: 装飾付き divIcon
       const baseSize = ridden ? 12 : 9;
-      const levelBonus = level >= 4 ? 3 : level >= 3 ? 2 : 1;
+      const levelBonus = level >= 4 ? 4 : level >= 3 ? 2 : 1;
       const size = Math.round((baseSize + levelBonus) * mScale);
       dot = L.marker([ms.lat, ms.lon], {
         icon: makePieIcon(colors, size, ridden, level),
