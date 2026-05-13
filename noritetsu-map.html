@@ -183,13 +183,13 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 
 /* App version badge (デプロイ状態インジケータ) */
 .app-ver-badge{
-  display:inline-block;margin-left:8px;
+  display:inline-flex;align-items:center;
   font-size:9px;font-family:'DM Mono',monospace;
-  padding:2px 7px;border-radius:9px;letter-spacing:.5px;
+  padding:3px 8px;border-radius:9px;letter-spacing:.5px;line-height:1;
   background:rgba(140,160,179,.15);color:var(--silver);
   border:1px solid var(--track);
-  cursor:pointer;vertical-align:middle;user-select:none;
-  transition:all .2s;
+  cursor:pointer;user-select:none;
+  transition:all .2s;flex-shrink:0;
 }
 .app-ver-badge:hover{transform:scale(1.05);}
 .app-ver-badge.ok{background:rgba(80,200,120,.16);color:#5fd17a;border-color:rgba(80,200,120,.4);}
@@ -202,15 +202,46 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 }
 
 /* Date filter pill (期間フィルタ) */
-.date-filter-box{
+.date-filter-wrap{
   position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:1000;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  max-width:calc(100vw - 16px);
+}
+.date-filter-box{
   display:flex;align-items:center;gap:2px;
   background:rgba(13,27,42,.92);border:1px solid var(--track);border-radius:14px;
   padding:3px 6px;backdrop-filter:blur(8px);
   font-family:'Zen Kaku Gothic New',sans-serif;
   box-shadow:0 2px 8px rgba(0,0,0,.4);
-  max-width:calc(100vw - 16px);
 }
+.dfilter-pop{
+  display:none;
+  background:rgba(13,27,42,.96);border:1px solid var(--gold);border-radius:10px;
+  padding:8px 10px;backdrop-filter:blur(8px);
+  box-shadow:0 4px 16px rgba(0,0,0,.55);
+  font-family:'Zen Kaku Gothic New',sans-serif;
+  flex-direction:column;gap:6px;min-width:230px;
+  animation:fadeInDown .15s ease-out;
+}
+.dfilter-pop.open{display:flex;}
+.dfilter-pop-row{display:flex;align-items:center;gap:8px;}
+.dfilter-pop-row label{font-size:10px;color:var(--silver);width:30px;flex-shrink:0;}
+.dfilter-pop-row input[type=date]{
+  flex:1;background:#060f1a;border:1px solid var(--track);border-radius:6px;
+  color:var(--white);padding:5px 7px;font-family:'DM Mono',monospace;font-size:11px;
+  color-scheme:dark;
+}
+.dfilter-pop-actions{display:flex;gap:6px;margin-top:2px;}
+.dfilter-pop-apply{
+  flex:1;background:var(--gold);color:var(--navy);border:none;border-radius:6px;
+  padding:6px;font-weight:700;font-size:11px;cursor:pointer;font-family:inherit;
+}
+.dfilter-pop-apply:hover{filter:brightness(1.1);}
+.dfilter-pop-cancel{
+  background:transparent;border:1px solid var(--track);color:var(--silver);
+  padding:6px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit;
+}
+@keyframes fadeInDown{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
 .dfilter-icon{font-size:11px;margin:0 3px 0 2px;color:var(--silver);}
 .dfilter-chip{
   border:none;background:transparent;color:var(--silver);
@@ -311,7 +342,8 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 </head>
 <body>
 <div class="header">
-  <div class="logo">乗<em>レコ</em><small>NORITSUBU MAP</small><span class="app-ver-badge checking" id="app-ver-badge" onclick="checkAppVersion(true)" title="バージョン確認中">⏳ …</span></div>
+  <div class="logo">乗<em>レコ</em><small>NORITSUBU MAP</small></div>
+  <span class="app-ver-badge checking" id="app-ver-badge" onclick="checkAppVersion(true)" title="バージョン確認中">⏳ …</span>
   <div class="header-stats">
     <div class="hstat"><div class="hstat-val" id="h-pct">0%</div><div class="hstat-lbl">達成率</div></div>
     <div class="hstat"><div class="hstat-val" id="h-ln">0</div><div class="hstat-lbl">路線</div></div>
@@ -327,12 +359,28 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
     <!-- Leaflet map -->
     <div id="leaflet-map"></div>
     <!-- Overlays -->
-    <div class="date-filter-box" id="date-filter-box">
-      <span class="dfilter-icon">📅</span>
-      <button class="dfilter-chip active" data-mode="all"      onclick="setDateFilter('all')">全期間</button>
-      <button class="dfilter-chip"        data-mode="thisYear" onclick="setDateFilter('thisYear')">今年</button>
-      <button class="dfilter-chip"        data-mode="lastYear" onclick="setDateFilter('lastYear')">去年</button>
-      <button class="dfilter-chip"        data-mode="custom"   onclick="openCustomDateFilter()"><span id="dfilter-custom-label">カスタム</span></button>
+    <div class="date-filter-wrap" id="date-filter-wrap">
+      <div class="date-filter-box" id="date-filter-box">
+        <span class="dfilter-icon">📅</span>
+        <button class="dfilter-chip active" data-mode="all"      onclick="setDateFilter('all')">全期間</button>
+        <button class="dfilter-chip"        data-mode="thisYear" onclick="setDateFilter('thisYear')">今年</button>
+        <button class="dfilter-chip"        data-mode="lastYear" onclick="setDateFilter('lastYear')">去年</button>
+        <button class="dfilter-chip"        data-mode="custom"   onclick="toggleCustomDateFilter()"><span id="dfilter-custom-label">カスタム</span></button>
+      </div>
+      <div class="dfilter-pop" id="dfilter-pop">
+        <div class="dfilter-pop-row">
+          <label>開始</label>
+          <input type="date" id="dfilter-from" />
+        </div>
+        <div class="dfilter-pop-row">
+          <label>終了</label>
+          <input type="date" id="dfilter-to" />
+        </div>
+        <div class="dfilter-pop-actions">
+          <button class="dfilter-pop-apply" onclick="applyCustomDateFilter()">適用</button>
+          <button class="dfilter-pop-cancel" onclick="closeCustomDateFilter()">×</button>
+        </div>
+      </div>
     </div>
     <div class="map-stats-box">
       <div class="ms-row"><span class="ms-lbl">全体</span><span class="ms-val" id="ms-pct">0%</span></div>
@@ -367,25 +415,6 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
     </div>
 
   </div>
-
-<!-- 期間フィルタ：カスタム指定モーダル -->
-<div class="memo-modal" id="dfilter-custom-modal" onclick="if(event.target===this)closeCustomDateFilter()">
-  <div class="memo-sheet">
-    <div class="sh"></div>
-    <div class="modal-title">📅 期間を指定</div>
-    <div class="modal-sub" style="color:var(--silver);font-size:11px;margin-bottom:14px">trip.date で乗車記録を絞り込みます</div>
-    <div class="fg">
-      <div class="fl">開始日 (yyyy-mm-dd)</div>
-      <input type="date" id="dfilter-from" class="pin" />
-    </div>
-    <div class="fg">
-      <div class="fl">終了日 (yyyy-mm-dd)</div>
-      <input type="date" id="dfilter-to" class="pin" />
-    </div>
-    <button class="btn-gen" onclick="applyCustomDateFilter()">この期間で絞り込む</button>
-    <button class="btn-cls" onclick="closeCustomDateFilter()">閉じる</button>
-  </div>
-</div>
 
 <!-- 復元モーダル -->
 <div class="memo-modal" id="restore-modal" onclick="if(event.target===this)closeRestoreModal()">
@@ -1310,16 +1339,29 @@ function setDateFilter(mode, opts = {}) {
   applyDateFilter();
 }
 
-function openCustomDateFilter() {
+function toggleCustomDateFilter() {
+  const pop = document.getElementById('dfilter-pop');
+  if (!pop) return;
+  if (pop.classList.contains('open')) { closeCustomDateFilter(); return; }
   const f = window._tripDateFilter || {};
   const fromEl = document.getElementById('dfilter-from');
   const toEl = document.getElementById('dfilter-to');
-  if (fromEl) fromEl.value = (f.mode === 'custom' && f.from) ? f.from : '';
-  if (toEl)   toEl.value   = (f.mode === 'custom' && f.to)   ? f.to   : '';
-  document.getElementById('dfilter-custom-modal')?.classList.add('open');
+  const today = new Date();
+  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  if (fromEl) fromEl.value = (f.mode === 'custom' && f.from) ? f.from : `${today.getFullYear()}-01-01`;
+  if (toEl)   toEl.value   = (f.mode === 'custom' && f.to)   ? f.to   : ymd(today);
+  pop.classList.add('open');
+  setTimeout(() => document.addEventListener('mousedown', _dfilterOutsideClick), 0);
+}
+function _dfilterOutsideClick(e) {
+  const wrap = document.getElementById('date-filter-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    closeCustomDateFilter();
+  }
 }
 function closeCustomDateFilter() {
-  document.getElementById('dfilter-custom-modal')?.classList.remove('open');
+  document.getElementById('dfilter-pop')?.classList.remove('open');
+  document.removeEventListener('mousedown', _dfilterOutsideClick);
 }
 function applyCustomDateFilter() {
   const from = document.getElementById('dfilter-from')?.value || '';
