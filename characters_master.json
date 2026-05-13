@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "comment": "駅キャラクター管理マスター。SVG ファイルは characters/ 配下。1駅に複数キャラ紐付け可能。期間限定・季節キャラなども含む。",
+  "characters": [
+    {
+      "id": "kuwaten",
+      "name": "クワテン",
+      "subtitle": "八王子市",
+      "description": "桑×天狗。八王子の養蚕業と高尾山天狗の融合。繭の形の鼻と桑の葉の帽子、頭襟（ときん）が特徴。",
+      "station_ids": ["八王子"],
+      "svg_path": "characters/kuwaten.svg",
+      "rarity": "common",
+      "default_unlocked": true,
+      "unlock_condition": null,
+      "colorable": false,
+      "default_color": null
+    }
+  ]
+}

@@ -532,6 +532,50 @@ async function loadRunningServices() {
 let MERGED_STATIONS = [];
 // 営業系統 id → mergedStation 索引 (描画・lookup用)
 let slMergedStationMap = new Map();
+
+// ══════════════════════════════════════════════
+// 駅キャラクター (Phase 2.5)
+// characters_master.json + characters/*.svg
+// ══════════════════════════════════════════════
+const CHARACTERS = {};            // id → {meta, innerSvg}
+const stationCharMap = new Map(); // station name → [character objects]
+
+async function loadCharacters() {
+  try {
+    const res = await fetch('characters_master.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const master = await res.json();
+    const chars = master.characters || [];
+    await Promise.all(chars.map(async (c) => {
+      try {
+        const svgRes = await fetch(c.svg_path);
+        if (!svgRes.ok) throw new Error(`HTTP ${svgRes.status}`);
+        const txt = await svgRes.text();
+        // <svg>...</svg> の中身だけ抽出 (描画時に外側 svg を再構築)
+        const m = txt.match(/<svg[^>]*>([\s\S]*?)<\/svg>/i);
+        const inner = m ? m[1] : '';
+        CHARACTERS[c.id] = { meta: c, innerSvg: inner };
+        for (const sid of (c.station_ids || [])) {
+          if (!stationCharMap.has(sid)) stationCharMap.set(sid, []);
+          stationCharMap.get(sid).push(CHARACTERS[c.id]);
+        }
+      } catch(e) {
+        console.warn(`[キャラ] ${c.id} 読込失敗:`, e.message);
+      }
+    }));
+    console.log(`[乗レコ] キャラクター ${Object.keys(CHARACTERS).length}/${chars.length}体 読込`);
+  } catch(e) {
+    console.warn('[乗レコ] characters_master.json 読込失敗:', e.message);
+  }
+}
+
+// 駅の代表キャラを取得 (将来はユーザー選択を localStorage から復元)
+function getStationCharacter(stationName) {
+  const list = stationCharMap.get(stationName);
+  if (!list || !list.length) return null;
+  // TODO: ユーザー選択を localStorage から優先取得
+  return list[0]; // 暫定: リスト先頭
+}
 async function loadMergedStations() {
   try {
     const res = await fetch('merged_stations.json');
@@ -1568,7 +1612,7 @@ function initMap(){
   // 初期表示: P1（新幹線）+ P2（JR在来）+ P3（大手私鉄）
   (async () => {
     console.log('[乗レコ] 初期ロード開始');
-    await Promise.all([loadRunningServices(), loadMergedStations()]);
+    await Promise.all([loadRunningServices(), loadMergedStations(), loadCharacters()]);
     await loadLines(1);
     await loadLines(2);
     await loadLines(3);
@@ -2265,11 +2309,15 @@ function getStationLevel(visits) {
   return 1;
 }
 
-function makePieIcon(lineColors, sizePx, ridden, level = 0) {
+function makePieIcon(lineColors, sizePx, ridden, level = 0, character = null) {
   const n = lineColors.length;
   const r = sizePx / 2;
+  // キャラ用追加マージン (Lv0でもキャラがあればバッジ枠を確保)
+  const charBadge = character != null;
   // 高レベル: 外側マージンでハロー/外輪 + 右上にバッジ
-  const halo = level >= 4 ? 12 : (level >= 3 ? 7 : 0);
+  const haloLevel = level >= 4 ? 12 : (level >= 3 ? 7 : 0);
+  const haloChar = charBadge ? Math.max(haloLevel, 8) : haloLevel; // キャラ枠も確保
+  const halo = haloChar;
   const outer = sizePx + halo * 2;
   const cx = halo + r;
   const cy = halo + r;
@@ -2314,10 +2362,24 @@ function makePieIcon(lineColors, sizePx, ridden, level = 0) {
     ringWidth = ridden ? 1.4 : 1.0;
   }
 
-  // === 右上★バッジ (Lv3+) — 将来「ゆるキャラ」差し替え予定 ===
+  // === 右上バッジ ===
+  // キャラがあれば優先描画、なければ Lv3+ で★、Lv0-2 はバッジなし
   let svgBadge = '';
-  if (level >= 4) {
-    // Lv4: 大バッジ (白枠付き金丸 + 白★)
+  if (character && character.innerSvg) {
+    // キャラバッジ: レベルに応じてサイズ拡大
+    const charSize = level >= 4 ? 24 : level >= 3 ? 22 : level >= 2 ? 20 : level >= 1 ? 18 : 16;
+    const bx = cx + r * 0.85 - charSize / 2;
+    const by = cy - r * 0.85 - charSize / 2;
+    // 背景の白丸 (キャラを認識しやすく)
+    const bgR = charSize * 0.55;
+    const bgCx = bx + charSize / 2;
+    const bgCy = by + charSize / 2;
+    svgBadge = `
+      <circle cx="${bgCx}" cy="${bgCy}" r="${bgR}" fill="rgba(255,255,255,0.92)" stroke="${level >= 3 ? '#f2a900' : 'rgba(255,255,255,0.9)'}" stroke-width="${level >= 3 ? 1.6 : 1.0}"/>
+      <svg x="${bx}" y="${by}" width="${charSize}" height="${charSize}" viewBox="0 0 64 64">${character.innerSvg}</svg>
+    `;
+  } else if (level >= 4) {
+    // Lv4 (キャラなし): 大★バッジ
     const br = Math.max(6, sizePx * 0.26);
     const bx = cx + r * 0.78;
     const by = cy - r * 0.78;
@@ -2326,7 +2388,7 @@ function makePieIcon(lineColors, sizePx, ridden, level = 0) {
       <text x="${bx}" y="${by + br * 0.38}" text-anchor="middle" font-size="${br * 1.5}" fill="#fff" font-family="Arial Black, sans-serif" font-weight="900">★</text>
     `;
   } else if (level >= 3) {
-    // Lv3: 小バッジ (金丸 + 白★)
+    // Lv3 (キャラなし): 小★バッジ
     const br = Math.max(5, sizePx * 0.22);
     const bx = cx + r * 0.8;
     const by = cy - r * 0.8;
@@ -2493,6 +2555,9 @@ function drawStationsLayer() {
     const visits = slVisitCount[ms.name] || 0;
     const level = getStationLevel(visits);
 
+    // 駅キャラ (訪問1回以上の駅にのみ表示)
+    const character = (visits > 0) ? getStationCharacter(ms.name) : null;
+
     // 色 (営業系統色を優先)
     const colors = ms.colors && ms.colors.length === nLines ? ms.colors : ms.lines.map(lid => {
       const sl = SERVICE_LINES.find(x => x.id === lid);
@@ -2500,26 +2565,25 @@ function drawStationsLayer() {
     });
 
     // ドット: パイ (n>1) または レベル付き単色 (n=1)
-    // 単色×Lv0/1 は circleMarker (canvas・軽量)、Lv2+ は makePieIcon (divIcon・装飾あり)
+    // 単色×Lv0/1 は circleMarker (canvas・軽量)、Lv2+ もしくはキャラ付きは divIcon
     let dot;
     if (nLines > 1) {
       // 多系統駅: 常にパイマーカー
       const baseSize = ridden ? 14 : 11;
-      // Lv が上がるとサイズも段階的に大きく
       const levelBonus = level >= 4 ? 4 : level >= 3 ? 2 : level >= 2 ? 1 : 0;
       const size = Math.round((baseSize + levelBonus) * mScale);
       dot = L.marker([ms.lat, ms.lon], {
-        icon: makePieIcon(colors, size, ridden, level),
+        icon: makePieIcon(colors, size, ridden, level, character),
         opacity: ridden ? 1.0 : 0.7,
         interactive: true
       });
-    } else if (level >= 2) {
-      // 単系統駅 × Lv2+: 装飾付き divIcon
+    } else if (level >= 2 || character) {
+      // 単系統駅 × (Lv2+ または キャラ付き): 装飾付き divIcon
       const baseSize = ridden ? 12 : 9;
-      const levelBonus = level >= 4 ? 4 : level >= 3 ? 2 : 1;
+      const levelBonus = level >= 4 ? 4 : level >= 3 ? 2 : level >= 2 ? 1 : 0;
       const size = Math.round((baseSize + levelBonus) * mScale);
       dot = L.marker([ms.lat, ms.lon], {
-        icon: makePieIcon(colors, size, ridden, level),
+        icon: makePieIcon(colors, size, ridden, level, character),
         opacity: ridden ? 1.0 : 0.7,
         interactive: true
       });
@@ -2555,7 +2619,12 @@ function drawStationsLayer() {
     const visitsTag = visits > 0
       ? `<span style="color:rgba(242,169,0,.95);font-size:10px;margin-left:6px;font-family:'DM Mono',monospace">${levelStars} ${visits}回訪問</span>`
       : '';
-    dot.bindTooltip(`<b>${ms.name}</b>${riddenTag}${visitsTag}${linesText}`, {className:'norireco-tooltip', offset:[8,0]});
+    // 駅キャラ情報
+    const charTag = character
+      ? `<br><span style="color:rgba(255,200,100,.95);font-size:11px;font-weight:700">🎭 ${character.meta.name}</span>` +
+        (character.meta.subtitle ? `<span style="color:rgba(140,160,179,.7);font-size:9px;margin-left:6px">${character.meta.subtitle}</span>` : '')
+      : '';
+    dot.bindTooltip(`<b>${ms.name}</b>${riddenTag}${visitsTag}${charTag}${linesText}`, {className:'norireco-tooltip', offset:[8,0]});
 
     dot._station_tier = tier;
     dot._station_isMetro = isMetro;

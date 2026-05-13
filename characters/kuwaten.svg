@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>八王子市：クワテン (Kuwaten)</title>
+  <g id="kuwaten">
+    <!-- 羽 -->
+    <path d="M18.5 45.5c-4-4-4-10 0-14l6.5-6.5h14l6.5 6.5c4 4 4 10 0 14z" fill="#E0E0E0"/>
+    <!-- 体と顔のベース -->
+    <circle cx="32" cy="38" r="18" fill="#F44336"/>
+    <!-- 顔の模様（天狗の面影） -->
+    <path d="M17.5 30.5c0-8 6.5-14.5 14.5-14.5s14.5 6.5 14.5 14.5c0 4-1.5 7.5-4 10h-21c-2.5-2.5-4-6-4-10z" fill="#FFF9C4"/>
+    <!-- 目 -->
+    <circle cx="26" cy="32" r="2" fill="#212121"/>
+    <circle cx="38" cy="32" r="2" fill="#212121"/>
+    <!-- 繭の形の鼻 -->
+    <rect x="30.5" y="34" width="3" height="6" rx="1.5" fill="#B71C1C"/>
+    <!-- 桑の葉の帽子 -->
+    <path d="M14 20c2-6 10-8 18-8s16 2 18 8-8 10-18 10-16-4-18-10z" fill="#4CAF50"/>
+    <path d="M31 12l2-6h-2z" stroke="#388E3C" stroke-width="1.5"/>
+    <!-- 頭襟（ときん） -->
+    <rect x="29" y="8" width="6" height="6" rx="1" fill="#212121"/>
+  </g>
+</svg>
