@@ -1006,6 +1006,8 @@ function resolveLineId(legacyId) {
 const riddenServiceIds = new Set();
 // Phase 2: 営業系統 id → 乗車済み駅名 Set (rebuildRiddenStations で riddenSt から導出)
 const slRiddenSt = {};
+// Phase 2.5: 駅名 → 訪問回数 (個人化UI: 育つマーカー用)
+const slVisitCount = {};
 
 // 営業系統(SERVICE_LINES)id から N02 路線セグメントへの解決
 // 新形式の trip (lineId='jr_chuo_main', 'auto_xxx' 等) に対応
@@ -1046,6 +1048,7 @@ function resolveByServiceLine(slId, fromName, toName) {
 // 乗車済みデータを再構築（路線追加後に呼ぶ）
 function rebuildRiddenStations() {
   Object.keys(riddenSt).forEach(k => delete riddenSt[k]);
+  Object.keys(slVisitCount).forEach(k => delete slVisitCount[k]);
   riddenServiceIds.clear();
   let resolvedCount = 0;
   const unresolved = [];
@@ -1071,8 +1074,12 @@ function rebuildRiddenStations() {
     for (const part of parts) {
       const { line, fi, ti } = part;
       if (!riddenSt[line.id]) riddenSt[line.id] = new Set();
-      for (let i = Math.min(fi,ti); i <= Math.max(fi,ti); i++)
-        riddenSt[line.id].add(line.stations[i].n);
+      for (let i = Math.min(fi,ti); i <= Math.max(fi,ti); i++) {
+        const stName = line.stations[i].n;
+        riddenSt[line.id].add(stName);
+        // 訪問回数カウント (個人化UI用)
+        slVisitCount[stName] = (slVisitCount[stName] || 0) + 1;
+      }
     }
   });
   // Phase 2: 営業系統別 ridden 状態を riddenSt から導出
@@ -2240,10 +2247,34 @@ function setStationVisible(m, visible) {
 }
 
 // 統合駅(複数路線)用パイチャートSVGアイコン生成
-function makePieIcon(lineColors, sizePx, ridden) {
+// 訪問回数→個人化レベル (0=未訪問, 1=1-4, 2=5-9, 3=10-49, 4=50+)
+function getStationLevel(visits) {
+  if (!visits || visits <= 0) return 0;
+  if (visits >= 50) return 4;
+  if (visits >= 10) return 3;
+  if (visits >= 5) return 2;
+  return 1;
+}
+
+function makePieIcon(lineColors, sizePx, ridden, level = 0) {
   const n = lineColors.length;
   const r = sizePx / 2;
-  const cx = r, cy = r;
+  // 高レベル時は外側マージンを追加してハロー/外輪を描画
+  const halo = level >= 4 ? 6 : (level >= 3 ? 3 : 0);
+  const outer = sizePx + halo * 2;
+  const cx = halo + r;
+  const cy = halo + r;
+
+  let svgOuter = '';
+  if (level >= 4) {
+    // 金色ふんわりハロー
+    svgOuter += `<circle cx="${cx}" cy="${cy}" r="${r + 5}" fill="rgba(242,169,0,0.18)" stroke="rgba(242,169,0,0.55)" stroke-width="1"/>`;
+  }
+  if (level >= 3) {
+    // 金色外輪
+    svgOuter += `<circle cx="${cx}" cy="${cy}" r="${r + 1.8}" fill="none" stroke="${level >= 4 ? '#f2a900' : 'rgba(242,169,0,0.85)'}" stroke-width="${level >= 4 ? 1.7 : 1.3}"/>`;
+  }
+
   let svgInner = '';
   if (n === 1) {
     svgInner = `<circle cx="${cx}" cy="${cy}" r="${r-1}" fill="${lineColors[0]}"/>`;
@@ -2260,16 +2291,26 @@ function makePieIcon(lineColors, sizePx, ridden) {
       svgInner += `<path d="M ${cx} ${cy} L ${x1} ${y1} A ${rr} ${rr} 0 ${largeArc} 1 ${x2} ${y2} Z" fill="${lineColors[i]}"/>`;
     }
   }
-  const ringColor = ridden ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)';
-  const ringWidth = ridden ? 1.4 : 1.0;
+
+  // 内側リング: level 2+ で金色がかる
+  let ringColor, ringWidth;
+  if (level >= 2) {
+    ringColor = ridden ? 'rgba(242,169,0,0.95)' : 'rgba(242,169,0,0.65)';
+    ringWidth = 1.7;
+  } else {
+    ringColor = ridden ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)';
+    ringWidth = ridden ? 1.4 : 1.0;
+  }
+
   return L.divIcon({
     className: 'merged-pie-marker',
-    html: `<svg width="${sizePx}" height="${sizePx}" viewBox="0 0 ${sizePx} ${sizePx}" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 3px rgba(0,0,0,0.6));">
+    html: `<svg width="${outer}" height="${outer}" viewBox="0 0 ${outer} ${outer}" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 3px rgba(0,0,0,0.6));">
+      ${svgOuter}
       ${svgInner}
       <circle cx="${cx}" cy="${cy}" r="${r-0.5}" fill="none" stroke="${ringColor}" stroke-width="${ringWidth}"/>
     </svg>`,
-    iconSize: [sizePx, sizePx],
-    iconAnchor: [r, r],
+    iconSize: [outer, outer],
+    iconAnchor: [cx, cy],
   });
 }
 
@@ -2412,22 +2453,42 @@ function drawStationsLayer() {
       if (rs && rs.has(ms.name)) { ridden = true; break; }
     }
 
+    // 訪問回数 → 個人化レベル (1-4回:Lv1, 5-9:Lv2, 10-49:Lv3, 50+:Lv4)
+    const visits = slVisitCount[ms.name] || 0;
+    const level = getStationLevel(visits);
+
     // 色 (営業系統色を優先)
     const colors = ms.colors && ms.colors.length === nLines ? ms.colors : ms.lines.map(lid => {
       const sl = SERVICE_LINES.find(x => x.id === lid);
       return sl ? sl.color : '#888';
     });
 
-    // ドット (パイ or 単色)
+    // ドット: パイ (n>1) または レベル付き単色 (n=1)
+    // 単色×Lv0/1 は circleMarker (canvas・軽量)、Lv2+ は makePieIcon (divIcon・装飾あり)
     let dot;
     if (nLines > 1) {
-      const size = Math.round((ridden ? 14 : 11) * mScale);
+      // 多系統駅: 常にパイマーカー
+      const baseSize = ridden ? 14 : 11;
+      // Lv が上がるとサイズもわずかに大きく
+      const levelBonus = level >= 4 ? 3 : level >= 3 ? 2 : level >= 2 ? 1 : 0;
+      const size = Math.round((baseSize + levelBonus) * mScale);
       dot = L.marker([ms.lat, ms.lon], {
-        icon: makePieIcon(colors, size, ridden),
+        icon: makePieIcon(colors, size, ridden, level),
+        opacity: ridden ? 1.0 : 0.7,
+        interactive: true
+      });
+    } else if (level >= 2) {
+      // 単系統駅 × Lv2+: 装飾付き divIcon
+      const baseSize = ridden ? 12 : 9;
+      const levelBonus = level >= 4 ? 3 : level >= 3 ? 2 : 1;
+      const size = Math.round((baseSize + levelBonus) * mScale);
+      dot = L.marker([ms.lat, ms.lon], {
+        icon: makePieIcon(colors, size, ridden, level),
         opacity: ridden ? 1.0 : 0.7,
         interactive: true
       });
     } else {
+      // 単系統駅 × Lv0/1: 軽量 circleMarker
       const c = colors[0] || '#888';
       const radius = (ridden ? 6 : 4) * mScale;
       dot = L.circleMarker([ms.lat, ms.lon], {
@@ -2453,7 +2514,12 @@ function drawStationsLayer() {
       ? `<br><span style="color:rgba(242,169,0,.85);font-size:10px">🔀 乗り入れ ${nLines}系統</span><br><span style="font-size:10px;color:rgba(255,255,255,.85);line-height:1.5">${slLinesHtml}</span>`
       : `<br><span style="font-size:10px;color:rgba(140,160,179,.85)">${slLinesHtml}</span>`;
     const riddenTag = ridden ? '<span style="color:#5fd17a;font-size:10px;margin-left:6px">✓ 乗車</span>' : '';
-    dot.bindTooltip(`<b>${ms.name}</b>${riddenTag}${linesText}`, {className:'norireco-tooltip', offset:[8,0]});
+    // 訪問回数バッジ
+    const levelStars = level >= 4 ? '⭐⭐⭐' : level >= 3 ? '⭐⭐' : level >= 2 ? '⭐' : '';
+    const visitsTag = visits > 0
+      ? `<span style="color:rgba(242,169,0,.95);font-size:10px;margin-left:6px;font-family:'DM Mono',monospace">${levelStars} ${visits}回訪問</span>`
+      : '';
+    dot.bindTooltip(`<b>${ms.name}</b>${riddenTag}${visitsTag}${linesText}`, {className:'norireco-tooltip', offset:[8,0]});
 
     dot._station_tier = tier;
     dot._station_isMetro = isMetro;
