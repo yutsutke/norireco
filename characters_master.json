@@ -29,6 +29,22 @@
       "default_color": null
     },
     {
+      "id": "yomatsuri-mayu",
+      "name": "ヨマツリマユ",
+      "subtitle": "八王子市・夜祭繭 (期間限定)",
+      "description": "ヨウマユが祭礼の夜にまとう姿。御札に封じられた繭から漏れる桃色の光と、金灯・提灯に守られた神事の繭。八王子の絹織物まつり期間中のみ獲得可能。",
+      "station_ids": ["八王子"],
+      "svg_path": "characters/yomatsuri-mayu.svg",
+      "rarity": "limited",
+      "default_unlocked": false,
+      "unlock_condition": "visit_during_event",
+      "available_from": "2026-05-10",
+      "available_until": "2026-08-15",
+      "obtainable_at": ["八王子"],
+      "colorable": false,
+      "default_color": null
+    },
+    {
       "id": "r-plane",
       "name": "アール・プレーン 2.0",
       "subtitle": "立川市",

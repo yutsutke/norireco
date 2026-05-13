@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <title>八王子市・夜祭繭「ヨマツリマユ」(期間限定)</title>
+  <!-- 祭壇のフレーム (絵馬/御札のような) -->
+  <path d="M12 12h40v4H12zM14 16h36v32H14z" fill="#1a1a2e"/>
+  <path d="M10 14l6-6h32l6 6M16 48l-4 6h40l-4-6" stroke="#4b0082" stroke-width="1.5"/>
+
+  <!-- 繭の光芒 (外殻) -->
+  <path d="M32 18c-8 0-13 7-13 15s5 15 13 15 13-7 13-15-5-15-13-15z" fill="#ff00ff" fill-opacity="0.2"/>
+  <!-- 繭本体 -->
+  <path d="M32 22c-5 0-9 5-9 11s4 11 9 11 9-5 9-11-4-11-9-11z" fill="#ff69b4"/>
+
+  <!-- 繭の表情 -->
+  <path d="M28 32c2-1 6-1 8 0" stroke="#ffffff" stroke-width="0.8" stroke-linecap="round"/>
+
+  <!-- 御札の十字紋 -->
+  <path d="M25 25l14 16M39 25L25 41" stroke="#ffffff" stroke-width="0.3" stroke-opacity="0.5"/>
+
+  <!-- 上部の金灯 -->
+  <circle cx="18" cy="20" r="2" fill="#ffd700"/>
+  <circle cx="46" cy="20" r="2" fill="#ffd700"/>
+
+  <!-- 下部の提灯 -->
+  <circle cx="20" cy="54" r="3" fill="#2d0a31" stroke="#ffd700" stroke-width="1"/>
+  <circle cx="44" cy="54" r="3" fill="#2d0a31" stroke="#ffd700" stroke-width="1"/>
+</svg>
