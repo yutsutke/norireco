@@ -2779,6 +2779,7 @@ function attachStationDotClickV2(dot, ms) {
     } else {
       // 通常モード: キャラ駅ならキャラ詳細モーダル
       const character = getStationCharacter(ms.name);
+      console.log('[駅クリック]', ms.name, 'recordMode:', recordMode, 'memoMode:', memoMode, 'character:', character ? character.meta.name : null);
       if (character) {
         openCharModal(ms, character);
         L.DomEvent.stopPropagation(e);
@@ -2789,8 +2790,11 @@ function attachStationDotClickV2(dot, ms) {
 
 // キャラ詳細モーダル
 function openCharModal(ms, character) {
+  console.log('[openCharModal]', ms.name, character.meta.name);
+  const modal = document.getElementById('char-modal');
   const body = document.getElementById('char-modal-body');
-  if (!body) return;
+  console.log('[openCharModal] modal element:', modal, 'body element:', body);
+  if (!body || !modal) { console.warn('[openCharModal] モーダル要素が見つからない'); return; }
   const visits = slVisitCount[ms.name] || 0;
   const level = getStationLevel(visits);
   const levelStars = level >= 4 ? '⭐⭐⭐' : level >= 3 ? '⭐⭐' : level >= 2 ? '⭐' : level >= 1 ? '✓' : '';
@@ -2826,7 +2830,8 @@ function openCharModal(ms, character) {
     ${character.meta.description ? `<div class="char-modal-desc">${character.meta.description}</div>` : ''}
     ${slRows ? `<div class="char-modal-lines">乗り入れ系統 (${(ms.lines || []).length})</div>${slRows}` : ''}
   `;
-  document.getElementById('char-modal')?.classList.add('open');
+  modal.classList.add('open');
+  console.log('[openCharModal] open class added, modal classList:', modal.className);
 }
 function closeCharModal() {
   document.getElementById('char-modal')?.classList.remove('open');
