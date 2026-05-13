@@ -181,6 +181,50 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 .svc-lines-fab.on{background:rgba(140,200,255,.22);border-color:#8cc8ff;color:#8cc8ff;}
 .svc-lines-fab:hover{transform:scale(1.08);}
 
+/* App version badge (デプロイ状態インジケータ) */
+.app-ver-badge{
+  display:inline-block;margin-left:8px;
+  font-size:9px;font-family:'DM Mono',monospace;
+  padding:2px 7px;border-radius:9px;letter-spacing:.5px;
+  background:rgba(140,160,179,.15);color:var(--silver);
+  border:1px solid var(--track);
+  cursor:pointer;vertical-align:middle;user-select:none;
+  transition:all .2s;
+}
+.app-ver-badge:hover{transform:scale(1.05);}
+.app-ver-badge.ok{background:rgba(80,200,120,.16);color:#5fd17a;border-color:rgba(80,200,120,.4);}
+.app-ver-badge.stale{background:rgba(242,169,0,.18);color:var(--gold);border-color:rgba(242,169,0,.5);animation:verpulse 1.6s ease-in-out infinite;}
+.app-ver-badge.unknown{background:rgba(140,160,179,.1);color:var(--silver);}
+.app-ver-badge.checking{background:rgba(140,160,179,.1);color:var(--silver);}
+@keyframes verpulse{0%,100%{opacity:1}50%{opacity:.55}}
+@media (max-width:768px){
+  .app-ver-badge{font-size:8px;padding:1px 5px;margin-left:5px;}
+}
+
+/* Date filter pill (期間フィルタ) */
+.date-filter-box{
+  position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:1000;
+  display:flex;align-items:center;gap:2px;
+  background:rgba(13,27,42,.92);border:1px solid var(--track);border-radius:14px;
+  padding:3px 6px;backdrop-filter:blur(8px);
+  font-family:'Zen Kaku Gothic New',sans-serif;
+  box-shadow:0 2px 8px rgba(0,0,0,.4);
+  max-width:calc(100vw - 16px);
+}
+.dfilter-icon{font-size:11px;margin:0 3px 0 2px;color:var(--silver);}
+.dfilter-chip{
+  border:none;background:transparent;color:var(--silver);
+  padding:4px 9px;font-size:11px;cursor:pointer;border-radius:10px;
+  font-family:inherit;white-space:nowrap;
+}
+.dfilter-chip:hover{background:rgba(140,160,179,.15);color:var(--white);}
+.dfilter-chip.active{background:var(--gold);color:var(--navy);font-weight:700;}
+@media (max-width: 768px){
+  .date-filter-box{padding:3px 5px;gap:1px;}
+  .dfilter-chip{padding:3px 7px;font-size:10px;}
+  .dfilter-icon{display:none;}
+}
+
 /* Leaflet tooltip style */
 .merged-pie-marker {
   background: transparent !important;
@@ -267,7 +311,7 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 </head>
 <body>
 <div class="header">
-  <div class="logo">乗<em>レコ</em><small>NORITSUBU MAP</small></div>
+  <div class="logo">乗<em>レコ</em><small>NORITSUBU MAP</small><span class="app-ver-badge checking" id="app-ver-badge" onclick="checkAppVersion(true)" title="バージョン確認中">⏳ …</span></div>
   <div class="header-stats">
     <div class="hstat"><div class="hstat-val" id="h-pct">0%</div><div class="hstat-lbl">達成率</div></div>
     <div class="hstat"><div class="hstat-val" id="h-ln">0</div><div class="hstat-lbl">路線</div></div>
@@ -283,6 +327,13 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
     <!-- Leaflet map -->
     <div id="leaflet-map"></div>
     <!-- Overlays -->
+    <div class="date-filter-box" id="date-filter-box">
+      <span class="dfilter-icon">📅</span>
+      <button class="dfilter-chip active" data-mode="all"      onclick="setDateFilter('all')">全期間</button>
+      <button class="dfilter-chip"        data-mode="thisYear" onclick="setDateFilter('thisYear')">今年</button>
+      <button class="dfilter-chip"        data-mode="lastYear" onclick="setDateFilter('lastYear')">去年</button>
+      <button class="dfilter-chip"        data-mode="custom"   onclick="openCustomDateFilter()"><span id="dfilter-custom-label">カスタム</span></button>
+    </div>
     <div class="map-stats-box">
       <div class="ms-row"><span class="ms-lbl">全体</span><span class="ms-val" id="ms-pct">0%</span></div>
       <div class="ms-row"><span class="ms-lbl">乗車路線</span><span class="ms-val" id="ms-ln">0路線</span></div>
@@ -316,6 +367,25 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
     </div>
 
   </div>
+
+<!-- 期間フィルタ：カスタム指定モーダル -->
+<div class="memo-modal" id="dfilter-custom-modal" onclick="if(event.target===this)closeCustomDateFilter()">
+  <div class="memo-sheet">
+    <div class="sh"></div>
+    <div class="modal-title">📅 期間を指定</div>
+    <div class="modal-sub" style="color:var(--silver);font-size:11px;margin-bottom:14px">trip.date で乗車記録を絞り込みます</div>
+    <div class="fg">
+      <div class="fl">開始日 (yyyy-mm-dd)</div>
+      <input type="date" id="dfilter-from" class="pin" />
+    </div>
+    <div class="fg">
+      <div class="fl">終了日 (yyyy-mm-dd)</div>
+      <input type="date" id="dfilter-to" class="pin" />
+    </div>
+    <button class="btn-gen" onclick="applyCustomDateFilter()">この期間で絞り込む</button>
+    <button class="btn-cls" onclick="closeCustomDateFilter()">閉じる</button>
+  </div>
+</div>
 
 <!-- 復元モーダル -->
 <div class="memo-modal" id="restore-modal" onclick="if(event.target===this)closeRestoreModal()">
@@ -1155,6 +1225,111 @@ function tripsToSegs(trips) {
   return segs;
 }
 
+// ══════════════════════════════════════════════
+// 期間フィルタ (trip.date)
+// ══════════════════════════════════════════════
+const TRIP_DATE_FILTER_KEY = 'norireco_date_filter';
+
+function loadDateFilter() {
+  try {
+    const s = localStorage.getItem(TRIP_DATE_FILTER_KEY);
+    if (s) {
+      const f = JSON.parse(s);
+      if (f && typeof f.mode === 'string') return f;
+    }
+  } catch(e) {}
+  return { mode: 'all' };
+}
+function saveDateFilter(f) {
+  try { localStorage.setItem(TRIP_DATE_FILTER_KEY, JSON.stringify(f)); } catch(e) {}
+}
+window._tripDateFilter = loadDateFilter();
+
+function filterTripsByDate(trips) {
+  const f = window._tripDateFilter || { mode: 'all' };
+  if (!f || f.mode === 'all') return trips;
+  const y = new Date().getFullYear();
+  let fromStr, toStr;
+  if (f.mode === 'thisYear') { fromStr = `${y}-01-01`; toStr = `${y}-12-31`; }
+  else if (f.mode === 'lastYear') { fromStr = `${y-1}-01-01`; toStr = `${y-1}-12-31`; }
+  else if (f.mode === 'custom') { fromStr = f.from || '0000-01-01'; toStr = f.to || '9999-12-31'; }
+  else return trips;
+  return trips.filter(t => {
+    const d = (t.date || '').slice(0, 10);
+    return d && d >= fromStr && d <= toStr;
+  });
+}
+
+function updateDateFilterUI() {
+  const f = window._tripDateFilter || { mode: 'all' };
+  document.querySelectorAll('.dfilter-chip').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === f.mode);
+  });
+  const label = document.getElementById('dfilter-custom-label');
+  if (label) {
+    if (f.mode === 'custom' && (f.from || f.to)) {
+      const fr = (f.from || '…').slice(5);
+      const to = (f.to || '…').slice(5);
+      label.textContent = `${fr}〜${to}`;
+    } else {
+      label.textContent = 'カスタム';
+    }
+  }
+}
+
+function applyDateFilter() {
+  let trips = [];
+  try { trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]'); } catch(e) {}
+  // localStorage が空なら静的フォールバック(全期間扱いのみ)
+  let segs;
+  if (trips.length === 0) {
+    segs = [...RIDDEN_SEGS_STATIC];
+  } else {
+    const filtered = filterTripsByDate(trips);
+    segs = tripsToSegs(filtered);
+    console.log(`[乗レコ] 期間フィルタ ${window._tripDateFilter.mode}: ${trips.length}件 → ${filtered.length}件 (${segs.length}区間)`);
+  }
+  RIDDEN_SEGS.length = 0;
+  segs.forEach(s => RIDDEN_SEGS.push(s));
+  rebuildRiddenStations();
+  // 地図再描画
+  if (typeof map !== 'undefined' && map && typeof dotLayerRef !== 'undefined' && dotLayerRef) {
+    allLayers.forEach(l => { try { map.removeLayer(l); } catch(e){} });
+    allLayers.length = 0;
+    dotLayerRef.clearLayers();
+    if (typeof labelLayerRef !== 'undefined' && labelLayerRef) labelLayerRef.clearLayers();
+    if (typeof drawLines === 'function') drawLines();
+    if (typeof updateOverlays === 'function') updateOverlays();
+  }
+}
+
+function setDateFilter(mode, opts = {}) {
+  window._tripDateFilter = Object.assign({ mode }, opts);
+  saveDateFilter(window._tripDateFilter);
+  updateDateFilterUI();
+  applyDateFilter();
+}
+
+function openCustomDateFilter() {
+  const f = window._tripDateFilter || {};
+  const fromEl = document.getElementById('dfilter-from');
+  const toEl = document.getElementById('dfilter-to');
+  if (fromEl) fromEl.value = (f.mode === 'custom' && f.from) ? f.from : '';
+  if (toEl)   toEl.value   = (f.mode === 'custom' && f.to)   ? f.to   : '';
+  document.getElementById('dfilter-custom-modal')?.classList.add('open');
+}
+function closeCustomDateFilter() {
+  document.getElementById('dfilter-custom-modal')?.classList.remove('open');
+}
+function applyCustomDateFilter() {
+  const from = document.getElementById('dfilter-from')?.value || '';
+  const to = document.getElementById('dfilter-to')?.value || '';
+  if (!from && !to) { alert('開始日または終了日を入力してください'); return; }
+  if (from && to && from > to) { alert('開始日は終了日以前にしてください'); return; }
+  setDateFilter('custom', { from, to });
+  closeCustomDateFilter();
+}
+
 // Supabaseから全旅程を取得して地図を更新
 async function syncFromSupabase() {
   try {
@@ -1169,8 +1344,9 @@ async function syncFromSupabase() {
     console.log(`[乗レコ] Supabase同期: ${trips.length}件`);
     localStorage.setItem('norireco_trips', JSON.stringify(trips));
 
-    // RIDDEN_SEGSを再構築
-    const newSegs = tripsToSegs(trips);
+    // RIDDEN_SEGSを再構築 (期間フィルタ適用)
+    const filteredTrips = filterTripsByDate(trips);
+    const newSegs = tripsToSegs(filteredTrips);
     RIDDEN_SEGS.length = 0;
     newSegs.forEach(s => RIDDEN_SEGS.push(s));
     rebuildRiddenStations();
@@ -1195,8 +1371,10 @@ function loadRiddenSegsFromStorage() {
   try {
     const trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
     if (trips.length === 0) return null;
-    const segs = tripsToSegs(trips);
-    console.log(`[乗レコ] localStorage: ${trips.length}件 → ${segs.length}区間`);
+    const filtered = filterTripsByDate(trips);
+    const segs = tripsToSegs(filtered);
+    const f = window._tripDateFilter || { mode: 'all' };
+    console.log(`[乗レコ] localStorage: ${trips.length}件 [期間=${f.mode}] → ${filtered.length}件 → ${segs.length}区間`);
     return segs;
   } catch(e) {
     return null;
@@ -2654,9 +2832,88 @@ async function renderStats(){
 // ══════════════════════════════════════
 // INIT
 // ══════════════════════════════════════
+// ══════════════════════════════════════════════
+// アプリ・バージョンバッジ
+// 動作中SWの CACHE_VERSION と GitHub Pages 上の最新 sw.js を比較
+// ══════════════════════════════════════════════
+async function checkAppVersion(forceReload) {
+  const badge = document.getElementById('app-ver-badge');
+  if (!badge) return;
+  const setState = (cls, text, title) => {
+    badge.className = 'app-ver-badge ' + cls;
+    badge.textContent = text;
+    badge.title = title || '';
+  };
+  if (forceReload === true) setState('checking', '⏳ 再確認', '最新版を確認中…');
+
+  // 1. 動作中SWのCACHE_VERSIONを問い合わせ
+  let runningVer = null;
+  try {
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      runningVer = await new Promise(resolve => {
+        const ch = new MessageChannel();
+        const timer = setTimeout(() => resolve(null), 2000);
+        ch.port1.onmessage = e => { clearTimeout(timer); resolve(e.data && e.data.version || null); };
+        navigator.serviceWorker.controller.postMessage({type: 'CACHE_VERSION'}, [ch.port2]);
+      });
+    }
+  } catch(e) {}
+
+  // 2. 最新の sw.js をネットワーク直接取得
+  let latestVer = null;
+  try {
+    const res = await fetch('./sw.js?cb=' + Date.now(), { cache: 'no-store' });
+    if (res.ok) {
+      const txt = await res.text();
+      const m = txt.match(/CACHE_VERSION\s*=\s*['"](v\d+)['"]/);
+      if (m) latestVer = m[1];
+    }
+  } catch(e) {}
+
+  // 3. 比較して表示
+  if (!runningVer && !latestVer) {
+    setState('unknown', '⚠️ 不明', 'バージョン取得に失敗（オフライン？）クリックで再確認');
+    badge.onclick = () => checkAppVersion(true);
+  } else if (!runningVer && latestVer) {
+    setState('checking', `${latestVer} ⚪`, `最新: ${latestVer}（SW未起動・初回ロード中）`);
+    badge.onclick = () => checkAppVersion(true);
+  } else if (runningVer && !latestVer) {
+    setState('unknown', `${runningVer} ?`, `動作中: ${runningVer} / 最新版の取得に失敗`);
+    badge.onclick = () => checkAppVersion(true);
+  } else if (runningVer === latestVer) {
+    setState('ok', `${runningVer} 🟢`, `最新版で動作中 (${runningVer})\nクリックで再確認`);
+    badge.onclick = () => checkAppVersion(true);
+  } else {
+    setState('stale', `${runningVer}→${latestVer} 🔄`, `新版あり: ${runningVer} → ${latestVer}\nクリックで更新+リロード`);
+    badge.onclick = async () => {
+      setState('checking', '🔄 更新中…', '');
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg) {
+          await reg.update();
+          if (reg.waiting) reg.waiting.postMessage({type: 'SKIP_WAITING'});
+        }
+      } catch(e) {}
+      // SW更新後でも確実に最新HTMLを取りに行く
+      setTimeout(() => location.reload(), 400);
+    };
+  }
+}
+
 window.addEventListener('load',()=>{
   initMap();
-  if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  if (typeof updateDateFilterUI === 'function') updateDateFilterUI();
+  if('serviceWorker'in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+    // 新SWがアクティベートされたらバッジ更新
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      setTimeout(checkAppVersion, 300);
+    });
+  }
+  // 初回チェック (SW登録完了を少し待つ)
+  setTimeout(checkAppVersion, 800);
+  // 5分ごとに自動再チェック
+  setInterval(checkAppVersion, 5 * 60 * 1000);
 });
 </script>
 </body>

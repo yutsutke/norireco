@@ -22,9 +22,11 @@
 - [ ] **駅 UI の個人化**
   - 訪問回数で「育つ」マーカー（1回→5回→10回→50回でアイコン変化）
   - `stop_type` (alighted/passed/boarded) による色分け
-- [ ] **時間軸フィルター**
-  - `[全期間] [今年] [去年] [カスタム]` で地図絞り込み
-  - `trip.date` を使う（データ追加不要）
+- [x] ~~**時間軸フィルター**~~ → **✅ 完了** (v66)
+  - 地図上部中央にピル `📅 [全期間][今年][去年][カスタム]` を実装
+  - `trip.date` でフィルタ、`localStorage.norireco_date_filter` に永続化
+  - `filterTripsByDate()` を `loadRiddenSegsFromStorage` / `syncFromSupabase` に挿入
+  - カスタム期間は date input 2つのモーダルで指定
 - [ ] **区間記録モード（📝）の拡張**
   - 経路プレビュー線（選択中の駅間を色付き線で予告）
   - 保存後の trip 一覧・削除 UI（記録モード内で完結）
