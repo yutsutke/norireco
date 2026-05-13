@@ -358,6 +358,21 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
   box-shadow:0 0 0 1px var(--gold) inset;
 }
 .char-modal-thumb:hover{transform:translateY(-2px);border-color:rgba(242,169,0,.6);}
+.char-modal-thumb.locked{
+  cursor:default;opacity:.7;
+  border-style:dashed;background:rgba(255,255,255,.02);
+}
+.char-modal-thumb.locked:hover{transform:none;border-color:var(--track);}
+.char-modal-thumb-period{
+  font-size:8px;color:rgba(140,160,179,.85);text-align:center;
+  margin-top:2px;line-height:1.4;font-family:'DM Mono',monospace;
+}
+.char-rarity-badge{
+  font-size:8px;padding:1px 6px;border-radius:6px;
+  margin-top:2px;letter-spacing:.5px;
+}
+.char-rarity-badge.limited{background:rgba(233,30,99,.18);color:#ff6090;border:1px solid rgba(233,30,99,.4);}
+.char-rarity-badge.rare{background:rgba(140,200,255,.18);color:#8cc8ff;border:1px solid rgba(140,200,255,.4);}
 
 /* Lv4 ハローのパルスアニメ (50+回訪問駅) */
 @keyframes lv4-halo-pulse {
@@ -688,6 +703,64 @@ function toggleCharacterMode() {
   }
 }
 
+// ══════════════════════════════════════════════
+// 段階1: キャラ獲得・期間限定システム
+// ══════════════════════════════════════════════
+const OWNED_CHARACTERS_KEY = 'norireco_owned_characters';
+function getOwnedCharacters() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(OWNED_CHARACTERS_KEY) || '[]'));
+  } catch(e) { return new Set(); }
+}
+function setOwnedCharacters(set) {
+  try {
+    localStorage.setItem(OWNED_CHARACTERS_KEY, JSON.stringify([...set]));
+  } catch(e) {}
+}
+function grantCharacter(charId) {
+  const set = getOwnedCharacters();
+  if (set.has(charId)) {
+    console.log(`[キャラ] ${charId} は既に所持済み`);
+    return false;
+  }
+  set.add(charId);
+  setOwnedCharacters(set);
+  const char = CHARACTERS[charId];
+  console.log(`[キャラ] 🎉 獲得: ${char ? char.meta.name : charId}`);
+  // 地図再描画
+  if (typeof redrawAllLinesAfterTripChange === 'function') {
+    redrawAllLinesAfterTripChange();
+  }
+  return true;
+}
+function revokeCharacter(charId) {
+  const set = getOwnedCharacters();
+  set.delete(charId);
+  setOwnedCharacters(set);
+  if (typeof redrawAllLinesAfterTripChange === 'function') {
+    redrawAllLinesAfterTripChange();
+  }
+}
+// 期間内 (available_from ≤ 今日 ≤ available_until) かチェック
+function isCharacterAvailable(charMeta) {
+  if (!charMeta) return false;
+  const today = new Date().toISOString().slice(0, 10);
+  if (charMeta.available_from && today < charMeta.available_from) return false;
+  if (charMeta.available_until && today > charMeta.available_until) return false;
+  return true;
+}
+// 所持判定 (default_unlocked or 獲得済み)
+function isCharacterOwned(charId) {
+  const char = CHARACTERS[charId];
+  if (!char) return false;
+  if (char.meta.default_unlocked) return true;
+  return getOwnedCharacters().has(charId);
+}
+// グローバル expose (テスト用にコンソールから叩ける)
+window.grantCharacter = grantCharacter;
+window.revokeCharacter = revokeCharacter;
+window.listOwnedCharacters = () => [...getOwnedCharacters()];
+
 // 駅ごとのキャラ選択 (localStorage 永続化)
 const STATION_CHAR_PICK_KEY = 'norireco_station_char_pick';
 function getStationCharacterChoice(stationName) {
@@ -704,17 +777,20 @@ function setStationCharacterChoice(stationName, charId) {
   } catch(e) {}
 }
 
-// 駅の代表キャラを取得 (ユーザー選択優先)
+// 駅の代表キャラを取得 (所持済み中からユーザー選択優先)
 function getStationCharacter(stationName) {
   if (!charModeOn) return null;
   const list = stationCharMap.get(stationName);
   if (!list || !list.length) return null;
+  // 所持済みキャラのみに絞る (default_unlocked or owned_characters)
+  const ownedList = list.filter(c => isCharacterOwned(c.meta.id));
+  if (!ownedList.length) return null;
   const choice = getStationCharacterChoice(stationName);
   if (choice) {
-    const chosen = list.find(c => c.meta.id === choice);
+    const chosen = ownedList.find(c => c.meta.id === choice);
     if (chosen) return chosen;
   }
-  return list[0]; // デフォルト: リスト先頭
+  return ownedList[0]; // デフォルト: 所持済みリスト先頭
 }
 
 // キャラ選択を変更してマップ再描画
@@ -2856,6 +2932,15 @@ function attachStationDotClickV2(dot, ms) {
   });
 }
 
+// レアリティバッジ HTML を返す
+function renderRarityBadge(meta) {
+  if (!meta) return '';
+  const r = meta.rarity || 'common';
+  if (r === 'limited') return `<div class="char-rarity-badge limited">🌸 期間限定</div>`;
+  if (r === 'rare') return `<div class="char-rarity-badge rare">⭐ レア</div>`;
+  return ''; // common は表示なし
+}
+
 // キャラ詳細モーダル
 function openCharModal(ms, character) {
   const modal = document.getElementById('char-modal');
@@ -2896,30 +2981,59 @@ function openCharModal(ms, character) {
     ${character.meta.description ? `<div class="char-modal-desc">${character.meta.description}</div>` : ''}
     ${slRows ? `<div class="char-modal-lines">乗り入れ系統 (${(ms.lines || []).length})</div>${slRows}` : ''}
     ${(() => {
-      // キャラ選択セクション (2体以上ある場合のみ)
+      // キャラ選択セクション (所持済みのみ表示)
       const allChars = stationCharMap.get(ms.name) || [];
-      if (allChars.length < 2) {
-        // 1体のみなら情報メッセージ
-        return `<div class="char-modal-section-title">🎭 この駅のキャラ</div>
-          <div class="char-modal-hint">現在 1 体のみ登録されています。複数のキャラが登録されると、ここで切り替えできるようになります。</div>`;
+      const ownedChars = allChars.filter(c => isCharacterOwned(c.meta.id));
+      const lockedChars = allChars.filter(c => !isCharacterOwned(c.meta.id));
+      let html = '';
+      if (ownedChars.length >= 2) {
+        const choiceId = getStationCharacterChoice(ms.name) || ownedChars[0].meta.id;
+        html += `
+          <div class="char-modal-section-title">🎭 キャラを切り替え (${ownedChars.length}体)</div>
+          <div class="char-modal-thumbs">
+            ${ownedChars.map(c => {
+              const rarityBadge = renderRarityBadge(c.meta);
+              return `
+                <button class="char-modal-thumb ${c.meta.id === choiceId ? 'active' : ''}"
+                        onclick="pickStationCharacter('${ms.name}', '${c.meta.id}')"
+                        title="${c.meta.name}">
+                  <svg viewBox="0 0 64 64">${c.innerSvg}</svg>
+                  <div class="char-modal-thumb-name">${c.meta.name}</div>
+                  ${rarityBadge}
+                </button>
+              `;
+            }).join('')}
+          </div>
+        `;
+      } else if (ownedChars.length === 1) {
+        html += `<div class="char-modal-section-title">🎭 この駅のキャラ</div>
+          <div class="char-modal-hint">所持キャラは 1 体です。${lockedChars.length > 0 ? `この駅では他に <b>${lockedChars.length}体</b> のキャラがあります（未獲得）。` : ''}</div>`;
       }
-      const choiceId = getStationCharacterChoice(ms.name) || allChars[0].meta.id;
-      return `
-        <div class="char-modal-section-title">🎭 キャラを切り替え (${allChars.length}体)</div>
-        <div class="char-modal-thumbs">
-          ${allChars.map(c => `
-            <button class="char-modal-thumb ${c.meta.id === choiceId ? 'active' : ''}"
-                    onclick="pickStationCharacter('${ms.name}', '${c.meta.id}')"
-                    title="${c.meta.name}">
-              <svg viewBox="0 0 64 64">${c.innerSvg}</svg>
-              <div class="char-modal-thumb-name">${c.meta.name}</div>
-            </button>
-          `).join('')}
-        </div>
-      `;
+      if (lockedChars.length > 0) {
+        html += `
+          <div class="char-modal-section-title">🔒 未獲得キャラ (${lockedChars.length}体)</div>
+          <div class="char-modal-thumbs">
+            ${lockedChars.map(c => {
+              const available = isCharacterAvailable(c.meta);
+              const periodText = (c.meta.available_from || c.meta.available_until)
+                ? `${c.meta.available_from || '〜'} 〜 ${c.meta.available_until || '〜'}`
+                : '';
+              return `
+                <div class="char-modal-thumb locked" title="${c.meta.name}">
+                  <svg viewBox="0 0 64 64" style="opacity:.35;filter:grayscale(.7)">${c.innerSvg}</svg>
+                  <div class="char-modal-thumb-name">${c.meta.name}</div>
+                  ${renderRarityBadge(c.meta)}
+                  ${periodText ? `<div class="char-modal-thumb-period">${available ? '🟢 開催中' : '⌛ 期間外'}<br>${periodText}</div>` : ''}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
+      return html;
     })()}
     <div class="char-modal-section-title">🎨 カスタマイズ <span class="char-modal-soon">近日対応</span></div>
-    <div class="char-modal-hint">服の色変更・装束違い・期間限定キャラなどに対応予定。</div>
+    <div class="char-modal-hint">服の色変更・装束違いなどに対応予定。<br>期間限定キャラはイベント期間中に該当駅を訪問すると自動獲得 (実装予定)。</div>
   `;
   modal.classList.add('open');
 }
