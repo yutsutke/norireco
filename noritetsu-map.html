@@ -414,6 +414,70 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 .char-grant-name{font-size:17px;color:var(--white);font-weight:700;margin-top:2px;}
 .char-grant-sub{font-size:10px;color:var(--silver);margin-top:1px;}
 
+/* マップ上の ✨ 獲得可能インジケータ */
+.obtainable-indicator-marker{background:transparent !important;border:none !important;}
+.obtainable-bubble{
+  position:relative;width:30px;height:30px;
+  background:radial-gradient(circle at 35% 30%, #FFD740 0%, #F2A900 70%, #B26F00 100%);
+  border:2px solid #FFFCDC;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 3px 10px rgba(0,0,0,.45), 0 0 12px rgba(255,215,64,.7);
+  animation:obtainable-pulse 1.8s ease-in-out infinite;
+  cursor:pointer;
+}
+.obtainable-spark{font-size:15px;line-height:1;}
+.obtainable-count{
+  position:absolute;top:-4px;right:-4px;
+  width:16px;height:16px;border-radius:50%;
+  background:#E91E63;color:#fff;border:1.5px solid #fff;
+  font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;
+  font-family:'DM Mono',monospace;
+}
+@keyframes obtainable-pulse{
+  0%,100%{transform:scale(1);box-shadow:0 3px 10px rgba(0,0,0,.45), 0 0 12px rgba(255,215,64,.7);}
+  50%   {transform:scale(1.12);box-shadow:0 4px 14px rgba(0,0,0,.5), 0 0 22px rgba(255,215,64,1);}
+}
+
+/* モーダル冒頭の「ここで獲得できる！」プロンプト */
+.char-modal-get-prompt{
+  background:linear-gradient(135deg, rgba(242,169,0,.22) 0%, rgba(233,30,99,.18) 100%);
+  border:2px solid var(--gold);border-radius:14px;
+  padding:10px 12px;margin-bottom:14px;
+  display:flex;align-items:center;gap:10px;
+  position:relative;overflow:hidden;
+  animation:get-prompt-pulse 2.2s ease-in-out infinite;
+}
+@keyframes get-prompt-pulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(242,169,0,0);}
+  50%   {box-shadow:0 0 0 5px rgba(242,169,0,.25);}
+}
+.char-modal-get-prompt-icon{
+  flex-shrink:0;width:52px;height:52px;
+  background:rgba(255,255,255,.92);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  filter:drop-shadow(0 2px 5px rgba(0,0,0,.4));
+}
+.char-modal-get-prompt-icon svg{width:46px;height:46px;}
+.char-modal-get-prompt-text{flex:1;min-width:0;}
+.char-modal-get-prompt-label{
+  font-size:10px;color:var(--gold);font-weight:700;letter-spacing:1px;
+}
+.char-modal-get-prompt-name{
+  font-size:14px;color:var(--white);font-weight:700;margin-top:1px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.char-modal-get-prompt-btn{
+  flex-shrink:0;
+  background:linear-gradient(135deg, #00b2e5 0%, #0288d1 100%);
+  color:#fff;border:none;border-radius:10px;
+  padding:10px 14px;font-size:12px;font-weight:700;
+  cursor:pointer;font-family:inherit;letter-spacing:.5px;
+  box-shadow:0 3px 10px rgba(2,136,209,.5);
+  transition:all .2s;white-space:nowrap;
+}
+.char-modal-get-prompt-btn:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(2,136,209,.7);}
+.char-modal-get-prompt-btn:disabled{opacity:.5;cursor:wait;transform:none;}
+
 /* Lv4 ハローのパルスアニメ (50+回訪問駅) */
 @keyframes lv4-halo-pulse {
   0%, 100% { opacity: 0.35; }
@@ -940,6 +1004,69 @@ function tryGrantByGPS(charId, ev) {
   );
 }
 window.tryGrantByGPS = tryGrantByGPS;
+
+// この駅で獲得可能なキャラ一覧 (locked + 期間内 + obtainable_at 一致)
+function getObtainableCharactersAt(stationName) {
+  if (!charModeOn) return [];
+  const result = [];
+  for (const id in CHARACTERS) {
+    const char = CHARACTERS[id];
+    if (!char.meta || char.meta.default_unlocked) continue;
+    if (isCharacterOwned(id)) continue;
+    if (!isCharacterAvailable(char.meta)) continue;
+    const obtainAt = char.meta.obtainable_at || char.meta.station_ids || [];
+    if (obtainAt.includes(stationName)) result.push(char);
+  }
+  return result;
+}
+
+// ✨ フローティングインジケータアイコン (駅マーカーの上に浮かべる)
+function makeObtainableIndicator(count) {
+  const size = 30;
+  return L.divIcon({
+    className: 'obtainable-indicator-marker',
+    html: `<div class="obtainable-bubble"><span class="obtainable-spark">✨</span>${count > 1 ? `<span class="obtainable-count">${count}</span>` : ''}</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size/2, 42],  // 駅マーカーから ~12px 上に浮かべる
+  });
+}
+
+// 全駅をスキャンして、獲得可能キャラがある駅に ✨ インジケータを配置
+function drawObtainableIndicators() {
+  if (!charModeOn) return;
+  if (!MERGED_STATIONS || !MERGED_STATIONS.length) return;
+
+  let count = 0;
+  for (const ms of MERGED_STATIONS) {
+    const chars = getObtainableCharactersAt(ms.name);
+    if (chars.length === 0) continue;
+
+    const marker = L.marker([ms.lat, ms.lon], {
+      icon: makeObtainableIndicator(chars.length),
+      interactive: true,
+      zIndexOffset: 1500,  // 駅マーカーより前に出す
+    });
+
+    const tipHtml = `<b style="color:#FFD740">✨ ここで獲得できる！</b><br>` +
+      chars.map(c => {
+        const period = c.meta.available_until ? `〜${c.meta.available_until}` : '';
+        return `<span style="color:#FFD740">●</span> ${c.meta.name} <span style="color:rgba(140,160,179,.7);font-size:9px">${period}</span>`;
+      }).join('<br>');
+    marker.bindTooltip(tipHtml, { className: 'norireco-tooltip', offset: [10, 0] });
+
+    marker.on('click', (e) => {
+      L.DomEvent.stopPropagation(e);
+      // 既存所持キャラがあればそれを優先、なければ locked preview として開く
+      const ownedChar = getStationCharacter(ms.name);
+      openCharModal(ms, ownedChar || chars[0]);
+    });
+
+    marker.addTo(map);
+    allLayers.push(marker);
+    count++;
+  }
+  if (count > 0) console.log(`[乗レコ] ✨ 獲得可能駅 ${count}駅にインジケータ配置`);
+}
 
 // 駅ごとのキャラ選択 (localStorage 永続化)
 const STATION_CHAR_PICK_KEY = 'norireco_station_char_pick';
@@ -2514,6 +2641,8 @@ function drawLines(){
   if (SERVICE_LINES && SERVICE_LINES.length > 0) {
     for (const sl of SERVICE_LINES) drawServiceLineBase(sl);
     drawStationsLayer();
+    // ✨ 獲得可能キャラがある駅にインジケータ配置
+    drawObtainableIndicators();
   }
 
   // LOD初期適用
@@ -3122,6 +3251,13 @@ function attachStationDotClickV2(dot, ms) {
       if (character) {
         openCharModal(ms, character);
         L.DomEvent.stopPropagation(e);
+      } else {
+        // 未獲得 locked キャラがあればプレビュー表示
+        const obtainable = getObtainableCharactersAt(ms.name);
+        if (obtainable.length > 0) {
+          openCharModal(ms, obtainable[0]);
+          L.DomEvent.stopPropagation(e);
+        }
       }
     }
   });
@@ -3157,7 +3293,27 @@ function openCharModal(ms, character) {
       ${ridden ? '<span class="char-modal-line-ridden">✓ 乗車</span>' : ''}
     </div>`;
   }).join('');
+  // ─ ここで獲得できるキャラを集計（モーダル冒頭の Call-to-Action 用）─
+  const obtainableHere = getObtainableCharactersAt(ms.name);
+  const getPromptHtml = obtainableHere.length > 0 ? `
+    <div class="char-modal-get-prompt">
+      <div class="char-modal-get-prompt-icon">
+        <svg viewBox="0 0 64 64">${obtainableHere[0].innerSvg}</svg>
+      </div>
+      <div class="char-modal-get-prompt-text">
+        <div class="char-modal-get-prompt-label">✨ ここで獲得できる！</div>
+        <div class="char-modal-get-prompt-name">${obtainableHere.length === 1
+          ? obtainableHere[0].meta.name
+          : `${obtainableHere[0].meta.name} ほか ${obtainableHere.length - 1}体`}</div>
+      </div>
+      <button class="char-modal-get-prompt-btn" onclick="tryGrantByGPS('${obtainableHere[0].meta.id}', event)">
+        📍 今ゲット
+      </button>
+    </div>
+  ` : '';
+
   body.innerHTML = `
+    ${getPromptHtml}
     <div class="char-modal-hero">
       <div class="char-modal-bg">
         <svg class="char-modal-svg" viewBox="0 0 64 64">${character.innerSvg}</svg>
