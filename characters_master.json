@@ -16,6 +16,19 @@
       "default_color": null
     },
     {
+      "id": "youmayu",
+      "name": "ヨウマユ",
+      "subtitle": "八王子市・夜の繭",
+      "description": "八王子の養蚕業のもう一つの側面 — 繭の中の静寂と幽玄を司る精。紫の繭から漏れ出す光と、絹糸の重なり、内に宿る視線が特徴。",
+      "station_ids": ["八王子"],
+      "svg_path": "characters/youmayu.svg",
+      "rarity": "common",
+      "default_unlocked": true,
+      "unlock_condition": null,
+      "colorable": false,
+      "default_color": null
+    },
+    {
       "id": "r-plane",
       "name": "アール・プレーン 2.0",
       "subtitle": "立川市",
