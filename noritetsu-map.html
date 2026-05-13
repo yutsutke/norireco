@@ -374,6 +374,46 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 .char-rarity-badge.limited{background:rgba(233,30,99,.18);color:#ff6090;border:1px solid rgba(233,30,99,.4);}
 .char-rarity-badge.rare{background:rgba(140,200,255,.18);color:#8cc8ff;border:1px solid rgba(140,200,255,.4);}
 
+/* Pokemon GO 風 GPS 獲得ボタン (未獲得キャラ用) */
+.char-gps-btn{
+  margin-top:6px;width:100%;
+  background:linear-gradient(135deg, #00b2e5 0%, #0288d1 100%);
+  color:#fff;border:none;border-radius:8px;
+  padding:6px 10px;font-size:10px;font-weight:700;
+  cursor:pointer;font-family:inherit;letter-spacing:.5px;
+  box-shadow:0 2px 6px rgba(2,136,209,.4);
+  transition:all .2s;
+}
+.char-gps-btn:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(2,136,209,.6);}
+.char-gps-btn:disabled{opacity:.5;cursor:wait;transform:none;}
+
+/* キャラ獲得トースト */
+.char-grant-toast{
+  position:fixed;top:80px;left:50%;
+  transform:translate(-50%, -20px);opacity:0;
+  background:linear-gradient(135deg, rgba(20,32,46,.98) 0%, rgba(40,60,80,.98) 100%);
+  border:2px solid var(--gold);border-radius:14px;
+  padding:14px 18px;
+  display:flex;align-items:center;gap:14px;
+  box-shadow:0 8px 32px rgba(0,0,0,.55), 0 0 24px rgba(242,169,0,.3);
+  z-index:9999;min-width:260px;max-width:380px;
+  font-family:'Zen Kaku Gothic New',sans-serif;
+  pointer-events:none;
+  transition:transform .4s cubic-bezier(.34,1.56,.64,1), opacity .4s ease;
+}
+.char-grant-toast.show{transform:translate(-50%, 0);opacity:1;}
+.char-grant-icon{
+  flex-shrink:0;width:60px;height:60px;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.95);border-radius:50%;
+  filter:drop-shadow(0 2px 6px rgba(0,0,0,.4));
+}
+.char-grant-icon svg{display:block;}
+.char-grant-text{flex:1;min-width:0;}
+.char-grant-label{font-size:10px;color:var(--gold);letter-spacing:1px;font-weight:700;}
+.char-grant-name{font-size:17px;color:var(--white);font-weight:700;margin-top:2px;}
+.char-grant-sub{font-size:10px;color:var(--silver);margin-top:1px;}
+
 /* Lv4 ハローのパルスアニメ (50+回訪問駅) */
 @keyframes lv4-halo-pulse {
   0%, 100% { opacity: 0.35; }
@@ -760,6 +800,146 @@ function isCharacterOwned(charId) {
 window.grantCharacter = grantCharacter;
 window.revokeCharacter = revokeCharacter;
 window.listOwnedCharacters = () => [...getOwnedCharacters()];
+
+// 認証済み trip の訪問駅から、該当キャラを自動獲得
+function checkAndGrantCharacters() {
+  if (!CHARACTERS || Object.keys(CHARACTERS).length === 0) return [];
+  let trips = [];
+  try { trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]'); } catch(e) { return []; }
+  // verified === true の trip の from/to を抽出
+  const verifiedStations = new Set();
+  for (const trip of trips) {
+    if (!trip.verified) continue;
+    for (const seg of (trip.segments || [])) {
+      if (seg.from) verifiedStations.add(seg.from);
+      if (seg.to) verifiedStations.add(seg.to);
+    }
+  }
+  if (verifiedStations.size === 0) return [];
+
+  const granted = [];
+  const owned = getOwnedCharacters();
+  for (const charId in CHARACTERS) {
+    const char = CHARACTERS[charId];
+    if (!char.meta || char.meta.default_unlocked) continue;
+    if (owned.has(charId)) continue;
+    if (!isCharacterAvailable(char.meta)) continue;
+    const obtainAt = char.meta.obtainable_at || char.meta.station_ids || [];
+    for (const stationName of obtainAt) {
+      if (verifiedStations.has(stationName)) {
+        owned.add(charId);
+        granted.push(char);
+        break;
+      }
+    }
+  }
+  if (granted.length > 0) {
+    setOwnedCharacters(owned);
+    console.log(`[乗レコ] 🎉 自動獲得: ${granted.map(c => c.meta.name).join(', ')}`);
+  }
+  return granted;
+}
+
+// キャラ獲得トースト通知
+function showCharacterGrantToast(character) {
+  const toast = document.createElement('div');
+  toast.className = 'char-grant-toast';
+  toast.innerHTML = `
+    <div class="char-grant-icon">
+      <svg viewBox="0 0 64 64" width="56" height="56">${character.innerSvg}</svg>
+    </div>
+    <div class="char-grant-text">
+      <div class="char-grant-label">🎉 新しいキャラを獲得！</div>
+      <div class="char-grant-name">${character.meta.name}</div>
+      <div class="char-grant-sub">${character.meta.subtitle || ''}</div>
+    </div>
+  `;
+  document.body.appendChild(toast);
+  // フェードイン
+  requestAnimationFrame(() => toast.classList.add('show'));
+  // 4.5秒後にフェードアウト
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 500);
+  }, 4500);
+}
+
+// 認証済み trip から自動獲得を実行 + トースト表示 (画面初期化後 or trip 保存後に呼ぶ)
+function runCharacterGrantCheck() {
+  const granted = checkAndGrantCharacters();
+  if (granted.length === 0) return;
+  // 地図再描画 (新キャラが表示されるように)
+  if (typeof redrawAllLinesAfterTripChange === 'function') redrawAllLinesAfterTripChange();
+  // 連続トースト (順次表示)
+  granted.forEach((char, idx) => {
+    setTimeout(() => showCharacterGrantToast(char), idx * 600);
+  });
+}
+
+// ── ポケモンGO 式: 現在地が駅 GPS 圏内なら 1タップでキャラ獲得 ──
+function distMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function tryGrantByGPS(charId, ev) {
+  const char = CHARACTERS[charId];
+  if (!char) return;
+  if (!navigator.geolocation) {
+    alert('このブラウザは位置情報に非対応です');
+    return;
+  }
+  const btn = ev && ev.target;
+  const origText = btn ? btn.textContent : '';
+  if (btn) { btn.textContent = '📡 取得中…'; btn.disabled = true; }
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const userLat = pos.coords.latitude;
+      const userLon = pos.coords.longitude;
+      const accuracy = pos.coords.accuracy;
+      // 半径: GPS 精度の悪い屋内などを救うため最低 300m
+      const radius = Math.max(300, accuracy + 100);
+      const obtainAt = char.meta.obtainable_at || char.meta.station_ids || [];
+      let nearestMs = null;
+      let nearestDist = Infinity;
+      for (const stationName of obtainAt) {
+        const ms = MERGED_STATIONS.find(m => m.name === stationName);
+        if (!ms) continue;
+        const d = distMeters(userLat, userLon, ms.lat, ms.lon);
+        if (d < nearestDist) { nearestDist = d; nearestMs = ms; }
+      }
+      if (!nearestMs) {
+        alert(`${char.meta.name} の対象駅座標が見つかりません`);
+        if (btn) { btn.textContent = origText; btn.disabled = false; }
+        return;
+      }
+      if (nearestDist > radius) {
+        alert(`${nearestMs.name} 駅から ${Math.round(nearestDist)}m 離れています。\n半径 ${Math.round(radius)}m 以内で再試行してください。\n(GPS 精度: ±${Math.round(accuracy)}m)`);
+        if (btn) { btn.textContent = origText; btn.disabled = false; }
+        return;
+      }
+      // 獲得！
+      grantCharacter(charId);
+      showCharacterGrantToast(char);
+      closeCharModal();
+      console.log(`[乗レコ] 🎯 GPS 獲得: ${char.meta.name} (${nearestMs.name} から ${Math.round(nearestDist)}m / 精度±${Math.round(accuracy)}m)`);
+    },
+    err => {
+      let msg = '位置情報の取得に失敗しました';
+      if (err.code === 1) msg = '位置情報のアクセスを許可してください';
+      if (err.code === 3) msg = 'タイムアウト。再試行してください';
+      alert(msg);
+      if (btn) { btn.textContent = origText; btn.disabled = false; }
+    },
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
+  );
+}
+window.tryGrantByGPS = tryGrantByGPS;
 
 // 駅ごとのキャラ選択 (localStorage 永続化)
 const STATION_CHAR_PICK_KEY = 'norireco_station_char_pick';
@@ -1590,6 +1770,8 @@ async function syncFromSupabase() {
       updateOverlays();
     }
     updateStorageUI(trips.length, 'supabase');
+    // Supabase 同期後にも自動獲得チェック
+    setTimeout(() => runCharacterGrantCheck(), 600);
   } catch(e) {
     console.error('[乗レコ] Supabase同期エラー:', e);
   }
@@ -1848,6 +2030,8 @@ function initMap(){
       rebuildRiddenStations();
       if (typeof redrawAllLinesAfterTripChange === 'function') redrawAllLinesAfterTripChange();
       updateOverlays();
+      // 認証済み trip から自動獲得チェック (初期ロード時)
+      setTimeout(() => runCharacterGrantCheck(), 1200);
     }).catch(e => console.warn('[乗レコ] SERVICE_LINES 構築失敗:', e));
   })();
 
@@ -2165,6 +2349,14 @@ async function saveMultiSegmentTrip() {
     line_list: lineList,
     total_minutes: 0, depart_time: '', arrive_time: '',
     segments: tripSegments,
+    // 認証グラデーション (Notion §記録モード設計)
+    source: 'manual',         // 地図画面の区間記録は手動
+    verified: false,          // 自己申告 ⚪ レベル
+    gps_lat: null,
+    gps_lon: null,
+    gps_accuracy: null,
+    recorded_at: new Date().toISOString(),
+    date_precision: 'day',
   };
 
   let saved = false;
@@ -2197,6 +2389,9 @@ async function saveMultiSegmentTrip() {
   updateOverlays();
 
   showRecordToast(`✅ 記録${saved?'':' (オフライン)'}: ${tripSegments.length}区間 ${totalStations}駅`);
+  // この trip は manual なのでキャラ自動獲得は trigger しない (verified=false)
+  // ただし将来 stop_type/verified 編集機能を追加した時用に呼んでおく
+  setTimeout(() => runCharacterGrantCheck(), 800);
   clearRecSelection();
 }
 
@@ -3018,16 +3213,20 @@ function openCharModal(ms, character) {
               const periodText = (c.meta.available_from || c.meta.available_until)
                 ? `${c.meta.available_from || '〜'} 〜 ${c.meta.available_until || '〜'}`
                 : '';
+              const obtainAt = c.meta.obtainable_at || c.meta.station_ids || [];
+              const showGpsBtn = available && obtainAt.length > 0;
               return `
                 <div class="char-modal-thumb locked" title="${c.meta.name}">
                   <svg viewBox="0 0 64 64" style="opacity:.35;filter:grayscale(.7)">${c.innerSvg}</svg>
                   <div class="char-modal-thumb-name">${c.meta.name}</div>
                   ${renderRarityBadge(c.meta)}
                   ${periodText ? `<div class="char-modal-thumb-period">${available ? '🟢 開催中' : '⌛ 期間外'}<br>${periodText}</div>` : ''}
+                  ${showGpsBtn ? `<button class="char-gps-btn" onclick="tryGrantByGPS('${c.meta.id}', event)">📍 今ここ！</button>` : ''}
                 </div>
               `;
             }).join('')}
           </div>
+          ${lockedChars.some(c => isCharacterAvailable(c.meta)) ? `<div class="char-modal-hint" style="margin-top:8px">💡 駅の GPS 範囲内 (半径 300m〜) で「📍 今ここ！」をタップすると獲得できます。</div>` : ''}
         `;
       }
       return html;

@@ -1730,6 +1730,8 @@ function saveToLocalStorage(segs, payload) {
   try {
     const existing = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
     const tripId = `trip_${Date.now()}`;
+    // GPS 使用判定: 直近の detectNearest で gpsPos が set されていれば「GPS で記録」と見なす
+    const usedGPS = !!(gpsPos && typeof gpsPos.lat === 'number');
     const newTrip = {
       id: tripId,
       date: payload.日付,
@@ -1746,7 +1748,15 @@ function saveToLocalStorage(segs, payload) {
         lineId: seg.lineId,
         from: seg.route[0].name,
         to: seg.route[seg.route.length-1].name,
-      }))
+      })),
+      // 認証グラデーション (Notion §記録モード設計)
+      source: usedGPS ? 'gps_button' : 'manual',
+      verified: usedGPS,                                  // GPS 使用なら 🟢 弱認証
+      gps_lat: usedGPS ? gpsPos.lat : null,
+      gps_lon: usedGPS ? gpsPos.lon : null,
+      gps_accuracy: usedGPS ? gpsPos.accuracy : null,
+      recorded_at: new Date().toISOString(),
+      date_precision: 'day',
     };
 
     // localStorageに保存
