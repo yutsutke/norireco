@@ -277,7 +277,9 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
   display: block;
   pointer-events: auto;
 }
-/* Character detail modal */
+/* Character detail modal — 確実に最前面・表示 */
+#char-modal{z-index:9999 !important;}
+#char-modal.open{display:flex !important;}
 .char-modal-hero{
   text-align:center;margin:8px auto 18px;
 }
