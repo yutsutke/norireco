@@ -27,6 +27,19 @@
       "unlock_condition": null,
       "colorable": false,
       "default_color": null
+    },
+    {
+      "id": "komiyau",
+      "name": "コミヤウ",
+      "subtitle": "八王子市小宮",
+      "description": "多摩川のアユ × 八高線列車の妖精。背びれがパンタグラフ、側面に八高線オレンジカラー、頭部に運転席窓 (目)。",
+      "station_ids": ["小宮"],
+      "svg_path": "characters/komiyau.svg",
+      "rarity": "common",
+      "default_unlocked": true,
+      "unlock_condition": null,
+      "colorable": false,
+      "default_color": null
     }
   ]
 }
