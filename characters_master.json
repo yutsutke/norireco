@@ -14,6 +14,19 @@
       "unlock_condition": null,
       "colorable": false,
       "default_color": null
+    },
+    {
+      "id": "r-plane",
+      "name": "アール・プレーン 2.0",
+      "subtitle": "立川市",
+      "description": "ファーレ立川の飛翔する彫刻群モチーフ。ドット柄の上翼と太陽のようなプロペラが特徴。",
+      "station_ids": ["立川"],
+      "svg_path": "characters/r-plane.svg",
+      "rarity": "common",
+      "default_unlocked": true,
+      "unlock_condition": null,
+      "colorable": false,
+      "default_color": null
     }
   ]
 }
