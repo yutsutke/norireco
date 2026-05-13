@@ -902,8 +902,8 @@ function tryGrantByGPS(charId, ev) {
       const userLat = pos.coords.latitude;
       const userLon = pos.coords.longitude;
       const accuracy = pos.coords.accuracy;
-      // 半径: GPS 精度の悪い屋内などを救うため最低 300m
-      const radius = Math.max(300, accuracy + 100);
+      // 半径: テスト中は 1km まで緩める (本番は max(300, accuracy+100) に戻す)
+      const radius = Math.max(1000, accuracy + 100);
       const obtainAt = char.meta.obtainable_at || char.meta.station_ids || [];
       let nearestMs = null;
       let nearestDist = Infinity;
@@ -3226,7 +3226,7 @@ function openCharModal(ms, character) {
               `;
             }).join('')}
           </div>
-          ${lockedChars.some(c => isCharacterAvailable(c.meta)) ? `<div class="char-modal-hint" style="margin-top:8px">💡 駅の GPS 範囲内 (半径 300m〜) で「📍 今ここ！」をタップすると獲得できます。</div>` : ''}
+          ${lockedChars.some(c => isCharacterAvailable(c.meta)) ? `<div class="char-modal-hint" style="margin-top:8px">💡 駅の GPS 範囲内 (半径 1km・テスト中) で「📍 今ここ！」をタップすると獲得できます。</div>` : ''}
         `;
       }
       return html;
