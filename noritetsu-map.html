@@ -2463,28 +2463,6 @@ function makePieIcon(lineColors, sizePx, ridden, level = 0, character = null) {
     ringWidth = ridden ? 1.4 : 1.0;
   }
 
-  // === 右上★バッジ (Lv3+) — キャラなし駅の達成感マーカー ===
-  let svgBadge = '';
-  if (level >= 4) {
-    // Lv4: 大★バッジ
-    const br = Math.max(6, sizePx * 0.26);
-    const bx = cx + r * 0.78;
-    const by = cy - r * 0.78;
-    svgBadge = `
-      <circle cx="${bx}" cy="${by}" r="${br}" fill="#f2a900" stroke="#fff" stroke-width="1.5"/>
-      <text x="${bx}" y="${by + br * 0.38}" text-anchor="middle" font-size="${br * 1.5}" fill="#fff" font-family="Arial Black, sans-serif" font-weight="900">★</text>
-    `;
-  } else if (level >= 3) {
-    // Lv3: 小★バッジ
-    const br = Math.max(5, sizePx * 0.22);
-    const bx = cx + r * 0.8;
-    const by = cy - r * 0.8;
-    svgBadge = `
-      <circle cx="${bx}" cy="${by}" r="${br}" fill="#f2a900" stroke="#fff" stroke-width="1.2"/>
-      <text x="${bx}" y="${by + br * 0.38}" text-anchor="middle" font-size="${br * 1.5}" fill="#fff" font-family="Arial Black, sans-serif" font-weight="900">★</text>
-    `;
-  }
-
   const cssClass = 'merged-pie-marker' + (level >= 4 ? ' lv4' : '');
   return L.divIcon({
     className: cssClass,
@@ -2492,7 +2470,6 @@ function makePieIcon(lineColors, sizePx, ridden, level = 0, character = null) {
       ${svgOuter}
       ${svgInner}
       <circle cx="${cx}" cy="${cy}" r="${r-0.5}" fill="none" stroke="${ringColor}" stroke-width="${ringWidth}"/>
-      ${svgBadge}
     </svg>`,
     iconSize: [outer, outer],
     iconAnchor: [cx, cy],
