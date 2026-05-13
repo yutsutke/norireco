@@ -19,6 +19,22 @@ header{background:var(--steel);border-bottom:3px solid var(--red);padding:12px 1
 .badge.rec{background:rgba(232,53,42,.2);color:var(--red);animation:pulse 1.5s infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 
+/* App version badge (デプロイ状態) */
+.app-ver-badge{
+  display:inline-flex;align-items:center;
+  font-size:9px;font-family:'DM Mono',monospace;
+  padding:3px 8px;border-radius:9px;letter-spacing:.5px;line-height:1;
+  background:rgba(140,160,179,.15);color:var(--silver);
+  border:1px solid var(--track);
+  cursor:pointer;user-select:none;
+  transition:all .2s;flex-shrink:0;
+}
+.app-ver-badge:hover{transform:scale(1.05);}
+.app-ver-badge.ok{background:rgba(80,200,120,.16);color:#5fd17a;border-color:rgba(80,200,120,.4);}
+.app-ver-badge.stale{background:rgba(242,169,0,.18);color:var(--gold);border-color:rgba(242,169,0,.5);animation:verpulse 1.6s ease-in-out infinite;}
+.app-ver-badge.unknown,.app-ver-badge.checking{background:rgba(140,160,179,.1);color:var(--silver);}
+@keyframes verpulse{0%,100%{opacity:1}50%{opacity:.55}}
+
 .app{max-width:480px;margin:0 auto;padding:14px 14px 120px;}
 .phase{display:none;animation:up .3s ease;}
 .phase.active{display:block;}
@@ -151,6 +167,7 @@ select:focus{outline:none;border-color:var(--red);}
 
 <header>
   <div class="logo">乗<span>レコ</span></div>
+  <span class="app-ver-badge checking" id="app-ver-badge" onclick="checkAppVersion(true)" title="バージョン確認中">⏳ …</span>
   <div class="badge" id="badge">待機中</div>
 </header>
 
@@ -1759,6 +1776,80 @@ function setNotionStatus(type, msg){
   el.style.color = colors[type] || 'var(--silver)';
   el.textContent = msg;
 }
+
+// ══════════════════════════════════════════════
+// アプリ・バージョンバッジ (デプロイ反映状態を一目で)
+// ══════════════════════════════════════════════
+async function checkAppVersion(forceReload) {
+  const badge = document.getElementById('app-ver-badge');
+  if (!badge) return;
+  const setState = (cls, text, title) => {
+    badge.className = 'app-ver-badge ' + cls;
+    badge.textContent = text;
+    badge.title = title || '';
+  };
+  if (forceReload === true) setState('checking', '⏳ 再確認', '最新版を確認中…');
+
+  let runningVer = null;
+  try {
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      runningVer = await new Promise(resolve => {
+        const ch = new MessageChannel();
+        const timer = setTimeout(() => resolve(null), 2000);
+        ch.port1.onmessage = e => { clearTimeout(timer); resolve(e.data && e.data.version || null); };
+        navigator.serviceWorker.controller.postMessage({type: 'CACHE_VERSION'}, [ch.port2]);
+      });
+    }
+  } catch(e) {}
+
+  let latestVer = null;
+  try {
+    const res = await fetch('./sw.js?cb=' + Date.now(), { cache: 'no-store' });
+    if (res.ok) {
+      const txt = await res.text();
+      const m = txt.match(/CACHE_VERSION\s*=\s*['"](v\d+)['"]/);
+      if (m) latestVer = m[1];
+    }
+  } catch(e) {}
+
+  if (!runningVer && !latestVer) {
+    setState('unknown', '⚠️ 不明', 'バージョン取得に失敗（オフライン？）クリックで再確認');
+    badge.onclick = () => checkAppVersion(true);
+  } else if (!runningVer && latestVer) {
+    setState('checking', `${latestVer} ⚪`, `最新: ${latestVer}（SW未起動・初回ロード中）`);
+    badge.onclick = () => checkAppVersion(true);
+  } else if (runningVer && !latestVer) {
+    setState('unknown', `${runningVer} ?`, `動作中: ${runningVer} / 最新版の取得に失敗`);
+    badge.onclick = () => checkAppVersion(true);
+  } else if (runningVer === latestVer) {
+    setState('ok', `${runningVer} 🟢`, `最新版で動作中 (${runningVer})\nクリックで再確認`);
+    badge.onclick = () => checkAppVersion(true);
+  } else {
+    setState('stale', `${runningVer}→${latestVer} 🔄`, `新版あり: ${runningVer} → ${latestVer}\nクリックで更新+リロード`);
+    badge.onclick = async () => {
+      setState('checking', '🔄 更新中…', '');
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg) {
+          await reg.update();
+          if (reg.waiting) reg.waiting.postMessage({type: 'SKIP_WAITING'});
+        }
+      } catch(e) {}
+      setTimeout(() => location.reload(), 400);
+    };
+  }
+}
+
+window.addEventListener('load', () => {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      setTimeout(checkAppVersion, 300);
+    });
+  }
+  setTimeout(checkAppVersion, 800);
+  setInterval(checkAppVersion, 5 * 60 * 1000);
+});
 </script>
 </body>
 </html>
