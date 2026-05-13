@@ -48,8 +48,8 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
   border:none !important;background:transparent !important;
   box-shadow:none !important;
   display:flex !important;flex-direction:column !important;gap:6px !important;
-  /* FAB スタック (📝 bottom:170 + 46px) より上に配置 */
-  margin:0 8px 226px 0 !important;
+  /* FAB スタック (🎭 bottom:225 + 46px + 余白) より上に配置 */
+  margin:0 8px 281px 0 !important;
 }
 .leaflet-control-zoom a{
   background:rgba(30,52,72,.95) !important;color:var(--white) !important;
@@ -136,6 +136,16 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 }
 .record-fab.on{background:rgba(242,169,0,.22);border-color:var(--gold);color:var(--gold);}
 .record-fab:hover{transform:scale(1.08);}
+.char-fab{
+  position:absolute;bottom:225px;right:8px;z-index:1000;
+  width:46px;height:46px;border-radius:50%;
+  background:rgba(30,52,72,.95);border:1.5px solid var(--track);
+  color:var(--white);font-size:20px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgba(0,0,0,.5);transition:all .2s;
+}
+.char-fab.on{background:rgba(242,169,0,.22);border-color:var(--gold);color:var(--gold);}
+.char-fab:hover{transform:scale(1.08);}
 .rec-panel{
   position:absolute;bottom:8px;left:8px;right:62px;z-index:1100;
   background:rgba(20,32,46,.96);border:1.5px solid var(--gold);
@@ -416,6 +426,7 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
     <button class="map-mode-fab" id="map-mode-btn" onclick="cycleMapMode()" title="背景切替">🗺️</button>
     <button class="memo-fab" id="memo-btn" onclick="toggleMemoMode()" title="メモ投稿">📸</button>
     <button class="record-fab" id="rec-btn" onclick="toggleRecordMode()" title="区間記録モード">📝</button>
+    <button class="char-fab on" id="char-fab" onclick="toggleCharacterMode()" title="駅キャラ表示の切替 (ON/OFF)">🎭</button>
     <div class="rec-panel" id="rec-panel">
       <div class="rec-title">📝 区間記録モード — 駅をタップして選択</div>
       <div class="rec-row" id="rec-chips"></div>
@@ -569,11 +580,29 @@ async function loadCharacters() {
   }
 }
 
+// キャラ表示モード (localStorage 永続化)
+const CHAR_MODE_KEY = 'norireco_char_mode';
+let charModeOn = (() => {
+  try { return localStorage.getItem(CHAR_MODE_KEY) !== '0'; } catch(e) { return true; }
+})();
+
+function toggleCharacterMode() {
+  charModeOn = !charModeOn;
+  try { localStorage.setItem(CHAR_MODE_KEY, charModeOn ? '1' : '0'); } catch(e) {}
+  const btn = document.getElementById('char-fab');
+  if (btn) btn.classList.toggle('on', charModeOn);
+  // 再描画
+  if (typeof redrawAllLinesAfterTripChange === 'function') {
+    redrawAllLinesAfterTripChange();
+  }
+}
+
 // 駅の代表キャラを取得 (将来はユーザー選択を localStorage から復元)
 function getStationCharacter(stationName) {
+  if (!charModeOn) return null; // OFF 時は表示しない
   const list = stationCharMap.get(stationName);
   if (!list || !list.length) return null;
-  // TODO: ユーザー選択を localStorage から優先取得
+  // TODO: 1駅に複数キャラある場合のユーザー選択を localStorage から優先取得
   return list[0]; // 暫定: リスト先頭
 }
 async function loadMergedStations() {
@@ -2959,6 +2988,9 @@ async function checkAppVersion(forceReload) {
 window.addEventListener('load',()=>{
   initMap();
   if (typeof updateDateFilterUI === 'function') updateDateFilterUI();
+  // キャラ表示ボタンの初期状態を localStorage に合わせる
+  const charBtn = document.getElementById('char-fab');
+  if (charBtn) charBtn.classList.toggle('on', charModeOn);
   if('serviceWorker'in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(()=>{});
     // 新SWがアクティベートされたらバッジ更新
