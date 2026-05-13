@@ -58,6 +58,22 @@
       "default_color": null
     },
     {
+      "id": "tachi-hanabi",
+      "name": "タチハナビ",
+      "subtitle": "立川市・夏花火 (期間限定)",
+      "description": "昭和記念公園の花火大会の精。T字のボディは「立川」の T、頭の8弁の黄色花火と中央の赤い火球は昭和記念公園の夜空を彩る大輪。立川まつり期間中のみ獲得可能。",
+      "station_ids": ["立川"],
+      "svg_path": "characters/tachi-hanabi.svg",
+      "rarity": "limited",
+      "default_unlocked": false,
+      "unlock_condition": "visit_during_event",
+      "available_from": "2026-05-10",
+      "available_until": "2026-08-31",
+      "obtainable_at": ["立川"],
+      "colorable": false,
+      "default_color": null
+    },
+    {
       "id": "komiyau",
       "name": "コミヤウ",
       "subtitle": "八王子市小宮",

@@ -9,7 +9,7 @@
 //   2. GitHubにpush
 //   3. ユーザーがハードリロード or アプリ再起動で更新が反映される
 
-const CACHE_VERSION = 'v89';
+const CACHE_VERSION = 'v90';
 const CACHE_NAME = `norireco-${CACHE_VERSION}`;
 
 // 起動時にプリキャッシュする静的アセット
@@ -28,6 +28,7 @@ const STATIC_ASSETS = [
   './characters/youmayu.svg',
   './characters/yomatsuri-mayu.svg',
   './characters/r-plane.svg',
+  './characters/tachi-hanabi.svg',
   './characters/komiyau.svg',
   './manifest.json',
   './icon-192.png',

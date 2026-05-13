@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>立川市・花火の精「タチハナビ」(期間限定)</title>
+  <!-- Body (T-shape base) -->
+  <path d="M28.0 42.0h8.0v14.0c0 2.0-1.5 4.0-4.0 4.0s-4.0-2.0-4.0-4.0V42.0z" fill="#4CAF50"/>
+  <path d="M22.0 42.0h20.0v4.0H22.0z" fill="#4CAF50"/>
+
+  <!-- Arms -->
+  <circle cx="20.0" cy="44.0" r="3.0" fill="#4CAF50"/>
+  <circle cx="44.0" cy="44.0" r="3.0" fill="#4CAF50"/>
+
+  <!-- Firework Head (Petals) -->
+  <g fill="#FFD740">
+    <circle cx="32.0" cy="10.0" r="3.0"/>
+    <circle cx="32.0" cy="38.0" r="3.0"/>
+    <circle cx="18.0" cy="24.0" r="3.0"/>
+    <circle cx="46.0" cy="24.0" r="3.0"/>
+    <circle cx="22.0" cy="14.0" r="3.0"/>
+    <circle cx="42.0" cy="14.0" r="3.0"/>
+    <circle cx="22.0" cy="34.0" r="3.0"/>
+    <circle cx="42.0" cy="34.0" r="3.0"/>
+  </g>
+
+  <!-- Firework Center -->
+  <circle cx="32.0" cy="24.0" r="10.0" fill="#FF5252"/>
+
+  <!-- Face -->
+  <g fill="#333">
+    <circle cx="28.5" cy="23.0" r="1.5"/>
+    <circle cx="35.5" cy="23.0" r="1.5"/>
+    <path d="M30.0 27.5c1.0 1.5 3.0 1.5 4.0 0" fill="none" stroke="#333" stroke-width="1.2" stroke-linecap="round"/>
+  </g>
+
+  <!-- Sparkle Details -->
+  <circle cx="32.0" cy="24.0" r="1.5" fill="#FFF"/>
+</svg>
