@@ -74,6 +74,22 @@
       "default_color": null
     },
     {
+      "id": "tachi-yuki",
+      "name": "タチユキ",
+      "subtitle": "立川市・冬イルミ (期間限定)",
+      "description": "多摩都市モノレールと雪だるまの融合精。立川ブルーのマフラーと頭の星イルミは、国営昭和記念公園の冬イルミネーションのきらめきを表現。冬季イベント期間中のみ獲得可能。",
+      "station_ids": ["立川"],
+      "svg_path": "characters/tachi-yuki.svg",
+      "rarity": "limited",
+      "default_unlocked": false,
+      "unlock_condition": "visit_during_event",
+      "available_from": "2026-05-10",
+      "available_until": "2027-02-15",
+      "obtainable_at": ["立川"],
+      "colorable": false,
+      "default_color": null
+    },
+    {
       "id": "komiyau",
       "name": "コミヤウ",
       "subtitle": "八王子市小宮",

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>立川市・冬イルミ「タチユキ」(期間限定)</title>
+  <!-- Body (Snowman-like Monorail) -->
+  <rect x="20.0" y="32.0" width="24.0" height="26.0" rx="6.0" fill="#E0E0E0"/>
+  <circle cx="32.0" cy="24.0" r="14.0" fill="#F5F5F5"/>
+
+  <!-- Scarf (Tachikawa Blue) -->
+  <path d="M20.0 32.0c4.0 2.0 20.0 2.0 24.0 0v4.0H20.0z" fill="#1A237E"/>
+  <rect x="36.0" y="32.0" width="6.0" height="12.0" rx="1.0" fill="#1A237E"/>
+
+  <!-- Illumination Crown (Stars) -->
+  <g fill="#FFD700">
+    <path d="M32.0 2.0l1.5 3.5 3.5 1.5-3.5 1.5-1.5 3.5-1.5-3.5-3.5-1.5 3.5-1.5z"/>
+    <circle cx="20.0" cy="12.0" r="2.0"/>
+    <circle cx="44.0" cy="12.0" r="2.0"/>
+  </g>
+
+  <!-- Face -->
+  <g fill="#333">
+    <circle cx="27.0" cy="22.0" r="1.5"/>
+    <circle cx="37.0" cy="22.0" r="1.5"/>
+    <!-- Cheeks (Warm light glow) -->
+    <circle cx="24.0" cy="26.0" r="2.5" fill="#FFAB91" fill-opacity="0.6"/>
+    <circle cx="40.0" cy="26.0" r="2.5" fill="#FFAB91" fill-opacity="0.6"/>
+    <path d="M30.0 28.0c1.0 1.0 3.0 1.0 4.0 0" fill="none" stroke="#333" stroke-width="1.0" stroke-linecap="round"/>
+  </g>
+
+  <!-- Buttons (Lights) -->
+  <circle cx="32.0" cy="42.0" r="2.0" fill="#FFD700"/>
+  <circle cx="32.0" cy="50.0" r="2.0" fill="#FFD700"/>
+</svg>
