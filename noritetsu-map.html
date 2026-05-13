@@ -2338,15 +2338,87 @@ function getStationLevel(visits) {
   return 1;
 }
 
+// キャラ駅: キャラを中心に、外側に細いリングで路線色を表示
+function makeCharacterIcon(character, lineColors, ridden, level) {
+  const n = lineColors.length;
+  // キャラサイズ (レベルで段階拡大)
+  const charSize = level >= 4 ? 32 : level >= 3 ? 30 : level >= 2 ? 28 : 26;
+  const halfChar = charSize / 2;
+  const bgR = halfChar + 2.5;          // キャラ周りの白パディング
+  const ringInnerR = bgR + 0.4;
+  const ringOuterR = ringInnerR + 3.5; // 路線色リング厚 3.5px
+  const haloMargin = level >= 4 ? 12 : level >= 3 ? 5 : 2;
+  const total = (ringOuterR + haloMargin) * 2;
+  const cx = total / 2;
+  const cy = total / 2;
+
+  // === 外側ハロー / Lv3+ アクセント ===
+  let svgOuter = '';
+  if (level >= 4) {
+    svgOuter += `<circle class="lv4-halo" cx="${cx}" cy="${cy}" r="${ringOuterR + 9}" fill="rgba(242,169,0,0.28)" stroke="rgba(242,169,0,0.75)" stroke-width="1.5"/>`;
+    svgOuter += `<circle cx="${cx}" cy="${cy}" r="${ringOuterR + 3}" fill="none" stroke="#f2a900" stroke-width="2.4"/>`;
+  } else if (level >= 3) {
+    svgOuter += `<circle cx="${cx}" cy="${cy}" r="${ringOuterR + 2}" fill="none" stroke="#f2a900" stroke-width="2.0"/>`;
+  }
+
+  // === 路線色リング (donut 風) ===
+  let svgRing = '';
+  if (n === 1) {
+    // 単線: 単色リング
+    const midR = (ringInnerR + ringOuterR) / 2;
+    svgRing = `<circle cx="${cx}" cy="${cy}" r="${midR}" fill="none" stroke="${lineColors[0]}" stroke-width="${ringOuterR - ringInnerR}"/>`;
+  } else {
+    // 多線: パイ形状の donut セグメント
+    for (let i = 0; i < n; i++) {
+      const a1 = (i / n) * 2 * Math.PI - Math.PI/2;
+      const a2 = ((i+1) / n) * 2 * Math.PI - Math.PI/2;
+      const rO = ringOuterR;
+      const rI = ringInnerR;
+      const x1o = cx + rO * Math.cos(a1);
+      const y1o = cy + rO * Math.sin(a1);
+      const x2o = cx + rO * Math.cos(a2);
+      const y2o = cy + rO * Math.sin(a2);
+      const x1i = cx + rI * Math.cos(a2);
+      const y1i = cy + rI * Math.sin(a2);
+      const x2i = cx + rI * Math.cos(a1);
+      const y2i = cy + rI * Math.sin(a1);
+      const largeArc = (a2 - a1) > Math.PI ? 1 : 0;
+      svgRing += `<path d="M ${x1o} ${y1o} A ${rO} ${rO} 0 ${largeArc} 1 ${x2o} ${y2o} L ${x1i} ${y1i} A ${rI} ${rI} 0 ${largeArc} 0 ${x2i} ${y2i} Z" fill="${lineColors[i]}"/>`;
+    }
+  }
+
+  // === 白背景 (キャラを引き立てる) ===
+  const svgBg = `<circle cx="${cx}" cy="${cy}" r="${bgR}" fill="rgba(255,255,255,0.97)"/>`;
+
+  // === キャラクター本体 (中央配置) ===
+  const charX = cx - halfChar;
+  const charY = cy - halfChar;
+  const charOpacity = ridden ? 1.0 : 0.65;
+  const svgChar = `<svg x="${charX}" y="${charY}" width="${charSize}" height="${charSize}" viewBox="0 0 64 64" opacity="${charOpacity}">${character.innerSvg}</svg>`;
+
+  const cssClass = 'merged-pie-marker' + (level >= 4 ? ' lv4' : '');
+  return L.divIcon({
+    className: cssClass,
+    html: `<svg width="${total}" height="${total}" viewBox="0 0 ${total} ${total}" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 3px rgba(0,0,0,0.6));">
+      ${svgOuter}
+      ${svgRing}
+      ${svgBg}
+      ${svgChar}
+    </svg>`,
+    iconSize: [total, total],
+    iconAnchor: [cx, cy],
+  });
+}
+
 function makePieIcon(lineColors, sizePx, ridden, level = 0, character = null) {
+  // キャラがあるならキャラ中心の描画に切替
+  if (character && character.innerSvg) {
+    return makeCharacterIcon(character, lineColors, ridden, level);
+  }
   const n = lineColors.length;
   const r = sizePx / 2;
-  // キャラ用追加マージン (Lv0でもキャラがあればバッジ枠を確保)
-  const charBadge = character != null;
   // 高レベル: 外側マージンでハロー/外輪 + 右上にバッジ
-  const haloLevel = level >= 4 ? 12 : (level >= 3 ? 7 : 0);
-  const haloChar = charBadge ? Math.max(haloLevel, 8) : haloLevel; // キャラ枠も確保
-  const halo = haloChar;
+  const halo = level >= 4 ? 12 : (level >= 3 ? 7 : 0);
   const outer = sizePx + halo * 2;
   const cx = halo + r;
   const cy = halo + r;
@@ -2391,24 +2463,10 @@ function makePieIcon(lineColors, sizePx, ridden, level = 0, character = null) {
     ringWidth = ridden ? 1.4 : 1.0;
   }
 
-  // === 右上バッジ ===
-  // キャラがあれば優先描画、なければ Lv3+ で★、Lv0-2 はバッジなし
+  // === 右上★バッジ (Lv3+) — キャラなし駅の達成感マーカー ===
   let svgBadge = '';
-  if (character && character.innerSvg) {
-    // キャラバッジ: レベルに応じてサイズ拡大
-    const charSize = level >= 4 ? 24 : level >= 3 ? 22 : level >= 2 ? 20 : level >= 1 ? 18 : 16;
-    const bx = cx + r * 0.85 - charSize / 2;
-    const by = cy - r * 0.85 - charSize / 2;
-    // 背景の白丸 (キャラを認識しやすく)
-    const bgR = charSize * 0.55;
-    const bgCx = bx + charSize / 2;
-    const bgCy = by + charSize / 2;
-    svgBadge = `
-      <circle cx="${bgCx}" cy="${bgCy}" r="${bgR}" fill="rgba(255,255,255,0.92)" stroke="${level >= 3 ? '#f2a900' : 'rgba(255,255,255,0.9)'}" stroke-width="${level >= 3 ? 1.6 : 1.0}"/>
-      <svg x="${bx}" y="${by}" width="${charSize}" height="${charSize}" viewBox="0 0 64 64">${character.innerSvg}</svg>
-    `;
-  } else if (level >= 4) {
-    // Lv4 (キャラなし): 大★バッジ
+  if (level >= 4) {
+    // Lv4: 大★バッジ
     const br = Math.max(6, sizePx * 0.26);
     const bx = cx + r * 0.78;
     const by = cy - r * 0.78;
@@ -2417,7 +2475,7 @@ function makePieIcon(lineColors, sizePx, ridden, level = 0, character = null) {
       <text x="${bx}" y="${by + br * 0.38}" text-anchor="middle" font-size="${br * 1.5}" fill="#fff" font-family="Arial Black, sans-serif" font-weight="900">★</text>
     `;
   } else if (level >= 3) {
-    // Lv3 (キャラなし): 小★バッジ
+    // Lv3: 小★バッジ
     const br = Math.max(5, sizePx * 0.22);
     const bx = cx + r * 0.8;
     const by = cy - r * 0.8;
