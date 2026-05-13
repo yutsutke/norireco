@@ -182,17 +182,6 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
   cursor:pointer;font-family:inherit;
 }
 .rec-save:disabled{opacity:.4;cursor:not-allowed;}
-.svc-lines-fab{
-  position:absolute;bottom:170px;right:8px;z-index:1000;
-  width:46px;height:46px;border-radius:50%;
-  background:rgba(30,52,72,.95);border:1.5px solid var(--track);
-  color:var(--white);font-size:20px;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-  box-shadow:0 4px 16px rgba(0,0,0,.5);transition:all .2s;
-}
-.svc-lines-fab.on{background:rgba(140,200,255,.22);border-color:#8cc8ff;color:#8cc8ff;}
-.svc-lines-fab:hover{transform:scale(1.08);}
-
 /* App version badge (デプロイ状態インジケータ) */
 .app-ver-badge{
   display:inline-flex;align-items:center;
@@ -417,7 +406,6 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
     </div>
     <button class="map-mode-fab" id="map-mode-btn" onclick="cycleMapMode()" title="背景切替">🗺️</button>
     <button class="memo-fab" id="memo-btn" onclick="toggleMemoMode()" title="メモ投稿">📸</button>
-    <button class="svc-lines-fab" id="svc-lines-btn" onclick="toggleServiceLines()" title="営業系統オーバーレイ（Phase2でベース化済み・通常不要）" style="display:none">🚆</button>
     <button class="record-fab" id="rec-btn" onclick="toggleRecordMode()" title="区間記録モード">📝</button>
     <div class="rec-panel" id="rec-panel">
       <div class="rec-title">📝 区間記録モード — 駅をタップして選択</div>
@@ -533,8 +521,7 @@ async function loadRunningServices() {
 
 // 統合駅マスター: 同名近接駅を1点に集約 (Phase 1: 表示統合)
 let MERGED_STATIONS = [];
-let mergedStationMap = new Map();
-// Phase 2: 営業系統 id → mergedStation 索引 (新ベース描画用)
+// 営業系統 id → mergedStation 索引 (描画・lookup用)
 let slMergedStationMap = new Map();
 async function loadMergedStations() {
   try {
@@ -542,20 +529,14 @@ async function loadMergedStations() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     MERGED_STATIONS = data.stations || [];
-    mergedStationMap.clear();
     slMergedStationMap.clear();
     for (const ms of MERGED_STATIONS) {
-      // 旧: N02 物理路線で索引
-      const indexKeys = ms.n02_lines || ms.lines;
-      for (const lid of indexKeys) {
-        mergedStationMap.set(`${lid}:${ms.name}`, ms);
-      }
-      // 新 (Phase 2): 営業系統 id で索引
+      // 営業系統 id で索引
       for (const lid of (ms.lines || [])) {
         slMergedStationMap.set(`${lid}:${ms.name}`, ms);
       }
     }
-    console.log(`[乗レコ] 統合駅 ${MERGED_STATIONS.length}駅 (N02索引 ${mergedStationMap.size}件 / SL索引 ${slMergedStationMap.size}件)`);
+    console.log(`[乗レコ] 統合駅 ${MERGED_STATIONS.length}駅 (索引 ${slMergedStationMap.size}件)`);
   } catch (e) {
     console.warn('[乗レコ] merged_stations.json 読込失敗:', e.message);
   }
@@ -566,8 +547,6 @@ async function loadMergedStations() {
 // 路線一覧・統計タブの達成率計算もこちらをベースにする
 let SERVICE_LINES_MASTER = null;
 let SERVICE_LINES = []; // 駅座標解決済み + 候補 N02 id を持つ
-let serviceLineLayer = null;
-let serviceLinesVisible = false;
 let serviceLinesLoaded = false;
 let serviceLinesBuilt = false;
 
@@ -610,102 +589,6 @@ function buildPerLineCoordMap() {
 function deriveN02IdFromAutoId(slId) {
   if (!slId || !slId.startsWith('auto_')) return null;
   return slId.slice(5).replace(/_b\d+$/, '').replace(/_s\d+$/, '');
-}
-
-// 営業系統 sl について、各駅の座標を解決
-//  1. 自動生成エントリは sl.id から対応する N02 物理路線を最優先で使う
-//  2. それ以外は「official_line 一致」「駅名重なり ≥2」の候補を使う
-function resolveServiceLineCoords(sl, perLineMap) {
-  const sourceN02Id = deriveN02IdFromAutoId(sl.id);
-  const masterNames = new Set(sl.stations.map(s => s.name));
-  const candidates = [];
-  for (const [n02Id, info] of perLineMap) {
-    const { name: n02Name, stations } = info;
-    let overlap = 0;
-    for (const n of masterNames) if (stations.has(n)) overlap++;
-    const idMatch = sourceN02Id && sourceN02Id === n02Id;
-    const officialMatch = sl.official_line && n02Name.startsWith(sl.official_line);
-    if (idMatch || overlap >= 2 || officialMatch) {
-      candidates.push({ name: n02Name, id: n02Id, stations, overlap, officialMatch, idMatch });
-    }
-  }
-  // idMatch を最優先、次に overlap、次に officialMatch
-  candidates.sort((a, b) =>
-    (b.idMatch - a.idMatch) || (b.overlap - a.overlap) || (b.officialMatch - a.officialMatch)
-  );
-
-  const result = [];
-  const unresolved = [];
-  for (const s of sl.stations) {
-    let coord = null;
-    for (const c of candidates) {
-      if (c.stations.has(s.name)) { coord = c.stations.get(s.name); break; }
-    }
-    if (coord) result.push(coord);
-    else { result.push(null); unresolved.push(s.name); }
-  }
-  return {
-    coords: result, unresolved,
-    candidateNames: candidates.slice(0, 3).map(c => `${c.name}(${c.overlap}${c.idMatch?'*':''})`)
-  };
-}
-
-function drawServiceLines() {
-  if (serviceLineLayer) {
-    serviceLineLayer.clearLayers();
-  } else {
-    serviceLineLayer = L.layerGroup();
-  }
-  if (!SERVICE_LINES_MASTER || !SERVICE_LINES_MASTER.length) return;
-
-  const perLineMap = buildPerLineCoordMap();
-  let drawnCount = 0, missingTotal = 0;
-
-  for (const sl of SERVICE_LINES_MASTER) {
-    const { coords, unresolved, candidateNames } = resolveServiceLineCoords(sl, perLineMap);
-    const pts = coords.filter(c => c !== null);
-    const missing = unresolved.length;
-    if (sl.is_circular && pts.length > 1) pts.push(pts[0]);
-    if (pts.length < 2) {
-      console.warn(`[営業系統] ${sl.name}: 座標取得不足 ${pts.length}駅 (欠 ${missing}) 候補=${candidateNames.join(',')}`);
-      continue;
-    }
-    if (missing > 0) {
-      missingTotal += missing;
-      console.warn(`[営業系統] ${sl.name}: ${missing}駅の座標欠落 [${unresolved.join(',')}] 候補=${candidateNames.join(',')}`);
-    }
-    const color = sl.color || '#ffffff';
-    // 白縁取り(視認性) + メイン色の二段重ね
-    L.polyline(pts, {
-      color: '#ffffff', weight: 8, opacity: 0.55,
-      lineCap: 'round', lineJoin: 'round'
-    }).addTo(serviceLineLayer);
-    const main = L.polyline(pts, {
-      color, weight: 4.5, opacity: 0.95,
-      lineCap: 'round', lineJoin: 'round'
-    }).bindTooltip(
-      `<b style="color:${color}">${sl.name}</b><br><span style="color:rgba(140,160,179,.8)">${sl.operator} · ${sl.stations.length}駅</span>`,
-      { className: 'norireco-tooltip', sticky: true, offset: [10, 0] }
-    );
-    main.addTo(serviceLineLayer);
-    drawnCount++;
-  }
-  console.log(`[乗レコ] 営業系統描画完了: ${drawnCount}系統 (座標欠落 計${missingTotal}駅)`);
-}
-
-async function toggleServiceLines() {
-  const btn = document.getElementById('svc-lines-btn');
-  if (!serviceLinesVisible) {
-    await buildServiceLines();
-    drawServiceLines();
-    if (serviceLineLayer && map) serviceLineLayer.addTo(map);
-    serviceLinesVisible = true;
-    if (btn) btn.classList.add('on');
-  } else {
-    if (serviceLineLayer && map) map.removeLayer(serviceLineLayer);
-    serviceLinesVisible = false;
-    if (btn) btn.classList.remove('on');
-  }
 }
 
 // 営業系統 sl.id "auto_<n02_id>(_bN|_sN)?" → N02 id
@@ -874,13 +757,8 @@ async function loadLines(priority) {
     console.log(`[乗レコ] P${priority}完了: +${added.length}路線（計${LINES.length}路線）`);
 
     rebuildRiddenStations();
-
-    // 地図初期化済みなら追加分を描画
-    if (map && dotLayerRef) {
-      added.forEach(line => drawSingleLine(line));
-      updateOverlays();
-      updateLOD();
-    }
+    // Phase 2: 描画は SERVICE_LINES 構築後の drawLines() に一任。
+    // ここで個別 N02 line を描画する必要はない。
   } catch(e) {
     pendingLoads.delete(priority);
     loadedPriorities.add(priority); // エラーでも再試行しない
@@ -1223,16 +1101,6 @@ function rebuildRiddenStations() {
       console.warn(`  未解決 (${unresolved.length}件):`, unresolved);
     }
   }
-}
-
-// 新しく読み込んだ路線だけを地図に追加描画
-function redrawNewLines(newLines) {
-  if (!map) return;
-  newLines.forEach(line => {
-    drawSingleLine(line);
-  });
-  // LOD再適用
-  if (typeof updateLOD === 'function') updateLOD();
 }
 
 // ══════════════════════════════════════════════
@@ -2162,14 +2030,10 @@ function drawLines(){
     dotLayerRef.clearLayers();
   }
 
-  // Phase 2: 営業系統が構築済みなら新ベース描画、未構築なら旧 N02 描画にフォールバック
+  // Phase 2: 営業系統ベース描画 (構築前は何も描かない)
   if (SERVICE_LINES && SERVICE_LINES.length > 0) {
-    console.log(`[乗レコ] 描画: 営業系統ベース (${SERVICE_LINES.length}系統)`);
     for (const sl of SERVICE_LINES) drawServiceLineBase(sl);
     drawStationsLayer();
-  } else {
-    console.log(`[乗レコ] 描画: N02 物理路線ベース フォールバック (${LINES.length}路線)`);
-    LINES.forEach(line => drawSingleLine(line));
   }
 
   // LOD初期適用
@@ -2237,22 +2101,6 @@ function updateLOD() {
       if (map.hasLayer(labelLayerRef)) map.removeLayer(labelLayerRef);
     }
   }
-}
-
-// 路線の駅を branch ごとにグルーピングし、駅順 o でソート
-// branch=99 は除外（N02-25誤登録などの孤立駅）
-function getBranchedStations(line){
-  const branches={};
-  line.stations.forEach(s=>{
-    const b=(s.branch===undefined?0:s.branch);
-    if(b===99) return;
-    if(!branches[b]) branches[b]=[];
-    branches[b].push(s);
-  });
-  Object.keys(branches).forEach(b=>{
-    branches[b].sort((a,b)=>(a.o||0)-(b.o||0));
-  });
-  return branches;
 }
 
 // モバイル端末判定 (ズーム/パン軽量化用)
@@ -2422,20 +2270,6 @@ function makePieIcon(lineColors, sizePx, ridden) {
     </svg>`,
     iconSize: [sizePx, sizePx],
     iconAnchor: [r, r],
-  });
-}
-
-// 駅ドットに記録モード/メモモード用のクリックハンドラを付ける
-function attachStationDotClick(dot, line, s) {
-  dot.on('click', (e) => {
-    if (recordMode) {
-      onRecordStationClick({name: s.n, lat: s.lat, lon: s.lon});
-      L.DomEvent.stopPropagation(e);
-    } else if (memoMode) {
-      clickInfo = {line, station: s, lat: (+s.lat).toFixed(5), lon: (+s.lon).toFixed(5)};
-      openMemo();
-      L.DomEvent.stopPropagation(e);
-    }
   });
 }
 
@@ -2659,260 +2493,6 @@ function attachStationDotClickV2(dot, ms) {
     }
   });
 }
-
-// 1路線を描画（遅延読み込み時にも呼ばれる）
-function drawSingleLine(line){
-  const canvas=CANVAS;
-  const dotLayer=dotLayerRef;
-  const labelLayer=labelLayerRef;
-  if(!dotLayer||!labelLayer)return;
-
-  const rd=riddenSt[line.id];
-  const stats=lStats(line);
-  const priority=getLinePriority(line);
-  const isRidden=rd&&rd.size>0;
-  const branches=getBranchedStations(line);
-
-  Object.entries(branches).forEach(([bid,bsts])=>{
-    if(bsts.length===0) return;
-    const isCircular=bsts.some(s=>s._circular_branch);
-    const latlngs=bsts.map(s=>[s.lat,s.lon]);
-    if(isCircular && latlngs.length>0) latlngs.push(latlngs[0]);
-
-    if(!isRidden){
-      const glowLine=L.polyline(latlngs,{
-        color:line.color, weight:5, opacity:0.08,
-        lineCap:'round', renderer:canvas,
-      });
-      const mainLine=L.polyline(latlngs,{
-        color:line.color, weight:3, opacity:0.65,
-        dashArray:'6 5', lineCap:'round', renderer:canvas,
-      });
-      // SVG レンダラの透明 hoverライン (canvasと独立した hit detection)
-      // モバイルではホバー線を作らない（DOM負荷削減）
-      const hoverLine = IS_MOBILE ? null : L.polyline(latlngs,{
-        color:'transparent', weight:10, opacity:0,
-        lineCap:'round',
-        // renderer指定なし → デフォルトSVGを使う
-      }).bindTooltip(
-        `<b style="color:${line.color}">${line.name}</b><br><span style="color:rgba(140,160,179,.7)">${line.region} · 未乗車 ${stats.t}駅</span>`,
-        {className:'norireco-tooltip',sticky:true,offset:[10,0]}
-      );
-      glowLine._norireco_priority=priority;
-      mainLine._norireco_priority=priority;
-      if (hoverLine) hoverLine._norireco_priority=priority;
-      allLayers.push(glowLine, mainLine);
-      if (hoverLine) allLayers.push(hoverLine);
-      const z=map?map.getZoom():5;
-      if(priority<=getVisiblePriority(z)){
-        glowLine.addTo(map);
-        mainLine.addTo(map);
-        if (hoverLine) hoverLine.addTo(map);
-      }
-    } else {
-      // 乗車済み路線: 背景に点線(未乗車区間用)
-      const bgLine = L.polyline(latlngs,{
-        color:line.color, weight:2.5, opacity:0.45,
-        dashArray:'6 5', lineCap:'round', renderer:canvas
-      });
-      bgLine.addTo(map);
-      // SVG hoverライン (tooltip + click)
-      // モバイルではホバー線を作らない（DOM負荷削減）
-      if (!IS_MOBILE) {
-        const hoverLine = L.polyline(latlngs,{
-          color:'transparent', weight:10, opacity:0,
-          lineCap:'round',
-        }).bindTooltip(
-          `<b style="color:${line.color}">${line.name}</b><br><span style="color:rgba(140,160,179,.8)">${line.region}</span><br><span style="color:rgba(242,169,0,.9);font-family:monospace">${stats.r}/${stats.t}駅 — ${stats.pct}%</span>`,
-          {className:'norireco-tooltip',sticky:true,offset:[12,0]}
-        );
-        hoverLine.on('click',e=>{
-          if(!memoMode)return;
-          let bSt=null,bD=Infinity;
-          bsts.forEach(s=>{
-            const d=map.distance([s.lat,s.lon],e.latlng);
-            if(d<bD){bD=d;bSt=s;}
-          });
-          clickInfo={line,station:bSt,lat:e.latlng.lat.toFixed(5),lon:e.latlng.lng.toFixed(5)};
-          openMemo();
-        });
-        hoverLine.addTo(map);
-      }
-
-      // 乗車済みセグメント（グロー描画）
-      let ss=null;
-      for(let i=0;i<bsts.length;i++){
-        const ir=rd.has(bsts[i].n);
-        if(ir&&ss===null) ss=i;
-        if(!ir&&ss!==null){
-          drawRiddenSegBranch(line,bsts,ss,i-1,canvas);
-          ss=null;
-        }
-        if(i===bsts.length-1&&ss!==null){
-          drawRiddenSegBranch(line,bsts,ss,i,canvas);
-        }
-      }
-      if(isCircular && bsts.length>=2 && rd.has(bsts[0].n) && rd.has(bsts[bsts.length-1].n)){
-        drawRiddenWrap(line,bsts,canvas);
-      }
-    }
-
-    bsts.forEach(s=>{
-      const ir=isRidden && rd.has(s.n);
-      // 統合駅単位の重複抑制
-      const _ms = mergedStationMap.get(`${line.id}:${s.n}`);
-      const _msKey = _ms ? `${_ms.lat.toFixed(5)},${_ms.lon.toFixed(5)}` : null;
-      if (_msKey) {
-        const _e = drawnMergedStations.get(_msKey);
-        if (_e && _e.drawn) return;
-        drawnMergedStations.set(_msKey, {drawn: true});
-      }
-      // 乗り入れ路線数 (1なら通常、>1なら拡大)
-      const _nLines = _ms ? _ms.lines.length : 1;
-      const _tier = stationTier(_nLines, s.n);
-      // 三大都市圏かどうかを判定 (LOD閾値で使用)
-      const _isMetro = isMetroArea(s.lat, s.lon);
-      // マーカー拡大係数 (1路線=1.0, 2路線=1.3, 3=1.5, 5=1.8, 7=2.0)
-      const _mScale = _nLines === 1 ? 1.0 : Math.min(2.5, 1.0 + Math.log2(_nLines) * 0.5);
-      // tooltip 用 路線リストを「呼び出し時」に計算するクロージャ
-      // (SERVICE_LINES は初期描画後に非同期で構築されるため遅延評価が必要)
-      const _linesTextFn = () => {
-        if (!_ms || _nLines <= 1) return '';
-        const lineNames = _ms.lines.map((lid, idx) => {
-          const sl = (SERVICE_LINES && SERVICE_LINES.length) ? SERVICE_LINES.find(x => x.id === lid) : null;
-          const ln = sl || LINES.find(l => l.id === lid);
-          const c = (_ms.colors && _ms.colors[idx]) || (ln && ln.color) || '#888';
-          const dispName = ln ? ln.name : lid;
-          return `<span style="color:${c}">●</span> ${dispName}`;
-        }).join('<br>');
-        return `<br><span style="color:rgba(242,169,0,.85);font-size:10px">🔀 乗り入れ ${_nLines}路線</span><br>` +
-               `<span style="font-size:10px;color:rgba(255,255,255,.85);line-height:1.5">${lineNames}</span>`;
-      };
-      if(!isRidden){
-        let dot;
-        if (_nLines > 1 && _ms) {
-          const _colors = _ms.colors || _ms.lines.map(lid => {
-            const sl = (SERVICE_LINES && SERVICE_LINES.length) ? SERVICE_LINES.find(x => x.id === lid) : null;
-            return (sl && sl.color) || (LINES.find(l=>l.id===lid)?.color) || '#888';
-          });
-          const _size = Math.round(11 * _mScale);
-          dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, false), opacity:0.7, interactive:true});
-        } else {
-          dot = L.circleMarker([s.lat,s.lon],{
-            radius:4 * _mScale, fillColor:line.color,
-            color:'rgba(255,255,255,0.8)', weight:1.2,
-            fillOpacity:0.85, renderer:canvas,
-          });
-        }
-        dot.bindTooltip(
-          () => `<b style="color:${line.color}">${s.n}</b><br><span style="color:rgba(140,160,179,.7)">${line.name}${s.o?` ${s.o}駅目`:''} · 未乗車</span>${_linesTextFn()}`,
-          {className:'norireco-tooltip',offset:[8,0]}
-        );
-        dot._norireco_priority=priority;
-        dot._station_tier = _tier;
-        dot._station_isMetro = _isMetro;
-        attachStationDotClick(dot, line, s);
-        dotLayer.addLayer(dot);
-        const label=L.marker([s.lat,s.lon],{
-          icon:L.divIcon({
-            className:'',
-            html:`<div style="font-family:'Zen Kaku Gothic New',sans-serif;font-size:9px;font-weight:400;color:rgba(255,255,255,0.85);text-shadow:0 0 4px rgba(0,0,0,1);white-space:nowrap;pointer-events:none;padding-left:6px;margin-top:-5px">${s.n}</div>`,
-            iconSize:[0,0],iconAnchor:[0,0],
-          }),interactive:false,
-        });
-        label._norireco_priority=priority;
-        label._station_tier = _tier;
-        label._station_isMetro = _isMetro;
-        (window._allLabels = window._allLabels || []).push(label); // updateLOD manages layer membership
-      } else if(ir){
-        let dot;
-        if (_nLines > 1 && _ms) {
-          const _colors = _ms.colors || _ms.lines.map(lid => {
-            const sl = (SERVICE_LINES && SERVICE_LINES.length) ? SERVICE_LINES.find(x => x.id === lid) : null;
-            return (sl && sl.color) || (LINES.find(l=>l.id===lid)?.color) || '#888';
-          });
-          const _size = Math.round(14 * _mScale);
-          dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, true), interactive:true});
-        } else {
-          dot = L.circleMarker([s.lat,s.lon],{
-            radius:6 * _mScale,fillColor:line.color,
-            color:'rgba(255,255,255,0.9)',weight:1.4,fillOpacity:1,
-            renderer:canvas,
-          });
-        }
-        dot.bindTooltip(() => `<b>${s.n}</b><br><span style="color:rgba(140,160,179,.8)">${line.name}${s.o?` - ${s.o}駅目`:''}</span>${_linesTextFn()}`,
-          {className:'norireco-tooltip',offset:[8,0]});
-        dot._station_tier = _tier;
-        dot._station_isMetro = _isMetro;
-        attachStationDotClick(dot, line, s);
-        dotLayer.addLayer(dot);
-        const label=L.marker([s.lat,s.lon],{
-          icon:L.divIcon({
-            className:'',
-            html:`<div style="font-family:'Zen Kaku Gothic New',sans-serif;font-size:10px;font-weight:700;color:#fff;text-shadow:0 0 4px rgba(0,0,0,1),0 0 8px rgba(0,0,0,1);white-space:nowrap;pointer-events:none;padding-left:7px;margin-top:-6px">${s.n}</div>`,
-            iconSize:[0,0],iconAnchor:[0,0],
-          }),interactive:false,
-        });
-        label._station_tier = _tier;
-        label._station_isMetro = _isMetro;
-        (window._allLabels = window._allLabels || []).push(label); // updateLOD manages layer membership
-      } else {
-        // 乗車済み路線の未乗車駅: 小さい薄ドット + 薄いラベル
-        let dot;
-        if (_nLines > 1 && _ms) {
-          const _colors = _ms.colors || _ms.lines.map(lid => {
-            const sl = (SERVICE_LINES && SERVICE_LINES.length) ? SERVICE_LINES.find(x => x.id === lid) : null;
-            return (sl && sl.color) || (LINES.find(l=>l.id===lid)?.color) || '#888';
-          });
-          const _size = Math.round(10 * _mScale);
-          dot = L.marker([s.lat,s.lon], {icon: makePieIcon(_colors, _size, false), opacity:0.6, interactive:true});
-        } else {
-          dot = L.circleMarker([s.lat,s.lon],{
-            radius:3 * _mScale, fillColor:line.color,
-            color:'rgba(255,255,255,0.4)', weight:0.7,
-            fillOpacity:0.55, renderer:canvas,
-          });
-        }
-        dot.bindTooltip(
-          () => `<b style="color:${line.color}">${s.n}</b><br><span style="color:rgba(140,160,179,.7)">${line.name}${s.o?` ${s.o}駅目`:''} · 未乗車</span>${_linesTextFn()}`,
-          {className:'norireco-tooltip',offset:[8,0]}
-        );
-        dot._station_tier = _tier;
-        dot._station_isMetro = _isMetro;
-        attachStationDotClick(dot, line, s);
-        dotLayer.addLayer(dot);
-        // 薄めの未乗車ラベル
-        const label=L.marker([s.lat,s.lon],{
-          icon:L.divIcon({
-            className:'',
-            html:`<div style="font-family:'Zen Kaku Gothic New',sans-serif;font-size:9px;font-weight:400;color:rgba(255,255,255,0.55);text-shadow:0 0 4px rgba(0,0,0,1);white-space:nowrap;pointer-events:none;padding-left:6px;margin-top:-5px">${s.n}</div>`,
-            iconSize:[0,0],iconAnchor:[0,0],
-          }),interactive:false,
-        });
-        label._station_tier = _tier;
-        label._station_isMetro = _isMetro;
-        (window._allLabels = window._allLabels || []).push(label); // updateLOD manages layer membership
-      }
-    });
-  });
-}
-
-function drawRiddenSegBranch(line,bsts,fromIdx,toIdx,canvas){
-  if(toIdx-fromIdx<1) return;
-  const latlngs=bsts.slice(fromIdx,toIdx+1).map(s=>[s.lat,s.lon]);
-  L.polyline(latlngs,{color:line.color,weight:10,opacity:0.12,lineCap:'round',lineJoin:'round',renderer:canvas}).addTo(map);
-  L.polyline(latlngs,{color:line.color,weight:3.5,opacity:0.95,lineCap:'round',lineJoin:'round',renderer:canvas}).addTo(map);
-  L.polyline(latlngs,{color:'rgba(255,255,255,0.4)',weight:0.8,lineCap:'round',renderer:canvas}).addTo(map);
-}
-
-function drawRiddenWrap(line,bsts,canvas){
-  const latlngs=[[bsts[bsts.length-1].lat,bsts[bsts.length-1].lon],
-                 [bsts[0].lat,bsts[0].lon]];
-  L.polyline(latlngs,{color:line.color,weight:10,opacity:0.12,lineCap:'round',renderer:canvas}).addTo(map);
-  L.polyline(latlngs,{color:line.color,weight:3.5,opacity:0.95,lineCap:'round',renderer:canvas}).addTo(map);
-  L.polyline(latlngs,{color:'rgba(255,255,255,0.4)',weight:0.8,lineCap:'round',renderer:canvas}).addTo(map);
-}
-
 
 function updateOverlays(){
   const gs=gStats();
