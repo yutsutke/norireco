@@ -321,6 +321,44 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 .char-modal-line-name{flex:1;}
 .char-modal-line-ridden{color:#5fd17a;font-size:11px;}
 
+/* キャラ選択セクション */
+.char-modal-section-title{
+  font-size:11px;color:var(--silver);letter-spacing:1.5px;
+  margin:18px 0 10px;text-transform:uppercase;
+  display:flex;align-items:center;gap:8px;
+}
+.char-modal-soon{
+  background:rgba(140,160,179,.15);color:var(--silver);
+  font-size:9px;padding:2px 7px;border-radius:8px;letter-spacing:0;
+}
+.char-modal-hint{
+  font-size:11px;color:rgba(140,160,179,.85);line-height:1.6;
+  padding:9px 11px;background:rgba(255,255,255,.03);
+  border-radius:8px;border-left:2px solid var(--track);
+}
+.char-modal-thumbs{
+  display:flex;gap:8px;flex-wrap:wrap;
+}
+.char-modal-thumb{
+  background:rgba(255,255,255,.05);
+  border:2px solid var(--track);
+  border-radius:12px;
+  padding:10px 8px 6px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  transition:all .2s;
+  font-family:inherit;min-width:84px;
+}
+.char-modal-thumb svg{
+  width:56px;height:56px;
+  filter:drop-shadow(0 2px 6px rgba(0,0,0,.4));
+}
+.char-modal-thumb-name{font-size:10px;color:var(--white);text-align:center;line-height:1.3;}
+.char-modal-thumb.active{
+  border-color:var(--gold);background:rgba(242,169,0,.15);
+  box-shadow:0 0 0 1px var(--gold) inset;
+}
+.char-modal-thumb:hover{transform:translateY(-2px);border-color:rgba(242,169,0,.6);}
+
 /* Lv4 ハローのパルスアニメ (50+回訪問駅) */
 @keyframes lv4-halo-pulse {
   0%, 100% { opacity: 0.35; }
@@ -650,13 +688,42 @@ function toggleCharacterMode() {
   }
 }
 
-// 駅の代表キャラを取得 (将来はユーザー選択を localStorage から復元)
+// 駅ごとのキャラ選択 (localStorage 永続化)
+const STATION_CHAR_PICK_KEY = 'norireco_station_char_pick';
+function getStationCharacterChoice(stationName) {
+  try {
+    const data = JSON.parse(localStorage.getItem(STATION_CHAR_PICK_KEY) || '{}');
+    return data[stationName] || null;
+  } catch(e) { return null; }
+}
+function setStationCharacterChoice(stationName, charId) {
+  try {
+    const data = JSON.parse(localStorage.getItem(STATION_CHAR_PICK_KEY) || '{}');
+    if (charId) data[stationName] = charId; else delete data[stationName];
+    localStorage.setItem(STATION_CHAR_PICK_KEY, JSON.stringify(data));
+  } catch(e) {}
+}
+
+// 駅の代表キャラを取得 (ユーザー選択優先)
 function getStationCharacter(stationName) {
-  if (!charModeOn) return null; // OFF 時は表示しない
+  if (!charModeOn) return null;
   const list = stationCharMap.get(stationName);
   if (!list || !list.length) return null;
-  // TODO: 1駅に複数キャラある場合のユーザー選択を localStorage から優先取得
-  return list[0]; // 暫定: リスト先頭
+  const choice = getStationCharacterChoice(stationName);
+  if (choice) {
+    const chosen = list.find(c => c.meta.id === choice);
+    if (chosen) return chosen;
+  }
+  return list[0]; // デフォルト: リスト先頭
+}
+
+// キャラ選択を変更してマップ再描画
+function pickStationCharacter(stationName, charId) {
+  setStationCharacterChoice(stationName, charId);
+  closeCharModal();
+  if (typeof redrawAllLinesAfterTripChange === 'function') {
+    redrawAllLinesAfterTripChange();
+  }
 }
 async function loadMergedStations() {
   try {
@@ -2781,7 +2848,6 @@ function attachStationDotClickV2(dot, ms) {
     } else {
       // 通常モード: キャラ駅ならキャラ詳細モーダル
       const character = getStationCharacter(ms.name);
-      console.log('[駅クリック]', ms.name, 'recordMode:', recordMode, 'memoMode:', memoMode, 'character:', character ? character.meta.name : null);
       if (character) {
         openCharModal(ms, character);
         L.DomEvent.stopPropagation(e);
@@ -2792,11 +2858,9 @@ function attachStationDotClickV2(dot, ms) {
 
 // キャラ詳細モーダル
 function openCharModal(ms, character) {
-  console.log('[openCharModal]', ms.name, character.meta.name);
   const modal = document.getElementById('char-modal');
   const body = document.getElementById('char-modal-body');
-  console.log('[openCharModal] modal element:', modal, 'body element:', body);
-  if (!body || !modal) { console.warn('[openCharModal] モーダル要素が見つからない'); return; }
+  if (!body || !modal) return;
   const visits = slVisitCount[ms.name] || 0;
   const level = getStationLevel(visits);
   const levelStars = level >= 4 ? '⭐⭐⭐' : level >= 3 ? '⭐⭐' : level >= 2 ? '⭐' : level >= 1 ? '✓' : '';
@@ -2831,9 +2895,33 @@ function openCharModal(ms, character) {
     </div>
     ${character.meta.description ? `<div class="char-modal-desc">${character.meta.description}</div>` : ''}
     ${slRows ? `<div class="char-modal-lines">乗り入れ系統 (${(ms.lines || []).length})</div>${slRows}` : ''}
+    ${(() => {
+      // キャラ選択セクション (2体以上ある場合のみ)
+      const allChars = stationCharMap.get(ms.name) || [];
+      if (allChars.length < 2) {
+        // 1体のみなら情報メッセージ
+        return `<div class="char-modal-section-title">🎭 この駅のキャラ</div>
+          <div class="char-modal-hint">現在 1 体のみ登録されています。複数のキャラが登録されると、ここで切り替えできるようになります。</div>`;
+      }
+      const choiceId = getStationCharacterChoice(ms.name) || allChars[0].meta.id;
+      return `
+        <div class="char-modal-section-title">🎭 キャラを切り替え (${allChars.length}体)</div>
+        <div class="char-modal-thumbs">
+          ${allChars.map(c => `
+            <button class="char-modal-thumb ${c.meta.id === choiceId ? 'active' : ''}"
+                    onclick="pickStationCharacter('${ms.name}', '${c.meta.id}')"
+                    title="${c.meta.name}">
+              <svg viewBox="0 0 64 64">${c.innerSvg}</svg>
+              <div class="char-modal-thumb-name">${c.meta.name}</div>
+            </button>
+          `).join('')}
+        </div>
+      `;
+    })()}
+    <div class="char-modal-section-title">🎨 カスタマイズ <span class="char-modal-soon">近日対応</span></div>
+    <div class="char-modal-hint">服の色変更・装束違い・期間限定キャラなどに対応予定。</div>
   `;
   modal.classList.add('open');
-  console.log('[openCharModal] open class added, modal classList:', modal.className);
 }
 function closeCharModal() {
   document.getElementById('char-modal')?.classList.remove('open');
