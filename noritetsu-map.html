@@ -757,18 +757,6 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
         <span style="font-size:9px;color:var(--silver)" id="storage-count"></span>
       </div>
     </div>
-    <div class="map-legend-box">
-      <div style="font-size:9px;color:var(--silver);letter-spacing:1px;margin-bottom:7px;text-transform:uppercase">凡例</div>
-      <div class="leg-row">
-        <div style="width:22px;height:0;border-top:2.5px dashed rgba(200,220,255,.7);margin-top:1px"></div>
-        <span>未乗車（点線）</span>
-      </div>
-      <div class="leg-row">
-        <div class="leg-swatch" style="background:var(--red);box-shadow:0 0 6px var(--red)"></div>
-        <span>乗車済み（グロー）</span>
-      </div>
-      <div id="legend-lines"></div>
-    </div>
     <button class="map-mode-fab" id="map-mode-btn" onclick="cycleMapMode()" title="背景切替">🗺️</button>
     <button class="memo-fab" id="memo-btn" onclick="toggleMemoMode()" title="メモ投稿">📸</button>
     <button class="record-fab" id="rec-btn" onclick="toggleRecordMode()" title="区間記録モード">📝</button>
@@ -4350,6 +4338,7 @@ function updateOverlays(){
   document.getElementById('ms-ln').textContent=gs.la+'系統';
   document.getElementById('ms-dn').textContent=gs.ld+'系統';
   const leg=document.getElementById('legend-lines');
+  if (!leg) return; // 凡例パネル削除済み (v113〜)
   leg.innerHTML='';
 
   // 営業系統 — 乗車済みのみ、達成率降順
