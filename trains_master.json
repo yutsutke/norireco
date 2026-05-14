@@ -126,6 +126,81 @@
     { "id": "sl_hitoyoshi",     "name": "SL人吉",         "category": "steam", "operator": "JR九州",   "description": "熊本〜鳥栖 (運休中含む)",            "stations_typical": ["熊本","鳥栖"] },
     { "id": "sl_paleo_express", "name": "SLパレオエクスプレス", "category": "steam", "operator": "秩父鉄道", "description": "熊谷〜三峰口",                   "stations_typical": ["熊谷","秩父","三峰口"] },
     { "id": "sl_gunma",         "name": "SLぐんま",       "category": "steam", "operator": "JR東日本", "description": "高崎〜水上/横川",                   "stations_typical": ["高崎","水上","横川"] },
-    { "id": "sl_oigawa",        "name": "SLかわね路号",   "category": "steam", "operator": "大井川鐵道", "description": "新金谷〜千頭",                     "stations_typical": ["新金谷","家山","千頭"] }
+    { "id": "sl_oigawa",        "name": "SLかわね路号",   "category": "steam", "operator": "大井川鐵道", "description": "新金谷〜千頭",                     "stations_typical": ["新金谷","家山","千頭"] },
+
+    { "id": "hokuto",         "name": "北斗",         "category": "limited_express", "operator": "JR北海道", "description": "札幌〜函館 室蘭本線経由",       "stations_typical": ["札幌","南千歳","苫小牧","東室蘭","長万部","函館"] },
+    { "id": "suzuran",        "name": "すずらん",     "category": "limited_express", "operator": "JR北海道", "description": "札幌〜室蘭",                     "stations_typical": ["札幌","苫小牧","東室蘭","室蘭"] },
+    { "id": "kamui",          "name": "カムイ",       "category": "limited_express", "operator": "JR北海道", "description": "札幌〜旭川 (789系)",             "stations_typical": ["札幌","岩見沢","滝川","旭川"] },
+    { "id": "lilac",          "name": "ライラック",   "category": "limited_express", "operator": "JR北海道", "description": "札幌〜旭川 (789系0番台)",        "stations_typical": ["札幌","岩見沢","滝川","旭川"] },
+    { "id": "okhotsk",        "name": "オホーツク",   "category": "limited_express", "operator": "JR北海道", "description": "札幌〜網走",                     "stations_typical": ["札幌","旭川","北見","網走"] },
+    { "id": "taisetsu",       "name": "大雪",         "category": "limited_express", "operator": "JR北海道", "description": "旭川〜網走",                     "stations_typical": ["旭川","北見","網走"] },
+    { "id": "tokachi",        "name": "とかち",       "category": "limited_express", "operator": "JR北海道", "description": "札幌〜帯広",                     "stations_typical": ["札幌","新得","帯広"] },
+    { "id": "ozora",          "name": "おおぞら",     "category": "limited_express", "operator": "JR北海道", "description": "札幌〜釧路",                     "stations_typical": ["札幌","新得","帯広","釧路"] },
+    { "id": "soya",           "name": "宗谷",         "category": "limited_express", "operator": "JR北海道", "description": "札幌〜稚内",                     "stations_typical": ["札幌","旭川","名寄","稚内"] },
+    { "id": "sarobetsu",      "name": "サロベツ",     "category": "limited_express", "operator": "JR北海道", "description": "旭川〜稚内",                     "stations_typical": ["旭川","名寄","稚内"] },
+
+    { "id": "super_hakuto",   "name": "スーパーはくと", "category": "limited_express", "operator": "智頭急行・JR西日本", "description": "京都/大阪〜倉吉 智頭急行経由", "stations_typical": ["京都","大阪","姫路","上郡","智頭","鳥取","倉吉"] },
+    { "id": "super_inaba",    "name": "スーパーいなば", "category": "limited_express", "operator": "JR西日本", "description": "岡山〜鳥取 智頭急行経由",        "stations_typical": ["岡山","上郡","智頭","鳥取"] },
+
+    { "id": "liberty_aizu",   "name": "リバティ会津", "category": "limited_express", "operator": "東武鉄道・野岩鉄道・会津鉄道", "description": "浅草〜会津田島",   "stations_typical": ["浅草","北千住","下今市","鬼怒川温泉","会津田島"] },
+    { "id": "liberty_kegon",  "name": "リバティけごん", "category": "limited_express", "operator": "東武鉄道", "description": "浅草〜東武日光",                 "stations_typical": ["浅草","北千住","下今市","東武日光"] },
+    { "id": "liberty_kinu",   "name": "リバティきぬ", "category": "limited_express", "operator": "東武鉄道", "description": "浅草〜鬼怒川温泉/新藤原",        "stations_typical": ["浅草","北千住","下今市","鬼怒川温泉","新藤原"] },
+    { "id": "liberty_ryomo",  "name": "リバティりょうもう", "category": "limited_express", "operator": "東武鉄道", "description": "浅草〜赤城/伊勢崎",            "stations_typical": ["浅草","北千住","館林","太田","赤城"] },
+    { "id": "kegon",          "name": "けごん",       "category": "limited_express", "operator": "東武鉄道", "description": "浅草〜東武日光 (スペーシア)",     "stations_typical": ["浅草","北千住","下今市","東武日光"] },
+    { "id": "kinu",           "name": "きぬ",         "category": "limited_express", "operator": "東武鉄道", "description": "浅草〜鬼怒川温泉 (スペーシア)",   "stations_typical": ["浅草","北千住","下今市","鬼怒川温泉"] },
+    { "id": "ryomo",          "name": "りょうもう",   "category": "limited_express", "operator": "東武鉄道", "description": "浅草〜赤城/伊勢崎",              "stations_typical": ["浅草","北千住","館林","太田","赤城"] },
+    { "id": "spacia_x",       "name": "スペーシア X", "category": "limited_express", "operator": "東武鉄道", "rarity": "rare", "description": "浅草〜東武日光/鬼怒川温泉 N100系", "stations_typical": ["浅草","北千住","下今市","東武日光","鬼怒川温泉"] },
+
+    { "id": "laview",         "name": "ラビュー",     "category": "limited_express", "operator": "西武鉄道", "rarity": "rare", "description": "池袋〜西武秩父 (001系)",       "stations_typical": ["池袋","所沢","飯能","西武秩父"] },
+    { "id": "chichibu",       "name": "ちちぶ",       "category": "limited_express", "operator": "西武鉄道", "description": "池袋〜西武秩父",                  "stations_typical": ["池袋","所沢","飯能","西武秩父"] },
+    { "id": "musashi",        "name": "むさし",       "category": "limited_express", "operator": "西武鉄道", "description": "池袋〜飯能",                      "stations_typical": ["池袋","所沢","飯能"] },
+    { "id": "koedo",          "name": "小江戸",       "category": "limited_express", "operator": "西武鉄道", "description": "西武新宿〜本川越",                 "stations_typical": ["西武新宿","所沢","本川越"] },
+
+    { "id": "skyliner",       "name": "スカイライナー", "category": "limited_express", "operator": "京成電鉄", "description": "京成上野/日暮里〜成田空港 最速",    "stations_typical": ["京成上野","日暮里","空港第2ビル","成田空港"] },
+    { "id": "morningliner",   "name": "モーニングライナー", "category": "limited_express", "operator": "京成電鉄", "description": "成田/京成成田〜京成上野 朝の通勤",  "stations_typical": ["成田空港","京成成田","京成上野"] },
+    { "id": "eveningliner",   "name": "イブニングライナー", "category": "limited_express", "operator": "京成電鉄", "description": "京成上野〜成田/成田空港 夜の通勤",  "stations_typical": ["京成上野","京成成田","成田空港"] },
+    { "id": "cityliner",      "name": "シティライナー",   "category": "limited_express", "operator": "京成電鉄", "description": "京成上野〜成田空港 (旧スカイライナー経路)", "stations_typical": ["京成上野","日暮里","京成船橋","成田空港"] },
+
+    { "id": "keikyu_wing",    "name": "京急ウィング号", "category": "limited_express", "operator": "京浜急行電鉄", "description": "品川〜三崎口 夜の通勤",          "stations_typical": ["品川","横浜","上大岡","三崎口"] },
+    { "id": "morning_wing",   "name": "モーニング・ウィング号", "category": "limited_express", "operator": "京浜急行電鉄", "description": "三浦半島〜品川 朝の通勤",       "stations_typical": ["三崎口","横須賀中央","上大岡","品川"] },
+
+    { "id": "hakone",         "name": "はこね",       "category": "limited_express", "operator": "小田急電鉄", "description": "新宿〜箱根湯本 (ロマンスカー)",    "stations_typical": ["新宿","町田","小田原","箱根湯本"] },
+    { "id": "super_hakone",   "name": "スーパーはこね", "category": "limited_express", "operator": "小田急電鉄", "description": "新宿〜箱根湯本 ノンストップ",      "stations_typical": ["新宿","小田原","箱根湯本"] },
+    { "id": "homeway",        "name": "ホームウェイ", "category": "limited_express", "operator": "小田急電鉄", "description": "新宿〜小田原/藤沢 夜の通勤",       "stations_typical": ["新宿","町田","小田原"] },
+    { "id": "metro_hakone",   "name": "メトロはこね", "category": "limited_express", "operator": "小田急電鉄・東京メトロ", "description": "北千住〜箱根湯本 千代田線直通",  "stations_typical": ["北千住","大手町","表参道","小田原","箱根湯本"] },
+    { "id": "fujisan",        "name": "ふじさん",     "category": "limited_express", "operator": "小田急電鉄・JR東海", "description": "新宿〜御殿場",               "stations_typical": ["新宿","町田","松田","御殿場"] },
+    { "id": "enoshima",       "name": "えのしま",     "category": "limited_express", "operator": "小田急電鉄", "description": "新宿〜片瀬江ノ島",                 "stations_typical": ["新宿","町田","藤沢","片瀬江ノ島"] },
+    { "id": "metro_enoshima", "name": "メトロえのしま", "category": "limited_express", "operator": "小田急電鉄・東京メトロ", "description": "北千住〜片瀬江ノ島",         "stations_typical": ["北千住","大手町","表参道","片瀬江ノ島"] },
+    { "id": "morningway",     "name": "モーニングウェイ", "category": "limited_express", "operator": "小田急電鉄", "description": "小田原/藤沢〜新宿 朝の通勤",     "stations_typical": ["小田原","町田","新宿"] },
+
+    { "id": "keio_liner",     "name": "京王ライナー", "category": "limited_express", "operator": "京王電鉄", "description": "新宿〜京王八王子/橋本 夜の通勤",     "stations_typical": ["新宿","府中","京王八王子","橋本"] },
+    { "id": "mt_takao",       "name": "Mt.TAKAO号",   "category": "limited_express", "operator": "京王電鉄", "description": "新宿〜高尾山口 土休日",            "stations_typical": ["新宿","北野","高尾山口"] },
+
+    { "id": "kyotrain_garaku","name": "京とれいん 雅洛", "category": "joyful_train", "operator": "阪急電鉄", "description": "大阪梅田〜京都河原町 観光列車",     "stations_typical": ["大阪梅田","京都河原町"] },
+
+    { "id": "hinotori",       "name": "ひのとり",     "category": "limited_express", "operator": "近畿日本鉄道", "rarity": "rare", "description": "大阪難波〜近鉄名古屋 80000系",  "stations_typical": ["大阪難波","鶴橋","近鉄名古屋"] },
+    { "id": "urban_liner",    "name": "アーバンライナー", "category": "limited_express", "operator": "近畿日本鉄道", "description": "大阪難波〜近鉄名古屋",          "stations_typical": ["大阪難波","鶴橋","近鉄名古屋"] },
+    { "id": "shimakaze",      "name": "しまかぜ",     "category": "limited_express", "operator": "近畿日本鉄道", "rarity": "rare", "description": "大阪/京都/名古屋〜賢島 観光特急", "stations_typical": ["大阪難波","京都","近鉄名古屋","賢島"] },
+    { "id": "ise_shima_liner","name": "伊勢志摩ライナー", "category": "limited_express", "operator": "近畿日本鉄道", "description": "大阪/京都/名古屋〜賢島",        "stations_typical": ["大阪難波","京都","近鉄名古屋","賢島"] },
+    { "id": "vista_ex",       "name": "ビスタEX",     "category": "limited_express", "operator": "近畿日本鉄道", "description": "大阪・名古屋〜伊勢志摩 2階建て",   "stations_typical": ["大阪難波","近鉄名古屋","伊勢市","賢島"] },
+    { "id": "sakura_liner",   "name": "さくらライナー", "category": "limited_express", "operator": "近畿日本鉄道", "description": "大阪阿部野橋〜吉野",            "stations_typical": ["大阪阿部野橋","橿原神宮前","吉野"] },
+    { "id": "blue_symphony",  "name": "青の交響曲",   "category": "joyful_train", "operator": "近畿日本鉄道", "description": "大阪阿部野橋〜吉野 観光列車",         "stations_typical": ["大阪阿部野橋","吉野"] },
+
+    { "id": "rapit",          "name": "ラピート",     "category": "limited_express", "operator": "南海電気鉄道", "rarity": "rare", "description": "難波〜関西空港 50000系",        "stations_typical": ["難波","新今宮","堺","関西空港"] },
+    { "id": "southern",       "name": "サザン",       "category": "limited_express", "operator": "南海電気鉄道", "description": "難波〜和歌山市",                  "stations_typical": ["難波","新今宮","堺","和歌山市"] },
+    { "id": "koya",           "name": "こうや",       "category": "limited_express", "operator": "南海電気鉄道", "description": "難波〜極楽橋",                    "stations_typical": ["難波","新今宮","橋本","極楽橋"] },
+    { "id": "rinkan",         "name": "りんかん",     "category": "limited_express", "operator": "南海電気鉄道", "description": "難波〜橋本",                      "stations_typical": ["難波","新今宮","河内長野","橋本"] },
+    { "id": "tenku",          "name": "天空",         "category": "joyful_train", "operator": "南海電気鉄道", "description": "橋本〜極楽橋 観光列車",             "stations_typical": ["橋本","高野下","極楽橋"] },
+
+    { "id": "musky",          "name": "ミュースカイ", "category": "limited_express", "operator": "名古屋鉄道", "description": "名鉄岐阜/新鵜沼〜中部国際空港",     "stations_typical": ["名鉄岐阜","名鉄名古屋","金山","中部国際空港"] },
+    { "id": "panorama_super", "name": "パノラマスーパー", "category": "limited_express", "operator": "名古屋鉄道", "description": "名鉄岐阜/新鵜沼〜豊橋",          "stations_typical": ["名鉄岐阜","名鉄名古屋","金山","豊橋"] },
+
+    { "id": "tabito",         "name": "旅人",         "category": "joyful_train", "operator": "西日本鉄道", "description": "西鉄福岡〜太宰府 観光列車",         "stations_typical": ["西鉄福岡","二日市","太宰府"] },
+    { "id": "suito",          "name": "水都",         "category": "joyful_train", "operator": "西日本鉄道", "description": "西鉄福岡〜大牟田/柳川 観光列車",     "stations_typical": ["西鉄福岡","西鉄柳川","大牟田"] },
+
+    { "id": "kuro_shio_torokko","name": "奥出雲おろち号", "category": "joyful_train", "operator": "JR西日本", "description": "木次線 観光トロッコ列車",          "stations_typical": ["木次","出雲横田","備後落合"] },
+    { "id": "etsumi_hokusen", "name": "etSETOra",      "category": "joyful_train", "operator": "JR西日本", "description": "広島〜尾道 瀬戸内海観光列車",        "stations_typical": ["広島","三原","尾道"] },
+    { "id": "marumaru_no_hanashi","name": "○○のはなし", "category": "joyful_train", "operator": "JR西日本", "description": "新下関〜東萩 山陰本線観光列車",      "stations_typical": ["新下関","長門市","東萩"] },
+    { "id": "la_malle",       "name": "La Malle de Bois", "category": "joyful_train", "operator": "JR西日本", "description": "岡山〜宇野/琴平 旅のお供観光列車",  "stations_typical": ["岡山","宇野","琴平"] }
   ]
 }
