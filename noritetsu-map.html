@@ -833,7 +833,7 @@ function setOwnedCharacters(set) {
     localStorage.setItem(OWNED_CHARACTERS_KEY, JSON.stringify([...set]));
   } catch(e) {}
 }
-function grantCharacter(charId) {
+function grantCharacter(charId, opts) {
   const set = getOwnedCharacters();
   if (set.has(charId)) {
     console.log(`[キャラ] ${charId} は既に所持済み`);
@@ -843,11 +843,85 @@ function grantCharacter(charId) {
   setOwnedCharacters(set);
   const char = CHARACTERS[charId];
   console.log(`[キャラ] 🎉 獲得: ${char ? char.meta.name : charId}`);
+  // Supabase にも獲得履歴を記録 (非同期、失敗してもローカルは保存済み)
+  const source = (opts && opts.source) || 'manual_grant';
+  const stationName = (opts && opts.station_name) || null;
+  const gpsData = (opts && opts.gps) || null;
+  saveCharacterGrantToSupabase(charId, stationName, source, gpsData);
   // 地図再描画
   if (typeof redrawAllLinesAfterTripChange === 'function') {
     redrawAllLinesAfterTripChange();
   }
   return true;
+}
+
+// キャラ獲得履歴を Supabase に保存
+async function saveCharacterGrantToSupabase(charId, stationName, source, gpsData) {
+  if (typeof SUPABASE_URL === 'undefined' || typeof SUPABASE_KEY === 'undefined') return;
+  const grant = {
+    id: `grant_${Date.now()}_${charId}`,
+    character_id: charId,
+    station_name: stationName,
+    source: source,
+    granted_at: new Date().toISOString(),
+    gps_lat: gpsData ? gpsData.lat : null,
+    gps_lon: gpsData ? gpsData.lon : null,
+    gps_accuracy: gpsData ? gpsData.accuracy : null,
+  };
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_character_grants`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify(grant),
+    });
+    if (res.ok) {
+      console.log(`[乗レコ] キャラ獲得記録を Supabase 保存: ${charId} (${source})`);
+    } else {
+      const errBody = await res.text().catch(() => '');
+      console.warn(`[乗レコ] キャラ獲得 Supabase 保存失敗: HTTP ${res.status} ${errBody.slice(0,200)}`);
+    }
+  } catch(e) {
+    console.warn('[乗レコ] キャラ獲得 Supabase 接続エラー:', e.message);
+  }
+}
+
+// Supabase から獲得済みキャラを取得して localStorage にマージ
+async function syncCharacterGrantsFromSupabase() {
+  if (typeof SUPABASE_URL === 'undefined' || typeof SUPABASE_KEY === 'undefined') return;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_character_grants?select=character_id`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    if (!res.ok) {
+      console.warn('[乗レコ] キャラ獲得同期失敗 HTTP', res.status);
+      return;
+    }
+    const grants = await res.json();
+    const owned = getOwnedCharacters();
+    let added = 0;
+    for (const g of grants) {
+      if (g.character_id && !owned.has(g.character_id)) {
+        owned.add(g.character_id);
+        added++;
+      }
+    }
+    if (added > 0) {
+      setOwnedCharacters(owned);
+      console.log(`[乗レコ] Supabase からキャラ獲得 ${added}体 同期`);
+      if (typeof redrawAllLinesAfterTripChange === 'function') {
+        redrawAllLinesAfterTripChange();
+      }
+    } else {
+      console.log(`[乗レコ] キャラ獲得同期: 新規なし (Supabase: ${grants.length}件)`);
+    }
+  } catch(e) {
+    console.warn('[乗レコ] キャラ獲得同期エラー:', e.message);
+  }
 }
 function revokeCharacter(charId) {
   const set = getOwnedCharacters();
@@ -882,16 +956,19 @@ function checkAndGrantCharacters() {
   if (!CHARACTERS || Object.keys(CHARACTERS).length === 0) return [];
   let trips = [];
   try { trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]'); } catch(e) { return []; }
-  // verified === true の trip の from/to を抽出
-  const verifiedStations = new Set();
+  // verified === true の trip の from/to を抽出 (駅名 → GPS データのマップ)
+  const verifiedStationGps = new Map(); // station name → {lat, lon, accuracy} or null
   for (const trip of trips) {
     if (!trip.verified) continue;
+    const gps = (trip.gps_lat != null && trip.gps_lon != null)
+      ? { lat: trip.gps_lat, lon: trip.gps_lon, accuracy: trip.gps_accuracy }
+      : null;
     for (const seg of (trip.segments || [])) {
-      if (seg.from) verifiedStations.add(seg.from);
-      if (seg.to) verifiedStations.add(seg.to);
+      if (seg.from && !verifiedStationGps.has(seg.from)) verifiedStationGps.set(seg.from, gps);
+      if (seg.to && !verifiedStationGps.has(seg.to)) verifiedStationGps.set(seg.to, gps);
     }
   }
-  if (verifiedStations.size === 0) return [];
+  if (verifiedStationGps.size === 0) return [];
 
   const granted = [];
   const owned = getOwnedCharacters();
@@ -902,18 +979,22 @@ function checkAndGrantCharacters() {
     if (!isCharacterAvailable(char.meta)) continue;
     const obtainAt = char.meta.obtainable_at || char.meta.station_ids || [];
     for (const stationName of obtainAt) {
-      if (verifiedStations.has(stationName)) {
+      if (verifiedStationGps.has(stationName)) {
         owned.add(charId);
-        granted.push(char);
+        granted.push({ char, station: stationName, gps: verifiedStationGps.get(stationName) });
         break;
       }
     }
   }
   if (granted.length > 0) {
     setOwnedCharacters(owned);
-    console.log(`[乗レコ] 🎉 自動獲得: ${granted.map(c => c.meta.name).join(', ')}`);
+    console.log(`[乗レコ] 🎉 自動獲得: ${granted.map(g => g.char.meta.name).join(', ')}`);
+    // Supabase に獲得履歴を記録 (各々独立に)
+    for (const g of granted) {
+      saveCharacterGrantToSupabase(g.char.meta.id, g.station, 'trip_auto', g.gps);
+    }
   }
-  return granted;
+  return granted.map(g => g.char);
 }
 
 // キャラ獲得トースト通知
@@ -1000,7 +1081,11 @@ function tryGrantByGPS(charId, ev) {
         return;
       }
       // 獲得！
-      grantCharacter(charId);
+      grantCharacter(charId, {
+        source: 'gps',
+        station_name: nearestMs.name,
+        gps: { lat: userLat, lon: userLon, accuracy: accuracy }
+      });
       showCharacterGrantToast(char);
       closeCharModal();
       console.log(`[乗レコ] 🎯 GPS 獲得: ${char.meta.name} (${nearestMs.name} から ${Math.round(nearestDist)}m / 精度±${Math.round(accuracy)}m)`);
@@ -2169,8 +2254,10 @@ function initMap(){
       rebuildRiddenStations();
       if (typeof redrawAllLinesAfterTripChange === 'function') redrawAllLinesAfterTripChange();
       updateOverlays();
-      // 認証済み trip から自動獲得チェック (初期ロード時)
-      setTimeout(() => runCharacterGrantCheck(), 1200);
+      // Supabase からキャラ獲得履歴を同期 → その後 trip 由来の自動獲得チェック
+      syncCharacterGrantsFromSupabase().finally(() => {
+        setTimeout(() => runCharacterGrantCheck(), 800);
+      });
     }).catch(e => console.warn('[乗レコ] SERVICE_LINES 構築失敗:', e));
   })();
 
