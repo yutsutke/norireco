@@ -9,13 +9,14 @@
 //   2. GitHubにpush
 //   3. ユーザーがハードリロード or アプリ再起動で更新が反映される
 
-const CACHE_VERSION = 'v129';
+const CACHE_VERSION = 'v130';
 const CACHE_NAME = `norireco-${CACHE_VERSION}`;
 
 // 起動時にプリキャッシュする静的アセット
 const STATIC_ASSETS = [
   './noritetsu-log.html',
   './noritetsu-map.html',
+  './js/app.js',
   './lines-p1.json',
   './lines-p2.json',
   './lines-p3.json',
@@ -38,10 +39,11 @@ const STATIC_ASSETS = [
   './icon.svg',
 ];
 
-// HTML/JSON は Network-First (オンライン時は常に最新)
+// HTML/JSON/JS は Network-First (オンライン時は常に最新)
 const NETWORK_FIRST_PATTERNS = [
   /\.html$/,
   /\.json$/,
+  /\.js$/,
 ];
 
 // ── Install ──
