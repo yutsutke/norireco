@@ -3416,14 +3416,6 @@ window.selectEndStationCand = selectEndStationCand;
 window.closeEndStation = closeEndStation;
 window.confirmEndStation = confirmEndStation;
 
-// Supabase 送信時に schema 未対応フィールドを除外する workaround。
-// schema が拡張されたらこの関数を撤去できる (v96→v97 と同じパターン)。
-// 現在 norireco_trips に未追加: train_id / train_name / train_category / car_model
-function tripForSupabase(trip) {
-  const { train_id, train_name, train_category, car_model, ...rest } = trip;
-  return rest;
-}
-
 async function saveMultiSegmentTrip() {
   if (!recordSelection || recordSelection.length === 0) return;
   const isVisitOnly = recordSelection.length === 1 && (!currentSegments || currentSegments.length === 0);
@@ -3518,7 +3510,7 @@ async function saveMultiSegmentTrip() {
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal',
       },
-      body: JSON.stringify(tripForSupabase(trip)),
+      body: JSON.stringify(trip),
     });
     if (res.ok) {
       saved = true;
