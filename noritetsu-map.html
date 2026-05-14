@@ -166,6 +166,40 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
   50%   {box-shadow:0 4px 22px rgba(26,111,229,1);}
 }
 .location-fab:hover{transform:scale(1.08);}
+/* 最寄駅パネル (Phase 2) */
+.nearest-station-panel{
+  position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
+  z-index:1000;
+  background:rgba(13,27,42,.96);border:1.5px solid #1A6FE5;border-radius:14px;
+  padding:10px 14px;
+  display:none;align-items:center;gap:12px;
+  box-shadow:0 4px 16px rgba(0,0,0,.6), 0 0 18px rgba(26,111,229,.3);
+  font-family:'Zen Kaku Gothic New',sans-serif;
+  max-width:calc(100vw - 90px);
+  animation:nsp-fadeIn .25s ease-out;
+}
+.nearest-station-panel.show{display:flex;}
+@keyframes nsp-fadeIn{from{opacity:0;transform:translate(-50%, 8px);}to{opacity:1;transform:translate(-50%, 0);}}
+.ns-info{flex:1;min-width:0;}
+.ns-label{font-size:9px;color:#5fb5ff;letter-spacing:1px;}
+.ns-name{font-size:15px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
+.ns-dist{font-size:10px;color:var(--silver);margin-top:1px;font-family:'DM Mono',monospace;}
+.ns-btn{
+  background:linear-gradient(135deg, #1A6FE5 0%, #003fa0 100%);
+  color:#fff;border:none;border-radius:10px;
+  padding:9px 13px;font-size:12px;font-weight:700;
+  cursor:pointer;font-family:inherit;letter-spacing:.5px;
+  box-shadow:0 3px 10px rgba(26,111,229,.5);
+  transition:all .2s;white-space:nowrap;flex-shrink:0;
+}
+.ns-btn:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(26,111,229,.7);}
+.ns-btn:active{transform:translateY(0);}
+@media (max-width:480px){
+  .nearest-station-panel{padding:8px 10px;gap:8px;}
+  .ns-name{font-size:13px;}
+  .ns-btn{padding:8px 11px;font-size:11px;}
+}
+
 /* 現在地マーカー (Leaflet divIcon にこのクラスが付く) */
 .user-location-marker{background:transparent !important;border:none !important;}
 .user-loc-dot{
@@ -673,6 +707,14 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
     <button class="record-fab" id="rec-btn" onclick="toggleRecordMode()" title="区間記録モード">📝</button>
     <button class="char-fab on" id="char-fab" onclick="toggleCharacterMode()" title="駅キャラ表示の切替 (ON/OFF)">🎭</button>
     <button class="location-fab" id="location-fab" onclick="cycleLocationMode()" title="現在地表示 (タップで 表示→追従→OFF)">📍</button>
+    <div class="nearest-station-panel" id="nearest-station-panel">
+      <div class="ns-info">
+        <div class="ns-label">📍 最寄駅</div>
+        <div class="ns-name" id="ns-name">--</div>
+        <div class="ns-dist" id="ns-dist">--</div>
+      </div>
+      <button class="ns-btn" onclick="startRecordFromNearest()">🔖 ここから記録開始</button>
+    </div>
     <div class="rec-panel" id="rec-panel">
       <div class="rec-title">📝 区間記録モード — 駅をタップして選択</div>
       <div class="rec-row" id="rec-chips"></div>
@@ -1158,6 +1200,9 @@ let locationWatchId = null;
 let userLocationMarker = null;
 let userLocationCircle = null;
 let didInitialCenter = false;
+let lastUserGps = null;                // 直近の {lat, lon, accuracy}
+let recordStartedViaGPS = false;       // 「ここから記録開始」で発進した記録か
+let recordStartGPS = null;             // 発進時の GPS スナップショット
 
 function cycleLocationMode() {
   locationMode = (locationMode + 1) % 3;
@@ -1189,7 +1234,9 @@ function startLocationTracking() {
       const lat = pos.coords.latitude;
       const lon = pos.coords.longitude;
       const acc = pos.coords.accuracy;
+      lastUserGps = { lat, lon, accuracy: acc };
       updateUserLocationMarker(lat, lon, acc);
+      updateNearestStationPanel(lat, lon);
       if (locationMode === 1 && !didInitialCenter) {
         // 初回のみ中心化、その後はマーカーだけ更新
         map.setView([lat, lon], Math.max(map.getZoom(), 15), { animate: true });
@@ -1218,8 +1265,70 @@ function stopLocationTracking() {
     locationWatchId = null;
   }
   removeUserLocationMarker();
+  hideNearestStationPanel();
+  lastUserGps = null;
   didInitialCenter = false;
 }
+
+// 最寄駅パネル (Phase 2)
+function findNearestStation(lat, lon, maxRangeM) {
+  if (!MERGED_STATIONS || MERGED_STATIONS.length === 0) return null;
+  let best = null;
+  for (const ms of MERGED_STATIONS) {
+    const d = distMeters(lat, lon, ms.lat, ms.lon);
+    if (d > maxRangeM) continue;
+    if (!best || d < best.distance) {
+      best = { station: ms, distance: d };
+    }
+  }
+  return best;
+}
+
+function updateNearestStationPanel(lat, lon) {
+  const panel = document.getElementById('nearest-station-panel');
+  if (!panel) return;
+  // 記録モード中は非表示 (rec-panel が同じ場所に出る)
+  if (recordMode) { panel.classList.remove('show'); return; }
+  const nearest = findNearestStation(lat, lon, 1500); // 1.5km まで
+  if (!nearest) { panel.classList.remove('show'); return; }
+  document.getElementById('ns-name').textContent = nearest.station.name;
+  const dm = Math.round(nearest.distance);
+  document.getElementById('ns-dist').textContent =
+    dm < 1000 ? `${dm} m` : `${(dm/1000).toFixed(1)} km`;
+  panel.classList.add('show');
+}
+
+function hideNearestStationPanel() {
+  const panel = document.getElementById('nearest-station-panel');
+  if (panel) panel.classList.remove('show');
+}
+
+// 「ここから記録開始」: 記録モードに入る + 最寄駅を選択 + verified=true 用フラグセット
+function startRecordFromNearest() {
+  if (!lastUserGps) {
+    alert('現在地を取得できていません。📍 ボタンで位置情報を有効にしてください。');
+    return;
+  }
+  const nearest = findNearestStation(lastUserGps.lat, lastUserGps.lon, 1500);
+  if (!nearest) {
+    alert('1.5km 以内に駅が見つかりません');
+    return;
+  }
+  // GPS 認証情報を記録 (saveMultiSegmentTrip でこのフラグを見て verified=true にする)
+  recordStartedViaGPS = true;
+  recordStartGPS = { ...lastUserGps };
+  // 記録モードへ
+  if (!recordMode) toggleRecordMode();
+  // 最寄駅をプリセレクト
+  onRecordStationClick({
+    name: nearest.station.name,
+    lat: nearest.station.lat,
+    lon: nearest.station.lon,
+  });
+  hideNearestStationPanel();
+  console.log(`[乗レコ] 🔖 GPS 発進記録: ${nearest.station.name} (距離 ${Math.round(nearest.distance)}m, 精度±${Math.round(lastUserGps.accuracy)}m)`);
+}
+window.startRecordFromNearest = startRecordFromNearest;
 
 function updateUserLocationMarker(lat, lon, accuracy) {
   if (!map) return;
@@ -2504,9 +2613,18 @@ function toggleRecordMode() {
     if (memoMode) toggleMemoMode();
     refreshRecPanel();
     if(map) map.getContainer().style.cursor='crosshair';
+    // 最寄駅パネルとは排他 (位置がほぼ同じため)
+    if (typeof hideNearestStationPanel === 'function') hideNearestStationPanel();
   } else {
     clearRecSelection();
     if(map) map.getContainer().style.cursor='';
+    // 記録モード終了時に GPS 認証フラグもリセット
+    recordStartedViaGPS = false;
+    recordStartGPS = null;
+    // 位置情報 ON のままなら最寄駅パネルを復活
+    if (lastUserGps && locationMode > 0) {
+      updateNearestStationPanel(lastUserGps.lat, lastUserGps.lon);
+    }
   }
 }
 
@@ -2754,11 +2872,12 @@ async function saveMultiSegmentTrip() {
     total_minutes: 0, depart_time: '', arrive_time: '',
     segments: tripSegments,
     // 認証グラデーション (Notion §記録モード設計)
-    source: 'manual',         // 地図画面の区間記録は手動
-    verified: false,          // 自己申告 ⚪ レベル
-    gps_lat: null,
-    gps_lon: null,
-    gps_accuracy: null,
+    // GPS 発進 (「ここから記録開始」経由) なら verified=true、それ以外は manual
+    source: recordStartedViaGPS ? 'gps_button' : 'manual',
+    verified: !!recordStartedViaGPS,
+    gps_lat: recordStartGPS ? recordStartGPS.lat : null,
+    gps_lon: recordStartGPS ? recordStartGPS.lon : null,
+    gps_accuracy: recordStartGPS ? recordStartGPS.accuracy : null,
     recorded_at: new Date().toISOString(),
     date_precision: 'day',
   };
@@ -2801,12 +2920,15 @@ async function saveMultiSegmentTrip() {
   updateOverlays();
 
   if (saved) {
-    showRecordToast(`✅ 記録: ${tripSegments.length}区間 ${totalStations}駅`);
+    const verifiedTag = recordStartedViaGPS ? ' 🟢' : '';
+    showRecordToast(`✅ 記録${verifiedTag}: ${tripSegments.length}区間 ${totalStations}駅`);
   } else {
     showRecordToast(`⚠️ ローカル保存のみ (Supabase 失敗)\n${errInfo}`, 'warn', 9000);
   }
-  // この trip は manual なのでキャラ自動獲得は trigger しない (verified=false)
-  // ただし将来 stop_type/verified 編集機能を追加した時用に呼んでおく
+  // 保存後に GPS 認証フラグをリセット
+  recordStartedViaGPS = false;
+  recordStartGPS = null;
+  // verified=true の trip なら自動獲得チェックが発動する
   setTimeout(() => runCharacterGrantCheck(), 800);
   clearRecSelection();
 }
