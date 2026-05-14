@@ -4748,8 +4748,8 @@ async function renderStats(){
 
     // 主要カテゴリのスコアカード (達成 0 のものは表示しないと味気ないので 0 でも total>0 なら出す)
     const mainCats = ['shinkansen', 'limited_express', 'sleeper', 'cruise_train', 'joyful_train', 'steam', 'express'];
-    const grid = document.createElement('div');
-    grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px;margin-bottom:10px';
+    const trainGrid = document.createElement('div');
+    trainGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px;margin-bottom:10px';
     mainCats.forEach(cat => {
       const c = byCategory[cat];
       const meta = (TRAIN_CATEGORIES || {})[cat];
@@ -4762,9 +4762,9 @@ async function renderStats(){
         <div class="sc-v">${c.ridden}<span class="sc-u">/${c.total}</span></div>
         <div style="font-size:9px;color:var(--silver);margin-top:2px">${pct}%</div>
       `;
-      grid.appendChild(card);
+      trainGrid.appendChild(card);
     });
-    trainSection.appendChild(grid);
+    trainSection.appendChild(trainGrid);
 
     // カテゴリ別 乗った列車リスト (折りたたみ)
     mainCats.forEach(cat => {
