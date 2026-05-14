@@ -2843,9 +2843,18 @@ function toggleRecordMode() {
     recordStartedViaGPS = false;
     recordStartGPS = null;
     recordEndTime = null;
-    // 位置情報 ON のままなら最寄駅パネルを復活
+    // 最寄駅パネルの mode DOM を必ず切替 (lastUserGps の有無に関わらず)
+    const _np = document.getElementById('nearest-station-panel');
+    const _selM = document.getElementById('ns-mode-select');
+    const _recM = document.getElementById('ns-mode-recording');
+    if (_selM) _selM.style.display = 'block';
+    if (_recM) _recM.style.display = 'none';
     if (lastUserGps && locationMode > 0) {
+      // GPS が生きていれば候補リストも更新 (show 状態維持)
       updateNearestStationPanel(lastUserGps.lat, lastUserGps.lon);
+    } else if (_np) {
+      // GPS なしならパネル自体を隠す
+      _np.classList.remove('show');
     }
   }
 }
