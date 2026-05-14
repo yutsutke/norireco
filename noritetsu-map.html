@@ -48,8 +48,8 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
   border:none !important;background:transparent !important;
   box-shadow:none !important;
   display:flex !important;flex-direction:column !important;gap:6px !important;
-  /* FAB スタック (🎭 bottom:225 + 46px + 余白) より上に配置 */
-  margin:0 8px 281px 0 !important;
+  /* FAB スタック (📍 bottom:280 + 46px + 余白) より上に配置 */
+  margin:0 8px 336px 0 !important;
 }
 .leaflet-control-zoom a{
   background:rgba(30,52,72,.95) !important;color:var(--white) !important;
@@ -146,6 +146,38 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 }
 .char-fab.on{background:rgba(242,169,0,.22);border-color:var(--gold);color:var(--gold);}
 .char-fab:hover{transform:scale(1.08);}
+.location-fab{
+  position:absolute;bottom:280px;right:8px;z-index:1000;
+  width:46px;height:46px;border-radius:50%;
+  background:rgba(30,52,72,.95);border:1.5px solid var(--track);
+  color:var(--white);font-size:20px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgba(0,0,0,.5);transition:all .2s;
+}
+.location-fab.on{
+  background:rgba(26,111,229,.22);border-color:#1A6FE5;color:#5fb5ff;
+}
+.location-fab.follow{
+  background:#1A6FE5;border-color:#1A6FE5;color:#fff;
+  animation:follow-pulse 2s ease-in-out infinite;
+}
+@keyframes follow-pulse{
+  0%,100%{box-shadow:0 4px 16px rgba(26,111,229,.5);}
+  50%   {box-shadow:0 4px 22px rgba(26,111,229,1);}
+}
+.location-fab:hover{transform:scale(1.08);}
+/* 現在地マーカー (Leaflet divIcon にこのクラスが付く) */
+.user-location-marker{background:transparent !important;border:none !important;}
+.user-loc-dot{
+  width:18px;height:18px;border-radius:50%;
+  background:#1A6FE5;border:3px solid #fff;
+  box-shadow:0 0 10px rgba(26,111,229,.7), 0 2px 6px rgba(0,0,0,.4);
+  animation:user-loc-pulse 2.4s ease-in-out infinite;
+}
+@keyframes user-loc-pulse{
+  0%,100%{box-shadow:0 0 8px rgba(26,111,229,.6), 0 2px 6px rgba(0,0,0,.4);}
+  50%   {box-shadow:0 0 16px rgba(26,111,229,1), 0 2px 6px rgba(0,0,0,.4);}
+}
 .rec-panel{
   position:absolute;bottom:8px;left:8px;right:62px;z-index:1100;
   background:rgba(20,32,46,.96);border:1.5px solid var(--gold);
@@ -640,6 +672,7 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
     <button class="memo-fab" id="memo-btn" onclick="toggleMemoMode()" title="メモ投稿">📸</button>
     <button class="record-fab" id="rec-btn" onclick="toggleRecordMode()" title="区間記録モード">📝</button>
     <button class="char-fab on" id="char-fab" onclick="toggleCharacterMode()" title="駅キャラ表示の切替 (ON/OFF)">🎭</button>
+    <button class="location-fab" id="location-fab" onclick="cycleLocationMode()" title="現在地表示 (タップで 表示→追従→OFF)">📍</button>
     <div class="rec-panel" id="rec-panel">
       <div class="rec-title">📝 区間記録モード — 駅をタップして選択</div>
       <div class="rec-row" id="rec-chips"></div>
@@ -1115,6 +1148,137 @@ function tryGrantByGPS(charId, ev) {
   );
 }
 window.tryGrantByGPS = tryGrantByGPS;
+
+// ══════════════════════════════════════════════
+// 現在地表示 (Phase 1)
+// 3状態トグル: off → on (中心化) → follow (追従) → off
+// ══════════════════════════════════════════════
+let locationMode = 0; // 0:off, 1:on (一度中心化), 2:follow (毎回中心化)
+let locationWatchId = null;
+let userLocationMarker = null;
+let userLocationCircle = null;
+let didInitialCenter = false;
+
+function cycleLocationMode() {
+  locationMode = (locationMode + 1) % 3;
+  if (locationMode === 0) {
+    stopLocationTracking();
+  } else {
+    didInitialCenter = false; // 状態遷移で再度センター
+    startLocationTracking();
+    // フォロー突入時は最後の位置で即座にセンター
+    if (locationMode === 2 && userLocationMarker) {
+      const ll = userLocationMarker.getLatLng();
+      map.setView(ll, Math.max(map.getZoom(), 15), { animate: true });
+    }
+  }
+  updateLocationButton();
+}
+window.cycleLocationMode = cycleLocationMode;
+
+function startLocationTracking() {
+  if (!navigator.geolocation) {
+    alert('このブラウザは位置情報に非対応です');
+    locationMode = 0;
+    updateLocationButton();
+    return;
+  }
+  if (locationWatchId) return; // 既に動作中
+  locationWatchId = navigator.geolocation.watchPosition(
+    pos => {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      const acc = pos.coords.accuracy;
+      updateUserLocationMarker(lat, lon, acc);
+      if (locationMode === 1 && !didInitialCenter) {
+        // 初回のみ中心化、その後はマーカーだけ更新
+        map.setView([lat, lon], Math.max(map.getZoom(), 15), { animate: true });
+        didInitialCenter = true;
+      } else if (locationMode === 2) {
+        // 追従モード: 毎回中心化 (ズームは維持)
+        map.setView([lat, lon], map.getZoom(), { animate: true });
+      }
+    },
+    err => {
+      console.warn('[乗レコ] 位置情報エラー:', err.code, err.message);
+      if (err.code === 1) {
+        alert('位置情報のアクセスが拒否されています。\nブラウザ設定でこのサイトの位置情報を許可してください。');
+        locationMode = 0;
+        updateLocationButton();
+        stopLocationTracking();
+      }
+    },
+    { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+  );
+}
+
+function stopLocationTracking() {
+  if (locationWatchId) {
+    navigator.geolocation.clearWatch(locationWatchId);
+    locationWatchId = null;
+  }
+  removeUserLocationMarker();
+  didInitialCenter = false;
+}
+
+function updateUserLocationMarker(lat, lon, accuracy) {
+  if (!map) return;
+  if (!userLocationMarker) {
+    // 青ドット (Google Maps風)
+    userLocationMarker = L.marker([lat, lon], {
+      icon: L.divIcon({
+        className: 'user-location-marker',
+        html: '<div class="user-loc-dot"></div>',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      }),
+      interactive: false,
+      zIndexOffset: 2000,
+    }).addTo(map);
+    // 精度円
+    userLocationCircle = L.circle([lat, lon], {
+      radius: accuracy,
+      color: '#1A6FE5',
+      fillColor: '#1A6FE5',
+      fillOpacity: 0.08,
+      weight: 1,
+      opacity: 0.45,
+      interactive: false,
+    }).addTo(map);
+  } else {
+    userLocationMarker.setLatLng([lat, lon]);
+    if (userLocationCircle) {
+      userLocationCircle.setLatLng([lat, lon]);
+      userLocationCircle.setRadius(accuracy);
+    }
+  }
+}
+
+function removeUserLocationMarker() {
+  if (userLocationMarker) {
+    try { map.removeLayer(userLocationMarker); } catch(e) {}
+    userLocationMarker = null;
+  }
+  if (userLocationCircle) {
+    try { map.removeLayer(userLocationCircle); } catch(e) {}
+    userLocationCircle = null;
+  }
+}
+
+function updateLocationButton() {
+  const btn = document.getElementById('location-fab');
+  if (!btn) return;
+  btn.classList.remove('on', 'follow');
+  if (locationMode === 1) {
+    btn.classList.add('on');
+    btn.title = '現在地を表示中（タップで追従モード）';
+  } else if (locationMode === 2) {
+    btn.classList.add('follow');
+    btn.title = '追従モード（タップで OFF）';
+  } else {
+    btn.title = '現在地表示 (タップで 表示→追従→OFF)';
+  }
+}
 
 // この駅で獲得可能なキャラ一覧 (locked + 期間内 + obtainable_at 一致)
 function getObtainableCharactersAt(stationName) {
