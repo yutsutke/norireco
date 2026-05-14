@@ -781,10 +781,8 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
         <div class="ns-list" id="ns-list"></div>
         <button class="ns-btn" onclick="startRecordFromNearest()">🔖 選んだ駅から記録開始</button>
       </div>
-      <!-- 記録中モード (記録モード ON 時) -->
+      <!-- 記録中モード (記録モード ON 時) — 地図を見やすくするためボタンのみ -->
       <div id="ns-mode-recording" style="display:none">
-        <div class="ns-header">📝 記録中</div>
-        <div id="ns-recording-summary" class="ns-recording-summary"></div>
         <div class="ns-recording-actions">
           <button class="ns-btn" onclick="endRecordAtNearest()" style="flex:1">📍 ここで終了 (GPS)</button>
           <button class="ns-cancel-btn" onclick="cancelRecord()">× 破棄</button>
