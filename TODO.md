@@ -1,32 +1,14 @@
 # 乗レコ - 電車旅 TODO
 
 新セッションでは、まず本ファイルを読んで次の着手項目を選ぶ。
-詳しい仕様や経緯は `HANDOFF.md` §12〜§17、ビジネス背景は [Notion 開発ノート](https://www.notion.so/35b71b458b63818494afe7c1ab917ca5)。
+詳しい仕様や経緯は `HANDOFF.md`、ビジネス背景は [Notion 開発ノート](https://www.notion.so/35b71b458b63818494afe7c1ab917ca5)。
 
-**ブランド（2026-05-13 確定）**: 乗レコ - 電車旅
-**現在の SW**: v108 / **キャラ**: 7体（八王子3・立川3・小宮1）/ **記録**: 認証グラデーション Step a + GPS フロー実装済み
+**ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
+**現在の SW**: v131 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
+**コード構成**: `js/01-..〜10-..` 機能別分割（v131〜、`HANDOFF.md §20` 参照）
 
 ---
-
-## 🐛 既知バグ（未解決・次セッション優先調査）
-
-- [ ] **保存後に「📝 記録中」パネルが残る**
-  - 症状: 確認モーダル → 「💾 保存する」 → Supabase は保存される（位置情報・時刻も入る、v106-v107 で対応）が、地図画面の最寄駅パネルが「📝 記録中」表示のまま残り、次の記録に進めない
-  - v107 で `saveMultiSegmentTrip` 末尾に `toggleRecordMode()` を追加
-  - v108 で `toggleRecordMode` else 分岐内の DOM 更新を `lastUserGps` 有無に関わらず行うよう修正
-  - **それでも直らない**との報告（2026-05-14 セッション終了時点）
-  - **次セッション調査ポイント**:
-    1. `v108 🟢` バッジで本当に最新コードが動いているか確認
-    2. ブラウザ DevTools Console で「💾 保存する」押下時のログを確認:
-       - `[乗レコ] 期間フィルタ` などのログが出るか
-       - `toggleRecordMode` が呼ばれているか確認するため `console.log('toggleRecordMode →', recordMode)` を仕込んで確認
-    3. `confirmAndSaveRecord` → `saveMultiSegmentTrip` → 末尾の `toggleRecordMode()` の流れを実際にデバッガでステップ実行
-    4. 別端末・別ブラウザでも同じ症状が出るか
-    5. saveMultiSegmentTrip が途中で早期 return していないか確認（特に `tripSegments.length === 0` 分岐）
-    6. ありえそうな仮説:
-       - 確認モーダルが closed されないまま saveMultiSegmentTrip 中で何か（rebuildRiddenStations / redrawAllLinesAfterTripChange / updateOverlays）が exception → toggleRecordMode に到達せず
-       - showRecordToast の DOM 操作で全ボディ書き換えが起こり、ns-mode-recording の DOM が消えるが、後で recordMode=true のままなので新規生成された DOM がまた記録中になる、等のレース
-       - confirmAndSaveRecord が await を待たずに次の処理を続けている可能性 (await はあるが…)
 
 ## 🔥 最優先（プロダクトとして欠けている）
 
@@ -48,9 +30,16 @@
 
 - [ ] **記録モード認証グラデーション 続き（Step b/c）**
   - Step a 完了（v89）: source / verified / gps_lat-lon / recorded_at / date_precision
-  - Step b: ⚪🟢⭐ バッジを trip 一覧・モーダルに表示、stop_type 反映
+  - Step b: ⚪🟢⭐ バッジを trip 一覧・モーダルに表示、stop_type 反映 ← **直近の旅程の 🟢 バッジは v125 で実装済み**
   - Step c: 後追い登録 UI（既存 trip を後から認証昇格）
   - 5分滞在 (✅) は当面スキップ、IC カード取込もスキップ（schema のみ）
+
+- [ ] **不正検知（GPS 認証記録）の所要時間チェック実装**
+  - 方針: 所要時間が物理的に不可能な速さ（下限未満）→ `suspicious` ラベルに降格
+  - 遅い側は許容（電車遅延の可能性）
+  - 速度推定: 新幹線/特急は category 別固定値、在来線は系統内の駅間距離平均から動的算出
+  - 詳細: `~/.claude/projects/.../memory/project_fraud_detection.md`
+  - AI 自動列車判定（プレミアム機能）と統合して suspicious → verified 昇格を可能に
 
 ## 🟡 体験向上（コア層の継続率を上げる）
 
@@ -75,14 +64,12 @@
   - Phase 4: 駅近自動記録通知
   - Notion §「位置情報（現在地表示）」参照
 
-- [ ] **列車種別記録（train_type）**
-  - 乗車記録に `train_type` フィールド追加（"azusa", "shinano" 等）
-  - `trains_master.json`（新規）: id, name, category, rarity, color, default_lines, icon, stations_typical
-  - category: shinkansen / limited_express / express / rapid / local / sleeper / cruise_train / joyful_train / seasonal
-  - rarity: common / uncommon / rare / legendary（四季島・瑞風・ななつ星）
-  - UI: 記録時のドロップダウン選択、駅UIに「この駅で乗った列車一覧」
-  - マイページに「乗った特急一覧」「クルーズトレイン挑戦」など2軸達成感
-  - Notion §「列車種別の記録方針」参照
+- [x] ~~**列車種別記録（train_type）基礎**~~ → **✅ v117〜v131 で完成**
+  - `trains_master.json`（約260種）+ category × rarity × discontinued
+  - 確認モーダルに カテゴリ → 列車 → 車両形式 の cascading select
+  - マニア向け手入力（リストにない列車・車両形式は自由記入、後で開発側で補完）
+  - 統計タブに「🚆 列車制覇」セクション（カテゴリ別ridden/total + 乗った列車タグ + 車両形式併記）
+  - 残: 駅クリック詳細モーダルに「この駅で乗った列車一覧」タブ（駅 UI 情報ハブ化と統合予定）
 
 - [ ] **区間記録モード（📝）の拡張**
   - 経路プレビュー線（選択中の駅間を色付き線で予告）
@@ -137,13 +124,11 @@
   - ヨマツリマユ → 八王子まつり期間 (例: 8月上旬)
   - 現在テスト用に長め期間設定中
 
-- [ ] **列車マスター trains_master.json 作成**
-  - 100〜150 種別を整理
-  - 在来線特急（あずさ、しなの、ひたち、ソニック等）
-  - 寝台列車（サンライズ瀬戸/出雲）
-  - クルーズトレイン（四季島、瑞風、ななつ星）
-  - ジョイフルトレイン（ろくもん、伊予灘ものがたり等）
-  - 季節限定（C57やまぐち号などSL）
+- [x] ~~**列車マスター trains_master.json 作成**~~ → **✅ v117〜v121 完成（約260種）**
+  - 新幹線19・在来線特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18
+  - 戦前〜現代まで網羅、廃止列車は `discontinued: true` フラグ
+  - 主要列車は `car_models` 配列で車両形式選択可（E353系、N700S、E5系、GSE、80000系、50000系 等）
+  - 残: 残りの train に car_models を埋めていく（マニア手入力ログから優先順位付け）
 
 ## 🔧 パフォーマンス・UI
 
@@ -236,13 +221,28 @@
 ## メモ
 
 - **main 直 push 運用**（個人開発、PR・専用ブランチ不要、自動承認設定済み）
-- 編集後は **`sw.js` の `CACHE_VERSION` を上げる**こと（現在 v94）
+- 編集後は **`sw.js` の `CACHE_VERSION` を上げる**こと（現在 v131）
 - HTML 編集後は `</script></body></html>` が末尾に残っているか必ず確認
+- **JS 編集後は必ずシンタックスチェック** (`HANDOFF.md §20` 末尾の node ワンライナー、v127 で失敗の教訓)
 - 新規 trip の `lineId` は `service_lines_master.json` の id を使う（旧 N02 id も `LEGACY_LINE_ID_ALIAS` で透過解決）
 - キャラ追加: `characters/<id>.svg` 配置 → `characters_master.json` に entry 追加 → `sw.js` STATIC_ASSETS に追加 → CACHE_VERSION 上げ
-- 認証情報フィールド: `source` / `verified` / `gps_lat-lon` / `recorded_at` / `date_precision`（Notion §「データモデル（統合版）」既定）
+- 列車追加: `trains_master.json` の trains 配列に entry 追加（id/name/category/operator/description/stations_typical、必要なら car_models と rarity と discontinued）
+- 認証情報フィールド: `source` / `verified` / `gps_lat-lon` / `recorded_at` / `date_precision`
+- 列車情報フィールド: `train_id` / `train_name` / `train_category` / `car_model`（v122〜）。`train_id IS NULL AND train_name IS NOT NULL` = マニア手入力 = マスター補完候補
 
-## 着手済み（参考、`HANDOFF.md` §12〜§17 詳細）
+## 着手済み（参考、`HANDOFF.md` §12〜§20 詳細）
+
+### Phase 3.6（v109〜v131）— GPS フロー安定化・列車種別・コード分割
+- ✅ 「📝 記録中」パネル残留バグ修正（v109 — TDZ ReferenceError が真因）
+- ✅ 保存後 📍 自動 OFF・PC で時刻が入る fallback（v110）
+- ✅ 終点選び直しで残るエラー区間修正（v111）
+- ✅ 記録中パネルのミニマル化・凡例撤去（v112-v113）
+- ✅ 📝 手動フロー UI 復活・watchPosition 二重表示修正（v114-v116）
+- ✅ 列車マスター trains_master.json 約260種（v117-v121）
+- ✅ 記録時の列車・車両形式選択 UI + マニア手入力対応（v122-v124）
+- ✅ Supabase スキーマ拡張（train_id/name/category/car_model）
+- ✅ 統計タブ「直近の旅程」拡張・「🚆 列車制覇」セクション追加（v125-v129）
+- ✅ コードベース分割: 4965行 HTML を `js/01-..〜10-..` の 10 ファイルに整理（v130-v131）
 
 ### Phase 1（〜v60）
 - ✅ 営業系統マスター（637系統・10,450駅）
