@@ -1394,12 +1394,17 @@ function updateNearestStationPanel(lat, lon) {
   const selectModeEl = document.getElementById('ns-mode-select');
   const recModeEl = document.getElementById('ns-mode-recording');
 
-  // 記録モード中: 「記録中」ステートを表示
+  // 記録モード中: GPS フローのみ「記録中」ミニマル UI を表示
+  // 手動フロー (📝 ボタン経由) では rec-panel が UI を担当するので最寄駅パネルは隠す
   if (recordMode) {
-    if (selectModeEl) selectModeEl.style.display = 'none';
-    if (recModeEl) recModeEl.style.display = 'block';
-    renderRecordingSummary();
-    panel.classList.add('show');
+    if (recordStartedViaGPS) {
+      if (selectModeEl) selectModeEl.style.display = 'none';
+      if (recModeEl) recModeEl.style.display = 'block';
+      renderRecordingSummary();
+      panel.classList.add('show');
+    } else {
+      panel.classList.remove('show');
+    }
     return;
   }
 
