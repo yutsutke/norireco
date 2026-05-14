@@ -4766,19 +4766,19 @@ async function renderStats(){
     });
     trainSection.appendChild(trainGrid);
 
-    // カテゴリ別 乗った列車リスト (折りたたみ)
+    // カテゴリ別 乗った列車リスト (常時展開)
     mainCats.forEach(cat => {
       const c = byCategory[cat];
       const meta = (TRAIN_CATEGORIES || {})[cat];
       if (!c || !meta || c.ridden_trains.length === 0) return;
-      const det = document.createElement('details');
-      det.style.cssText = 'margin-top:4px';
-      const sum = document.createElement('summary');
-      sum.style.cssText = 'cursor:pointer;padding:6px 10px;background:rgba(20,32,46,.6);border-radius:6px;font-size:11px;color:var(--white)';
-      sum.textContent = `${meta.icon||''} ${meta.label} ${c.ridden} 種類`;
-      det.appendChild(sum);
+      const block = document.createElement('div');
+      block.style.cssText = 'margin-top:6px';
+      const hdr = document.createElement('div');
+      hdr.style.cssText = 'padding:6px 10px;background:rgba(20,32,46,.6);border-radius:6px 6px 0 0;font-size:11px;color:var(--white);font-weight:600';
+      hdr.textContent = `${meta.icon||''} ${meta.label} ${c.ridden} 種類`;
+      block.appendChild(hdr);
       const list = document.createElement('div');
-      list.style.cssText = 'padding:8px;display:flex;flex-wrap:wrap;gap:6px';
+      list.style.cssText = 'padding:8px 10px;display:flex;flex-wrap:wrap;gap:6px;background:rgba(20,32,46,.3);border-radius:0 0 6px 6px';
       c.ridden_trains
         .sort((a,b) => (a.name||'').localeCompare(b.name||'', 'ja'))
         .forEach(t => {
@@ -4793,28 +4793,28 @@ async function renderStats(){
           tag.textContent = `${t.name}${rarityBadge}${discTag}`;
           list.appendChild(tag);
         });
-      det.appendChild(list);
-      trainSection.appendChild(det);
+      block.appendChild(list);
+      trainSection.appendChild(block);
     });
 
     // マニア手入力 (マスター未登録) リスト
     if (ridCustomNames.size > 0) {
-      const det = document.createElement('details');
-      det.style.cssText = 'margin-top:6px';
-      const sum = document.createElement('summary');
-      sum.style.cssText = 'cursor:pointer;padding:6px 10px;background:rgba(20,32,46,.6);border-radius:6px;font-size:11px;color:var(--silver)';
-      sum.textContent = `📝 マスター未登録 (手入力) ${ridCustomNames.size} 件`;
-      det.appendChild(sum);
+      const block = document.createElement('div');
+      block.style.cssText = 'margin-top:8px';
+      const hdr = document.createElement('div');
+      hdr.style.cssText = 'padding:6px 10px;background:rgba(20,32,46,.6);border-radius:6px 6px 0 0;font-size:11px;color:var(--silver);font-weight:600';
+      hdr.textContent = `📝 マスター未登録 (手入力) ${ridCustomNames.size} 件`;
+      block.appendChild(hdr);
       const list = document.createElement('div');
-      list.style.cssText = 'padding:8px;display:flex;flex-wrap:wrap;gap:6px';
+      list.style.cssText = 'padding:8px 10px;display:flex;flex-wrap:wrap;gap:6px;background:rgba(20,32,46,.3);border-radius:0 0 6px 6px';
       [...ridCustomNames].sort((a,b) => a.localeCompare(b, 'ja')).forEach(n => {
         const tag = document.createElement('span');
         tag.style.cssText = 'padding:3px 9px;background:rgba(140,160,179,.12);border:1px dashed var(--track);border-radius:12px;color:var(--silver);font-size:10px';
         tag.textContent = n;
         list.appendChild(tag);
       });
-      det.appendChild(list);
-      trainSection.appendChild(det);
+      block.appendChild(list);
+      trainSection.appendChild(block);
     }
 
     tripSection.appendChild(trainSection);
