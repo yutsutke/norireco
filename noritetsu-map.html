@@ -166,38 +166,79 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
   50%   {box-shadow:0 4px 22px rgba(26,111,229,1);}
 }
 .location-fab:hover{transform:scale(1.08);}
-/* 最寄駅パネル (Phase 2) */
+/* 記録確認モーダル (経路レビュー) */
+.rec-confirm-stat-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:8px 12px;background:rgba(255,255,255,.04);border-radius:8px;margin-bottom:6px;
+}
+.rec-confirm-stat-lbl{font-size:10px;color:var(--silver);letter-spacing:1px;}
+.rec-confirm-stat-val{font-size:13px;color:var(--white);font-family:'DM Mono',monospace;}
+.rec-confirm-route{
+  background:rgba(255,255,255,.03);border-radius:9px;padding:10px 12px;
+  border-left:3px solid var(--red);margin:10px 0 14px;
+  font-size:12px;line-height:1.7;color:var(--white);
+}
+.rec-confirm-seg{display:flex;align-items:center;gap:8px;padding:3px 0;}
+.rec-confirm-seg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.rec-confirm-verified-badge{
+  display:inline-block;font-size:10px;padding:2px 8px;border-radius:8px;
+  background:rgba(80,200,120,.18);color:#5fd17a;border:1px solid rgba(80,200,120,.4);
+  margin-left:8px;
+}
+.btn-discard{
+  width:100%;padding:9px;background:transparent;
+  border:1px solid rgba(232,53,42,.5);border-radius:8px;color:#ff7070;
+  font-size:12px;cursor:pointer;font-family:inherit;margin-top:6px;
+}
+.btn-discard:hover{background:rgba(232,53,42,.1);}
+
+/* 最寄駅パネル (Phase 2) — 候補リスト形式 */
 .nearest-station-panel{
   position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
   z-index:1000;
   background:rgba(13,27,42,.96);border:1.5px solid #1A6FE5;border-radius:14px;
-  padding:10px 14px;
-  display:none;align-items:center;gap:12px;
+  padding:10px 12px;
+  display:none;flex-direction:column;gap:6px;
   box-shadow:0 4px 16px rgba(0,0,0,.6), 0 0 18px rgba(26,111,229,.3);
   font-family:'Zen Kaku Gothic New',sans-serif;
-  max-width:calc(100vw - 90px);
+  max-width:calc(100vw - 90px);min-width:280px;width:380px;
   animation:nsp-fadeIn .25s ease-out;
 }
 .nearest-station-panel.show{display:flex;}
 @keyframes nsp-fadeIn{from{opacity:0;transform:translate(-50%, 8px);}to{opacity:1;transform:translate(-50%, 0);}}
-.ns-info{flex:1;min-width:0;}
-.ns-label{font-size:9px;color:#5fb5ff;letter-spacing:1px;}
-.ns-name{font-size:15px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
-.ns-dist{font-size:10px;color:var(--silver);margin-top:1px;font-family:'DM Mono',monospace;}
+.ns-header{font-size:10px;color:#5fb5ff;letter-spacing:1px;padding-left:2px;}
+.ns-list{
+  display:flex;flex-direction:column;gap:3px;
+  max-height:30vh;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.ns-cand{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 8px;border-radius:8px;cursor:pointer;
+  background:rgba(255,255,255,.04);border:1px solid transparent;
+  transition:background .15s;
+}
+.ns-cand:hover{background:rgba(255,255,255,.08);}
+.ns-cand.selected{background:rgba(26,111,229,.18);border-color:#1A6FE5;}
+.ns-cand input[type=radio]{margin:0;accent-color:#1A6FE5;}
+.ns-cand-info{flex:1;min-width:0;}
+.ns-cand-name{font-size:13px;font-weight:700;color:#fff;}
+.ns-cand-meta{font-size:9px;display:flex;gap:8px;margin-top:1px;align-items:baseline;}
+.ns-cand-dist{color:#5fb5ff;font-family:'DM Mono',monospace;flex-shrink:0;}
+.ns-cand-lines{color:var(--silver);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .ns-btn{
   background:linear-gradient(135deg, #1A6FE5 0%, #003fa0 100%);
   color:#fff;border:none;border-radius:10px;
   padding:9px 13px;font-size:12px;font-weight:700;
   cursor:pointer;font-family:inherit;letter-spacing:.5px;
   box-shadow:0 3px 10px rgba(26,111,229,.5);
-  transition:all .2s;white-space:nowrap;flex-shrink:0;
+  transition:all .2s;width:100%;margin-top:4px;
 }
 .ns-btn:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(26,111,229,.7);}
 .ns-btn:active{transform:translateY(0);}
 @media (max-width:480px){
-  .nearest-station-panel{padding:8px 10px;gap:8px;}
-  .ns-name{font-size:13px;}
-  .ns-btn{padding:8px 11px;font-size:11px;}
+  .nearest-station-panel{padding:8px 10px;min-width:0;width:calc(100vw - 16px);}
+  .ns-cand-name{font-size:12px;}
 }
 
 /* 現在地マーカー (Leaflet divIcon にこのクラスが付く) */
@@ -708,12 +749,9 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
     <button class="char-fab on" id="char-fab" onclick="toggleCharacterMode()" title="駅キャラ表示の切替 (ON/OFF)">🎭</button>
     <button class="location-fab" id="location-fab" onclick="cycleLocationMode()" title="現在地表示 (タップで 表示→追従→OFF)">📍</button>
     <div class="nearest-station-panel" id="nearest-station-panel">
-      <div class="ns-info">
-        <div class="ns-label">📍 最寄駅</div>
-        <div class="ns-name" id="ns-name">--</div>
-        <div class="ns-dist" id="ns-dist">--</div>
-      </div>
-      <button class="ns-btn" onclick="startRecordFromNearest()">🔖 ここから記録開始</button>
+      <div class="ns-header">📍 近くの駅を選んで記録開始</div>
+      <div class="ns-list" id="ns-list"></div>
+      <button class="ns-btn" onclick="startRecordFromNearest()">🔖 選んだ駅から記録開始</button>
     </div>
     <div class="rec-panel" id="rec-panel">
       <div class="rec-title">📝 区間記録モード — 駅をタップして選択</div>
@@ -723,6 +761,19 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
     </div>
 
   </div>
+
+<!-- 記録確認モーダル (終了→確認→保存) -->
+<div class="memo-modal" id="rec-confirm-modal" onclick="if(event.target===this)closeRecConfirm()">
+  <div class="memo-sheet">
+    <div class="sh"></div>
+    <div class="modal-title">📋 経路を確認</div>
+    <div class="modal-sub" style="color:var(--silver);font-size:11px;margin-bottom:14px">この内容で記録しますか？</div>
+    <div id="rec-confirm-body"></div>
+    <button class="btn-gen" onclick="confirmAndSaveRecord()">💾 保存する</button>
+    <button class="btn-cls" onclick="closeRecConfirm()">✏️ 戻って編集する</button>
+    <button class="btn-discard" onclick="discardRecord()">❌ 破棄する</button>
+  </div>
+</div>
 
 <!-- キャラ詳細モーダル -->
 <div class="memo-modal" id="char-modal" onclick="if(event.target===this)closeCharModal()">
@@ -1270,18 +1321,24 @@ function stopLocationTracking() {
   didInitialCenter = false;
 }
 
-// 最寄駅パネル (Phase 2)
-function findNearestStation(lat, lon, maxRangeM) {
-  if (!MERGED_STATIONS || MERGED_STATIONS.length === 0) return null;
-  let best = null;
+// 最寄駅パネル (Phase 2) — 候補リスト
+let nearestCandidates = [];   // [{station, distance}, ...]
+let nearestPickedIdx = 0;     // ユーザーが選んだインデックス
+
+function findNearestStations(lat, lon, maxRangeM, maxCount) {
+  if (!MERGED_STATIONS || MERGED_STATIONS.length === 0) return [];
+  const candidates = [];
   for (const ms of MERGED_STATIONS) {
     const d = distMeters(lat, lon, ms.lat, ms.lon);
     if (d > maxRangeM) continue;
-    if (!best || d < best.distance) {
-      best = { station: ms, distance: d };
-    }
+    candidates.push({ station: ms, distance: d });
   }
-  return best;
+  candidates.sort((a, b) => a.distance - b.distance);
+  return candidates.slice(0, maxCount);
+}
+
+function formatDist(meters) {
+  return meters < 1000 ? `${Math.round(meters)} m` : `${(meters/1000).toFixed(1)} km`;
 }
 
 function updateNearestStationPanel(lat, lon) {
@@ -1289,44 +1346,83 @@ function updateNearestStationPanel(lat, lon) {
   if (!panel) return;
   // 記録モード中は非表示 (rec-panel が同じ場所に出る)
   if (recordMode) { panel.classList.remove('show'); return; }
-  const nearest = findNearestStation(lat, lon, 1500); // 1.5km まで
-  if (!nearest) { panel.classList.remove('show'); return; }
-  document.getElementById('ns-name').textContent = nearest.station.name;
-  const dm = Math.round(nearest.distance);
-  document.getElementById('ns-dist').textContent =
-    dm < 1000 ? `${dm} m` : `${(dm/1000).toFixed(1)} km`;
+  const nearby = findNearestStations(lat, lon, 1500, 6); // 1.5km 以内、最大 6 駅
+  if (nearby.length === 0) { panel.classList.remove('show'); return; }
+
+  // 候補が変わったらインデックスをリセット (駅名のシグネチャで比較)
+  const newSig = nearby.map(n => n.station.name).join('|');
+  const oldSig = nearestCandidates.map(n => n.station.name).join('|');
+  if (newSig !== oldSig) {
+    nearestPickedIdx = 0;
+  }
+  nearestCandidates = nearby;
+
+  const listEl = document.getElementById('ns-list');
+  if (!listEl) return;
+  listEl.innerHTML = nearby.map((n, idx) => {
+    const lineIds = n.station.lines || [];
+    const lineNames = lineIds.slice(0, 3).map(lid => {
+      const sl = (SERVICE_LINES || []).find(x => x.id === lid);
+      return sl ? sl.name : lid;
+    }).filter(Boolean).join('・');
+    const more = lineIds.length > 3 ? ` ほか${lineIds.length - 3}` : '';
+    const checked = idx === nearestPickedIdx ? 'checked' : '';
+    const selClass = idx === nearestPickedIdx ? ' selected' : '';
+    return `
+      <label class="ns-cand${selClass}" onclick="selectNearestCand(${idx})">
+        <input type="radio" name="ns-pick" ${checked}>
+        <div class="ns-cand-info">
+          <div class="ns-cand-name">${n.station.name}</div>
+          <div class="ns-cand-meta">
+            <span class="ns-cand-dist">${formatDist(n.distance)}</span>
+            <span class="ns-cand-lines">${lineNames}${more}</span>
+          </div>
+        </div>
+      </label>
+    `;
+  }).join('');
   panel.classList.add('show');
 }
+
+function selectNearestCand(idx) {
+  nearestPickedIdx = idx;
+  document.querySelectorAll('.ns-cand').forEach((el, i) => {
+    el.classList.toggle('selected', i === idx);
+    const radio = el.querySelector('input[type=radio]');
+    if (radio) radio.checked = (i === idx);
+  });
+}
+window.selectNearestCand = selectNearestCand;
 
 function hideNearestStationPanel() {
   const panel = document.getElementById('nearest-station-panel');
   if (panel) panel.classList.remove('show');
 }
 
-// 「ここから記録開始」: 記録モードに入る + 最寄駅を選択 + verified=true 用フラグセット
+// 「ここから記録開始」: 選んだ候補駅で記録モードに入る + GPS 認証フラグ
 function startRecordFromNearest() {
   if (!lastUserGps) {
     alert('現在地を取得できていません。📍 ボタンで位置情報を有効にしてください。');
     return;
   }
-  const nearest = findNearestStation(lastUserGps.lat, lastUserGps.lon, 1500);
-  if (!nearest) {
-    alert('1.5km 以内に駅が見つかりません');
+  if (!nearestCandidates || nearestCandidates.length === 0) {
+    alert('近くに駅が見つかりません');
     return;
   }
+  const picked = nearestCandidates[nearestPickedIdx] || nearestCandidates[0];
   // GPS 認証情報を記録 (saveMultiSegmentTrip でこのフラグを見て verified=true にする)
   recordStartedViaGPS = true;
   recordStartGPS = { ...lastUserGps };
   // 記録モードへ
   if (!recordMode) toggleRecordMode();
-  // 最寄駅をプリセレクト
+  // 選択された駅をプリセレクト
   onRecordStationClick({
-    name: nearest.station.name,
-    lat: nearest.station.lat,
-    lon: nearest.station.lon,
+    name: picked.station.name,
+    lat: picked.station.lat,
+    lon: picked.station.lon,
   });
   hideNearestStationPanel();
-  console.log(`[乗レコ] 🔖 GPS 発進記録: ${nearest.station.name} (距離 ${Math.round(nearest.distance)}m, 精度±${Math.round(lastUserGps.accuracy)}m)`);
+  console.log(`[乗レコ] 🔖 GPS 発進記録: ${picked.station.name} (距離 ${Math.round(picked.distance)}m, 精度±${Math.round(lastUserGps.accuracy)}m)`);
 }
 window.startRecordFromNearest = startRecordFromNearest;
 
@@ -2824,8 +2920,8 @@ function refreshRecPanel() {
       const saveBtn = document.createElement('button');
       saveBtn.className = 'rec-save';
       saveBtn.disabled = hasError;
-      saveBtn.textContent = hasError ? '⚠️ 未解決区間あり' : '🔖 この経路を記録';
-      saveBtn.onclick = () => saveMultiSegmentTrip();
+      saveBtn.textContent = hasError ? '⚠️ 未解決区間あり' : '✅ 終了して確認';
+      saveBtn.onclick = () => openRecConfirm();
       pickDiv.appendChild(saveBtn);
     }
   }
@@ -2836,6 +2932,87 @@ function refreshRecPanel() {
 }
 
 // 経路 (複数区間) を1 trip として保存
+// 記録確認モーダル: 終了 → 経路レビュー → 保存 or 戻る or 破棄
+function openRecConfirm() {
+  if (!currentSegments || currentSegments.length === 0) {
+    alert('まだ記録する区間がありません');
+    return;
+  }
+  if (currentSegments.some(s => s.error)) {
+    alert('未解決の区間があります');
+    return;
+  }
+  // 経路詳細を生成
+  const body = document.getElementById('rec-confirm-body');
+  if (!body) return;
+  // 統計
+  let totalStations = 0;
+  const lineNames = [];
+  for (const seg of currentSegments) {
+    if (!seg.line) continue;
+    const fromIdx = seg.line.stations.findIndex(s => s.name === seg.from.name);
+    const toIdx = seg.line.stations.findIndex(s => s.name === seg.to.name);
+    if (fromIdx < 0 || toIdx < 0) continue;
+    totalStations += Math.abs(toIdx - fromIdx) + 1;
+    if (lineNames[lineNames.length - 1] !== seg.line.name) lineNames.push(seg.line.name);
+  }
+  const fromSt = recordSelection[0]?.name || '?';
+  const toSt = recordSelection[recordSelection.length - 1]?.name || '?';
+  const verifiedBadge = recordStartedViaGPS
+    ? '<span class="rec-confirm-verified-badge">🟢 GPS認証</span>'
+    : '<span class="rec-confirm-verified-badge" style="background:rgba(140,160,179,.15);color:var(--silver);border-color:var(--track)">⚪ 自己申告</span>';
+  // 経路詳細 HTML
+  const routeHtml = currentSegments.map(seg => {
+    if (!seg.line) return '';
+    return `<div class="rec-confirm-seg">
+      <span class="rec-confirm-seg-dot" style="background:${seg.line.color}"></span>
+      <span><b>${seg.line.name}</b> &nbsp; ${seg.from.name} → ${seg.to.name}</span>
+    </div>`;
+  }).join('');
+  body.innerHTML = `
+    <div class="rec-confirm-route">${routeHtml}</div>
+    <div class="rec-confirm-stat-row">
+      <span class="rec-confirm-stat-lbl">📍 区間</span>
+      <span class="rec-confirm-stat-val">${fromSt} → ${toSt}</span>
+    </div>
+    <div class="rec-confirm-stat-row">
+      <span class="rec-confirm-stat-lbl">🚉 駅数 / 区間</span>
+      <span class="rec-confirm-stat-val">${totalStations}駅 / ${currentSegments.length}区間</span>
+    </div>
+    <div class="rec-confirm-stat-row">
+      <span class="rec-confirm-stat-lbl">🛡 認証</span>
+      <span class="rec-confirm-stat-val">${verifiedBadge}</span>
+    </div>
+  `;
+  document.getElementById('rec-confirm-modal')?.classList.add('open');
+}
+
+function closeRecConfirm() {
+  // 「戻って編集」: モーダル閉じる、recordMode はそのまま、selection 保持
+  document.getElementById('rec-confirm-modal')?.classList.remove('open');
+}
+
+async function confirmAndSaveRecord() {
+  // 「保存」: モーダル閉じてから既存の保存ロジックを呼ぶ
+  document.getElementById('rec-confirm-modal')?.classList.remove('open');
+  await saveMultiSegmentTrip();
+}
+
+function discardRecord() {
+  // 「破棄」: 確認 + 全部リセット
+  if (!confirm('記録中の経路を破棄します。よろしいですか？')) return;
+  document.getElementById('rec-confirm-modal')?.classList.remove('open');
+  recordStartedViaGPS = false;
+  recordStartGPS = null;
+  if (recordMode) toggleRecordMode(); // off に
+  showRecordToast('🗑 記録を破棄しました', 'warn', 2500);
+}
+
+window.openRecConfirm = openRecConfirm;
+window.closeRecConfirm = closeRecConfirm;
+window.confirmAndSaveRecord = confirmAndSaveRecord;
+window.discardRecord = discardRecord;
+
 async function saveMultiSegmentTrip() {
   if (!currentSegments || currentSegments.length === 0) return;
   if (currentSegments.some(s => s.error)) {
