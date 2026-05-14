@@ -3417,7 +3417,13 @@ async function saveMultiSegmentTrip() {
   recordEndTime = null;
   // verified=true の trip なら自動獲得チェックが発動する
   setTimeout(() => runCharacterGrantCheck(), 800);
-  clearRecSelection();
+  // 記録モードを終了 (recordMode=true → false に切替、最寄駅パネルが「開始駅選択」に戻る)
+  // toggleRecordMode の else 分岐内で clearRecSelection が呼ばれる
+  if (recordMode) {
+    toggleRecordMode();
+  } else {
+    clearRecSelection();
+  }
 }
 
 // 地図全体のポリライン/駅ドット/ラベルを再描画 (riddenSt 更新後に呼ぶ)
