@@ -2,6 +2,8 @@
 
 Cowork → Claude Code への引き継ぎドキュメント。最初の会話でこれを `@HANDOFF.md` で参照させるか、ファイル内容をそのまま渡してください。
 
+**最新状況は §15 〜 §17 を読むのが早い**（2026-05-13〜14 セッションの進捗・新方針）。
+
 ---
 
 ## 1. プロジェクト概要
@@ -10,9 +12,15 @@ Cowork → Claude Code への引き継ぎドキュメント。最初の会話で
 - 利用者が「乗車した区間」を入力 → 地図上に色付きで可視化
 - 達成率（路線完乗率）を集計
 - PWA としてインストール可能・オフライン動作
+- 駅にキャラを配置（期間限定・ポケモンGO風 GPS 獲得対応）
+
+**ブランド（2026-05-13 確定）**: 乗レコ - 電車旅
+- コア機能: 記録・完乗
+- 拡張機能: 電車旅のハブ・プラットフォーム
 
 **デプロイ先**: https://yutsutke.github.io/norireco/  
 **GitHub リポジトリ**: `yutsutke/norireco`（パブリック・GitHub Pages 配信）
+**Notion 開発ノート**: https://www.notion.so/NORITSUBU-MAP-35b71b458b63818494afe7c1ab917ca5（最新方針・ビジネス設計）
 
 ## 2. 技術スタック
 
@@ -27,12 +35,15 @@ Cowork → Claude Code への引き継ぎドキュメント。最初の会話で
 
 | ファイル | サイズ | 役割 |
 |---|---|---|
-| `noritetsu-map.html` | 約 90 KB / 約 1800 行 | **メインの地図画面**（CSS + HTML + JS 全部入り）|
-| `noritetsu-log.html` | 約 76 KB | 乗車ログ入力画面 |
-| `sw.js` | 約 5.7 KB | Service Worker（CACHE_VERSION 管理）|
-| `lines-p1.json` 〜 `lines-p4.json` | 計約 2 MB | 物理路線データ（606 路線・10154 駅、N02-25 由来）|
-| `running_services.json` | 約 300 KB | 運行系統定義（885 系統、京浜東北線・湘南新宿ラインなど）|
-| `merged_stations.json` | 約 1.1 MB | 同名近接駅統合マスター（8924 駅、パイチャート用）|
+| `noritetsu-map.html` | 約 150 KB / 3000+ 行 | **メインの地図画面**（CSS + HTML + JS 全部入り、Phase 2.5・キャラシステム込み）|
+| `noritetsu-log.html` | 約 80 KB | 乗車ログ入力画面（GPS 記録ボタン搭載）|
+| `sw.js` | 約 6 KB | Service Worker（CACHE_VERSION 管理、現 v94）|
+| `lines-p1.json` 〜 `lines-p4.json` | 計約 1.3 MB | 物理路線データ（606 路線・10154 駅、N02-25 由来）|
+| `running_services.json` | 約 260 KB | 旧運行系統定義（後方互換、新規参照は不要）|
+| `service_lines_master.json` | 約 1.4 MB | **営業系統マスター（637 系統・10450 駅）** ← 描画の真実の源 |
+| `merged_stations.json` | 約 2.8 MB | 統合駅マスター（9017 駅、複数路線乗り入れ 926 駅）|
+| `characters_master.json` | 約 2 KB | **駅キャラマスター**（id, station_ids, rarity, available_from/until, obtainable_at 等）|
+| `characters/*.svg` | 各 1-2 KB | キャラ SVG ファイル（クワテン・ヨウマユ・ヨマツリマユ・コミヤウ・アール・プレーン・タチハナビ・タチユキ の7体）|
 | `manifest.json` | PWA manifest |
 | `icon-192.png` / `icon-512.png` / `icon.svg` | アイコン |
 
@@ -55,9 +66,10 @@ noritetsu-map.html（全部メモリに展開して描画）
 ## 5. デプロイ方法（現状）
 
 リポジトリの `main` ブランチに push すると GitHub Pages が自動配信。
-- 現状はユーザーが GitHub Web UI から「Add files via upload」で手動アップロード
-- Claude Code 移行後は `git add` / `commit` / `push` で直接できる
-- **重要**: `sw.js` の `CACHE_VERSION` を毎回上げないと、ブラウザが古いキャッシュを使う。現在 `v33`
+- Claude Code から `git add` / `commit` / `push origin <worktree-branch>:main` で直接デプロイ
+- ユーザー全体設定 (`~/.claude/settings.json`) で `Bash(git push origin claude/*:main)` 等を allow 登録済み（自動承認）
+- **重要**: `sw.js` の `CACHE_VERSION` を毎回上げないと、ブラウザが古いキャッシュを使う。現在 `v94`
+- ヘッダ右側の **`v94 🟢` バッジ** で現在のデプロイ反映状態が一目でわかる（🔄 黄色点滅 = 反映待ち、🟢 緑 = 最新動作中）
 
 ## 6. 描画ロジックの重要ポイント
 
@@ -119,16 +131,19 @@ function isMetroArea(lat, lon) {
 
 注意: 過去にスマホで circleMarker にして「軽くなったけどパイチャートじゃない」とユーザー却下。PC もスマホもパイチャートが必須。軽量化は他の手段で行う。
 
-### UI 表示
+### UI 表示（2026-05-13 更新）
 
 | | PC | iPad | スマホ |
 |---|---|---|---|
+| バージョンバッジ `v94 🟢` | ロゴ横 | ロゴ横 | ロゴ横 |
+| 期間フィルタピル `📅 全期間/今年/去年/カスタム` | 地図上部中央 | 地図上部中央 | 地図上部中央 |
 | 統計ボックス（右上 達成率） | 表示 | 表示 | **非表示**（CSS media query） |
 | 凡例ボックス（左上、`top:90px`）| スクロール可 | スクロール可 | **非表示** |
-| Leaflet ズームボタン | **左上**（topleft）| 非表示 | 非表示 |
-| カメラ/メモボタン | 右下 | 右下 | 右下 |
+| Leaflet ズームボタン `+/−` | **右下**（FAB スタックの上）| 非表示 | 非表示 |
+| FAB スタック（右下、縦並び）| ズーム+/− → 🎭 キャラ ON/OFF → 📝 区間記録 → 🗺️ マップモード → 📸 メモ | 同 (-zoom) | 同 (-zoom) |
+| ✨ 獲得可能インジケータ | 駅マーカー真上に金色バブル | 同 | 同 |
 
-凡例は `top:90px / z-index:500`、ズームボタンは `z-index:1100` で確実に最前面。
+凡例は `top:90px / z-index:500`、FAB 群は `z-index:1000`、char-modal は `z-index:9999 !important`。
 
 ## 7. 過去に踏んだ落とし穴
 
@@ -331,3 +346,243 @@ HANDOFF.md に全体の文脈・直近の実装・落とし穴をまとめてあ
 ```
 
 これを最初の会話の冒頭で渡せば、Claude Code 側で `HANDOFF.md` を `Read` で読んで完全に文脈復元できます。
+
+---
+
+## 15. セッション 3 (2026-05-13〜14) の進捗
+
+### Phase 2: 地図描画を営業系統ベースに完全切替（v70〜v73）
+
+- 旧 N02 物理路線中心の `drawSingleLine()` → 撤去
+- 新ベース:
+  - `drawServiceLineBase(sl)`: 1営業系統のポリライン描画（branch/o ロジック不要、`sl.stations` の順そのまま）
+  - `drawStationsLayer()`: 全駅マーカー+ラベルを mergedStations から1パスで描画
+  - `slRiddenSt[sl.id]`: 営業系統 id → 乗車駅 Set
+- 🚆 ボタン撤去（常時 service line base になったため）
+- LOD（tier × isMetro）は完全維持
+
+### Phase 2.5: 駅 UI 個人化（v74〜v75）
+
+- `slVisitCount[駅名]`: 訪問回数集計（`rebuildRiddenStations` 内）
+- 個人化レベル: `getStationLevel(visits)` → 0/1/2/3/4
+  - Lv1 (1-4回): 通常乗車済み
+  - Lv2 (5-9回): 金色内側リング、サイズ+1
+  - Lv3 (10-49回): 金色外輪、サイズ+2
+  - Lv4 (50+回): パルスする金色ハロー、サイズ+4
+- `makePieIcon(colors, sizePx, ridden, level)`: level 引数追加
+
+### 駅キャラクターシステム（v76〜v88）
+
+**データソース:** `characters_master.json` + `characters/*.svg`
+
+```json
+{
+  "id": "kuwaten",
+  "name": "クワテン",
+  "subtitle": "八王子市",
+  "description": "桑×天狗。八王子の養蚕業と高尾山天狗の融合。",
+  "station_ids": ["八王子"],
+  "svg_path": "characters/kuwaten.svg",
+  "rarity": "common",          // common / rare / limited
+  "default_unlocked": true,    // false なら locked 状態で開始
+  "unlock_condition": null,    // 将来用
+  "available_from": null,      // 期間限定の開始日
+  "available_until": null,     // 期間限定の終了日
+  "obtainable_at": ["八王子"], // 期間限定の取得対象駅
+  "colorable": false,          // 将来: 色変更対応
+  "default_color": null
+}
+```
+
+**主要 API（noritetsu-map.html 内）:**
+- `loadCharacters()`: 起動時に master + 各 SVG を並列ロード
+- `getStationCharacter(stationName)`: 駅の代表キャラを返す（所持済みのみ、ユーザー選択優先）
+- `getStationCharacterChoice / setStationCharacterChoice`: 駅ごとの選択を localStorage 永続化
+- `isCharacterOwned(id) / isCharacterAvailable(meta)`: 所持・期間チェック
+- `grantCharacter(id) / revokeCharacter(id)`: 獲得・取消、地図再描画トリガー
+- `makeCharacterIcon(char, lineColors, ridden, level)`: キャラ中心 + 細い路線色ドーナツリング
+- `makePieIcon(colors, sizePx, ridden, level, character)`: character あれば makeCharacterIcon に委譲
+
+**駅クリック → モーダル:**
+- 通常モード時、所持キャラあれば openCharModal、なければ locked preview として開く
+- モーダル内: 大型キャラ表示・駅情報・訪問回数・乗り入れ系統・🎭 キャラ切替サムネ・🔒 未獲得キャラ
+- 期間限定キャラには「📍 今ここ！」/「📍 今ゲット」GPS 獲得ボタン
+- 🎭 ボタン (FAB) で表示 ON/OFF 切替
+
+**現在のキャラ 7体:**
+| キャラ | 駅 | レアリティ | 期間 |
+|---|---|---|---|
+| クワテン | 八王子 | common | 常時 |
+| ヨウマユ | 八王子 | common | 常時 |
+| ヨマツリマユ | 八王子 | limited | 2026-05-10〜2026-08-15 |
+| アール・プレーン 2.0 | 立川 | common | 常時 |
+| タチハナビ | 立川 | limited | 2026-05-10〜2026-08-31 |
+| タチユキ | 立川 | limited | 2026-05-10〜2027-02-15 |
+| コミヤウ | 小宮 | common | 常時 |
+
+### 認証グラデーション Step a（v89）
+
+trip データに Notion §「記録モード設計」既定スキーマを追加：
+
+```json
+{
+  "id": "trip_...",
+  "segments": [...既存...],
+  "source": "manual" | "gps_button" | "ic_card",
+  "verified": false,            // 認証済みフラグ
+  "gps_lat": null,              // GPS 使用時のみ
+  "gps_lon": null,
+  "gps_accuracy": null,
+  "recorded_at": "2026-05-13T10:35:00",
+  "date_precision": "day"       // day / month / year / unknown
+}
+```
+
+- 地図画面 📝 区間記録 → `source: "manual"`, `verified: false`（⚪ 自己申告）
+- ログ画面 GPS 使用時 → `source: "gps_button"`, `verified: true`（🟢 弱認証）
+- 既存 trip は後方互換（フィールド未定義 = falsy 扱い）
+
+### ポケモンGO風 GPS 獲得（v89〜v92, v94）
+
+- モーダル内「📍 今ここ！」/「📍 今ゲット」ボタン → GPS 位置取得 → 駅から半径以内なら即 grant
+- 半径: 現在は **1km（テスト中）**、本番は `max(300m, accuracy+100m)` に戻す予定
+- 距離計算: Haversine（`distMeters(lat1, lon1, lat2, lon2)`）
+- マップ上の **✨ 金色バブル**: 期間限定キャラ獲得可能駅の真上に配置、パルスアニメ、複数件は右上にバッジ
+- モーダル冒頭の **「✨ ここで獲得できる！」プロンプト**: 未獲得 locked キャラあれば最上部に大型 CTA 表示
+- 未訪問駅でもクリック可能（locked preview として）
+- 獲得時はトースト通知 `.char-grant-toast`（金色ボーダー + cubic-bezier バウンス、4.5秒で自動消滅）
+
+### trip 自動獲得（v89）
+
+`checkAndGrantCharacters()`: `verified === true` の trip の from/to を抽出し、obtainable_at と一致する未獲得キャラを自動 grant。初回ロード後・Supabase 同期後・trip 保存後に呼ぶ。
+
+### UI 改修（v66〜v72, v94）
+
+- v66: 期間フィルタピル（`📅 全期間/今年/去年/カスタム`）→ `trip.date` でフィルタ、`localStorage.norireco_date_filter` 永続化
+- v67-v69: バージョンバッジ `vXX 🟢/🔄`（両画面）→ SW の CACHE_VERSION と最新 sw.js を比較
+- v70-v73: Phase 2 + dead code 削除
+- v71-v72: FAB スタック整列、ズームボタン左上→右下に統合
+- v77: 🎭 キャラ表示 ON/OFF トグル（localStorage 永続化）
+- v94: モーダル冒頭プロンプトのモバイル対応（flex-wrap + media query、ボタン下段折返し）
+
+## 16. Notion 開発ノート 2026-05-14 新方針
+
+Notion で大幅にビジョンが拡張された。実装はまだだが、設計判断時に意識する。
+
+### ブランド（確定）
+```
+プロダクト名：乗レコ
+サブタイトル：電車旅
+コア機能：記録・完乗
+拡張機能：電車旅のハブ・プラットフォーム
+```
+
+### 駅 UI の情報ハブ化（4領域パネル）
+
+駅タップで以下の 4 領域を表示する設計（実装は将来）：
+1. **自分の記録**: 乗降回数・最終訪問日・路線別記録・メモ・写真
+2. **公的情報**: 時刻表・ホーム番号・出口・運行状況・Wikipedia
+3. **周辺情報**: Google Maps 連携・駅周辺店舗・乗換案内
+4. **個人メモ**: 自分のメモ・写真・訪問時のエピソード
+
+シーン別: 乗車前 → 乗車中 → 降車後 → 乗換時 でそれぞれ違う情報を出す。
+
+### 位置情報（現在地表示）
+
+`navigator.geolocation.watchPosition` で青ドット + 精度円 + 追従モード（Google Maps 風）。Phase 1（半日）= 現在地表示のみ、Phase 4 = 駅近自動記録通知まで段階拡張。
+
+### 列車種別の記録（train_type）
+
+「あずさ」「四季島」など列車名を `train_type` として記録。**乗車記録に1フィールド追加するだけ**で対応可能。列車マスター `trains_master.json`（仮）に 100〜150 種別を格納（category: shinkansen/limited_express/express/rapid/local/sleeper/cruise_train/joyful_train/seasonal、rarity: common/uncommon/rare/legendary）。
+
+手動選択 → 提案 → AI 自動判定（プレミアム）の3段階。
+
+### AI 自動列車判定（プレミアム機能・月 300 円）
+
+GPS 軌跡 + Web 検索（時刻表） + Claude Haiku で「あずさ9号」レベルまで特定。
+- 無料版: 手動列車種別選択
+- 有料版: AI が GPS から自動判定 + 認証バッジ自動付与
+- コスト構造: 1乗車 約2円 × 月20回 = 月40円コスト、課金300円 → 月260円利益/人
+
+### 文脈型タイミング広告
+
+「電車旅」のタイミング 5 段階で広告/情報を出し分け：
+1. 出発前: 目的地天気・宿空室
+2. 乗車前: 駅弁ランキング・駅構内店舗
+3. 乗車中: 目的地観光・到着駅タクシー
+4. 到着前 (10 分): 送迎手配・周辺レストラン
+5. 到着後: 駅周辺飲食・観光バス
+
+CPM 350 円（通常）→ 2,000-5,000 円（文脈型）期待。広告 + アフィリエイト（楽天トラベル 10% / GO 15% 等）の2本立て。
+
+### 提携戦略
+
+予約システム（宿・タクシー・レンタカー・レストラン・体験）は**自前で作らず、楽天・GO・Booking 等と提携**。乗レコは「情報のハブ」に専念。
+
+### グローバル展開・道路版・自動運転時代
+
+長期ビジョン（5〜10 年）。プロダクト名「乗レコ」は不変、サブタイトルを「電車旅」→「移動の記録」→「あなたの移動ライフ」と進化させる。道路版は宿場町・道の駅・国道完走を「駅・路線・完乗」のメタファーで再現。
+
+## 17. 現在の構成要素まとめ（2026-05-14 時点）
+
+### グローバル状態（noritetsu-map.html 内）
+
+| 変数 | 役割 |
+|---|---|
+| `LINES` | N02 物理路線（606本）。lazy load 後の coord 解決用、描画には使わない |
+| `SERVICE_LINES` | 営業系統（637 + α）。**描画と完乗計算の真実の源** |
+| `MERGED_STATIONS` | 統合駅（9017）。マーカー描画のループ対象 |
+| `mergedStationMap` / `slMergedStationMap` | N02 / SL 索引のマップ |
+| `RIDDEN_SEGS` | 全 segment 配列 (lineId/from/to)、trip から build |
+| `riddenSt[n02_id]` | N02 keyed の乗車駅 Set（rebuild 内部で使用） |
+| `slRiddenSt[sl_id]` | **営業系統 id → 乗車駅 Set**（primary）|
+| `slVisitCount[stationName]` | 駅名 → 訪問回数（個人化レベル判定用）|
+| `CHARACTERS` / `stationCharMap` | キャラマスター + 駅→キャラリスト |
+| `charModeOn` | 🎭 キャラ表示 ON/OFF |
+
+### 主要関数（noritetsu-map.html 内）
+
+```
+データロード:
+  loadServiceLinesMaster / loadLines(p) / loadMergedStations / loadCharacters
+  buildServiceLines / rebuildRiddenStations (slRiddenSt + slVisitCount 同時更新)
+
+描画:
+  drawLines (master 関数)
+    → drawServiceLineBase(sl) × 637
+    → drawStationsLayer (mergedStations を 1 パス)
+       → makeCharacterIcon or makePieIcon (level に応じて)
+       → attachStationDotClickV2 (record/memo/locked-preview/grant)
+    → drawObtainableIndicators (✨ 金色バブル)
+
+キャラ獲得:
+  isCharacterOwned / isCharacterAvailable / grantCharacter / revokeCharacter
+  getStationCharacterChoice / setStationCharacterChoice (駅ごとの選択)
+  checkAndGrantCharacters (verified trip から自動 grant)
+  tryGrantByGPS (Pokemon GO 風)
+  showCharacterGrantToast
+
+モーダル:
+  openCharModal (character or locked preview)
+    → renderRarityBadge / 期間表示 / 乗り入れ系統表示
+    → "✨ ここで獲得できる！" プロンプト (CTA)
+    → 🎭 切替サムネ + 🔒 未獲得サムネ
+
+ログ画面 (noritetsu-log.html):
+  detectNearest (GPS で最寄駅検索)
+  saveToLocalStorage (Notion 既定スキーマで保存、GPS 使用なら verified: true)
+```
+
+### push 運用
+
+- ユーザー全体設定 (`~/.claude/settings.json`) で `Bash(git push origin claude/*:main)` 等 allow 済み
+- コミット + push は確認なしで進めて OK（自動承認）
+- 大規模リファクタや破壊的変更は事前に方針確認
+- 詳細はメモリ `feedback_deploy.md` 参照
+
+### 次セッション着手前のおすすめ
+
+1. `git log --oneline -20` で直近を確認
+2. ヘッダのバージョンバッジで現状デプロイ状態を確認
+3. **TODO.md の 🔥 最優先セクション**を読んで次の着手項目を選ぶ
+4. Notion 開発ノートで方針確認（5/14 大幅追記された）
