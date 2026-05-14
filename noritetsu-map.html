@@ -3333,6 +3333,7 @@ async function saveMultiSegmentTrip() {
         : `${lineList} ${fromStation}→${toStation}`);
 
   // 時刻計算 (GPS 発進時に start, 「ここで終了」押下時に end をキャプチャ)
+  const today = new Date().toISOString().slice(0, 10);
   let departTime = '';
   let arriveTime = '';
   let totalMinutes = 0;
@@ -3351,7 +3352,6 @@ async function saveMultiSegmentTrip() {
       totalMinutes = Math.max(0, Math.round((endDate - startDate) / 60000));
     }
   }
-  const today = new Date().toISOString().slice(0, 10);
   const tripId = `trip_${Date.now()}`;
   const trip = {
     id: tripId, date: tripDate, name: tripName,
