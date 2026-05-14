@@ -890,7 +890,7 @@ async function saveCharacterGrantToSupabase(charId, stationName, source, gpsData
   }
 }
 
-// Supabase から獲得済みキャラを取得して localStorage にマージ
+// Supabase ↔ localStorage の双方向同期
 async function syncCharacterGrantsFromSupabase() {
   if (typeof SUPABASE_URL === 'undefined' || typeof SUPABASE_KEY === 'undefined') return;
   try {
@@ -902,22 +902,36 @@ async function syncCharacterGrantsFromSupabase() {
       return;
     }
     const grants = await res.json();
+    const supabaseCharIds = new Set(grants.map(g => g.character_id).filter(Boolean));
     const owned = getOwnedCharacters();
-    let added = 0;
-    for (const g of grants) {
-      if (g.character_id && !owned.has(g.character_id)) {
-        owned.add(g.character_id);
-        added++;
+
+    // ① Pull: Supabase → localStorage
+    let pulled = 0;
+    for (const charId of supabaseCharIds) {
+      if (!owned.has(charId)) {
+        owned.add(charId);
+        pulled++;
       }
     }
-    if (added > 0) {
+    if (pulled > 0) {
       setOwnedCharacters(owned);
-      console.log(`[乗レコ] Supabase からキャラ獲得 ${added}体 同期`);
-      if (typeof redrawAllLinesAfterTripChange === 'function') {
-        redrawAllLinesAfterTripChange();
-      }
-    } else {
-      console.log(`[乗レコ] キャラ獲得同期: 新規なし (Supabase: ${grants.length}件)`);
+      console.log(`[乗レコ] ⬇ Supabase → localStorage: ${pulled}体 取得`);
+    }
+
+    // ② Push: localStorage → Supabase (v98 以前にローカルだけで grant したキャラを後付け)
+    const localOnly = [...owned].filter(id => !supabaseCharIds.has(id));
+    if (localOnly.length > 0) {
+      console.log(`[乗レコ] ⬆ localStorage → Supabase: ${localOnly.length}体 後付け記録 (source=migration)`);
+      // 並列で実行、エラーは個別に握りつぶす
+      await Promise.allSettled(localOnly.map(charId =>
+        saveCharacterGrantToSupabase(charId, null, 'migration', null)
+      ));
+    }
+
+    if (pulled === 0 && localOnly.length === 0) {
+      console.log(`[乗レコ] キャラ獲得同期: 完全一致 (${supabaseCharIds.size}体)`);
+    } else if (pulled > 0 && typeof redrawAllLinesAfterTripChange === 'function') {
+      redrawAllLinesAfterTripChange();
     }
   } catch(e) {
     console.warn('[乗レコ] キャラ獲得同期エラー:', e.message);
