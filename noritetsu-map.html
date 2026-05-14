@@ -236,9 +236,29 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 }
 .ns-btn:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(26,111,229,.7);}
 .ns-btn:active{transform:translateY(0);}
+/* 記録中モードの表示 */
+.ns-recording-summary{
+  padding:10px 12px;background:rgba(242,169,0,.1);border-radius:8px;
+  border:1px solid rgba(242,169,0,.3);
+}
+.ns-rec-lbl{font-size:9px;color:var(--gold);letter-spacing:1px;text-transform:uppercase;}
+.ns-rec-start{font-size:16px;color:#fff;font-weight:700;margin-top:2px;}
+.ns-rec-route{margin-top:6px;padding-top:6px;border-top:1px solid rgba(242,169,0,.2);font-size:10px;color:var(--silver);}
+.ns-rec-route-info{font-size:13px;color:#fff;margin-top:2px;font-weight:500;}
+.ns-rec-hint{margin-top:6px;font-size:10px;color:var(--silver);line-height:1.5;}
+.ns-recording-actions{display:flex;gap:8px;margin-top:8px;align-items:stretch;}
+.ns-cancel-btn{
+  flex-shrink:0;padding:9px 12px;
+  background:transparent;border:1px solid rgba(232,53,42,.5);border-radius:10px;
+  color:#ff7070;font-size:12px;cursor:pointer;font-family:inherit;
+  transition:background .15s;
+}
+.ns-cancel-btn:hover{background:rgba(232,53,42,.12);}
+
 @media (max-width:480px){
   .nearest-station-panel{padding:8px 10px;min-width:0;width:calc(100vw - 16px);}
   .ns-cand-name{font-size:12px;}
+  .ns-rec-start{font-size:14px;}
 }
 
 /* 現在地マーカー (Leaflet divIcon にこのクラスが付く) */
@@ -259,7 +279,7 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
   border-radius:12px;padding:10px 12px;box-shadow:0 4px 16px rgba(0,0,0,.6);
   color:var(--white);font-size:12px;display:none;max-height:50vh;overflow-y:auto;
 }
-.rec-panel.on{display:block;}
+.rec-panel.on{display:none;} /* v105: 最寄駅パネルに統合、rec-panel は非表示 */
 .rec-title{font-size:11px;color:var(--gold);margin-bottom:6px;letter-spacing:.05em;}
 .rec-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px;line-height:1.6;}
 .rec-chip{
@@ -755,9 +775,21 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
     <button class="char-fab on" id="char-fab" onclick="toggleCharacterMode()" title="駅キャラ表示の切替 (ON/OFF)">🎭</button>
     <button class="location-fab" id="location-fab" onclick="cycleLocationMode()" title="現在地表示 (タップで 表示→追従→OFF)">📍</button>
     <div class="nearest-station-panel" id="nearest-station-panel">
-      <div class="ns-header">📍 近くの駅を選んで記録開始</div>
-      <div class="ns-list" id="ns-list"></div>
-      <button class="ns-btn" onclick="startRecordFromNearest()">🔖 選んだ駅から記録開始</button>
+      <!-- 開始駅選択モード (記録モード OFF 時) -->
+      <div id="ns-mode-select">
+        <div class="ns-header">📍 近くの駅を選んで記録開始</div>
+        <div class="ns-list" id="ns-list"></div>
+        <button class="ns-btn" onclick="startRecordFromNearest()">🔖 選んだ駅から記録開始</button>
+      </div>
+      <!-- 記録中モード (記録モード ON 時) -->
+      <div id="ns-mode-recording" style="display:none">
+        <div class="ns-header">📝 記録中</div>
+        <div id="ns-recording-summary" class="ns-recording-summary"></div>
+        <div class="ns-recording-actions">
+          <button class="ns-btn" onclick="endRecordAtNearest()" style="flex:1">📍 ここで終了 (GPS)</button>
+          <button class="ns-cancel-btn" onclick="cancelRecord()">× 破棄</button>
+        </div>
+      </div>
     </div>
     <div class="rec-panel" id="rec-panel">
       <div class="rec-title">📝 区間記録モード — 駅をタップして選択</div>
@@ -1371,8 +1403,22 @@ function formatDist(meters) {
 function updateNearestStationPanel(lat, lon) {
   const panel = document.getElementById('nearest-station-panel');
   if (!panel) return;
-  // 記録モード中は非表示 (rec-panel が同じ場所に出る)
-  if (recordMode) { panel.classList.remove('show'); return; }
+  const selectModeEl = document.getElementById('ns-mode-select');
+  const recModeEl = document.getElementById('ns-mode-recording');
+
+  // 記録モード中: 「記録中」ステートを表示
+  if (recordMode) {
+    if (selectModeEl) selectModeEl.style.display = 'none';
+    if (recModeEl) recModeEl.style.display = 'block';
+    renderRecordingSummary();
+    panel.classList.add('show');
+    return;
+  }
+
+  // 記録モード OFF: 開始駅候補リスト
+  if (selectModeEl) selectModeEl.style.display = 'block';
+  if (recModeEl) recModeEl.style.display = 'none';
+
   const nearby = findNearestStations(lat, lon, 1500, 6); // 1.5km 以内、最大 6 駅
   if (nearby.length === 0) { panel.classList.remove('show'); return; }
 
@@ -1425,6 +1471,42 @@ function hideNearestStationPanel() {
   const panel = document.getElementById('nearest-station-panel');
   if (panel) panel.classList.remove('show');
 }
+
+// 記録中サマリの描画 (最寄駅パネルの記録中モード内)
+function renderRecordingSummary() {
+  const el = document.getElementById('ns-recording-summary');
+  if (!el) return;
+  if (!recordSelection || recordSelection.length === 0) {
+    el.innerHTML = '<div class="ns-rec-hint">駅を選択してください</div>';
+    return;
+  }
+  const start = recordSelection[0].name;
+  const last = recordSelection[recordSelection.length - 1].name;
+  const segs = currentSegments?.length || 0;
+  const hasError = currentSegments?.some(s => s.error);
+  el.innerHTML = `
+    <div class="ns-rec-lbl">📍 出発駅</div>
+    <div class="ns-rec-start">${start}</div>
+    ${recordSelection.length > 1 ? `
+      <div class="ns-rec-route">
+        ${hasError ? '⚠️ 未解決区間あり' : `経路: ${recordSelection.length}駅 / ${segs}区間`}
+      </div>
+      <div class="ns-rec-route-info">→ ${last}</div>
+    ` : `
+      <div class="ns-rec-hint">「📍 ここで終了」で終点を選ぶか、<br>地図上で駅をクリックして経路を追加</div>
+    `}
+  `;
+}
+
+// 記録キャンセル (破棄)
+function cancelRecord() {
+  if (recordSelection.length > 0 && !confirm('記録中の経路を破棄しますか？')) return;
+  recordStartedViaGPS = false;
+  recordStartGPS = null;
+  if (recordMode) toggleRecordMode();
+  showRecordToast('🗑 記録を破棄しました', 'warn', 2500);
+}
+window.cancelRecord = cancelRecord;
 
 // 「ここから記録開始」: 選んだ候補駅で記録モードに入る + GPS 認証フラグ
 function startRecordFromNearest() {
@@ -2736,8 +2818,21 @@ function toggleRecordMode() {
     if (memoMode) toggleMemoMode();
     refreshRecPanel();
     if(map) map.getContainer().style.cursor='crosshair';
-    // 最寄駅パネルとは排他 (位置がほぼ同じため)
-    if (typeof hideNearestStationPanel === 'function') hideNearestStationPanel();
+    // 最寄駅パネルを「記録中」モードに切替 (v105 で統合)
+    if (lastUserGps && typeof updateNearestStationPanel === 'function') {
+      updateNearestStationPanel(lastUserGps.lat, lastUserGps.lon);
+    } else if (typeof renderRecordingSummary === 'function') {
+      // 位置情報なくても記録中サマリは表示する
+      const panel = document.getElementById('nearest-station-panel');
+      const selectModeEl = document.getElementById('ns-mode-select');
+      const recModeEl = document.getElementById('ns-mode-recording');
+      if (panel && selectModeEl && recModeEl) {
+        selectModeEl.style.display = 'none';
+        recModeEl.style.display = 'block';
+        renderRecordingSummary();
+        panel.classList.add('show');
+      }
+    }
   } else {
     clearRecSelection();
     if(map) map.getContainer().style.cursor='';
@@ -2884,6 +2979,10 @@ function changeSegmentLine(segIdx, newLineId) {
 }
 
 function refreshRecPanel() {
+  // 記録中の最寄駅パネル サマリも更新 (rec-panel は v105 で非表示化したが、内部状態は維持)
+  if (recordMode && typeof renderRecordingSummary === 'function') {
+    renderRecordingSummary();
+  }
   const chipsDiv = document.getElementById('rec-chips');
   const pickDiv = document.getElementById('rec-line-pick');
   const actionsDiv = document.getElementById('rec-actions');
