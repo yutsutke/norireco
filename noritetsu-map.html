@@ -805,6 +805,22 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
     <div class="modal-title">📋 経路を確認</div>
     <div class="modal-sub" style="color:var(--silver);font-size:11px;margin-bottom:14px">この内容で記録しますか？</div>
     <div id="rec-confirm-body"></div>
+    <!-- 列車選択 (任意) — カテゴリ → 列車 → 車両形式 の Cascading -->
+    <div id="rec-train-picker" style="margin-top:14px;border-top:1px solid var(--track);padding-top:12px">
+      <div style="font-size:11px;color:var(--silver);margin-bottom:6px">🚆 列車種別 (任意)</div>
+      <select id="rec-train-category" onchange="onTrainCategoryChange()"
+              style="width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;margin-bottom:6px">
+        <option value="">指定しない</option>
+      </select>
+      <select id="rec-train-id" onchange="onTrainChange()"
+              style="display:none;width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;margin-bottom:6px">
+        <option value="">列車を選ぶ...</option>
+      </select>
+      <select id="rec-car-model" onchange="onCarModelChange()"
+              style="display:none;width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;margin-bottom:6px">
+        <option value="">車両形式を選ぶ (任意)...</option>
+      </select>
+    </div>
     <button class="btn-gen" onclick="confirmAndSaveRecord()">💾 保存する</button>
     <button class="btn-cls" onclick="closeRecConfirm()">✏️ 戻って編集する</button>
     <button class="btn-discard" onclick="discardRecord()">❌ 破棄する</button>
@@ -963,6 +979,99 @@ async function loadCharacters() {
     console.warn('[乗レコ] characters_master.json 読込失敗:', e.message);
   }
 }
+
+// ── 列車マスター (trains_master.json) ──
+let TRAINS = [];                       // [{id, name, category, operator, ...}]
+const TRAIN_CATEGORIES = {};            // id → {label, icon, default_rarity}
+let selectedTrainId = null;             // 確認モーダルで選択中の列車 id (任意)
+let selectedCarModel = null;            // 同 車両形式 (任意)
+
+async function loadTrains() {
+  try {
+    const res = await fetch('trains_master.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const master = await res.json();
+    TRAINS = master.trains || [];
+    Object.assign(TRAIN_CATEGORIES, master.categories || {});
+    console.log(`[乗レコ] 列車マスター読込: ${TRAINS.length}種`);
+  } catch (e) {
+    console.warn('[乗レコ] trains_master.json 読込失敗:', e.message);
+  }
+}
+
+// 列車セレクタ初期化 — 確認モーダルを開く時に呼ぶ
+function resetTrainSelector() {
+  selectedTrainId = null;
+  selectedCarModel = null;
+  const catSel = document.getElementById('rec-train-category');
+  const trainSel = document.getElementById('rec-train-id');
+  const carSel = document.getElementById('rec-car-model');
+  if (!catSel) return;
+  // カテゴリ option を構築 (1回だけだが毎回再構築でも安い)
+  let catHtml = '<option value="">指定しない</option>';
+  for (const [k, v] of Object.entries(TRAIN_CATEGORIES)) {
+    catHtml += `<option value="${k}">${v.icon || ''} ${v.label}</option>`;
+  }
+  catSel.innerHTML = catHtml;
+  catSel.value = '';
+  if (trainSel) { trainSel.innerHTML = '<option value="">列車を選ぶ...</option>'; trainSel.style.display = 'none'; }
+  if (carSel)   { carSel.innerHTML   = '<option value="">車両形式を選ぶ (任意)...</option>'; carSel.style.display = 'none'; }
+}
+
+function onTrainCategoryChange() {
+  const cat = document.getElementById('rec-train-category').value;
+  const trainSel = document.getElementById('rec-train-id');
+  const carSel = document.getElementById('rec-car-model');
+  selectedTrainId = null;
+  selectedCarModel = null;
+  if (!cat) {
+    if (trainSel) trainSel.style.display = 'none';
+    if (carSel)   carSel.style.display = 'none';
+    return;
+  }
+  const trains = TRAINS.filter(t => t.category === cat)
+    .sort((a, b) => {
+      // 廃止は末尾、その後は名前順
+      if (!!a.discontinued !== !!b.discontinued) return a.discontinued ? 1 : -1;
+      return (a.name || '').localeCompare(b.name || '', 'ja');
+    });
+  let html = '<option value="">列車を選ぶ...</option>';
+  for (const t of trains) {
+    const discTag = t.discontinued ? ' (廃止)' : '';
+    const rarityTag = t.rarity === 'legendary' ? ' ⭐' : (t.rarity === 'rare' ? ' ✨' : '');
+    html += `<option value="${t.id}">${t.name}${rarityTag}${discTag}</option>`;
+  }
+  trainSel.innerHTML = html;
+  trainSel.style.display = 'block';
+  if (carSel) carSel.style.display = 'none';
+}
+window.onTrainCategoryChange = onTrainCategoryChange;
+
+function onTrainChange() {
+  const tid = document.getElementById('rec-train-id').value;
+  selectedTrainId = tid || null;
+  selectedCarModel = null;
+  const carSel = document.getElementById('rec-car-model');
+  if (!tid || !carSel) {
+    if (carSel) carSel.style.display = 'none';
+    return;
+  }
+  const t = TRAINS.find(x => x.id === tid);
+  if (!t || !t.car_models || t.car_models.length === 0) {
+    carSel.style.display = 'none';
+    return;
+  }
+  let html = '<option value="">車両形式を選ぶ (任意)...</option>';
+  for (const m of t.car_models) html += `<option value="${m}">${m}</option>`;
+  carSel.innerHTML = html;
+  carSel.style.display = 'block';
+}
+window.onTrainChange = onTrainChange;
+
+function onCarModelChange() {
+  selectedCarModel = document.getElementById('rec-car-model').value || null;
+}
+window.onCarModelChange = onCarModelChange;
 
 // キャラ表示モード (localStorage 永続化)
 const CHAR_MODE_KEY = 'norireco_char_mode';
@@ -2730,7 +2839,7 @@ function initMap(){
   // 初期表示: P1（新幹線）+ P2（JR在来）+ P3（大手私鉄）
   (async () => {
     console.log('[乗レコ] 初期ロード開始');
-    await Promise.all([loadRunningServices(), loadMergedStations(), loadCharacters()]);
+    await Promise.all([loadRunningServices(), loadMergedStations(), loadCharacters(), loadTrains()]);
     await loadLines(1);
     await loadLines(2);
     await loadLines(3);
@@ -3174,6 +3283,8 @@ function openRecConfirm() {
     `;
   }
   document.getElementById('rec-confirm-modal')?.classList.add('open');
+  // 列車セレクタをリセット (前回の選択を持ち越さない)
+  resetTrainSelector();
 }
 
 function closeRecConfirm() {
@@ -3305,6 +3416,14 @@ window.selectEndStationCand = selectEndStationCand;
 window.closeEndStation = closeEndStation;
 window.confirmEndStation = confirmEndStation;
 
+// Supabase 送信時に schema 未対応フィールドを除外する workaround。
+// schema が拡張されたらこの関数を撤去できる (v96→v97 と同じパターン)。
+// 現在 norireco_trips に未追加: train_id / train_name / train_category / car_model
+function tripForSupabase(trip) {
+  const { train_id, train_name, train_category, car_model, ...rest } = trip;
+  return rest;
+}
+
 async function saveMultiSegmentTrip() {
   if (!recordSelection || recordSelection.length === 0) return;
   const isVisitOnly = recordSelection.length === 1 && (!currentSegments || currentSegments.length === 0);
@@ -3381,6 +3500,11 @@ async function saveMultiSegmentTrip() {
     gps_accuracy: recordStartGPS ? recordStartGPS.accuracy : null,
     recorded_at: new Date().toISOString(),
     date_precision: 'day',
+    // 列車種別 (任意、確認モーダルで選択)
+    train_id: selectedTrainId,
+    train_name: selectedTrainId ? (TRAINS.find(t => t.id === selectedTrainId)?.name || null) : null,
+    train_category: selectedTrainId ? (TRAINS.find(t => t.id === selectedTrainId)?.category || null) : null,
+    car_model: selectedCarModel,
   };
 
   let saved = false;
@@ -3394,7 +3518,7 @@ async function saveMultiSegmentTrip() {
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal',
       },
-      body: JSON.stringify(trip),
+      body: JSON.stringify(tripForSupabase(trip)),
     });
     if (res.ok) {
       saved = true;
