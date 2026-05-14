@@ -111,7 +111,17 @@ async function renderStats(){
       [...trips].sort((a,b) => (b.recorded_at||b.date||'').localeCompare(a.recorded_at||a.date||'')).slice(0,10).forEach(t => {
         const row = document.createElement('div'); row.className='bc-r';
         row.style.flexWrap = 'wrap';
-        const verifiedBadge = t.verified ? '<span style="color:#48d597;font-size:10px;margin-left:4px">🟢</span>' : '';
+        // 認証バッジ: 🟢 = GPS 認証 / 🟡 = 不正検知で降格 / なし = 手動
+        let verifiedBadge = '';
+        if (t.verified) {
+          verifiedBadge = '<span style="color:#48d597;font-size:10px;margin-left:4px" title="GPS認証">🟢</span>';
+        } else if (typeof fraudIsDowngraded === 'function' && fraudIsDowngraded(t)) {
+          let reasonTip = '不正検知で降格';
+          if (typeof fraudAssessTrip === 'function') {
+            try { const f = fraudAssessTrip(t); if (f.reason) reasonTip = f.reason; } catch(e) {}
+          }
+          verifiedBadge = `<span style="color:#f2a900;font-size:10px;margin-left:4px" title="${reasonTip.replace(/"/g,'&quot;')}">🟡</span>`;
+        }
         const timeStr = (t.depart_time && t.arrive_time)
           ? `${(t.depart_time||'').slice(0,5)}〜${(t.arrive_time||'').slice(0,5)}${t.total_minutes ? ` (${t.total_minutes}分)` : ''}`
           : '';

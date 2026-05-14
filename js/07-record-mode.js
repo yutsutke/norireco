@@ -596,6 +596,17 @@ async function saveMultiSegmentTrip() {
     car_model: selectedCarModel,
   };
 
+  // 不正検知: GPS 認証 trip の所要時間が想定の半分未満なら verified=false に降格
+  // (Supabase 列追加なし: source='gps_button' && verified===false が降格マーカー)
+  let fraud = { suspicious: false, reason: null };
+  if (trip.source === 'gps_button' && typeof fraudAssessTrip === 'function') {
+    try { fraud = fraudAssessTrip(trip); } catch (e) { console.warn('[乗レコ] 不正検知エラー:', e); }
+    if (fraud.suspicious) {
+      trip.verified = false;
+      console.warn('[乗レコ] suspicious 降格:', fraud.reason);
+    }
+  }
+
   let saved = false;
   let errInfo = '';
   try {
@@ -634,11 +645,17 @@ async function saveMultiSegmentTrip() {
   updateOverlays();
 
   if (saved) {
-    const verifiedTag = recordStartedViaGPS ? ' 🟢' : '';
+    // 認証バッジ: GPS 認証=🟢 / 降格=🟡 / 手動=なし
+    let verifiedTag = '';
+    if (trip.verified) verifiedTag = ' 🟢';
+    else if (fraud.suspicious) verifiedTag = ' 🟡';
     const summary = isVisitOnly
       ? `${fromStation} に立ち寄り`
       : `${tripSegments.length}区間 ${totalStations}駅`;
     showRecordToast(`✅ 記録${verifiedTag}: ${summary}`);
+    if (fraud.suspicious) {
+      showRecordToast(`🟡 認証を「自己申告」に降格しました\n${fraud.reason}`, 'warn', 8000);
+    }
   } else {
     showRecordToast(`⚠️ ローカル保存のみ (Supabase 失敗)\n${errInfo}`, 'warn', 9000);
   }
