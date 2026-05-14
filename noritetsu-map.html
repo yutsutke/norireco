@@ -1312,7 +1312,8 @@ let userLocationCircle = null;
 let didInitialCenter = false;
 let lastUserGps = null;                // 直近の {lat, lon, accuracy}
 let recordStartedViaGPS = false;       // 「ここから記録開始」で発進した記録か
-let recordStartGPS = null;             // 発進時の GPS スナップショット
+let recordStartGPS = null;             // 発進時の GPS スナップショット {lat, lon, accuracy, timestamp}
+let recordEndTime = null;              // 「ここで終了」or「終了して確認」押下時刻 ISO
 
 function cycleLocationMode() {
   locationMode = (locationMode + 1) % 3;
@@ -1503,6 +1504,7 @@ function cancelRecord() {
   if (recordSelection.length > 0 && !confirm('記録中の経路を破棄しますか？')) return;
   recordStartedViaGPS = false;
   recordStartGPS = null;
+  recordEndTime = null;
   if (recordMode) toggleRecordMode();
   showRecordToast('🗑 記録を破棄しました', 'warn', 2500);
 }
@@ -1521,7 +1523,8 @@ function startRecordFromNearest() {
   const picked = nearestCandidates[nearestPickedIdx] || nearestCandidates[0];
   // GPS 認証情報を記録 (saveMultiSegmentTrip でこのフラグを見て verified=true にする)
   recordStartedViaGPS = true;
-  recordStartGPS = { ...lastUserGps };
+  recordStartGPS = { ...lastUserGps, timestamp: new Date().toISOString() };
+  recordEndTime = null;
   // 記録モードへ
   if (!recordMode) toggleRecordMode();
   // 選択された駅をプリセレクト
@@ -2836,9 +2839,10 @@ function toggleRecordMode() {
   } else {
     clearRecSelection();
     if(map) map.getContainer().style.cursor='';
-    // 記録モード終了時に GPS 認証フラグもリセット
+    // 記録モード終了時に GPS 認証フラグと時刻もリセット
     recordStartedViaGPS = false;
     recordStartGPS = null;
+    recordEndTime = null;
     // 位置情報 ON のままなら最寄駅パネルを復活
     if (lastUserGps && locationMode > 0) {
       updateNearestStationPanel(lastUserGps.lat, lastUserGps.lon);
@@ -3074,6 +3078,8 @@ function openRecConfirm() {
     alert('記録する駅がありません');
     return;
   }
+  // 終了時刻をキャプチャ (まだ設定されていなければ)
+  if (!recordEndTime) recordEndTime = new Date().toISOString();
   const isVisitOnly = recordSelection.length === 1 && (!currentSegments || currentSegments.length === 0);
   if (!isVisitOnly && currentSegments && currentSegments.some(s => s.error)) {
     alert('未解決の区間があります');
@@ -3084,6 +3090,22 @@ function openRecConfirm() {
   const verifiedBadge = recordStartedViaGPS
     ? '<span class="rec-confirm-verified-badge">🟢 GPS認証</span>'
     : '<span class="rec-confirm-verified-badge" style="background:rgba(140,160,179,.15);color:var(--silver);border-color:var(--track)">⚪ 自己申告</span>';
+
+  // 時刻情報 (depart_time / arrive_time / total_minutes プレビュー)
+  let timeRowHtml = '';
+  if (recordStartGPS && recordStartGPS.timestamp) {
+    const startDate = new Date(recordStartGPS.timestamp);
+    const startStr = startDate.toTimeString().slice(0, 5); // HH:MM
+    const endDate = recordEndTime ? new Date(recordEndTime) : new Date();
+    const endStr = endDate.toTimeString().slice(0, 5);
+    const mins = Math.max(0, Math.round((endDate - startDate) / 60000));
+    timeRowHtml = `
+      <div class="rec-confirm-stat-row">
+        <span class="rec-confirm-stat-lbl">🕒 時刻</span>
+        <span class="rec-confirm-stat-val">${startStr} → ${endStr} (${mins}分)</span>
+      </div>
+    `;
+  }
 
   if (isVisitOnly) {
     // 1駅のみ「訪問」記録
@@ -3099,6 +3121,7 @@ function openRecConfirm() {
         <span class="rec-confirm-stat-lbl">📍 訪問駅</span>
         <span class="rec-confirm-stat-val">${st.name}</span>
       </div>
+      ${timeRowHtml}
       <div class="rec-confirm-stat-row">
         <span class="rec-confirm-stat-lbl">🛡 認証</span>
         <span class="rec-confirm-stat-val">${verifiedBadge}</span>
@@ -3135,6 +3158,7 @@ function openRecConfirm() {
         <span class="rec-confirm-stat-lbl">🚉 駅数 / 区間</span>
         <span class="rec-confirm-stat-val">${totalStations}駅 / ${currentSegments.length}区間</span>
       </div>
+      ${timeRowHtml}
       <div class="rec-confirm-stat-row">
         <span class="rec-confirm-stat-lbl">🛡 認証</span>
         <span class="rec-confirm-stat-val">${verifiedBadge}</span>
@@ -3161,6 +3185,7 @@ function discardRecord() {
   document.getElementById('rec-confirm-modal')?.classList.remove('open');
   recordStartedViaGPS = false;
   recordStartGPS = null;
+  recordEndTime = null;
   if (recordMode) toggleRecordMode(); // off に
   showRecordToast('🗑 記録を破棄しました', 'warn', 2500);
 }
@@ -3245,6 +3270,8 @@ function confirmEndStation() {
   if (!endStationCandidates || endStationCandidates.length === 0) return;
   const picked = endStationCandidates[endStationPickedIdx] || endStationCandidates[0];
   const lastSelected = recordSelection[recordSelection.length - 1]?.name;
+  // 「ここで終了」押下時刻をキャプチャ (実際の到着時刻)
+  recordEndTime = new Date().toISOString();
   // 出発駅と同じ駅を選んだら 1駅訪問記録扱い (currentSegments は空のまま)
   if (picked.station.name !== lastSelected) {
     onRecordStationClick({
@@ -3295,15 +3322,37 @@ async function saveMultiSegmentTrip() {
     : (tripSegments.length === 1
         ? `${lineNames[0]} ${fromStation}→${toStation}`
         : `${lineList} ${fromStation}→${toStation}`);
+
+  // 時刻計算 (GPS 発進時に start, 「ここで終了」押下時に end をキャプチャ)
+  let departTime = '';
+  let arriveTime = '';
+  let totalMinutes = 0;
+  let tripDate = today; // 既定: 今日
+  if (recordStartGPS && recordStartGPS.timestamp) {
+    const startDate = new Date(recordStartGPS.timestamp);
+    departTime = startDate.toTimeString().slice(0, 8); // HH:MM:SS
+    // 日付も開始時刻基準に上書き (午前0時跨ぎ対応)
+    tripDate = startDate.toISOString().slice(0, 10);
+  }
+  if (recordEndTime) {
+    const endDate = new Date(recordEndTime);
+    arriveTime = endDate.toTimeString().slice(0, 8);
+    if (recordStartGPS && recordStartGPS.timestamp) {
+      const startDate = new Date(recordStartGPS.timestamp);
+      totalMinutes = Math.max(0, Math.round((endDate - startDate) / 60000));
+    }
+  }
   const today = new Date().toISOString().slice(0, 10);
   const tripId = `trip_${Date.now()}`;
   const trip = {
-    id: tripId, date: today, name: tripName,
+    id: tripId, date: tripDate, name: tripName,
     from_station: fromStation, to_station: toStation,
     total_stations: totalStations,
     transfers: Math.max(0, tripSegments.length - 1),
     line_list: lineList,
-    total_minutes: 0, depart_time: '', arrive_time: '',
+    total_minutes: totalMinutes,
+    depart_time: departTime,
+    arrive_time: arriveTime,
     segments: tripSegments,
     // 認証グラデーション (Notion §記録モード設計)
     // GPS 発進 (「ここから記録開始」経由) なら verified=true、それ以外は manual
@@ -3362,9 +3411,10 @@ async function saveMultiSegmentTrip() {
   } else {
     showRecordToast(`⚠️ ローカル保存のみ (Supabase 失敗)\n${errInfo}`, 'warn', 9000);
   }
-  // 保存後に GPS 認証フラグをリセット
+  // 保存後に GPS 認証フラグと時刻をリセット
   recordStartedViaGPS = false;
   recordStartGPS = null;
+  recordEndTime = null;
   // verified=true の trip なら自動獲得チェックが発動する
   setTimeout(() => runCharacterGrantCheck(), 800);
   clearRecSelection();
