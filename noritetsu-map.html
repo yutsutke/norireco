@@ -1313,6 +1313,7 @@ let didInitialCenter = false;
 let lastUserGps = null;                // 直近の {lat, lon, accuracy}
 let recordStartedViaGPS = false;       // 「ここから記録開始」で発進した記録か
 let recordStartGPS = null;             // 発進時の GPS スナップショット {lat, lon, accuracy, timestamp}
+let recordStartedAt = null;            // 記録モード突入時刻 ISO (GPS 無くても depart_time に使う)
 let recordEndTime = null;              // 「ここで終了」or「終了して確認」押下時刻 ISO
 
 function cycleLocationMode() {
@@ -2817,6 +2818,8 @@ function toggleRecordMode() {
   btn.classList.toggle('on', recordMode);
   panel.classList.toggle('on', recordMode);
   if (recordMode) {
+    // 記録モード突入時刻を必ずセット (GPS 経由でなくても depart_time 計算に使う)
+    recordStartedAt = new Date().toISOString();
     // メモモードと排他
     if (memoMode) toggleMemoMode();
     refreshRecPanel();
@@ -2842,6 +2845,7 @@ function toggleRecordMode() {
     // 記録モード終了時に GPS 認証フラグと時刻もリセット
     recordStartedViaGPS = false;
     recordStartGPS = null;
+    recordStartedAt = null;
     recordEndTime = null;
     // 最寄駅パネルの mode DOM を必ず切替 (lastUserGps の有無に関わらず)
     const _np = document.getElementById('nearest-station-panel');
@@ -3101,9 +3105,11 @@ function openRecConfirm() {
     : '<span class="rec-confirm-verified-badge" style="background:rgba(140,160,179,.15);color:var(--silver);border-color:var(--track)">⚪ 自己申告</span>';
 
   // 時刻情報 (depart_time / arrive_time / total_minutes プレビュー)
+  // GPS 経由なら recordStartGPS.timestamp、それ以外でも記録モード突入時刻 (recordStartedAt) を使う
+  const startTs = (recordStartGPS && recordStartGPS.timestamp) || recordStartedAt;
   let timeRowHtml = '';
-  if (recordStartGPS && recordStartGPS.timestamp) {
-    const startDate = new Date(recordStartGPS.timestamp);
+  if (startTs) {
+    const startDate = new Date(startTs);
     const startStr = startDate.toTimeString().slice(0, 5); // HH:MM
     const endDate = recordEndTime ? new Date(recordEndTime) : new Date();
     const endStr = endDate.toTimeString().slice(0, 5);
@@ -3333,22 +3339,25 @@ async function saveMultiSegmentTrip() {
         : `${lineList} ${fromStation}→${toStation}`);
 
   // 時刻計算 (GPS 発進時に start, 「ここで終了」押下時に end をキャプチャ)
+  // GPS 経由でなくても記録モード突入時刻 (recordStartedAt) を depart_time に使う
   const today = new Date().toISOString().slice(0, 10);
+  const startTs = (recordStartGPS && recordStartGPS.timestamp) || recordStartedAt;
+  const endTs = recordEndTime || new Date().toISOString();
   let departTime = '';
   let arriveTime = '';
   let totalMinutes = 0;
   let tripDate = today; // 既定: 今日
-  if (recordStartGPS && recordStartGPS.timestamp) {
-    const startDate = new Date(recordStartGPS.timestamp);
+  if (startTs) {
+    const startDate = new Date(startTs);
     departTime = startDate.toTimeString().slice(0, 8); // HH:MM:SS
     // 日付も開始時刻基準に上書き (午前0時跨ぎ対応)
     tripDate = startDate.toISOString().slice(0, 10);
   }
-  if (recordEndTime) {
-    const endDate = new Date(recordEndTime);
+  if (endTs) {
+    const endDate = new Date(endTs);
     arriveTime = endDate.toTimeString().slice(0, 8);
-    if (recordStartGPS && recordStartGPS.timestamp) {
-      const startDate = new Date(recordStartGPS.timestamp);
+    if (startTs) {
+      const startDate = new Date(startTs);
       totalMinutes = Math.max(0, Math.round((endDate - startDate) / 60000));
     }
   }
@@ -3432,6 +3441,12 @@ async function saveMultiSegmentTrip() {
     toggleRecordMode();
   } else {
     clearRecSelection();
+  }
+  // 保存後は 📍 を OFF にする (次回の記録に向けてリセット)
+  if (locationMode > 0) {
+    locationMode = 0;
+    stopLocationTracking();
+    updateLocationButton();
   }
 }
 
