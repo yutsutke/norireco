@@ -553,6 +553,7 @@ async function saveMultiSegmentTrip() {
   let departTime = '';
   let arriveTime = '';
   let totalMinutes = 0;
+  let elapsedSec = 0;  // 不正検知用に秒精度の経過時間を保持
   let tripDate = today; // 既定: 今日 (ローカル)
   if (startTs) {
     const startDate = new Date(startTs);
@@ -565,6 +566,7 @@ async function saveMultiSegmentTrip() {
     arriveTime = endDate.toTimeString().slice(0, 8);
     if (startTs) {
       const startDate = new Date(startTs);
+      elapsedSec = Math.max(0, Math.round((endDate - startDate) / 1000));
       totalMinutes = Math.max(0, Math.round((endDate - startDate) / 60000));
     }
   }
@@ -598,9 +600,10 @@ async function saveMultiSegmentTrip() {
 
   // 不正検知: GPS 認証 trip の所要時間が想定の半分未満なら verified=false に降格
   // (Supabase 列追加なし: source='gps_button' && verified===false が降格マーカー)
+  // 秒精度の経過時間を一時フィールドで渡す (Supabase には送らない)
   let fraud = { suspicious: false, reason: null };
   if (trip.source === 'gps_button' && typeof fraudAssessTrip === 'function') {
-    try { fraud = fraudAssessTrip(trip); } catch (e) { console.warn('[乗レコ] 不正検知エラー:', e); }
+    try { fraud = fraudAssessTrip({ ...trip, _elapsed_sec: elapsedSec }); } catch (e) { console.warn('[乗レコ] 不正検知エラー:', e); }
     if (fraud.suspicious) {
       trip.verified = false;
       console.warn('[乗レコ] suspicious 降格:', fraud.reason);

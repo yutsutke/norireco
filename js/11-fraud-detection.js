@@ -95,23 +95,51 @@ function fraudExpectedMinutes(trip) {
 
 // 不正検知本体
 // 判定対象: GPS フロー (source='gps_button') の trip のみ
-// 戻り値: { suspicious, reason, expectedMinutes, ratio }
+// 戻り値: { suspicious, reason, expectedMinutes, ratio, elapsedMinutes }
+//
+// 注: total_minutes は四捨五入 (0-29 秒 → 0 分)。「ほぼ瞬時」=最も怪しいケースなので
+//     0 でも検査対象。秒精度が必要なら trip._elapsed_sec (save 時に渡せる) を優先する。
 function fraudAssessTrip(trip) {
   if (!trip || trip.source !== 'gps_button') return { suspicious: false, reason: null };
-  if (!trip.total_minutes || trip.total_minutes <= 0) return { suspicious: false, reason: null };
   if (!trip.segments || trip.segments.length === 0) return { suspicious: false, reason: null };
+  // 経過時間を分単位で取得 (秒精度の _elapsed_sec があれば優先、なければ total_minutes)
+  let elapsedMin;
+  if (typeof trip._elapsed_sec === 'number' && trip._elapsed_sec >= 0) {
+    elapsedMin = trip._elapsed_sec / 60;
+  } else if (typeof trip.total_minutes === 'number' && trip.total_minutes >= 0) {
+    elapsedMin = trip.total_minutes;
+  } else {
+    // depart_time / arrive_time (HH:MM:SS) から秒精度で計算 (Supabase 同期データ向け)
+    const dep = parseHmsToSec(trip.depart_time);
+    const arr = parseHmsToSec(trip.arrive_time);
+    if (dep == null || arr == null) return { suspicious: false, reason: null };
+    let diff = arr - dep;
+    if (diff < 0) diff += 24 * 3600; // 日跨ぎ補正
+    elapsedMin = diff / 60;
+  }
   const expected = fraudExpectedMinutes(trip);
   if (expected <= 0) return { suspicious: false, reason: null };
-  const ratio = trip.total_minutes / expected;
+  const ratio = elapsedMin / expected;
   if (ratio < 0.5) {
+    // 表示用: 30 秒未満は秒で、それ以上は分で
+    const elapsedDisp = elapsedMin < 0.5 ? `${Math.round(elapsedMin*60)}秒` : `${Math.round(elapsedMin)}分`;
     return {
       suspicious: true,
-      reason: `所要 ${trip.total_minutes}分 が想定 ${Math.round(expected)}分 の ${Math.round(ratio*100)}% (×0.5 未満)`,
+      reason: `所要 ${elapsedDisp} が想定 ${Math.round(expected)}分 の ${Math.round(ratio*100)}% (×0.5 未満)`,
       expectedMinutes: Math.round(expected),
+      elapsedMinutes: elapsedMin,
       ratio,
     };
   }
-  return { suspicious: false, reason: null, expectedMinutes: Math.round(expected), ratio };
+  return { suspicious: false, reason: null, expectedMinutes: Math.round(expected), elapsedMinutes: elapsedMin, ratio };
+}
+
+// "HH:MM:SS" → 秒。null/空 は null を返す
+function parseHmsToSec(hms) {
+  if (!hms || typeof hms !== 'string') return null;
+  const m = hms.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!m) return null;
+  return (+m[1]) * 3600 + (+m[2]) * 60 + (+(m[3] || 0));
 }
 
 // UI 用: trip が「降格された suspicious」か (永続データから判別)
