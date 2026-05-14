@@ -4723,6 +4723,101 @@ async function renderStats(){
       });
       tripSection.appendChild(recent);
     }
+
+    // ── 🚆 列車制覇 ── (train_id ベースで集計、手入力は別欄)
+    const trainSection = document.createElement('div'); trainSection.className='bc';
+    trainSection.innerHTML = '<div class="bc-t">🚆 列車制覇</div>';
+
+    const ridTrainIds = new Set();
+    const ridCustomNames = new Set();
+    trips.forEach(t => {
+      if (t.train_id) ridTrainIds.add(t.train_id);
+      else if (t.train_name) ridCustomNames.add(t.train_name);
+    });
+
+    const byCategory = {};
+    (TRAINS || []).forEach(t => {
+      const cat = t.category || 'other';
+      if (!byCategory[cat]) byCategory[cat] = { total: 0, ridden: 0, ridden_trains: [] };
+      byCategory[cat].total++;
+      if (ridTrainIds.has(t.id)) {
+        byCategory[cat].ridden++;
+        byCategory[cat].ridden_trains.push(t);
+      }
+    });
+
+    // 主要カテゴリのスコアカード (達成 0 のものは表示しないと味気ないので 0 でも total>0 なら出す)
+    const mainCats = ['shinkansen', 'limited_express', 'sleeper', 'cruise_train', 'joyful_train', 'steam', 'express'];
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px;margin-bottom:10px';
+    mainCats.forEach(cat => {
+      const c = byCategory[cat];
+      const meta = (TRAIN_CATEGORIES || {})[cat];
+      if (!c || !meta || c.total === 0) return;
+      const pct = c.total ? Math.round(c.ridden / c.total * 100) : 0;
+      const card = document.createElement('div');
+      card.className = 'scard';
+      card.innerHTML = `
+        <div class="sc-l">${meta.icon||''} ${meta.label}</div>
+        <div class="sc-v">${c.ridden}<span class="sc-u">/${c.total}</span></div>
+        <div style="font-size:9px;color:var(--silver);margin-top:2px">${pct}%</div>
+      `;
+      grid.appendChild(card);
+    });
+    trainSection.appendChild(grid);
+
+    // カテゴリ別 乗った列車リスト (折りたたみ)
+    mainCats.forEach(cat => {
+      const c = byCategory[cat];
+      const meta = (TRAIN_CATEGORIES || {})[cat];
+      if (!c || !meta || c.ridden_trains.length === 0) return;
+      const det = document.createElement('details');
+      det.style.cssText = 'margin-top:4px';
+      const sum = document.createElement('summary');
+      sum.style.cssText = 'cursor:pointer;padding:6px 10px;background:rgba(20,32,46,.6);border-radius:6px;font-size:11px;color:var(--white)';
+      sum.textContent = `${meta.icon||''} ${meta.label} ${c.ridden} 種類`;
+      det.appendChild(sum);
+      const list = document.createElement('div');
+      list.style.cssText = 'padding:8px;display:flex;flex-wrap:wrap;gap:6px';
+      c.ridden_trains
+        .sort((a,b) => (a.name||'').localeCompare(b.name||'', 'ja'))
+        .forEach(t => {
+          const tag = document.createElement('span');
+          const rarityBadge = t.rarity === 'legendary' ? ' ⭐' : (t.rarity === 'rare' ? ' ✨' : '');
+          const discTag = t.discontinued ? ' (廃止)' : '';
+          // 廃止/レアは色を変える
+          let bg = 'rgba(242,169,0,.15)', border = 'rgba(242,169,0,.4)', color = 'var(--gold)';
+          if (t.rarity === 'legendary') { bg = 'rgba(199,125,255,.18)'; border = 'rgba(199,125,255,.5)'; color = '#c77dff'; }
+          else if (t.rarity === 'rare') { bg = 'rgba(72,213,151,.18)'; border = 'rgba(72,213,151,.5)'; color = '#48d597'; }
+          tag.style.cssText = `padding:3px 9px;background:${bg};border:1px solid ${border};border-radius:12px;color:${color};font-size:10px;font-weight:600`;
+          tag.textContent = `${t.name}${rarityBadge}${discTag}`;
+          list.appendChild(tag);
+        });
+      det.appendChild(list);
+      trainSection.appendChild(det);
+    });
+
+    // マニア手入力 (マスター未登録) リスト
+    if (ridCustomNames.size > 0) {
+      const det = document.createElement('details');
+      det.style.cssText = 'margin-top:6px';
+      const sum = document.createElement('summary');
+      sum.style.cssText = 'cursor:pointer;padding:6px 10px;background:rgba(20,32,46,.6);border-radius:6px;font-size:11px;color:var(--silver)';
+      sum.textContent = `📝 マスター未登録 (手入力) ${ridCustomNames.size} 件`;
+      det.appendChild(sum);
+      const list = document.createElement('div');
+      list.style.cssText = 'padding:8px;display:flex;flex-wrap:wrap;gap:6px';
+      [...ridCustomNames].sort((a,b) => a.localeCompare(b, 'ja')).forEach(n => {
+        const tag = document.createElement('span');
+        tag.style.cssText = 'padding:3px 9px;background:rgba(140,160,179,.12);border:1px dashed var(--track);border-radius:12px;color:var(--silver);font-size:10px';
+        tag.textContent = n;
+        list.appendChild(tag);
+      });
+      det.appendChild(list);
+      trainSection.appendChild(det);
+    }
+
+    tripSection.appendChild(trainSection);
   }).catch(e => {
     const grid = document.getElementById('trip-stat-grid');
     if (grid) grid.innerHTML = `<div class="scard"><div class="sc-l">取得失敗</div><div class="sc-v" style="font-size:12px;color:var(--silver)">localStorageを使用中</div></div>`;
