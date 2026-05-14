@@ -3284,9 +3284,16 @@ function closeEndStation() {
 function confirmEndStation() {
   if (!endStationCandidates || endStationCandidates.length === 0) return;
   const picked = endStationCandidates[endStationPickedIdx] || endStationCandidates[0];
-  const lastSelected = recordSelection[recordSelection.length - 1]?.name;
   // 「ここで終了」押下時刻をキャプチャ (実際の到着時刻)
   recordEndTime = new Date().toISOString();
+  // 末尾区間がエラー (= 前回の終点が解決不能) なら末尾駅を外してから選び直す
+  // これで「終点を選び直す」UX が成立する
+  if (recordSelection.length >= 2 && currentSegments && currentSegments.length > 0
+      && currentSegments[currentSegments.length - 1].error) {
+    const stale = recordSelection[recordSelection.length - 1];
+    onRecordStationClick(stale); // toggle off
+  }
+  const lastSelected = recordSelection[recordSelection.length - 1]?.name;
   // 出発駅と同じ駅を選んだら 1駅訪問記録扱い (currentSegments は空のまま)
   if (picked.station.name !== lastSelected) {
     onRecordStationClick({
