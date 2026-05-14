@@ -9,7 +9,7 @@
 //   2. GitHubにpush
 //   3. ユーザーがハードリロード or アプリ再起動で更新が反映される
 
-const CACHE_VERSION = 'v116';
+const CACHE_VERSION = 'v117';
 const CACHE_NAME = `norireco-${CACHE_VERSION}`;
 
 // 起動時にプリキャッシュする静的アセット
@@ -24,6 +24,7 @@ const STATIC_ASSETS = [
   './merged_stations.json',
   './service_lines_master.json',
   './characters_master.json',
+  './trains_master.json',
   './characters/kuwaten.svg',
   './characters/youmayu.svg',
   './characters/yomatsuri-mayu.svg',
