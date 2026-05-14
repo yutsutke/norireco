@@ -1700,17 +1700,6 @@ async function showNotionJson(){
 const SUPABASE_URL = 'https://zkscxhhlyhdaanisjhdi.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inprc2N4aGhseWhkYWFuaXNqaGRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNTAzNjcsImV4cCI6MjA5MzcyNjM2N30.rGOli3UJjjBtF8caD7NXaoCYdfgbIyv4j_GCdjmPpsU';
 
-// Supabase テーブル norireco_trips に未追加のカラムを除外する
-// TODO(schema-migration): Supabase に source/verified/gps_*/recorded_at/date_precision
-//   カラムを追加したら除外をやめる
-function tripForSupabase(trip) {
-  const {
-    source, verified, gps_lat, gps_lon, gps_accuracy, recorded_at, date_precision,
-    ...supabaseSafe
-  } = trip;
-  return supabaseSafe;
-}
-
 async function saveToSupabase(tripData) {
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_trips`, {
@@ -1721,7 +1710,7 @@ async function saveToSupabase(tripData) {
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal',
       },
-      body: JSON.stringify(tripForSupabase(tripData)),
+      body: JSON.stringify(tripData),
     });
     if (res.ok) {
       console.log('[乗レコ] Supabase保存成功:', tripData.name);

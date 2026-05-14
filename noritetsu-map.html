@@ -2453,18 +2453,6 @@ function refreshRecPanel() {
 }
 
 // 経路 (複数区間) を1 trip として保存
-// Supabase テーブル norireco_trips に未追加のカラムを除外する
-// TODO(schema-migration): 以下の ALTER TABLE を Supabase で実行したら除外をやめる:
-//   source text / verified bool / gps_lat float8 / gps_lon float8 / gps_accuracy float8
-//   recorded_at timestamptz / date_precision text
-function tripForSupabase(trip) {
-  const {
-    source, verified, gps_lat, gps_lon, gps_accuracy, recorded_at, date_precision,
-    ...supabaseSafe
-  } = trip;
-  return supabaseSafe;
-}
-
 async function saveMultiSegmentTrip() {
   if (!currentSegments || currentSegments.length === 0) return;
   if (currentSegments.some(s => s.error)) {
@@ -2521,7 +2509,7 @@ async function saveMultiSegmentTrip() {
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal',
       },
-      body: JSON.stringify(tripForSupabase(trip)),
+      body: JSON.stringify(trip),
     });
     if (res.ok) {
       saved = true;
