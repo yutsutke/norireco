@@ -387,6 +387,9 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 /* Character detail modal — 確実に最前面・表示 */
 #char-modal{z-index:9999 !important;}
 #char-modal.open{display:flex !important;}
+/* 記録確認モーダル — 同じく最前面 (rec-panel z-index:1100 を超える必要あり) */
+#rec-confirm-modal{z-index:9999 !important;}
+#rec-confirm-modal.open{display:flex !important;}
 .char-modal-hero{
   text-align:center;margin:8px auto 18px;
 }
@@ -1096,16 +1099,25 @@ function checkAndGrantCharacters() {
   if (!CHARACTERS || Object.keys(CHARACTERS).length === 0) return [];
   let trips = [];
   try { trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]'); } catch(e) { return []; }
-  // verified === true の trip の from/to を抽出 (駅名 → GPS データのマップ)
+  // verified === true の trip の駅を抽出 (駅名 → GPS データのマップ)
+  // 1駅のみ「訪問」記録 (segments 空) にも対応するため trip.from_station / to_station もスキャン
   const verifiedStationGps = new Map(); // station name → {lat, lon, accuracy} or null
   for (const trip of trips) {
     if (!trip.verified) continue;
     const gps = (trip.gps_lat != null && trip.gps_lon != null)
       ? { lat: trip.gps_lat, lon: trip.gps_lon, accuracy: trip.gps_accuracy }
       : null;
+    // segments の from/to
     for (const seg of (trip.segments || [])) {
       if (seg.from && !verifiedStationGps.has(seg.from)) verifiedStationGps.set(seg.from, gps);
       if (seg.to && !verifiedStationGps.has(seg.to)) verifiedStationGps.set(seg.to, gps);
+    }
+    // trip 本体の from_station/to_station (1駅訪問でも捕捉)
+    if (trip.from_station && !verifiedStationGps.has(trip.from_station)) {
+      verifiedStationGps.set(trip.from_station, gps);
+    }
+    if (trip.to_station && !verifiedStationGps.has(trip.to_station)) {
+      verifiedStationGps.set(trip.to_station, gps);
     }
   }
   if (verifiedStationGps.size === 0) return [];
@@ -2934,56 +2946,77 @@ function refreshRecPanel() {
 // 経路 (複数区間) を1 trip として保存
 // 記録確認モーダル: 終了 → 経路レビュー → 保存 or 戻る or 破棄
 function openRecConfirm() {
-  if (!currentSegments || currentSegments.length === 0) {
-    alert('まだ記録する区間がありません');
+  if (!recordSelection || recordSelection.length === 0) {
+    alert('記録する駅がありません');
     return;
   }
-  if (currentSegments.some(s => s.error)) {
+  const isVisitOnly = recordSelection.length === 1 && (!currentSegments || currentSegments.length === 0);
+  if (!isVisitOnly && currentSegments && currentSegments.some(s => s.error)) {
     alert('未解決の区間があります');
     return;
   }
-  // 経路詳細を生成
   const body = document.getElementById('rec-confirm-body');
   if (!body) return;
-  // 統計
-  let totalStations = 0;
-  const lineNames = [];
-  for (const seg of currentSegments) {
-    if (!seg.line) continue;
-    const fromIdx = seg.line.stations.findIndex(s => s.name === seg.from.name);
-    const toIdx = seg.line.stations.findIndex(s => s.name === seg.to.name);
-    if (fromIdx < 0 || toIdx < 0) continue;
-    totalStations += Math.abs(toIdx - fromIdx) + 1;
-    if (lineNames[lineNames.length - 1] !== seg.line.name) lineNames.push(seg.line.name);
-  }
-  const fromSt = recordSelection[0]?.name || '?';
-  const toSt = recordSelection[recordSelection.length - 1]?.name || '?';
   const verifiedBadge = recordStartedViaGPS
     ? '<span class="rec-confirm-verified-badge">🟢 GPS認証</span>'
     : '<span class="rec-confirm-verified-badge" style="background:rgba(140,160,179,.15);color:var(--silver);border-color:var(--track)">⚪ 自己申告</span>';
-  // 経路詳細 HTML
-  const routeHtml = currentSegments.map(seg => {
-    if (!seg.line) return '';
-    return `<div class="rec-confirm-seg">
-      <span class="rec-confirm-seg-dot" style="background:${seg.line.color}"></span>
-      <span><b>${seg.line.name}</b> &nbsp; ${seg.from.name} → ${seg.to.name}</span>
-    </div>`;
-  }).join('');
-  body.innerHTML = `
-    <div class="rec-confirm-route">${routeHtml}</div>
-    <div class="rec-confirm-stat-row">
-      <span class="rec-confirm-stat-lbl">📍 区間</span>
-      <span class="rec-confirm-stat-val">${fromSt} → ${toSt}</span>
-    </div>
-    <div class="rec-confirm-stat-row">
-      <span class="rec-confirm-stat-lbl">🚉 駅数 / 区間</span>
-      <span class="rec-confirm-stat-val">${totalStations}駅 / ${currentSegments.length}区間</span>
-    </div>
-    <div class="rec-confirm-stat-row">
-      <span class="rec-confirm-stat-lbl">🛡 認証</span>
-      <span class="rec-confirm-stat-val">${verifiedBadge}</span>
-    </div>
-  `;
+
+  if (isVisitOnly) {
+    // 1駅のみ「訪問」記録
+    const st = recordSelection[0];
+    body.innerHTML = `
+      <div class="rec-confirm-route" style="border-left-color:#1A6FE5">
+        <div class="rec-confirm-seg">
+          <span class="rec-confirm-seg-dot" style="background:#1A6FE5"></span>
+          <span><b>${st.name}駅</b> に立ち寄り</span>
+        </div>
+      </div>
+      <div class="rec-confirm-stat-row">
+        <span class="rec-confirm-stat-lbl">📍 訪問駅</span>
+        <span class="rec-confirm-stat-val">${st.name}</span>
+      </div>
+      <div class="rec-confirm-stat-row">
+        <span class="rec-confirm-stat-lbl">🛡 認証</span>
+        <span class="rec-confirm-stat-val">${verifiedBadge}</span>
+      </div>
+    `;
+  } else {
+    // 通常: 複数区間の経路
+    let totalStations = 0;
+    const lineNames = [];
+    for (const seg of currentSegments) {
+      if (!seg.line) continue;
+      const fromIdx = seg.line.stations.findIndex(s => s.name === seg.from.name);
+      const toIdx = seg.line.stations.findIndex(s => s.name === seg.to.name);
+      if (fromIdx < 0 || toIdx < 0) continue;
+      totalStations += Math.abs(toIdx - fromIdx) + 1;
+      if (lineNames[lineNames.length - 1] !== seg.line.name) lineNames.push(seg.line.name);
+    }
+    const fromSt = recordSelection[0]?.name || '?';
+    const toSt = recordSelection[recordSelection.length - 1]?.name || '?';
+    const routeHtml = currentSegments.map(seg => {
+      if (!seg.line) return '';
+      return `<div class="rec-confirm-seg">
+        <span class="rec-confirm-seg-dot" style="background:${seg.line.color}"></span>
+        <span><b>${seg.line.name}</b> &nbsp; ${seg.from.name} → ${seg.to.name}</span>
+      </div>`;
+    }).join('');
+    body.innerHTML = `
+      <div class="rec-confirm-route">${routeHtml}</div>
+      <div class="rec-confirm-stat-row">
+        <span class="rec-confirm-stat-lbl">📍 区間</span>
+        <span class="rec-confirm-stat-val">${fromSt} → ${toSt}</span>
+      </div>
+      <div class="rec-confirm-stat-row">
+        <span class="rec-confirm-stat-lbl">🚉 駅数 / 区間</span>
+        <span class="rec-confirm-stat-val">${totalStations}駅 / ${currentSegments.length}区間</span>
+      </div>
+      <div class="rec-confirm-stat-row">
+        <span class="rec-confirm-stat-lbl">🛡 認証</span>
+        <span class="rec-confirm-stat-val">${verifiedBadge}</span>
+      </div>
+    `;
+  }
   document.getElementById('rec-confirm-modal')?.classList.add('open');
 }
 
@@ -3014,30 +3047,37 @@ window.confirmAndSaveRecord = confirmAndSaveRecord;
 window.discardRecord = discardRecord;
 
 async function saveMultiSegmentTrip() {
-  if (!currentSegments || currentSegments.length === 0) return;
-  if (currentSegments.some(s => s.error)) {
+  if (!recordSelection || recordSelection.length === 0) return;
+  const isVisitOnly = recordSelection.length === 1 && (!currentSegments || currentSegments.length === 0);
+  if (!isVisitOnly && currentSegments && currentSegments.some(s => s.error)) {
     alert('未解決の区間があります'); return;
   }
   const tripSegments = [];
   let totalStations = 0;
   const lineNames = [];
-  for (const seg of currentSegments) {
-    if (!seg.line) continue;
-    const fromIdx = seg.line.stations.findIndex(s => s.name === seg.from.name);
-    const toIdx = seg.line.stations.findIndex(s => s.name === seg.to.name);
-    if (fromIdx < 0 || toIdx < 0) continue;
-    totalStations += Math.abs(toIdx - fromIdx) + 1;
-    if (lineNames[lineNames.length - 1] !== seg.line.name) lineNames.push(seg.line.name);
-    tripSegments.push({lineId: seg.line.id, from: seg.from.name, to: seg.to.name});
+  if (!isVisitOnly) {
+    for (const seg of currentSegments) {
+      if (!seg.line) continue;
+      const fromIdx = seg.line.stations.findIndex(s => s.name === seg.from.name);
+      const toIdx = seg.line.stations.findIndex(s => s.name === seg.to.name);
+      if (fromIdx < 0 || toIdx < 0) continue;
+      totalStations += Math.abs(toIdx - fromIdx) + 1;
+      if (lineNames[lineNames.length - 1] !== seg.line.name) lineNames.push(seg.line.name);
+      tripSegments.push({lineId: seg.line.id, from: seg.from.name, to: seg.to.name});
+    }
+    if (tripSegments.length === 0) { alert('保存できる区間がありません'); return; }
+  } else {
+    totalStations = 1;
   }
-  if (tripSegments.length === 0) { alert('保存できる区間がありません'); return; }
 
   const fromStation = recordSelection[0].name;
   const toStation = recordSelection[recordSelection.length - 1].name;
   const lineList = lineNames.join(' ▸ ');
-  const tripName = tripSegments.length === 1
-    ? `${lineNames[0]} ${fromStation}→${toStation}`
-    : `${lineList} ${fromStation}→${toStation}`;
+  const tripName = isVisitOnly
+    ? `${fromStation} 訪問`
+    : (tripSegments.length === 1
+        ? `${lineNames[0]} ${fromStation}→${toStation}`
+        : `${lineList} ${fromStation}→${toStation}`);
   const today = new Date().toISOString().slice(0, 10);
   const tripId = `trip_${Date.now()}`;
   const trip = {
@@ -3098,7 +3138,10 @@ async function saveMultiSegmentTrip() {
 
   if (saved) {
     const verifiedTag = recordStartedViaGPS ? ' 🟢' : '';
-    showRecordToast(`✅ 記録${verifiedTag}: ${tripSegments.length}区間 ${totalStations}駅`);
+    const summary = isVisitOnly
+      ? `${fromStation} に立ち寄り`
+      : `${tripSegments.length}区間 ${totalStations}駅`;
+    showRecordToast(`✅ 記録${verifiedTag}: ${summary}`);
   } else {
     showRecordToast(`⚠️ ローカル保存のみ (Supabase 失敗)\n${errInfo}`, 'warn', 9000);
   }
