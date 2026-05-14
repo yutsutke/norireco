@@ -4,9 +4,29 @@
 詳しい仕様や経緯は `HANDOFF.md` §12〜§17、ビジネス背景は [Notion 開発ノート](https://www.notion.so/35b71b458b63818494afe7c1ab917ca5)。
 
 **ブランド（2026-05-13 確定）**: 乗レコ - 電車旅
-**現在の SW**: v94 / **キャラ**: 7体（八王子3・立川3・小宮1）/ **記録**: 認証グラデーション Step a 実装済み
+**現在の SW**: v108 / **キャラ**: 7体（八王子3・立川3・小宮1）/ **記録**: 認証グラデーション Step a + GPS フロー実装済み
 
 ---
+
+## 🐛 既知バグ（未解決・次セッション優先調査）
+
+- [ ] **保存後に「📝 記録中」パネルが残る**
+  - 症状: 確認モーダル → 「💾 保存する」 → Supabase は保存される（位置情報・時刻も入る、v106-v107 で対応）が、地図画面の最寄駅パネルが「📝 記録中」表示のまま残り、次の記録に進めない
+  - v107 で `saveMultiSegmentTrip` 末尾に `toggleRecordMode()` を追加
+  - v108 で `toggleRecordMode` else 分岐内の DOM 更新を `lastUserGps` 有無に関わらず行うよう修正
+  - **それでも直らない**との報告（2026-05-14 セッション終了時点）
+  - **次セッション調査ポイント**:
+    1. `v108 🟢` バッジで本当に最新コードが動いているか確認
+    2. ブラウザ DevTools Console で「💾 保存する」押下時のログを確認:
+       - `[乗レコ] 期間フィルタ` などのログが出るか
+       - `toggleRecordMode` が呼ばれているか確認するため `console.log('toggleRecordMode →', recordMode)` を仕込んで確認
+    3. `confirmAndSaveRecord` → `saveMultiSegmentTrip` → 末尾の `toggleRecordMode()` の流れを実際にデバッガでステップ実行
+    4. 別端末・別ブラウザでも同じ症状が出るか
+    5. saveMultiSegmentTrip が途中で早期 return していないか確認（特に `tripSegments.length === 0` 分岐）
+    6. ありえそうな仮説:
+       - 確認モーダルが closed されないまま saveMultiSegmentTrip 中で何か（rebuildRiddenStations / redrawAllLinesAfterTripChange / updateOverlays）が exception → toggleRecordMode に到達せず
+       - showRecordToast の DOM 操作で全ボディ書き換えが起こり、ns-mode-recording の DOM が消えるが、後で recordMode=true のままなので新規生成された DOM がまた記録中になる、等のレース
+       - confirmAndSaveRecord が await を待たずに次の処理を続けている可能性 (await はあるが…)
 
 ## 🔥 最優先（プロダクトとして欠けている）
 
