@@ -3060,15 +3060,8 @@ function refreshRecPanel() {
         : `合計 ${totalStations}駅 / 乗換 ${Math.max(0, transferCount)}回`;
       pickDiv.appendChild(summary);
 
-      // GPS 終点選択ボタン (大、青) — 最優先 UX
-      const gpsEndBtn = document.createElement('button');
-      gpsEndBtn.className = 'rec-save';
-      gpsEndBtn.style.cssText = 'background:linear-gradient(135deg, #1A6FE5 0%, #003fa0 100%);margin-bottom:6px';
-      gpsEndBtn.textContent = '📍 ここで終了 (GPS)';
-      gpsEndBtn.onclick = () => endRecordAtNearest();
-      pickDiv.appendChild(gpsEndBtn);
-
       // 手動「終了して確認」 (現在の selection で終了)
+      // rec-panel は手動フロー専用なので「ここで終了 (GPS)」ボタンは出さない (v116〜)
       const saveBtn = document.createElement('button');
       saveBtn.className = 'rec-save';
       saveBtn.style.cssText = 'background:rgba(140,160,179,.2);color:var(--white);border:1px solid var(--track)';
