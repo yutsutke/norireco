@@ -279,7 +279,7 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
   border-radius:12px;padding:10px 12px;box-shadow:0 4px 16px rgba(0,0,0,.6);
   color:var(--white);font-size:12px;display:none;max-height:50vh;overflow-y:auto;
 }
-.rec-panel.on{display:none;} /* v105: 最寄駅パネルに統合、rec-panel は非表示 */
+.rec-panel.on{display:block;} /* v113: 手動フロー (📝 ボタン) では従来 UI を表示。GPS フローでは JS で非表示にする */
 .rec-title{font-size:11px;color:var(--gold);margin-bottom:6px;letter-spacing:.05em;}
 .rec-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px;line-height:1.6;}
 .rec-chip{
@@ -2810,20 +2810,27 @@ function toggleRecordMode() {
     if (memoMode) toggleMemoMode();
     refreshRecPanel();
     if(map) map.getContainer().style.cursor='crosshair';
-    // 最寄駅パネルを「記録中」モードに切替 (v105 で統合)
-    if (lastUserGps && typeof updateNearestStationPanel === 'function') {
-      updateNearestStationPanel(lastUserGps.lat, lastUserGps.lon);
-    } else if (typeof renderRecordingSummary === 'function') {
-      // 位置情報なくても記録中サマリは表示する
-      const panel = document.getElementById('nearest-station-panel');
-      const selectModeEl = document.getElementById('ns-mode-select');
-      const recModeEl = document.getElementById('ns-mode-recording');
-      if (panel && selectModeEl && recModeEl) {
-        selectModeEl.style.display = 'none';
-        recModeEl.style.display = 'block';
-        renderRecordingSummary();
-        panel.classList.add('show');
+    if (recordStartedViaGPS) {
+      // GPS フロー: ミニマルな最寄駅パネル (記録中) を表示、rec-panel は隠す
+      panel.style.display = 'none';
+      if (lastUserGps && typeof updateNearestStationPanel === 'function') {
+        updateNearestStationPanel(lastUserGps.lat, lastUserGps.lon);
+      } else if (typeof renderRecordingSummary === 'function') {
+        const np = document.getElementById('nearest-station-panel');
+        const selectModeEl = document.getElementById('ns-mode-select');
+        const recModeEl = document.getElementById('ns-mode-recording');
+        if (np && selectModeEl && recModeEl) {
+          selectModeEl.style.display = 'none';
+          recModeEl.style.display = 'block';
+          renderRecordingSummary();
+          np.classList.add('show');
+        }
       }
+    } else {
+      // 手動フロー (📝 ボタン経由): 従来の rec-panel UI を表示、最寄駅パネルは隠す
+      panel.style.display = '';
+      const np = document.getElementById('nearest-station-panel');
+      if (np) np.classList.remove('show');
     }
   } else {
     clearRecSelection();
@@ -2833,6 +2840,8 @@ function toggleRecordMode() {
     recordStartGPS = null;
     recordStartedAt = null;
     recordEndTime = null;
+    // rec-panel の inline display をリセット (手動フローで '' にしていたぶん)
+    panel.style.display = '';
     // 最寄駅パネルの mode DOM を必ず切替 (lastUserGps の有無に関わらず)
     const _np = document.getElementById('nearest-station-panel');
     const _selM = document.getElementById('ns-mode-select');
