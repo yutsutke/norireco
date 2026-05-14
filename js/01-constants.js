@@ -10,3 +10,13 @@ const ISLANDS=[
   {id:"tsushima",pts:[[157.9,294.7],[155.9,299.7],[154.6,304.6],[156.4,305.0],[158.4,300.6],[157.9,294.7]]},
   {id:"iki",pts:[[162.4,312.3],[161.0,315.2],[162.8,316.3],[164.3,313.0],[162.4,312.3]]}
 ];
+
+// 端末ローカルタイムゾーンでの YYYY-MM-DD 文字列を返す
+// 注: toISOString().slice(0,10) は UTC を返すため JST 早朝の記録が前日になるバグの原因
+function localDateStr(d) {
+  const dt = d instanceof Date ? d : new Date();
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  const day = String(dt.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}

@@ -127,7 +127,7 @@ function revokeCharacter(charId) {
 // 期間内 (available_from ≤ 今日 ≤ available_until) かチェック
 function isCharacterAvailable(charMeta) {
   if (!charMeta) return false;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateStr();
   if (charMeta.available_from && today < charMeta.available_from) return false;
   if (charMeta.available_until && today > charMeta.available_until) return false;
   return true;

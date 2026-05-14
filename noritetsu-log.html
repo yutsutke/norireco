@@ -1037,7 +1037,7 @@ async function autoSaveJourney(segs) {
 
   const payload = {
     旅程名: `${startName} → ${endName}`,
-    日付: journey.journeyStart.toISOString().split('T')[0],
+    日付: localDateStr(journey.journeyStart),
     出発駅: startName,
     到着駅: endName,
     出発時刻: fmtTime(journey.journeyStart),
@@ -1530,7 +1530,7 @@ async function saveMemoToSupabase() {
   const memo = {
     id: `memo_${Date.now()}`,
     trip_id: tripId,
-    date: new Date().toISOString().split('T')[0],
+    date: localDateStr(),
     station: memoType === '区間' ? '' : station,
     line_id: lineId,
     line_name: lineName,
@@ -1605,6 +1605,8 @@ async function saveMemoToSupabase() {
 
 function fmtTime(d){return d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
 function fmtDate(d){return d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});}
+// 端末ローカル日付 (toISOString().slice(0,10) は UTC を返すため JST 早朝の記録が前日になる)
+function localDateStr(d){const dt=d instanceof Date?d:new Date();const y=dt.getFullYear();const m=String(dt.getMonth()+1).padStart(2,'0');const day=String(dt.getDate()).padStart(2,'0');return `${y}-${m}-${day}`;}
 function fmtDur(ms){const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;}
 function fmtDurShort(ms){const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60);return h>0?`${h}時間${m}分`:`${m}分${s%60}秒`;}
 
@@ -1633,7 +1635,7 @@ async function showNotionJson(){
 
   const payload = {
     旅程名: `${startName} → ${endName}`,
-    日付: journey.journeyStart.toISOString().split('T')[0],
+    日付: localDateStr(journey.journeyStart),
     出発駅: startName,
     到着駅: endName,
     出発時刻: fmtTime(journey.journeyStart),

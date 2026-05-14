@@ -900,7 +900,7 @@ function genMemo(){
     タイトル:`${clickInfo.station?.n||''}（${clickInfo.line?.name||''}）`,
     駅名:type!=='路線'?clickInfo.station?.n||'':'',路線名:clickInfo.line?.name||'',
     種別:type,コメント:comment,写真URL:photo,
-    日付:new Date().toISOString().split('T')[0],
+    日付:localDateStr(),
     気分:mood,タグ:tags.join('、'),緯度:clickInfo.lat||'',経度:clickInfo.lon||''};
   const text=`📸駅メモデータ\n${JSON.stringify(payload)}\nこのデータをNotionの「駅メモ」DBに保存してください。`;
   const ta=document.getElementById('out-ta');

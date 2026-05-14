@@ -547,18 +547,18 @@ async function saveMultiSegmentTrip() {
 
   // 時刻計算 (GPS 発進時に start, 「ここで終了」押下時に end をキャプチャ)
   // GPS 経由でなくても記録モード突入時刻 (recordStartedAt) を depart_time に使う
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateStr();  // 端末ローカル日付 (JST) — UTC だと早朝記録が前日になるため
   const startTs = (recordStartGPS && recordStartGPS.timestamp) || recordStartedAt;
   const endTs = recordEndTime || new Date().toISOString();
   let departTime = '';
   let arriveTime = '';
   let totalMinutes = 0;
-  let tripDate = today; // 既定: 今日
+  let tripDate = today; // 既定: 今日 (ローカル)
   if (startTs) {
     const startDate = new Date(startTs);
     departTime = startDate.toTimeString().slice(0, 8); // HH:MM:SS
-    // 日付も開始時刻基準に上書き (午前0時跨ぎ対応)
-    tripDate = startDate.toISOString().slice(0, 10);
+    // 日付も開始時刻基準に上書き (午前0時跨ぎ対応) — ローカル日付で保存
+    tripDate = localDateStr(startDate);
   }
   if (endTs) {
     const endDate = new Date(endTs);
