@@ -119,8 +119,18 @@ function buildCompletionCards(trips) {
   const wrap = document.createElement('div');
   wrap.className = 'mp-stats-wrap';
 
+  // 全駅マスター (ユニーク) — SERVICE_LINES から駅名 Set を作る
+  const allUniqueStations = new Set();
+  let lineUnitTotal = 0;
+  for (const sl of SERVICE_LINES) {
+    for (const s of sl.stations) allUniqueStations.add(s.name);
+    lineUnitTotal += sl.stations.length;
+  }
+  const totalUnique = allUniqueStations.size;
+
   const collect = (verifiedOnly) => {
-    const slSet = {};
+    const slSet = {};                  // sl.id → Set<駅名> (系統単位)
+    const visitedUnique = new Set();   // 全駅まとめてユニーク
     for (const trip of trips) {
       if (verifiedOnly && !trip.verified) continue;
       if (!trip.segments) continue;
@@ -132,41 +142,77 @@ function buildCompletionCards(trips) {
         if (fromIdx < 0 || toIdx < 0) continue;
         const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
         if (!slSet[sl.id]) slSet[sl.id] = new Set();
-        for (let i = a; i <= b; i++) slSet[sl.id].add(sl.stations[i].name);
+        for (let i = a; i <= b; i++) {
+          const name = sl.stations[i].name;
+          slSet[sl.id].add(name);
+          visitedUnique.add(name);
+        }
       }
     }
-    let rd = 0, st = 0, ln = 0, cp = 0;
+    let lineUnitRidden = 0, lines = 0, complete = 0;
     for (const sl of SERVICE_LINES) {
       const r = slSet[sl.id] ? slSet[sl.id].size : 0;
-      const t = sl.stations.length;
-      rd += r; st += t;
-      if (r > 0) ln++;
-      if (r === t && t > 0) cp++;
+      lineUnitRidden += r;
+      if (r > 0) lines++;
+      if (r === sl.stations.length && sl.stations.length > 0) complete++;
     }
-    return { pct: st > 0 ? Math.round(rd / st * 100) : 0, ridden: rd, stations: st, lines: ln, complete: cp };
+    return {
+      uniquePct: totalUnique > 0 ? Math.round(visitedUnique.size / totalUnique * 100) : 0,
+      uniqueRidden: visitedUnique.size,
+      lines, complete,
+      lineUnitRidden, lineUnitTotal,
+      lineUnitPct: lineUnitTotal > 0 ? Math.round(lineUnitRidden / lineUnitTotal * 100) : 0,
+    };
   };
   const sv = collect(true), all = collect(false);
+  const totalLines = SERVICE_LINES.length;
 
   wrap.innerHTML = `
     <div class="mp-stat-grid">
-      <div class="mp-scard verified" title="公式完乗率: GPS 認証された旅程のみで集計\n分母は営業系統ごとに駅をカウント (同じ駅が複数系統に属する場合は各々で 1 駅)">
+      <div class="mp-scard verified">
         <div class="mp-sc-h">🟢 公式完乗率</div>
         <div class="mp-sc-sub">verified のみ</div>
-        <div class="mp-sc-pct">${sv.pct}<span>%</span></div>
-        <div class="mp-sc-detail">${sv.ridden} / ${sv.stations} 駅 <span style="opacity:.6;font-size:9px">(系統単位)</span></div>
-        <div class="mp-sc-detail">${sv.lines} 系統 (完乗 ${sv.complete})</div>
+        <div class="mp-sc-pct">${sv.uniquePct}<span>%</span></div>
+        <div class="mp-sc-detail">${sv.uniqueRidden.toLocaleString()} / ${totalUnique.toLocaleString()} 駅</div>
+        <div class="mp-sc-detail">${sv.lines} / ${totalLines} 系統乗車 (完乗 ${sv.complete})</div>
+        <button class="mp-detail-toggle" onclick="toggleCompletionDetail(this)">▾ マニア向け指標</button>
+        <div class="mp-detail-pane" style="display:none">
+          <div class="mp-detail-num">系統単位: ${sv.lineUnitRidden.toLocaleString()} / ${sv.lineUnitTotal.toLocaleString()} 駅 (${sv.lineUnitPct}%)</div>
+          <div class="mp-detail-explain">
+            <strong>系統単位</strong>とは: 八王子駅 (横浜線・中央本線・中央本線快速・八高線) のように複数路線に属する駅を、それぞれの系統で 1 駅としてカウントする集計方法。<br>
+            <em>完乗 (全駅乗車) を厳密に評価する指標</em>。中央本線快速で八王子に行っても、八高線の八王子は別カウント。
+          </div>
+        </div>
       </div>
-      <div class="mp-scard all" title="全記録完乗率: manual / suspicious を含む全旅程で集計\n分母は営業系統ごとに駅をカウント">
+      <div class="mp-scard all">
         <div class="mp-sc-h">⚪ 全記録完乗率</div>
         <div class="mp-sc-sub">manual / suspicious 含む</div>
-        <div class="mp-sc-pct">${all.pct}<span>%</span></div>
-        <div class="mp-sc-detail">${all.ridden} / ${all.stations} 駅 <span style="opacity:.6;font-size:9px">(系統単位)</span></div>
-        <div class="mp-sc-detail">${all.lines} 系統 (完乗 ${all.complete})</div>
+        <div class="mp-sc-pct">${all.uniquePct}<span>%</span></div>
+        <div class="mp-sc-detail">${all.uniqueRidden.toLocaleString()} / ${totalUnique.toLocaleString()} 駅</div>
+        <div class="mp-sc-detail">${all.lines} / ${totalLines} 系統乗車 (完乗 ${all.complete})</div>
+        <button class="mp-detail-toggle" onclick="toggleCompletionDetail(this)">▾ マニア向け指標</button>
+        <div class="mp-detail-pane" style="display:none">
+          <div class="mp-detail-num">系統単位: ${all.lineUnitRidden.toLocaleString()} / ${all.lineUnitTotal.toLocaleString()} 駅 (${all.lineUnitPct}%)</div>
+          <div class="mp-detail-explain">
+            <strong>系統単位</strong>とは: 八王子駅 (横浜線・中央本線・中央本線快速・八高線) のように複数路線に属する駅を、それぞれの系統で 1 駅としてカウント。<br>
+            <em>完乗 (全駅乗車) を厳密に評価する指標</em>。
+          </div>
+        </div>
       </div>
     </div>
   `;
   return wrap;
 }
+
+// 「マニア向け指標」トグル
+function toggleCompletionDetail(btn) {
+  const pane = btn.nextElementSibling;
+  if (!pane) return;
+  const isOpen = pane.style.display !== 'none';
+  pane.style.display = isOpen ? 'none' : 'block';
+  btn.textContent = isOpen ? '▾ マニア向け指標' : '▴ マニア向け指標を閉じる';
+}
+window.toggleCompletionDetail = toggleCompletionDetail;
 
 // ── 🚃 旅程セクション ──────────────────────────────────────────
 function renderMpTripsSection() {
