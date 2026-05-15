@@ -328,6 +328,104 @@ function buildDetailContent(pane, sv, all, trips, totalUnique, totalLines) {
     buildPersonalRecords(trips),
     `Strava 風の個人ベスト記録セット。<br><strong>連続乗車日数</strong>: 1日でも記録があれば連続カウント、空白日が出るとリセット。「現在の連続」と「過去最長」を併記。<br>その他、最長旅程 (時間・駅数)・最多旅程日・最早/最遅時刻など、マニア心をくすぐる数字を集約。`
   ));
+
+  // ⑫ 路線別 初回/最新乗車日 + 完乗達成日
+  pane.appendChild(detailCard('🚃 路線タイムライン',
+    buildLineTimeline(trips),
+    `各営業系統ごとに <strong>初回乗車日</strong>・<strong>最新乗車日</strong>・<strong>完乗達成日</strong> を記録。<br>完乗系統は ✅ マーク + 達成日新しい順、進行中は完乗率降順で並ぶ。NAVITIME 移動・路線ログの定番機能を踏襲。<br>「いつあの路線を完乗したっけ?」を振り返るための記録。`
+  ));
+}
+
+// ── 路線タイムライン (初回/最新乗車日 + 完乗達成日) ──────────
+function buildLineTimeline(trips) {
+  const sorted = [...trips]
+    .filter(t => t.date && t.segments)
+    .sort((a,b) => a.date.localeCompare(b.date));
+  if (sorted.length === 0) return '<div class="mp-empty-s">乗車記録がありません</div>';
+
+  const lineData = {};  // sl.id → { firstDate, lastDate, completeDate, rides, stations: Set }
+
+  for (const trip of sorted) {
+    const tripLines = new Set();
+    for (const seg of trip.segments) {
+      const sl = SERVICE_LINES.find(l => l.id === seg.lineId);
+      if (!sl) continue;
+      tripLines.add(sl.id);
+      const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
+      const toIdx = sl.stations.findIndex(s => s.name === seg.to);
+      if (fromIdx < 0 || toIdx < 0) continue;
+      const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
+      if (!lineData[sl.id]) {
+        lineData[sl.id] = { firstDate: trip.date, lastDate: trip.date, completeDate: null, rides: 0, stations: new Set() };
+      }
+      for (let i = a; i <= b; i++) lineData[sl.id].stations.add(sl.stations[i].name);
+      lineData[sl.id].lastDate = trip.date;
+      if (!lineData[sl.id].completeDate &&
+          lineData[sl.id].stations.size === sl.stations.length &&
+          sl.stations.length > 0) {
+        lineData[sl.id].completeDate = trip.date;
+      }
+    }
+    for (const slId of tripLines) {
+      if (lineData[slId]) lineData[slId].rides++;
+    }
+  }
+
+  const rows = Object.entries(lineData).map(([slId, d]) => {
+    const sl = SERVICE_LINES.find(l => l.id === slId);
+    if (!sl) return null;
+    return {
+      slId,
+      name: sl.name,
+      color: sl.color || '#888',
+      operator: sl.operator || '',
+      total: sl.stations.length,
+      ridden: d.stations.size,
+      firstDate: d.firstDate,
+      lastDate: d.lastDate,
+      completeDate: d.completeDate,
+      rides: d.rides,
+      pct: sl.stations.length > 0 ? Math.round(d.stations.size / sl.stations.length * 100) : 0,
+    };
+  }).filter(r => r);
+
+  // 並び: 完乗 (達成日新しい順) → 進行中 (完乗率降順)
+  rows.sort((a, b) => {
+    if (a.completeDate && !b.completeDate) return -1;
+    if (!a.completeDate && b.completeDate) return 1;
+    if (a.completeDate && b.completeDate) return b.completeDate.localeCompare(a.completeDate);
+    return b.pct - a.pct || b.ridden - a.ridden;
+  });
+
+  const completeCount = rows.filter(r => r.completeDate).length;
+  const SHOW_LIMIT = 60;
+  const visible = rows.slice(0, SHOW_LIMIT);
+
+  return `
+    <div class="mp-pref-summary">
+      <strong>${completeCount}</strong> 系統 完乗 / 進行中 <strong style="color:var(--gold)">${rows.length - completeCount}</strong> 系統
+    </div>
+    <div class="mp-line-tl-list">
+      ${visible.map(r => `
+        <div class="mp-line-tl-row${r.completeDate ? ' complete' : ''}">
+          <span class="mp-line-tl-dot" style="background:${r.color}"></span>
+          <div class="mp-line-tl-body">
+            <div class="mp-line-tl-name">${r.name}${r.completeDate ? ' <span class="mp-line-tl-check">✅</span>' : ''}</div>
+            <div class="mp-line-tl-dates">
+              ${r.completeDate
+                ? `初回 ${r.firstDate} → 完乗 ${r.completeDate}`
+                : `初回 ${r.firstDate} · 最新 ${r.lastDate}`}
+            </div>
+          </div>
+          <div class="mp-line-tl-stats">
+            <div class="mp-line-tl-pct">${r.pct}%</div>
+            <div class="mp-line-tl-sub">${r.ridden}/${r.total}駅 · ${r.rides}回</div>
+          </div>
+        </div>
+      `).join('')}
+      ${rows.length > SHOW_LIMIT ? `<div class="mp-empty-s" style="text-align:center;padding:6px">…他 ${rows.length - SHOW_LIMIT} 系統 (上位 ${SHOW_LIMIT} 系統を表示)</div>` : ''}
+    </div>
+  `;
 }
 
 // ── 個人記録 (PR) + 連続乗車日数 ────────────────────────────
