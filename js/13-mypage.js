@@ -334,6 +334,73 @@ function buildDetailContent(pane, sv, all, trips, totalUnique, totalLines) {
     buildLineTimeline(trips),
     `各営業系統ごとに <strong>初回乗車日</strong>・<strong>最新乗車日</strong>・<strong>完乗達成日</strong> を記録。<br>完乗系統は ✅ マーク + 達成日新しい順、進行中は完乗率降順で並ぶ。NAVITIME 移動・路線ログの定番機能を踏襲。<br>「いつあの路線を完乗したっけ?」を振り返るための記録。`
   ));
+
+  // ⑬ 駅別 初回/最新訪問日 + 訪問回数 Top 50
+  pane.appendChild(detailCard('🚉 駅タイムライン (訪問回数 Top 50)',
+    buildStationTimeline(trips),
+    `自分が訪問した駅を <strong>訪問回数の多い順</strong> に Top 50 表示。<br>各駅に <strong>初回訪問日</strong>・<strong>最新訪問日</strong> を併記。<br>ホーム駅・通勤通学最寄駅・乗換駅などが上位に来やすい。「初めて◯◯駅に行ったのはいつ?」が振り返れる。<br>※ 経路上の通過駅も含む (segment 内の中間駅もカウント)。`
+  ));
+}
+
+// ── 駅タイムライン (初回/最新訪問日 + 訪問回数 Top 50) ─────
+function buildStationTimeline(trips) {
+  const sorted = [...trips]
+    .filter(t => t.date && t.segments)
+    .sort((a,b) => a.date.localeCompare(b.date));
+  if (sorted.length === 0) return '<div class="mp-empty-s">訪問駅がありません</div>';
+
+  // 駅 → { firstDate, lastDate, count }
+  const stData = {};
+
+  for (const trip of sorted) {
+    const tripStations = new Set();  // この trip で訪問した駅 (1 trip で同じ駅を複数回カウントしない)
+    for (const seg of trip.segments) {
+      const sl = SERVICE_LINES.find(l => l.id === seg.lineId);
+      if (!sl) continue;
+      const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
+      const toIdx = sl.stations.findIndex(s => s.name === seg.to);
+      if (fromIdx < 0 || toIdx < 0) continue;
+      const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
+      for (let i = a; i <= b; i++) tripStations.add(sl.stations[i].name);
+    }
+    for (const name of tripStations) {
+      if (!stData[name]) stData[name] = { firstDate: trip.date, lastDate: trip.date, count: 0 };
+      stData[name].lastDate = trip.date;
+      stData[name].count++;
+    }
+  }
+
+  const rows = Object.entries(stData)
+    .map(([name, d]) => ({ name, ...d }))
+    .sort((a, b) => b.count - a.count || a.firstDate.localeCompare(b.firstDate))
+    .slice(0, 50);
+
+  if (rows.length === 0) return '<div class="mp-empty-s">訪問駅がありません</div>';
+
+  const maxCount = rows[0].count;
+
+  return `
+    <div class="mp-pref-summary">
+      <strong>${Object.keys(stData).length.toLocaleString()}</strong> ユニーク駅 訪問 (上位 ${Math.min(50, rows.length)} 駅を表示)
+    </div>
+    <div class="mp-st-tl-list">
+      ${rows.map((r, i) => `
+        <div class="mp-st-tl-row">
+          <span class="mp-st-tl-rank">${i+1}</span>
+          <div class="mp-st-tl-body">
+            <div class="mp-st-tl-name">${r.name}</div>
+            <div class="mp-st-tl-dates">
+              ${r.firstDate === r.lastDate ? r.firstDate : `${r.firstDate} → ${r.lastDate}`}
+            </div>
+          </div>
+          <div class="mp-st-tl-stats">
+            <div class="mp-st-tl-count">${r.count}回</div>
+            <div class="mp-st-tl-bar"><div class="mp-st-tl-fill" style="width:${Math.round(r.count/maxCount*100)}%"></div></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
 }
 
 // ── 路線タイムライン (初回/最新乗車日 + 完乗達成日) ──────────

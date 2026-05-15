@@ -518,6 +518,18 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mp-line-tl-pct{font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:var(--gold);line-height:1;}
 .mp-line-tl-row.complete .mp-line-tl-pct{color:#48d597;}
 .mp-line-tl-sub{font-size:9px;color:var(--silver);margin-top:2px;}
+
+/* 駅タイムライン */
+.mp-st-tl-list{display:flex;flex-direction:column;gap:3px;max-height:380px;overflow-y:auto;padding-right:4px;}
+.mp-st-tl-row{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:6px;background:rgba(14,24,36,.4);}
+.mp-st-tl-rank{width:22px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:var(--silver);font-weight:600;flex-shrink:0;}
+.mp-st-tl-body{flex:1;min-width:0;}
+.mp-st-tl-name{font-size:11px;font-weight:700;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mp-st-tl-dates{font-size:9px;color:var(--silver);font-family:'DM Mono',monospace;margin-top:2px;}
+.mp-st-tl-stats{flex-shrink:0;width:90px;}
+.mp-st-tl-count{text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);font-weight:600;}
+.mp-st-tl-bar{height:4px;background:rgba(46,74,99,.35);border-radius:2px;overflow:hidden;margin-top:3px;}
+.mp-st-tl-fill{height:100%;background:linear-gradient(90deg,var(--gold),#ffd44d);}
 .mp-tip{font-size:9px;color:var(--silver);padding:6px 4px;margin-bottom:8px;line-height:1.5;}
 
 .mp-trip-wrap{padding:0 12px 80px;}
