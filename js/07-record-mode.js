@@ -698,6 +698,9 @@ function redrawAllLinesAfterTripChange() {
   // drawLines() が内部で window._allLabels.length=0 と drawnMergedStations.clear()
   // を実行するため、パイチャート(統合駅)も正しく再生成される
   drawLines();
+  // 都道府県ヒートマップも制覇率を更新 (Task 2)
+  if (typeof invalidatePrefHeatmap === 'function') invalidatePrefHeatmap();
+  if (typeof renderPrefHeatmap === 'function') renderPrefHeatmap();
 }
 
 function showRecordToast(msg, mode, durationMs) {

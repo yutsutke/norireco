@@ -9,7 +9,7 @@
 //   2. GitHubにpush
 //   3. ユーザーがハードリロード or アプリ再起動で更新が反映される
 
-const CACHE_VERSION = 'v157';
+const CACHE_VERSION = 'v158';
 const CACHE_NAME = `norireco-${CACHE_VERSION}`;
 
 // 起動時にプリキャッシュする静的アセット
@@ -29,6 +29,7 @@ const STATIC_ASSETS = [
   './js/11-fraud-detection.js',
   './js/12-auth.js',
   './js/13-mypage.js',
+  './js/14-heatmap.js',
   './lines-p1.json',
   './lines-p2.json',
   './lines-p3.json',
@@ -38,6 +39,7 @@ const STATIC_ASSETS = [
   './service_lines_master.json',
   './characters_master.json',
   './trains_master.json',
+  './jp_prefectures.geojson',
   './characters/kuwaten.svg',
   './characters/youmayu.svg',
   './characters/yomatsuri-mayu.svg',
@@ -55,6 +57,7 @@ const STATIC_ASSETS = [
 const NETWORK_FIRST_PATTERNS = [
   /\.html$/,
   /\.json$/,
+  /\.geojson$/,
   /\.js$/,
 ];
 
