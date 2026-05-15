@@ -352,6 +352,82 @@ function buildDetailContent(pane, sv, all, trips, totalUnique, totalLines) {
     buildUnexplored(sv),
     `<strong>未訪問の都道府県</strong>と <strong>未踏の主要ターミナル駅</strong>。<br>次の旅の目的地候補に。完乗マラソンの「残り」が見える化される。<br>※ 都道府県判定は簡易 bbox 法のため境界付近の駅は要注意。`
   ));
+
+  // ⑯ 車両形式別 乗車回数
+  pane.appendChild(detailCard('🚃 車両形式コレクション',
+    buildCarModelStats(trips),
+    `乗車記録に紐づけた <strong>車両形式 (E5系・N700S・E353系 等)</strong> の乗車回数集計。<br>同じ形式でも複数の列車で運用されているケース (例: E353系 → あずさ・かいじ・富士回遊) は併記。<br>初回乗車日・最新乗車日も記録、希少車両 (寝台・SL・観光列車) は ✨ 表示。<br>※ 確認モーダルで車両形式を選択した旅程のみ集計。`
+  ));
+}
+
+// ── 車両形式コレクション ────────────────────────────────────
+function buildCarModelStats(trips) {
+  const cmData = {};  // car_model → { count, firstDate, lastDate, trains: Set, trainIds: Set }
+  for (const t of trips) {
+    if (!t.car_model) continue;
+    if (!cmData[t.car_model]) {
+      cmData[t.car_model] = { count: 0, firstDate: t.date, lastDate: t.date, trains: new Set(), trainIds: new Set() };
+    }
+    const d = cmData[t.car_model];
+    d.count++;
+    if (t.date) {
+      if (!d.firstDate || t.date < d.firstDate) d.firstDate = t.date;
+      if (!d.lastDate || t.date > d.lastDate) d.lastDate = t.date;
+    }
+    if (t.train_name) d.trains.add(t.train_name);
+    if (t.train_id) d.trainIds.add(t.train_id);
+  }
+  const rows = Object.entries(cmData)
+    .map(([cm, d]) => ({ cm, count: d.count, firstDate: d.firstDate, lastDate: d.lastDate, trains: [...d.trains], trainIds: [...d.trainIds] }))
+    .sort((a, b) => b.count - a.count || (a.cm || '').localeCompare(b.cm || '', 'ja'));
+
+  if (rows.length === 0) return '<div class="mp-empty-s">車両形式が記録された旅程がありません<br>記録時に確認モーダルで形式を選ぶと集計されます</div>';
+
+  // TRAINS マスターから rarity を取得 (関連 train の最高レアリティ)
+  const rarityRank = { legendary: 4, rare: 3, uncommon: 2, common: 1 };
+  function highestRarity(trainIds) {
+    let best = null, bestRank = 0;
+    for (const id of trainIds) {
+      const tr = (TRAINS || []).find(t => t.id === id);
+      if (tr && tr.rarity) {
+        const r = rarityRank[tr.rarity] || 0;
+        if (r > bestRank) { bestRank = r; best = tr.rarity; }
+      }
+    }
+    return best;
+  }
+
+  const maxCount = rows[0].count;
+  return `
+    <div class="mp-pref-summary">
+      <strong>${rows.length}</strong> 種類の車両形式に乗車 (全 <strong>${rows.reduce((s,r)=>s+r.count,0)}</strong> 回)
+    </div>
+    <div class="mp-st-tl-list">
+      ${rows.map((r, i) => {
+        const rar = highestRarity(r.trainIds);
+        const rarBadge = rar === 'legendary' ? ' ⭐'
+                       : rar === 'rare' ? ' ✨'
+                       : '';
+        const trainsText = r.trains.length > 0
+          ? r.trains.slice(0, 3).join(' · ') + (r.trains.length > 3 ? ` 他${r.trains.length - 3}種` : '')
+          : '(列車未指定)';
+        return `
+          <div class="mp-st-tl-row">
+            <span class="mp-st-tl-rank">${i+1}</span>
+            <div class="mp-st-tl-body">
+              <div class="mp-st-tl-name" style="font-family:'DM Mono',monospace">${r.cm}${rarBadge}</div>
+              <div class="mp-st-tl-dates" style="color:var(--gold);font-family:inherit">${trainsText}</div>
+              <div class="mp-st-tl-dates">${r.firstDate === r.lastDate ? r.firstDate : `${r.firstDate} → ${r.lastDate}`}</div>
+            </div>
+            <div class="mp-st-tl-stats">
+              <div class="mp-st-tl-count">${r.count}回</div>
+              <div class="mp-st-tl-bar"><div class="mp-st-tl-fill" style="width:${Math.round(r.count/maxCount*100)}%"></div></div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
 }
 
 // 全国主要ターミナル駅 (路線数が多い・地域代表)
