@@ -437,13 +437,36 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mp-sc-pct span{font-size:14px;color:var(--silver);margin-left:2px;}
 .mp-scard.verified .mp-sc-pct{color:#48d597;}
 .mp-sc-detail{font-size:10px;color:var(--silver);}
-.mp-detail-toggle{margin-top:8px;background:none;border:none;color:var(--silver);font-size:9px;cursor:pointer;font-family:inherit;padding:2px 0;text-decoration:underline;opacity:.7;}
-.mp-detail-toggle:hover{opacity:1;color:var(--gold);}
-.mp-detail-pane{margin-top:6px;padding:8px 10px;background:rgba(14,24,36,.5);border-radius:6px;border:1px dashed var(--track);}
-.mp-detail-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);margin-bottom:6px;}
-.mp-detail-explain{font-size:9px;color:var(--silver);line-height:1.6;}
-.mp-detail-explain strong{color:var(--white);}
-.mp-detail-explain em{color:var(--gold);font-style:normal;}
+/* 旧スタイル (互換、現在未使用) */
+.mp-detail-toggle{display:none;}
+.mp-detail-pane{display:none;}
+
+/* 詳細トグル (2 カードの下、共通) */
+.mp-detail-toggle-main{display:block;margin:10px auto 0;background:rgba(232,53,42,.08);color:var(--red);border:1px solid rgba(232,53,42,.3);border-radius:18px;padding:6px 18px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s ease;}
+.mp-detail-toggle-main:hover{background:rgba(232,53,42,.18);}
+.mp-detail-pane-main{margin-top:10px;padding:8px 0;display:flex;flex-direction:column;gap:8px;}
+
+/* 詳細カード */
+.mp-d-card{background:rgba(14,24,36,.4);border:1px solid var(--track);border-radius:8px;padding:10px 12px;}
+.mp-d-hd{display:flex;align-items:center;gap:4px;margin-bottom:6px;}
+.mp-d-title{flex:1;font-size:11px;font-weight:700;color:var(--gold);}
+.mp-info-btn{background:none;border:1px solid var(--track);color:var(--silver);width:20px;height:20px;border-radius:50%;font-size:10px;cursor:pointer;font-family:inherit;line-height:1;padding:0;}
+.mp-info-btn:hover{background:rgba(232,53,42,.15);color:var(--red);border-color:rgba(232,53,42,.4);}
+.mp-info-pop{display:none;background:rgba(232,53,42,.06);border-left:2px solid var(--red);padding:7px 10px;font-size:10px;color:var(--silver);line-height:1.6;margin-bottom:6px;border-radius:0 6px 6px 0;}
+.mp-info-pop.open{display:block;}
+.mp-info-pop strong{color:var(--white);}
+.mp-info-pop em{color:var(--gold);font-style:normal;}
+.mp-d-body{display:flex;flex-direction:column;gap:3px;}
+.mp-d-row{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--silver);padding:3px 0;border-bottom:1px solid rgba(46,74,99,.3);}
+.mp-d-row:last-child{border-bottom:none;}
+.mp-d-row strong{color:var(--white);font-family:'DM Mono',monospace;font-weight:500;}
+.mp-d-row .mp-d-l{flex:1;min-width:0;display:flex;align-items:center;gap:6px;}
+.mp-d-row .mp-d-pct{font-size:10px;opacity:.7;}
+.mp-d-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0;}
+.mp-d-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--navy);margin-top:6px;}
+.mp-d-bar-seg.verified{background:#48d597;}
+.mp-d-bar-seg.suspicious{background:var(--gold);}
+.mp-d-bar-seg.manual{background:var(--silver);opacity:.6;}
 .mp-tip{font-size:9px;color:var(--silver);padding:6px 4px;margin-bottom:8px;line-height:1.5;}
 
 .mp-trip-wrap{padding:0 12px 80px;}
