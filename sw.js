@@ -9,7 +9,7 @@
 //   2. GitHubにpush
 //   3. ユーザーがハードリロード or アプリ再起動で更新が反映される
 
-const CACHE_VERSION = 'v137';
+const CACHE_VERSION = 'v138';
 const CACHE_NAME = `norireco-${CACHE_VERSION}`;
 
 // 起動時にプリキャッシュする静的アセット
@@ -28,6 +28,7 @@ const STATIC_ASSETS = [
   './js/10-init.js',
   './js/11-fraud-detection.js',
   './js/12-auth.js',
+  './js/13-mypage.js',
   './lines-p1.json',
   './lines-p2.json',
   './lines-p3.json',

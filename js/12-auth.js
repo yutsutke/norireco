@@ -86,6 +86,11 @@ function handleAuthChange(event, session) {
     authBackfillRan = true;
     backfillUserIdForLegacyData(currentUser.id);
   }
+  // マイページが開いていれば再描画
+  const mypage = document.getElementById('pane-mypage');
+  if (mypage && mypage.classList.contains('active') && typeof renderMypage === 'function') {
+    setTimeout(() => renderMypage(), 100);
+  }
 }
 
 // ── 認証アクション ──────────────────────────────────────────────

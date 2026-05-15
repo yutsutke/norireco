@@ -2,11 +2,14 @@
 // TABS
 // ══════════════════════════════════════
 function switchTab(n){
-  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['map','list','stats'][i]===n));
-  document.querySelectorAll('.pane').forEach((p,i)=>p.classList.toggle('active',['pane-map','pane-list','pane-stats'][i]===`pane-${n}`));
+  const tabs=['map','list','stats','mypage'];
+  const panes=['pane-map','pane-list','pane-stats','pane-mypage'];
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',tabs[i]===n));
+  document.querySelectorAll('.pane').forEach((p,i)=>p.classList.toggle('active',panes[i]===`pane-${n}`));
   if(n==='map'&&map)setTimeout(()=>map.invalidateSize(),50);
   if(n==='list')renderList();
   if(n==='stats')renderStats();
+  if(n==='mypage'&&typeof renderMypage==='function')renderMypage();
 }
 
 // ══════════════════════════════════════

@@ -369,6 +369,63 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 .auth-msg{margin-top:14px;padding:9px 12px;border-radius:6px;font-size:11px;display:none;}
 .auth-msg-success{background:rgba(46,204,113,.15);color:#48d597;border:1px solid rgba(46,204,113,.4);display:block;}
 .auth-msg-error{background:rgba(232,53,42,.15);color:#ff6b5e;border:1px solid rgba(232,53,42,.4);display:block;}
+
+/* ── マイページ ── */
+#pane-mypage{overflow:auto;}
+.mp-header{display:flex;align-items:center;gap:12px;padding:14px 16px;background:linear-gradient(135deg,rgba(232,53,42,.1),rgba(232,53,42,.02));border-bottom:1px solid var(--track);margin:0 0 8px 0;}
+.mp-avatar{width:42px;height:42px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0;}
+.mp-userinfo{flex:1;min-width:0;}
+.mp-username{font-size:14px;font-weight:700;}
+.mp-email{font-size:11px;color:var(--silver);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mp-uid{font-size:9px;color:var(--silver);font-family:'DM Mono',monospace;margin-top:1px;opacity:.6;}
+.mp-logout-btn{padding:6px 12px;background:rgba(140,160,179,.1);color:var(--silver);border:1px solid var(--track);border-radius:6px;font-size:10px;cursor:pointer;font-family:inherit;}
+.mp-logout-btn:hover{background:rgba(140,160,179,.2);color:var(--white);}
+.mp-loading{padding:30px;text-align:center;color:var(--silver);font-size:12px;}
+.mp-empty{padding:40px 20px;text-align:center;}
+.mp-empty-ic{font-size:48px;margin-bottom:12px;}
+.mp-empty-t{font-size:15px;font-weight:700;margin-bottom:6px;}
+.mp-empty-s{font-size:11px;color:var(--silver);line-height:1.6;max-width:340px;margin:0 auto 16px;}
+.mp-empty-btn{padding:10px 18px;background:rgba(232,53,42,.15);color:var(--red);border:1px solid rgba(232,53,42,.5);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+.mp-empty-btn:hover{background:rgba(232,53,42,.25);}
+
+.mp-stats-wrap{padding:0 12px;}
+.mp-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+@media (max-width:500px){.mp-stat-grid{grid-template-columns:1fr;}}
+.mp-scard{padding:12px 14px;background:var(--steel);border:1px solid var(--track);border-radius:10px;}
+.mp-scard.verified{border-color:rgba(72,213,151,.4);background:linear-gradient(135deg,rgba(72,213,151,.06),var(--steel));}
+.mp-scard.all{border-color:rgba(140,160,179,.3);}
+.mp-sc-h{font-size:11px;font-weight:700;}
+.mp-sc-sub{font-size:9px;color:var(--silver);margin-top:2px;}
+.mp-sc-pct{font-family:'DM Mono',monospace;font-size:32px;font-weight:500;color:var(--red);line-height:1.1;margin:6px 0 4px;}
+.mp-sc-pct span{font-size:14px;color:var(--silver);margin-left:2px;}
+.mp-scard.verified .mp-sc-pct{color:#48d597;}
+.mp-sc-detail{font-size:10px;color:var(--silver);}
+.mp-tip{font-size:9px;color:var(--silver);padding:6px 4px;margin-bottom:8px;line-height:1.5;}
+
+.mp-trip-wrap{padding:0 12px 80px;}
+.mp-trip-list{display:flex;flex-direction:column;gap:8px;}
+.mp-tcard{background:var(--steel);border:1px solid var(--track);border-radius:10px;padding:10px 12px;}
+.mp-tcard-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;}
+.mp-tcard-date{font-family:'DM Mono',monospace;font-size:11px;color:var(--silver);}
+.mp-tcard-time{font-family:'DM Mono',monospace;font-size:10px;color:var(--silver);opacity:.7;}
+.mp-badge{font-size:9px;padding:2px 7px;border-radius:10px;font-weight:600;margin-left:auto;}
+.mp-badge.verified{background:rgba(72,213,151,.15);color:#48d597;border:1px solid rgba(72,213,151,.4);}
+.mp-badge.suspicious{background:rgba(242,169,0,.15);color:var(--gold);border:1px solid rgba(242,169,0,.4);}
+.mp-badge.manual{background:rgba(140,160,179,.1);color:var(--silver);border:1px solid var(--track);}
+.mp-tcard-name{font-size:13px;font-weight:700;margin:2px 0;}
+.mp-tcard-sub{font-size:10px;color:var(--silver);}
+.mp-tcard-train{font-size:10px;color:var(--gold);margin-top:3px;}
+.mp-tcard-train .mp-car{font-family:'DM Mono',monospace;color:rgba(255,255,255,.7);}
+.mp-tcard-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+.mp-act-btn{padding:5px 10px;font-size:10px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;border:1px solid;}
+.mp-act-btn.verify{background:rgba(72,213,151,.1);color:#48d597;border-color:rgba(72,213,151,.4);}
+.mp-act-btn.verify:hover{background:rgba(72,213,151,.2);}
+.mp-act-btn.delete{background:rgba(232,53,42,.08);color:var(--red);border-color:rgba(232,53,42,.3);}
+.mp-act-btn.delete:hover{background:rgba(232,53,42,.18);}
+
+.mp-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--steel);color:var(--white);padding:10px 18px;border-radius:24px;font-size:12px;font-weight:600;border:1px solid var(--track);box-shadow:0 8px 24px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:all .25s ease;z-index:9999;}
+.mp-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.mp-toast.success{border-color:rgba(72,213,151,.5);color:#48d597;}
 @keyframes verpulse{0%,100%{opacity:1}50%{opacity:.55}}
 @media (max-width:768px){
   .app-ver-badge{font-size:8px;padding:1px 5px;margin-left:5px;}
@@ -778,6 +835,7 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
   <button class="tab active" onclick="switchTab('map')">🗾 地図</button>
   <button class="tab" onclick="switchTab('list')">📋 路線一覧</button>
   <button class="tab" onclick="switchTab('stats')">📊 統計</button>
+  <button class="tab" onclick="switchTab('mypage')">👤 マイページ</button>
 </div>
 <div class="content">
   <div class="pane active" id="pane-map">
@@ -925,6 +983,7 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 </div>
   <div class="pane" id="pane-list"><div class="pane-inner" id="list-content"></div></div>
   <div class="pane" id="pane-stats"><div class="pane-inner" id="stats-content"></div></div>
+  <div class="pane" id="pane-mypage"><div class="pane-inner" id="mypage-content"></div></div>
 </div>
 
 <!-- Memo Modal -->
@@ -976,6 +1035,7 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 <script src="js/08-rendering.js"></script>
 <script src="js/11-fraud-detection.js"></script>
 <script src="js/12-auth.js"></script>
+<script src="js/13-mypage.js"></script>
 <script src="js/09-tabs-stats.js"></script>
 <script src="js/10-init.js"></script>
 </body>
