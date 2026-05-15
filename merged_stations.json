@@ -7764,7 +7764,7 @@
       "lat": 33.54948,
       "lon": 132.64626,
       "lines": [
-        "auto_内子線_四国旅客鉄道",
+        "yosan_uchiko_route",
         "auto_予讃線_四国旅客鉄道"
       ],
       "colors": [
@@ -11620,7 +11620,7 @@
       "lat": 33.53415,
       "lon": 132.59853,
       "lines": [
-        "auto_内子線_四国旅客鉄道",
+        "yosan_uchiko_route",
         "auto_予讃線_四国旅客鉄道"
       ],
       "colors": [
@@ -29438,7 +29438,7 @@
       "lat": 33.53808,
       "lon": 132.63635,
       "lines": [
-        "auto_内子線_四国旅客鉄道"
+        "yosan_uchiko_route"
       ],
       "colors": [
         "hsl(187, 60%, 55%)"
@@ -46952,7 +46952,7 @@
       "lat": 33.53342,
       "lon": 132.61144,
       "lines": [
-        "auto_内子線_四国旅客鉄道"
+        "yosan_uchiko_route"
       ],
       "colors": [
         "hsl(187, 60%, 55%)"

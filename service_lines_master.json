@@ -6054,7 +6054,7 @@
       ]
     },
     {
-      "id": "auto_内子線_四国旅客鉄道",
+      "id": "yosan_uchiko_route",
       "name": "予讃線(内子経由)",
       "operator": "四国旅客鉄道",
       "operator_id": "jr_shikoku",
