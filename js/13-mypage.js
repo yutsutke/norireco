@@ -346,6 +346,112 @@ function buildDetailContent(pane, sv, all, trips, totalUnique, totalLines) {
     buildTimeHeatmap(trips),
     `<strong>出発時刻</strong>を曜日 × 時間帯のヒートマップで可視化。色が濃いほど利用回数が多い。<br>通勤時間帯 (平日 7-9 時) や休日のお出かけパターンが一目でわかる。<br>Strava の活動傾向グラフを駅版に応用。`
   ));
+
+  // ⑮ 未踏領域 (未訪問の都道府県・主要ターミナル)
+  pane.appendChild(detailCard('🗺 未踏領域',
+    buildUnexplored(sv),
+    `<strong>未訪問の都道府県</strong>と <strong>未踏の主要ターミナル駅</strong>。<br>次の旅の目的地候補に。完乗マラソンの「残り」が見える化される。<br>※ 都道府県判定は簡易 bbox 法のため境界付近の駅は要注意。`
+  ));
+}
+
+// 全国主要ターミナル駅 (路線数が多い・地域代表)
+const MAJOR_TERMINALS = [
+  // 関東
+  { name: '東京', region: '関東' }, { name: '新宿', region: '関東' }, { name: '渋谷', region: '関東' },
+  { name: '池袋', region: '関東' }, { name: '品川', region: '関東' }, { name: '上野', region: '関東' },
+  { name: '横浜', region: '関東' }, { name: '大宮', region: '関東' }, { name: '千葉', region: '関東' },
+  // 関西
+  { name: '大阪', region: '関西' }, { name: '京都', region: '関西' }, { name: '三ノ宮', region: '関西' },
+  { name: '天王寺', region: '関西' }, { name: '難波', region: '関西' },
+  // 中部・北陸
+  { name: '名古屋', region: '中部' }, { name: '金沢', region: '北陸' }, { name: '新潟', region: '北陸信越' },
+  { name: '長野', region: '北陸信越' }, { name: '静岡', region: '東海' }, { name: '浜松', region: '東海' },
+  { name: '富山', region: '北陸' },
+  // 中国・四国
+  { name: '広島', region: '中国' }, { name: '岡山', region: '中国' },
+  { name: '高松', region: '四国' }, { name: '松山', region: '四国' },
+  { name: '高知', region: '四国' }, { name: '徳島', region: '四国' },
+  // 九州
+  { name: '博多', region: '九州' }, { name: '小倉', region: '九州' },
+  { name: '熊本', region: '九州' }, { name: '鹿児島中央', region: '九州' },
+  { name: '大分', region: '九州' }, { name: '宮崎', region: '九州' },
+  { name: '長崎', region: '九州' }, { name: '佐賀', region: '九州' },
+  // 北海道・東北
+  { name: '札幌', region: '北海道' }, { name: '函館', region: '北海道' },
+  { name: '旭川', region: '北海道' }, { name: '釧路', region: '北海道' },
+  { name: '青森', region: '東北' }, { name: '盛岡', region: '東北' },
+  { name: '仙台', region: '東北' }, { name: '秋田', region: '東北' },
+  { name: '山形', region: '東北' }, { name: '福島', region: '東北' }, { name: '水戸', region: '関東' },
+];
+
+function buildUnexplored(snap) {
+  // 訪問済み駅 (公式) のフラットセット
+  const visited = new Set();
+  for (const [_, set] of Object.entries(snap.slSet || {})) {
+    for (const n of set) visited.add(n);
+  }
+
+  // 未訪問都道府県
+  const master = buildPrefectureMaster();
+  const visitedByPref = {};
+  for (const sl of (SERVICE_LINES || [])) {
+    const set = snap.slSet[sl.id];
+    if (!set) continue;
+    for (const name of set) {
+      const station = sl.stations.find(s => s.name === name);
+      if (!station || station.lat == null) continue;
+      const pref = prefOfStation(station.lat, station.lon);
+      if (!pref) continue;
+      if (!visitedByPref[pref]) visitedByPref[pref] = 0;
+      visitedByPref[pref]++;
+    }
+  }
+  const unvisitedPrefs = PREFECTURES
+    .map(p => p[0])
+    .filter(name => !visitedByPref[name] && (master.byPref[name] && master.byPref[name].size > 0));
+
+  // 未訪問主要ターミナル
+  const unvisitedTerminals = MAJOR_TERMINALS.filter(t => !visited.has(t.name));
+  // 地域別グループ化
+  const termByRegion = {};
+  for (const t of unvisitedTerminals) {
+    if (!termByRegion[t.region]) termByRegion[t.region] = [];
+    termByRegion[t.region].push(t.name);
+  }
+
+  const regionOrder = ['関東','関西','中部','東海','北陸','北陸信越','中国','四国','九州','北海道','東北'];
+  const sortedRegions = Object.keys(termByRegion).sort((a,b) => {
+    const ai = regionOrder.indexOf(a), bi = regionOrder.indexOf(b);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+
+  const totalTerm = MAJOR_TERMINALS.length;
+  const visitedTermCount = totalTerm - unvisitedTerminals.length;
+
+  return `
+    <div class="mp-pr-section">
+      <div class="mp-pr-section-h">🗾 未訪問の都道府県 (${unvisitedPrefs.length} / 47 県)</div>
+      ${unvisitedPrefs.length === 0
+        ? `<div class="mp-pref-summary" style="background:rgba(72,213,151,.1);border-color:#48d597"><strong style="color:#48d597">🎉 47 都道府県すべてに乗車記録あり!</strong></div>`
+        : `<div class="mp-unex-list">${unvisitedPrefs.map(p => `<span class="mp-unex-tag">${p}</span>`).join('')}</div>`
+      }
+    </div>
+    <div class="mp-pr-section">
+      <div class="mp-pr-section-h">🏙 未踏の主要ターミナル (${unvisitedTerminals.length} / ${totalTerm} 駅)</div>
+      <div class="mp-pref-summary">
+        制覇 <strong style="color:#48d597">${visitedTermCount}</strong> / ${totalTerm} 駅
+      </div>
+      ${sortedRegions.map(reg => `
+        <div class="mp-unex-region">
+          <div class="mp-unex-region-h">${reg}</div>
+          <div class="mp-unex-list">
+            ${termByRegion[reg].map(name => `<span class="mp-unex-tag terminal">${name}</span>`).join('')}
+          </div>
+        </div>
+      `).join('')}
+      ${unvisitedTerminals.length === 0 ? `<div class="mp-pref-summary" style="background:rgba(72,213,151,.1)"><strong style="color:#48d597">🎉 主要ターミナルすべて制覇!</strong></div>` : ''}
+    </div>
+  `;
 }
 
 // ── 時間帯×曜日ヒートマップ ────────────────────────────────
