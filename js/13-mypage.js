@@ -304,6 +304,133 @@ function buildDetailContent(pane, sv, all, trips, totalUnique, totalLines) {
     buildAuthBreakdown(trips),
     `自分の全旅程を 🟢 公式 (GPS 認証) / 🟡 要確認 (不正検知で降格) / ⚪ 自己申告 (manual) で分類。シェア機能 (将来) は 🟢 公式のみ対象になる予定。`
   ));
+
+  // ⑧ 累計駅数の推移 (月別)
+  pane.appendChild(detailCard('累計駅数の推移 (月別)',
+    buildStationProgressMonthly(trips),
+    `各月末時点でのユニーク訪問駅数の累計。バーの長さが累計、右端の <em>+N</em> はその月に <strong>新規訪問</strong> した駅数。長く続けるほど右肩上がりに伸びる「乗りつぶし日記」。乗り鉄撮り鉄アプリと同じ発想の指標。`
+  ));
+
+  // ⑨ 累計駅数の推移 (年別)
+  pane.appendChild(detailCard('累計駅数の推移 (年別)',
+    buildStationProgressYearly(trips),
+    `年ごとの新規訪問駅数とその累計。最初の年は当然多くなり、続ければ毎年 +N が増える形に。「今年は去年より頑張った?」をチェック。`
+  ));
+}
+
+// ── 累計駅数の推移 (月別) ─────────────────────────────────────
+function buildStationProgressMonthly(trips) {
+  const sorted = [...trips]
+    .filter(t => t.date && t.segments)
+    .sort((a,b) => a.date.localeCompare(b.date));
+  if (sorted.length === 0) return '<div class="mp-empty-s">データなし</div>';
+
+  const seen = new Set();
+  const monthly = new Map();  // 'YYYY-MM' → { newCount }
+
+  for (const trip of sorted) {
+    const month = (trip.date || '').slice(0, 7);
+    if (!monthly.has(month)) monthly.set(month, { newCount: 0 });
+    for (const seg of trip.segments) {
+      const sl = SERVICE_LINES.find(l => l.id === seg.lineId);
+      if (!sl) continue;
+      const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
+      const toIdx = sl.stations.findIndex(s => s.name === seg.to);
+      if (fromIdx < 0 || toIdx < 0) continue;
+      const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
+      for (let i = a; i <= b; i++) {
+        const name = sl.stations[i].name;
+        if (!seen.has(name)) {
+          seen.add(name);
+          monthly.get(month).newCount++;
+        }
+      }
+    }
+  }
+
+  // 累計を計算
+  const months = [...monthly.keys()].sort();
+  let cum = 0;
+  const rows = months.map(m => {
+    cum += monthly.get(m).newCount;
+    return { month: m, cum, newCount: monthly.get(m).newCount };
+  });
+  const maxCum = rows[rows.length-1].cum;
+
+  const chart = rows.map(r => `
+    <div class="mp-prog-row">
+      <span class="mp-prog-key">${r.month}</span>
+      <div class="mp-prog-bar"><div class="mp-prog-fill" style="width:${maxCum>0?Math.round(r.cum/maxCum*100):0}%"></div></div>
+      <span class="mp-prog-cum">${r.cum.toLocaleString()}</span>
+      <span class="mp-prog-new">${r.newCount > 0 ? '+'+r.newCount : '±0'}</span>
+    </div>
+  `).join('');
+
+  return `
+    <div class="mp-prog-wrap">${chart}</div>
+    <div class="mp-prog-summary">
+      <div>📅 最初の記録月: <strong>${rows[0].month}</strong></div>
+      <div>📅 最新の記録月: <strong>${rows[rows.length-1].month}</strong></div>
+      <div>📈 累計ユニーク駅: <strong>${cum.toLocaleString()}</strong> 駅</div>
+    </div>
+  `;
+}
+
+// ── 累計駅数の推移 (年別) ─────────────────────────────────────
+function buildStationProgressYearly(trips) {
+  const sorted = [...trips]
+    .filter(t => t.date && t.segments)
+    .sort((a,b) => a.date.localeCompare(b.date));
+  if (sorted.length === 0) return '<div class="mp-empty-s">データなし</div>';
+
+  const seen = new Set();
+  const yearly = new Map();
+
+  for (const trip of sorted) {
+    const year = (trip.date || '').slice(0, 4);
+    if (!yearly.has(year)) yearly.set(year, { newCount: 0 });
+    for (const seg of trip.segments) {
+      const sl = SERVICE_LINES.find(l => l.id === seg.lineId);
+      if (!sl) continue;
+      const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
+      const toIdx = sl.stations.findIndex(s => s.name === seg.to);
+      if (fromIdx < 0 || toIdx < 0) continue;
+      const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
+      for (let i = a; i <= b; i++) {
+        const name = sl.stations[i].name;
+        if (!seen.has(name)) {
+          seen.add(name);
+          yearly.get(year).newCount++;
+        }
+      }
+    }
+  }
+
+  const years = [...yearly.keys()].sort();
+  let cum = 0;
+  const rows = years.map(y => {
+    cum += yearly.get(y).newCount;
+    return { year: y, cum, newCount: yearly.get(y).newCount };
+  });
+  const maxNew = Math.max(...rows.map(r => r.newCount), 1);
+
+  // 年別は新規駅数を棒の長さに (年ごとのペース比較)
+  const chart = rows.map(r => `
+    <div class="mp-prog-row">
+      <span class="mp-prog-key">${r.year}</span>
+      <div class="mp-prog-bar"><div class="mp-prog-fill year" style="width:${maxNew>0?Math.round(r.newCount/maxNew*100):0}%"></div></div>
+      <span class="mp-prog-cum">+${r.newCount}</span>
+      <span class="mp-prog-new" style="color:var(--silver)">累計 ${r.cum}</span>
+    </div>
+  `).join('');
+
+  return `
+    <div class="mp-prog-wrap">${chart}</div>
+    <div class="mp-prog-summary">
+      <div>🚆 活動年数: <strong>${rows.length}</strong> 年</div>
+      <div>🏆 最も訪問した年: <strong>${rows.reduce((m,r)=>r.newCount>m.newCount?r:m, rows[0]).year}</strong> (${Math.max(...rows.map(r=>r.newCount))} 駅)</div>
+    </div>
+  `;
 }
 
 // 1 つの詳細カードを構築 (header with ⓘ + content + 隠し説明)
