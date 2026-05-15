@@ -51,24 +51,33 @@ async function renderMypage() {
     </div>
   `;
 
-  // データ取得
+  // 完乗率カード placeholder (SERVICE_LINES と trips を並列取得しながらスケルトン表示)
+  const pinned = document.getElementById('mp-completion-pinned');
+  if (pinned) pinned.innerHTML = `<div class="mp-loading" style="padding:14px">📊 完乗率を計算中…</div>`;
+
+  // 並列: SERVICE_LINES 構築 + Supabase から自分の trip 取得
   let trips = [];
   try {
-    const url = `${SUPABASE_URL}/rest/v1/norireco_trips?user_id=eq.${uid}&select=*&order=recorded_at.desc`;
-    const res = await fetch(url, {
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${typeof authBearerToken==='function'?authBearerToken():SUPABASE_KEY}` }
-    });
-    if (res.ok) trips = await res.json();
+    const [_, tripsRes] = await Promise.all([
+      (typeof buildServiceLines === 'function' ? buildServiceLines() : Promise.resolve()),
+      fetch(`${SUPABASE_URL}/rest/v1/norireco_trips?user_id=eq.${uid}&select=*&order=recorded_at.desc`, {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${typeof authBearerToken==='function'?authBearerToken():SUPABASE_KEY}` }
+      }),
+    ]);
+    if (tripsRes.ok) trips = await tripsRes.json();
   } catch (e) {
     console.warn('[マイページ] 取得エラー:', e.message);
   }
   _mypageCache = trips;
 
   // 常時表示の完乗率カードを描画 (サブタブ切替に依存しない)
-  const pinned = document.getElementById('mp-completion-pinned');
-  if (pinned && Array.isArray(SERVICE_LINES) && SERVICE_LINES.length > 0) {
+  if (pinned) {
     pinned.innerHTML = '';
-    pinned.appendChild(buildCompletionCards(trips));
+    if (Array.isArray(SERVICE_LINES) && SERVICE_LINES.length > 0) {
+      pinned.appendChild(buildCompletionCards(trips));
+    } else {
+      pinned.innerHTML = `<div class="mp-empty-s" style="padding:14px">⚠ 営業系統マスターの読込に失敗しました</div>`;
+    }
   }
 
   applyMpSection();
