@@ -40,10 +40,14 @@ function getLinePriority(line){
 }
 
 // ズームレベルで表示する優先度の閾値
-// priority 1-3 は常時表示。地方ローカル線 (priority 4) も z=7+ で表示。
+// priority 0 = 新幹線 (一番早く出す)、1-4 = それ以外
+//   z>=5: 全路線
+//   z=4 : 新幹線のみ
+//   z<4 : 何も出さない
 function getVisiblePriority(zoom){
-  if (zoom >= 7) return 4;
-  return 3;
+  if (zoom >= 5) return 4;
+  if (zoom >= 4) return 0;
+  return -1;
 }
 
 // 全Leafletレイヤーを管理
@@ -479,11 +483,13 @@ function makePieIcon(lineColors, sizePx, ridden, level = 0, character = null) {
 // ═══════════════════════════════════════════════════════════════
 
 // 営業系統の優先度 (LOD用)
-// 1: 新幹線（最低ズームから表示） 2: 首都圏JR/メトロ 3: その他都市系（常時表示）
-// 4: 北海道/東北/四国/中国山陰/九州（zoom>=10 で表示）
+// 0: 新幹線 (一番早く出す。z=4 から表示)
+// 1: 首都圏JR/メトロ 主要幹線
+// 2: 主要 (デフォルト都市系)
+// 3-4: 地方ローカル
 function getServiceLinePriority(sl) {
   if (!sl) return 3;
-  if (sl.group === '新幹線') return 1;
+  if (sl.group === '新幹線') return 0;
   if (sl.group === '首都圏・JR' || sl.group === '東京メトロ・都営') return 2;
   if (sl.group === '北海道' || sl.group === '東北' || sl.group === '四国' ||
       sl.group === '中国・山陰' || sl.group === '九州') return 4;
