@@ -4,7 +4,7 @@ Cowork → Claude Code への引き継ぎドキュメント。最初の会話で
 
 ## 🎯 今ここ (TLDR — 2026-05-14 夜時点)
 
-**現在の SW**: `v159` / **キャラ**: 7体 / **列車マスター**: 約260種
+**現在の SW**: `v131` / **キャラ**: 7体 / **列車マスター**: 約260種
 
 | 領域 | 状態 |
 |---|---|
@@ -929,73 +929,3 @@ js/13-mypage.js             ← v138 新設、約 1500 行に成長
 - **#10 称号・バッジシステム** (駅メモ風)
 - **#12 地球N周分** (累計距離 ÷ 40,075km 小ネタ)
 - **#13 OGP 画像生成** (シェア機能と統合)
-
----
-
-## 22. セッション 3.8 (2026-05-15) LOD 調整・ヒートマップ — v158
-
-Notion ページ「🗾 マップLOD設計 — Image 5 基準とヒートマップ」の Task 1〜6 を実装。
-Image 5 (z=11 首都圏で蒲田・武蔵小杉等 7〜10 駅が見える状態) を「黄金比」として
-低ズーム側を整理 + 県別ヒートマップを追加。
-
-### 実装内容
-
-| Task | 内容 | 触ったファイル |
-|---|---|---|
-| 1 | LOD 閾値を仕様マトリクスへ刷新 (IS_MOBILE 分岐を撤去、PC/スマホ共通) | js/08-rendering.js — `getDotMinTier` / `getLabelMinTier` |
-| 2 | 都道府県ヒートマップ (z<10 で表示)、PREF_COLOR_SCALE で塗り、タップ → 制覇率ポップアップ | js/14-heatmap.js (新規)、jp_prefectures.geojson (49 KB)、noritetsu-map.html (script 追加) |
-| 3 | マーカーサイズを tier 基準に: tier6=60 / tier5=50 / tier4=40 / tier3=32 / tier2=24 / tier1=16 px。level/ridden で増減 | js/08-rendering.js — `sizeForTier()` 新設、`drawStationsLayer` |
-| 4 | 1 路線駅 (nLines===1 かつ Lv<2 かつ非キャラ) は circleMarker (canvas・軽量)、tier 1 ≒ 直径 16 px | js/08-rendering.js |
-| 5 | Lv4 ハロー (50回以上駅のパルス) をデフォルト OFF、localStorage `norireco_show_lv4_halo` で切替。マイページ 📊 統計タブ冒頭にトグル | js/08-rendering.js — `getLv4HaloOn()`、makePieIcon/makeCharacterIcon。js/13-mypage.js — `renderMpStatsSection` |
-| 6 | 路線色のズーム連動: z<10 で全路線非表示 (`getVisiblePriority` を 0/2/4 の3段に)、z=10 で priority<=2 のみ、未乗ラインは `_norireco_unridden` フラグ + `updateLOD` で opacity を z に応じてフェード (0.4→0.6→1.0) | js/08-rendering.js |
-
-### ファイル増減
-
-- 新規: `js/14-heatmap.js` (約 180 行)、`jp_prefectures.geojson` (49 KB、47 都道府県、dataofjapan/land の topojson を Douglas-Peucker tol=0.025deg で simplify)
-- 変更: `js/08-rendering.js`、`js/13-mypage.js`、`js/07-record-mode.js` (redrawAllLinesAfterTripChange で `invalidatePrefHeatmap`+`renderPrefHeatmap` を呼ぶフック追加)、`sw.js` (CACHE_VERSION=v158、STATIC_ASSETS に新ファイル追加、`.geojson` を NETWORK_FIRST_PATTERNS に追加)、`noritetsu-map.html` (14-heatmap.js を 13-mypage.js の直後に挿入)
-
-### ファイル構成更新 (v158)
-
-```
-js/14-heatmap.js  ← v158 新設、都道府県ヒートマップ
-jp_prefectures.geojson  ← v158 新設、49 KB
-```
-
-ロード順 (HTML): 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08 → 11 → 12 → 13 → **14** → 09 → 10。
-14-heatmap.js は `prefOfStation` (13-mypage.js 定義) に依存するため 13 の後に置く。
-
-### 検証ポイント (Yusuke さん iPhone)
-
-```
-z=5  → 全国: 都道府県ヒートマップのみ、ドット/ラインなし
-z=8  → 関東: tier 6 (東京) のみ + ヒートマップが背景に
-z=11 → 首都圏: tier 4+ パイチャート (Image 5 と同じ密度のはず)、未乗ラインは薄め
-z=13 → 街区: tier 2+ + ラベル多め
-z=15 → 全駅 + 街道
-```
-
-ヒートマップは GeoJSON ロード待ち (250ms polling) で初期表示が遅れる場合あり。
-タップで `県名 / 制覇率 / N駅 訪問` ポップアップ。
-
-### v159 微調整 (2026-05-15 同日フィードバック反映)
-
-- **isMetroArea bbox を関東平野/関西/中京 全体に拡張**: 八王子・立川・熊谷・千葉なども「都心」扱い → z=10 では tier 5+ のみに絞られて密集解消
-- **路線を低ズームから表示**: getVisiblePriority を 0/1/2/3/4 の 5 段階に。z=7-8 で新幹線・JR 幹線、z=9 で大手私鉄・地下鉄、z=10 で都市系、z>=11 で全部
-- **ヒートマップ色を強化**: 未訪問の暗灰 → 青灰、県境を白 0.45 / weight 1.4 でくっきり
-
-### 今後の懸念・想定残作業
-
-- ヒートマップは bbox ベースの `prefOfStation` で集計 (13-mypage.js で実装済) するため、県境付近の駅は誤分類あり。GeoJSON の polygon に point-in-polygon で振り直すと精度上がる
-- 50 回以上の Lv4 ハローはデフォルト OFF にしたので、Lv3 (10-49 回) の金色外輪は常時表示で残る。Image 8 等の「ターミナル肥大化」感が再発するならここもトグル化
-- 路線色 opacity フェードは未乗のみ。z=10 で「主要路線のみ太く」までは weight 連動していない (現状は visibility filter で間引くだけ)。要望次第で `setStyle({weight: ...})` を zoom 連動で追加
-
-### 次セッション着手候補
-
-🔥 最優先で残るもの:
-- **シェア機能 (OGP 画像生成)**
-- **記録モード認証グラデーション Step b/c** (stop_type 反映)
-
-体験向上:
-- **キャラ図鑑タブ**
-- **stop_type 反映の駅 UI 個人化**
-- **駅 UI 情報ハブ化** (4 領域パネル)

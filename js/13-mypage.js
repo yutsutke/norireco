@@ -166,25 +166,6 @@ function renderMpStatsSection() {
   const statsDiv = document.getElementById('stats-content');
   if (!statsDiv) return;
   statsDiv.innerHTML = '';
-  // マニアモード設定 (Task 5: Lv4 ハロー)
-  const lv4On = localStorage.getItem('norireco_show_lv4_halo') === 'true';
-  const settingsCard = document.createElement('div');
-  settingsCard.className = 'mp-card';
-  settingsCard.style.cssText = 'margin-bottom:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap';
-  settingsCard.innerHTML = `
-    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:rgba(255,255,255,.85)">
-      <input type="checkbox" id="mp-toggle-lv4-halo" ${lv4On ? 'checked' : ''} style="cursor:pointer">
-      <span>🌟 Lv4 ハロー (50回以上訪問駅の金色パルス) を表示</span>
-    </label>
-    <span style="font-size:10px;color:rgba(140,160,179,.7)">デフォルト OFF。マニアモードで地図がにぎやかに。</span>
-  `;
-  statsDiv.appendChild(settingsCard);
-  const cb = settingsCard.querySelector('#mp-toggle-lv4-halo');
-  if (cb) cb.addEventListener('change', () => {
-    localStorage.setItem('norireco_show_lv4_halo', cb.checked ? 'true' : 'false');
-    if (typeof redrawAllLinesAfterTripChange === 'function') redrawAllLinesAfterTripChange();
-    else if (typeof drawLines === 'function') drawLines();
-  });
   try { if (typeof renderStats === 'function') renderStats(); } catch(e) { console.warn('[マイページ] renderStats:', e); }
 }
 

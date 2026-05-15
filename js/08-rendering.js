@@ -39,19 +39,11 @@ function getLinePriority(line){
     line.group==='東海・中部'?3:3);
 }
 
-// ズームレベルで表示する路線優先度の閾値 (Task 6 + v159 調整)
-// 低ズームでも幹線が見えていたほうが「鉄道全体感」が出る、というユーザー要望反映
-//   z<7  : 路線非表示 (ヒートマップのみ)
-//   z=7-8: priority 1 (新幹線・JR主要幹線・首都圏 JR 主要)
-//   z=9  : priority 1-2 (大手私鉄・地下鉄幹線も)
-//   z=10 : priority 1-3 (その他都市系も)
-//   z>=11: 全路線
+// ズームレベルで表示する優先度の閾値
 function getVisiblePriority(zoom){
-  if (zoom >= 11) return 4;
-  if (zoom >= 10) return 3;
-  if (zoom >= 9)  return 2;
-  if (zoom >= 7)  return 1;
-  return 0;
+  // 大手私鉄まで(priority 3)は常時表示。地方鉄道(priority 4)はズーム10+で
+  if(zoom>=10) return 4;
+  return 3;
 }
 
 // 全Leafletレイヤーを管理
@@ -95,21 +87,11 @@ function updateLOD() {
   const z = map.getZoom();
   const maxP = getVisiblePriority(z);
 
-  // 路線ラインのLOD + opacity/weight ズーム連動 (Task 6)
-  //   z<10: 全路線非表示 (getVisiblePriority=0)
-  //   z=10: 主要のみ、未乗は薄く
-  //   z=11: 全路線、未乗は破線で薄め、乗車済は濃い
-  //   z>=12: フル彩度
-  const unriddenOpacityMul = z >= 12 ? 1.0 : z >= 11 ? 0.6 : 0.4;
+  // 路線ラインのLOD
   allLayers.forEach(layer => {
     const p = layer._norireco_priority || 3;
     if (p <= maxP) {
       if (!map.hasLayer(layer)) map.addLayer(layer);
-      // 未乗ライン (_norireco_unridden=true でマーク) は z に応じて opacity 調整
-      if (layer._norireco_unridden && layer.setStyle) {
-        const base = layer._norireco_baseOpacity || 0.55;
-        layer.setStyle({ opacity: base * unriddenOpacityMul });
-      }
     } else {
       if (map.hasLayer(layer)) map.removeLayer(layer);
     }
@@ -195,15 +177,14 @@ const SUPER_MEGA_STATIONS = new Set([
 ]);
 
 // 三大都市圏の判定 (lat/lon境界ボックス)
-// v159: 鉄道密集エリア全体に拡張 (八王子・立川・熊谷・千葉も「都心」扱い)
-// 「都心は別ルール」運用のため、Kanto/Kansai/Chukyo の鉄道密集帯を広めに取る
+// 都心の超密集エリアのみ (山手線~周辺の半径10km程度)
 function isMetroArea(lat, lon) {
-  // 首都圏: 八王子-千葉、熊谷-横須賀 (約 100km × 80km)
-  if (lat >= 35.30 && lat <= 36.20 && lon >= 139.10 && lon <= 140.25) return true;
-  // 関西: 神戸-京都、堺-高槻 (約 60km × 60km)
-  if (lat >= 34.45 && lat <= 35.10 && lon >= 135.10 && lon <= 135.85) return true;
-  // 中京: 名古屋圏 (約 35km × 30km)
-  if (lat >= 34.95 && lat <= 35.30 && lon >= 136.65 && lon <= 137.10) return true;
+  // 首都圏 (山手線+周辺): 約25km × 25km
+  if (lat >= 35.60 && lat <= 35.78 && lon >= 139.60 && lon <= 139.85) return true;
+  // 大阪都心 (大阪・京都・神戸の中心部のみ): 約20km × 20km
+  if (lat >= 34.65 && lat <= 34.78 && lon >= 135.40 && lon <= 135.60) return true;
+  // 名古屋都心 (名古屋駅周辺のみ): 約15km × 15km
+  if (lat >= 35.13 && lat <= 35.22 && lon >= 136.85 && lon <= 136.97) return true;
   return false;
 }
 
@@ -222,47 +203,68 @@ function stationTier(nLines, name) {
   if (nLines >= 2) return 2;
   return 1;
 }
-// ズーム × 地域 × tier マトリクス (LOD仕様 §マップLOD設計 Task 1)
-// Image 5 (z=11 首都圏) を「黄金比」として逆算。PC/iPad/スマホで同一閾値。
-// z 5-6 = ヒートマップのみ (return 99 で全駅非表示)
-// z 7-8 = tier 6 のみ (東京・名古屋・新大阪・札幌・仙台・博多・広島)
+// ズームレベルで表示するべき最小ティア (ドット用)
+// isMetro=true なら三大都市圏(密集)用の厳しめ閾値
+// isMetro=false なら地方用の早出し閾値
 function getDotMinTier(z, isMetro) {
-  if (isMetro) {
-    if (z >= 14) return 1;   // 全駅
-    if (z >= 13) return 2;   // tier 2+ (2路線以上)
-    if (z >= 12) return 3;   // tier 3+ (3路線以上)
-    if (z >= 11) return 4;   // tier 4+ (4-6路線、Image 5 の密度)
-    if (z >= 9)  return 5;   // tier 5+ (7+路線の超ターミナル)
-    if (z >= 7)  return 6;   // tier 6 のみ
-    return 99;               // z<7: ヒートマップに譲る
+  // スマホ + 首都圏は駅マーカーを1ズーム遅く出す (密集対策)
+  if (IS_MOBILE && isMetro) z -= 1;
+  // スマホ + 地方は駅マーカーを2ズーム早く出す (疎なので早めに見たい)
+  if (IS_MOBILE && !isMetro) z += 2;
+  if (IS_MOBILE) {
+    // モバイル: 駅数削減
+    if (isMetro) {
+      if (z >= 14) return 1;
+      if (z >= 13) return 2;
+      if (z >= 12) return 3;
+      if (z >= 11) return 4;
+      if (z >= 8)  return 5;
+      if (z >= 5)  return 6;
+      return 99;
+    } else {
+      if (z >= 11) return 1;
+      if (z >= 10) return 2;
+      if (z >= 9)  return 3;
+      if (z >= 8)  return 4;
+      if (z >= 7)  return 5;
+      if (z >= 5)  return 6;
+      return 99;
+    }
   } else {
-    // 地方: 首都圏より tier 早出し
-    if (z >= 12) return 1;   // 全駅
-    if (z >= 11) return 2;
-    if (z >= 10) return 3;
-    if (z >= 9)  return 4;   // tier 4+
-    if (z >= 7)  return 6;   // tier 6 のみ
-    return 99;
+    // PC/iPad: もっと早めに駅マーカー表示 (画面広くて性能あるので)
+    if (isMetro) {
+      if (z >= 12) return 1;  // 全駅 (was z>=14)
+      if (z >= 11) return 2;
+      if (z >= 10) return 3;
+      if (z >= 9)  return 4;
+      if (z >= 7)  return 5;
+      if (z >= 5)  return 6;
+      return 99;
+    } else {
+      // 地方
+      if (z >= 10) return 1;  // 全駅 (was z>=11)
+      if (z >= 9)  return 2;
+      if (z >= 8)  return 3;
+      if (z >= 7)  return 4;
+      if (z >= 6)  return 5;
+      if (z >= 5)  return 6;
+      return 99;
+    }
   }
 }
-// ラベル: ドットから 1〜2 ズーム遅れて出る
+// ラベル用 (さらに厳しめ)
 function getLabelMinTier(z, isMetro) {
+  // 一貫して「駅マーカーが先、駅名は後」
+  //   首都圏:        ドットから1ズーム後に駅名
+  //   PC/iPad+地方:  ドットから1ズーム後に駅名
+  //   スマホ+地方:   ドットから2ズーム後に駅名
+  let offset;
   if (isMetro) {
-    if (z >= 14) return 1;
-    if (z >= 13) return 3;
-    if (z >= 12) return 4;
-    if (z >= 11) return 5;   // Image 5: 主要ターミナル名のみ
-    if (z >= 9)  return 5;
-    if (z >= 7)  return 6;
-    return 99;
+    offset = -1;  // 首都圏: ドット +1ズームで駅名
   } else {
-    if (z >= 13) return 1;
-    if (z >= 12) return 2;
-    if (z >= 11) return 3;
-    if (z >= 9)  return 4;
-    if (z >= 7)  return 6;
-    return 99;
+    offset = IS_MOBILE ? -2 : -1;  // 地方: PC+1ズーム / スマホ+2ズームで駅名
   }
+  return getDotMinTier(z + offset, isMetro);
 }
 // マーカー(circleMarker or divIcon)の表示/非表示切り替え
 function setStationVisible(m, visible) {
@@ -288,24 +290,6 @@ function getStationLevel(visits) {
   return 1;
 }
 
-// tier に基づくマーカー直径 (Task 3: LOD仕様 §マップLOD設計)
-// tier 6 = 60px (東京クラス) … tier 1 = 16px (単色ドット)
-function sizeForTier(tier, ridden, level) {
-  const tierBase = { 6: 60, 5: 50, 4: 40, 3: 32, 2: 24, 1: 16 };
-  let size = tierBase[tier] || 24;
-  if (level >= 4) size += 6;
-  else if (level >= 3) size += 4;
-  else if (level >= 2) size += 2;
-  if (!ridden) size = Math.round(size * 0.85);
-  return size;
-}
-
-// Lv4 ハロー (50回以上訪問駅) はデフォルト OFF。マイページ設定で ON 可能 (Task 5)
-function getLv4HaloOn() {
-  try { return localStorage.getItem('norireco_show_lv4_halo') === 'true'; }
-  catch (_) { return false; }
-}
-
 // キャラ駅: キャラを中心に、外側に細いリングで路線色を表示
 function makeCharacterIcon(character, lineColors, ridden, level) {
   const n = lineColors.length;
@@ -321,13 +305,11 @@ function makeCharacterIcon(character, lineColors, ridden, level) {
   const cy = total / 2;
 
   // === 外側ハロー / Lv3+ アクセント ===
-  // Lv4 ハロー (パルス) はマニアモード時のみ (Task 5)
-  const lv4Halo = getLv4HaloOn();
   let svgOuter = '';
-  if (level >= 4 && lv4Halo) {
+  if (level >= 4) {
     svgOuter += `<circle class="lv4-halo" cx="${cx}" cy="${cy}" r="${ringOuterR + 9}" fill="rgba(242,169,0,0.28)" stroke="rgba(242,169,0,0.75)" stroke-width="1.5"/>`;
     svgOuter += `<circle cx="${cx}" cy="${cy}" r="${ringOuterR + 3}" fill="none" stroke="#f2a900" stroke-width="2.4"/>`;
-  } else if (level >= 3 || level >= 4) {
+  } else if (level >= 3) {
     svgOuter += `<circle cx="${cx}" cy="${cy}" r="${ringOuterR + 2}" fill="none" stroke="#f2a900" stroke-width="2.0"/>`;
   }
 
@@ -366,7 +348,7 @@ function makeCharacterIcon(character, lineColors, ridden, level) {
   const charOpacity = ridden ? 1.0 : 0.65;
   const svgChar = `<svg x="${charX}" y="${charY}" width="${charSize}" height="${charSize}" viewBox="0 0 64 64" opacity="${charOpacity}">${character.innerSvg}</svg>`;
 
-  const cssClass = 'merged-pie-marker' + (level >= 4 && lv4Halo ? ' lv4' : '');
+  const cssClass = 'merged-pie-marker' + (level >= 4 ? ' lv4' : '');
   return L.divIcon({
     className: cssClass,
     html: `<svg width="${total}" height="${total}" viewBox="0 0 ${total} ${total}" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 3px rgba(0,0,0,0.6));">
@@ -388,21 +370,20 @@ function makePieIcon(lineColors, sizePx, ridden, level = 0, character = null) {
   const n = lineColors.length;
   const r = sizePx / 2;
   // 高レベル: 外側マージンでハロー/外輪 + 右上にバッジ
-  // Lv4 ハローはマニアモード時のみ (Task 5)
-  const lv4Halo = getLv4HaloOn();
-  const halo = (level >= 4 && lv4Halo) ? 12 : (level >= 3 || level >= 4 ? 7 : 0);
+  const halo = level >= 4 ? 12 : (level >= 3 ? 7 : 0);
   const outer = sizePx + halo * 2;
   const cx = halo + r;
   const cy = halo + r;
 
   // === 外側装飾 ===
   let svgOuter = '';
-  if (level >= 4 && lv4Halo) {
+  if (level >= 4) {
     // Lv4: パルスする大きな金色ハロー (.lv4-halo)
     svgOuter += `<circle class="lv4-halo" cx="${cx}" cy="${cy}" r="${r + 10}" fill="rgba(242,169,0,0.28)" stroke="rgba(242,169,0,0.75)" stroke-width="1.5"/>`;
+    // 固体の太い金色外輪
     svgOuter += `<circle cx="${cx}" cy="${cy}" r="${r + 4}" fill="none" stroke="#f2a900" stroke-width="2.4"/>`;
-  } else if (level >= 3 || level >= 4) {
-    // Lv3/Lv4 (ハロー OFF): はっきりした金色外輪 (太め)
+  } else if (level >= 3) {
+    // Lv3: はっきりした金色外輪 (太め)
     svgOuter += `<circle cx="${cx}" cy="${cy}" r="${r + 3.5}" fill="none" stroke="#f2a900" stroke-width="2.2"/>`;
   }
 
@@ -434,7 +415,7 @@ function makePieIcon(lineColors, sizePx, ridden, level = 0, character = null) {
     ringWidth = ridden ? 1.4 : 1.0;
   }
 
-  const cssClass = 'merged-pie-marker' + (level >= 4 && lv4Halo ? ' lv4' : '');
+  const cssClass = 'merged-pie-marker' + (level >= 4 ? ' lv4' : '');
   return L.divIcon({
     className: cssClass,
     html: `<svg width="${outer}" height="${outer}" viewBox="0 0 ${outer} ${outer}" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 3px rgba(0,0,0,0.6));">
@@ -488,11 +469,6 @@ function drawServiceLineBase(sl) {
     });
     glow._norireco_priority = priority;
     main._norireco_priority = priority;
-    // Task 6: 未乗ラインは zoom に応じて opacity を絞る
-    main._norireco_unridden = true;
-    main._norireco_baseOpacity = 0.55;
-    glow._norireco_unridden = true;
-    glow._norireco_baseOpacity = 0.07;
     allLayers.push(glow, main);
     if (visible) { glow.addTo(map); main.addTo(map); }
     if (!IS_MOBILE) {
@@ -512,9 +488,6 @@ function drawServiceLineBase(sl) {
       dashArray: '6 5', lineCap: 'round', renderer: canvas
     });
     bg._norireco_priority = priority;
-    // 背景線 (未乗区間相当) も z に応じてフェード (Task 6)
-    bg._norireco_unridden = true;
-    bg._norireco_baseOpacity = 0.35;
     allLayers.push(bg);
     if (visible) bg.addTo(map);
     if (!IS_MOBILE) {
@@ -585,6 +558,7 @@ function drawStationsLayer() {
     if (nLines === 0) continue;
     const tier = stationTier(nLines, ms.name);
     const isMetro = isMetroArea(ms.lat, ms.lon);
+    const mScale = nLines === 1 ? 1.0 : Math.min(2.5, 1.0 + Math.log2(nLines) * 0.5);
 
     // 乗車判定: ms.lines のどれかでこの駅が ridden か
     let ridden = false;
@@ -606,31 +580,33 @@ function drawStationsLayer() {
       return sl ? sl.color : '#888';
     });
 
-    // ドット出し分け (Task 3 + Task 4)
-    //   - 多系統 (n>=2): tier 基準サイズのパイマーカー
-    //   - 単系統 × キャラ/Lv2+: 装飾付き divIcon (キャラ・金色リング保持)
-    //   - 単系統 × Lv0/1: 軽量 circleMarker (canvas、見た目は単色ドット)
+    // ドット: パイ (n>1) または レベル付き単色 (n=1)
+    // 単色×Lv0/1 は circleMarker (canvas・軽量)、Lv2+ もしくはキャラ付きは divIcon
     let dot;
     if (nLines > 1) {
-      const size = sizeForTier(tier, ridden, level);
+      // 多系統駅: 常にパイマーカー
+      const baseSize = ridden ? 14 : 11;
+      const levelBonus = level >= 4 ? 4 : level >= 3 ? 2 : level >= 2 ? 1 : 0;
+      const size = Math.round((baseSize + levelBonus) * mScale);
       dot = L.marker([ms.lat, ms.lon], {
         icon: makePieIcon(colors, size, ridden, level, character),
         opacity: ridden ? 1.0 : 0.7,
         interactive: true
       });
-    } else if (character || level >= 2) {
-      // 単系統だがキャラ or 高レベル: tier 1 サイズだと寂しいので tier+1 で表示
-      const sz = sizeForTier(Math.min(6, tier + 1), ridden, level);
+    } else if (level >= 2 || character) {
+      // 単系統駅 × (Lv2+ または キャラ付き): 装飾付き divIcon
+      const baseSize = ridden ? 12 : 9;
+      const levelBonus = level >= 4 ? 4 : level >= 3 ? 2 : level >= 2 ? 1 : 0;
+      const size = Math.round((baseSize + levelBonus) * mScale);
       dot = L.marker([ms.lat, ms.lon], {
-        icon: makePieIcon(colors, sz, ridden, level, character),
+        icon: makePieIcon(colors, size, ridden, level, character),
         opacity: ridden ? 1.0 : 0.7,
         interactive: true
       });
     } else {
-      // 単系統 × Lv0/1: 軽量 circleMarker (Task 4: tier 1 単色ドット ≒ 直径16px)
+      // 単系統駅 × Lv0/1: 軽量 circleMarker
       const c = colors[0] || '#888';
-      const baseDiameter = sizeForTier(tier, ridden, level);  // tier 1 → 16 (ridden) / 14 (未乗)
-      const radius = baseDiameter / 2;
+      const radius = (ridden ? 6 : 4) * mScale;
       dot = L.circleMarker([ms.lat, ms.lon], {
         radius,
         fillColor: c,
