@@ -608,7 +608,11 @@ function drawStationsLayer() {
   for (const ms of MERGED_STATIONS) {
     const nLines = (ms.lines || []).length;
     if (nLines === 0) continue;
-    const tier = stationTier(nLines, ms.name);
+    const baseTier = stationTier(nLines, ms.name);
+    // isolation_rank (0-4): tools/compute_isolation_rank.js でプリ計算
+    // 孤立した田舎駅 (rank 高) を tier 高扱いして早出しする
+    const isolation = ms.isolation_rank || 0;
+    const tier = Math.max(baseTier, isolation);
     const isMetro = isMetroArea(ms.lat, ms.lon);
     const mScale = nLines === 1 ? 1.0 : Math.min(2.5, 1.0 + Math.log2(nLines) * 0.5);
 
