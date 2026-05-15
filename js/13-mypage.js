@@ -71,17 +71,42 @@ async function renderMypage() {
   }
   _mypageCache = trips;
 
-  // 常時表示の完乗率カードを描画 (サブタブ切替に依存しない)
+  // グローバル過去モード (_tripDateFilter) が有効ならバナー表示
+  renderMpTimeMachineBanner();
+
+  // 常時表示の完乗率カードを描画 (グローバル date filter を適用)
   if (pinned) {
     pinned.innerHTML = '';
     if (Array.isArray(SERVICE_LINES) && SERVICE_LINES.length > 0) {
-      pinned.appendChild(buildCompletionCards(trips));
+      const tripsForCards = (typeof filterTripsByDate === 'function') ? filterTripsByDate(trips) : trips;
+      pinned.appendChild(buildCompletionCards(tripsForCards));
     } else {
       pinned.innerHTML = `<div class="mp-empty-s" style="padding:14px">⚠ 営業系統マスターの読込に失敗しました</div>`;
     }
   }
 
   applyMpSection();
+}
+
+// グローバル過去モードのバナーをマイページ上部に挿入
+function renderMpTimeMachineBanner() {
+  const c = document.getElementById('mypage-content');
+  if (!c) return;
+  // 既存バナーを除去
+  const old = c.querySelector('.mp-tm-banner');
+  if (old) old.remove();
+  if (!isTimeMachineActive()) return;
+  const f = window._tripDateFilter;
+  const banner = document.createElement('div');
+  banner.className = 'mp-tm-banner';
+  banner.innerHTML = `
+    🕰 過去モード: <strong>${f.to}</strong> 時点を表示中
+    <button class="mp-tm-banner-clear" onclick="clearTimeMachineGlobally()">↺ 現在に戻る</button>
+  `;
+  // サブタブ nav の直前に挿入
+  const subNav = c.querySelector('.mp-subtab-nav');
+  if (subNav) c.insertBefore(banner, subNav);
+  else c.appendChild(banner);
 }
 
 function showAllSubpanes(show) {
@@ -1457,6 +1482,10 @@ function resetMpFilter() {
 window.resetMpFilter = resetMpFilter;
 
 function applyTripFilters(trips) {
+  // グローバル過去モード (_tripDateFilter) を先に適用
+  if (typeof filterTripsByDate === 'function') {
+    trips = filterTripsByDate(trips);
+  }
   return trips.filter(t => {
     // 認証
     if (mpTripFilter.auth === 'verified' && !t.verified) return false;
@@ -1755,7 +1784,8 @@ function renderMpTimeMachineSection() {
   ];
 
   const isToday = _tmDate === today;
-  const isFuture = _tmDate > today;
+  // グローバルフィルタが既に有効か (= 全タブ過去モード)
+  const tmActive = isTimeMachineActive();
 
   sec.innerHTML = `
     <div class="mp-tm-controls">
@@ -1771,12 +1801,53 @@ function renderMpTimeMachineSection() {
       <div class="mp-tm-context">
         記録範囲: <strong>${minDate}</strong> 〜 <strong>${maxDate}</strong>
       </div>
+      <div class="mp-tm-apply-row">
+        ${isToday
+          ? `<button class="mp-tm-apply-btn" disabled title="今日 = 現在モード">🌍 全タブを過去状態にする</button>`
+          : `<button class="mp-tm-apply-btn" onclick="applyTimeMachineGlobally()">🌍 ${_tmDate} 時点で全タブを表示 (地図含む)</button>`
+        }
+        ${tmActive ? `<button class="mp-tm-clear-btn" onclick="clearTimeMachineGlobally()">↺ 現在に戻る</button>` : ''}
+      </div>
+      ${tmActive ? `<div class="mp-tm-active-note">⚡ 過去モード適用中: 地図・マイページの数字が <strong>${(window._tripDateFilter && window._tripDateFilter.to) || ''}</strong> 時点になっています</div>` : ''}
     </div>
     <div id="mp-tm-snapshot"></div>
   `;
 
   renderMpTimeMachineSnapshot();
 }
+
+// グローバル過去モードが有効か (_tripDateFilter が custom & to が今日でない)
+function isTimeMachineActive() {
+  const f = window._tripDateFilter;
+  if (!f || f.mode !== 'custom') return false;
+  if (!f.to) return false;
+  const today = (typeof localDateStr === 'function') ? localDateStr() : new Date().toISOString().slice(0,10);
+  return f.to < today;
+}
+
+// グローバル過去モードを適用 — 地図・マイページ集計すべて _tmDate 時点に
+function applyTimeMachineGlobally() {
+  if (!_tmDate) return;
+  if (typeof setDateFilter !== 'function') {
+    alert('日付フィルタ機能が見つかりません');
+    return;
+  }
+  setDateFilter('custom', { from: '', to: _tmDate });
+  showMypageToast(`🕰 ${_tmDate} 時点モードに切替`, 'success');
+  // マイページを再描画 (完乗率カード等が過去ベースになる)
+  setTimeout(() => renderMypage(), 200);
+  // 地図タブに遷移して見せる
+  setTimeout(() => switchTab('map'), 600);
+}
+window.applyTimeMachineGlobally = applyTimeMachineGlobally;
+
+function clearTimeMachineGlobally() {
+  if (typeof setDateFilter !== 'function') return;
+  setDateFilter('all');
+  showMypageToast('🌍 現在モードに戻りました', 'success');
+  setTimeout(() => renderMypage(), 200);
+}
+window.clearTimeMachineGlobally = clearTimeMachineGlobally;
 
 function renderMpTimeMachineSnapshot() {
   const target = document.getElementById('mp-tm-snapshot');

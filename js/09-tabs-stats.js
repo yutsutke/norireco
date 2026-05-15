@@ -66,7 +66,9 @@ async function renderStats(){
     : `${SUPABASE_URL}/rest/v1/norireco_trips?select=*`;
   fetch(_statsUrl, {
     headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${typeof authBearerToken==='function'?authBearerToken():SUPABASE_KEY}` }
-  }).then(r => r.json()).then(trips => {
+  }).then(r => r.json()).then(rawTrips => {
+    // グローバル過去モード (_tripDateFilter) が有効なら絞る
+    const trips = (typeof filterTripsByDate === 'function') ? filterTripsByDate(rawTrips) : rawTrips;
     const totalTrips = trips.length;
     const totalStations = trips.reduce((s,t) => s + (t.total_stations||0), 0);
     const totalTransfers = trips.reduce((s,t) => s + (t.transfers||0), 0);
