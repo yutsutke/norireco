@@ -372,6 +372,35 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 
 /* ── マイページ ── */
 #pane-mypage{overflow:auto;}
+
+/* コンパクトユーザーヘッダ */
+.mp-header-compact{display:flex;align-items:center;gap:10px;padding:8px 14px;background:rgba(20,32,46,.5);border-bottom:1px solid var(--track);position:sticky;top:0;z-index:5;backdrop-filter:blur(6px);}
+.mp-avatar-sm{width:30px;height:30px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
+.mp-userinfo-sm{flex:1;min-width:0;}
+.mp-username-sm{font-size:12px;font-weight:700;line-height:1.2;}
+.mp-uid-sm{font-size:10px;color:var(--silver);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2;}
+.mp-logout-btn-sm{width:26px;height:26px;border-radius:50%;background:rgba(140,160,179,.1);color:var(--silver);border:1px solid var(--track);font-size:14px;cursor:pointer;font-family:inherit;flex-shrink:0;line-height:1;}
+.mp-logout-btn-sm:hover{background:rgba(232,53,42,.15);color:var(--red);border-color:rgba(232,53,42,.4);}
+
+/* サブタブ nav (sticky) */
+.mp-subtab-nav{display:flex;gap:0;background:var(--steel);border-bottom:1px solid var(--track);position:sticky;top:46px;z-index:4;}
+.mp-subtab{flex:1;padding:9px 6px;background:none;border:none;border-bottom:2px solid transparent;color:var(--silver);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s ease;}
+.mp-subtab:hover{color:var(--white);}
+.mp-subtab.active{color:var(--red);border-bottom-color:var(--red);}
+
+/* サブペイン */
+.mp-subpane{display:block;}
+
+/* フィルタバー */
+.mp-filter-bar{display:flex;gap:8px;flex-wrap:wrap;padding:10px 12px;background:rgba(14,24,36,.5);border-bottom:1px solid var(--track);align-items:center;position:sticky;top:84px;z-index:3;}
+.mp-filter-row{display:flex;align-items:center;gap:5px;flex:1;min-width:130px;}
+.mp-filter-lbl{font-size:10px;color:var(--silver);font-weight:600;white-space:nowrap;}
+.mp-filter-sel{flex:1;padding:5px 7px;background:var(--navy);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:11px;font-family:inherit;outline:none;cursor:pointer;}
+.mp-filter-sel:focus{border-color:var(--red);}
+.mp-filter-reset{width:30px;height:30px;background:rgba(140,160,179,.1);color:var(--silver);border:1px solid var(--track);border-radius:6px;font-size:14px;cursor:pointer;font-family:inherit;flex-shrink:0;}
+.mp-filter-reset:hover{background:rgba(140,160,179,.2);color:var(--white);}
+
+/* 旧ヘッダ (互換、未使用) */
 .mp-header{display:flex;align-items:center;gap:12px;padding:14px 16px;background:linear-gradient(135deg,rgba(232,53,42,.1),rgba(232,53,42,.02));border-bottom:1px solid var(--track);margin:0 0 8px 0;}
 .mp-avatar{width:42px;height:42px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0;}
 .mp-userinfo{flex:1;min-width:0;}
@@ -980,10 +1009,18 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
   </div>
 </div>
   <div class="pane" id="pane-mypage">
+    <!-- マイページ ヘッダ + サブタブ (renderMypage で構築) -->
     <div class="pane-inner" id="mypage-content"></div>
-    <!-- 統計・路線一覧の既存レンダラ書き込み先 (マイページ内のサブセクション) -->
-    <div class="pane-inner" id="stats-content" style="border-top:1px solid var(--track);margin-top:8px;"></div>
-    <div class="pane-inner" id="list-content" style="border-top:1px solid var(--track);margin-top:8px;"></div>
+    <!-- サブタブ別コンテンツ — renderMypage が活性化制御 -->
+    <div class="mp-subpane" id="mp-sub-stats">
+      <div class="pane-inner" id="stats-content"></div>
+    </div>
+    <div class="mp-subpane" id="mp-sub-trips">
+      <div class="pane-inner" id="mp-trip-section"></div>
+    </div>
+    <div class="mp-subpane" id="mp-sub-lines">
+      <div class="pane-inner" id="list-content"></div>
+    </div>
   </div>
 </div>
 
