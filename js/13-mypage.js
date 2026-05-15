@@ -322,6 +322,158 @@ function buildDetailContent(pane, sv, all, trips, totalUnique, totalLines) {
     buildPrefectureChart(sv),
     `47 都道府県ごとに <strong>自分が訪問した駅数 / その県の全駅数</strong> を集計。<em>verified (GPS認証) のみ</em> 対象。<br>判定は駅座標 (緯度経度) からの簡易 bbox + centroid 最近接で行うため、県境付近の数駅は誤分類されることがある。乗りつぶしオンライン・鉄レコの定番機能の簡易版。`
   ));
+
+  // ⑪ 個人記録 (PR) + 連続乗車日数
+  pane.appendChild(detailCard('🏆 個人記録 (PR)',
+    buildPersonalRecords(trips),
+    `Strava 風の個人ベスト記録セット。<br><strong>連続乗車日数</strong>: 1日でも記録があれば連続カウント、空白日が出るとリセット。「現在の連続」と「過去最長」を併記。<br>その他、最長旅程 (時間・駅数)・最多旅程日・最早/最遅時刻など、マニア心をくすぐる数字を集約。`
+  ));
+}
+
+// ── 個人記録 (PR) + 連続乗車日数 ────────────────────────────
+function buildPersonalRecords(trips) {
+  if (!trips || trips.length === 0) return '<div class="mp-empty-s">記録なし</div>';
+
+  // ── 連続乗車日数 (date 列のユニーク日付ベース) ──
+  const datesSet = new Set();
+  for (const t of trips) if (t.date) datesSet.add(t.date);
+  const dates = [...datesSet].sort();  // YYYY-MM-DD 昇順
+  // 連続日数の計算: dates を走査して run length を出す
+  let maxStreak = 0, curStreakAtRun = 0;
+  let runs = [];
+  for (let i = 0; i < dates.length; i++) {
+    if (i === 0) { curStreakAtRun = 1; }
+    else {
+      const prev = new Date(dates[i-1] + 'T00:00:00');
+      const curr = new Date(dates[i] + 'T00:00:00');
+      const diff = (curr - prev) / 86400000;
+      if (diff === 1) curStreakAtRun++;
+      else { runs.push(curStreakAtRun); curStreakAtRun = 1; }
+    }
+  }
+  if (curStreakAtRun > 0) runs.push(curStreakAtRun);
+  maxStreak = runs.length > 0 ? Math.max(...runs) : 0;
+
+  // 現在の連続: 今日 (ローカル) から逆向きに連続している日数
+  let currentStreak = 0;
+  if (dates.length > 0) {
+    const today = localDateStr ? localDateStr() : new Date().toISOString().slice(0,10);
+    const lastDate = dates[dates.length - 1];
+    const todayD = new Date(today + 'T00:00:00');
+    const lastD = new Date(lastDate + 'T00:00:00');
+    const gapFromToday = Math.round((todayD - lastD) / 86400000);
+    // 最後の記録が今日 or 昨日 (今日まだ乗ってない場合) なら streak は最後の run
+    if (gapFromToday <= 1) {
+      currentStreak = runs[runs.length - 1];
+    }
+  }
+
+  // ── 1 日の最多 ──
+  const tripsByDate = {};
+  const stationsByDate = {};
+  for (const t of trips) {
+    if (!t.date) continue;
+    tripsByDate[t.date] = (tripsByDate[t.date] || 0) + 1;
+    if (!stationsByDate[t.date]) stationsByDate[t.date] = new Set();
+    if (t.segments) {
+      for (const seg of t.segments) {
+        const sl = SERVICE_LINES.find(l => l.id === seg.lineId);
+        if (!sl) continue;
+        const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
+        const toIdx = sl.stations.findIndex(s => s.name === seg.to);
+        if (fromIdx < 0 || toIdx < 0) continue;
+        const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
+        for (let i = a; i <= b; i++) stationsByDate[t.date].add(sl.stations[i].name);
+      }
+    }
+  }
+  let maxTripsDay = null, maxTripsCount = 0;
+  for (const [d, n] of Object.entries(tripsByDate)) {
+    if (n > maxTripsCount) { maxTripsCount = n; maxTripsDay = d; }
+  }
+  let maxStationsDay = null, maxStationsCount = 0;
+  for (const [d, st] of Object.entries(stationsByDate)) {
+    if (st.size > maxStationsCount) { maxStationsCount = st.size; maxStationsDay = d; }
+  }
+
+  // ── 最長旅程 (時間・駅数・距離) ──
+  let longestMin = null, longestStations = null, longestKm = null;
+  for (const t of trips) {
+    if (t.total_minutes && (!longestMin || t.total_minutes > longestMin.total_minutes)) longestMin = t;
+    if (t.total_stations && (!longestStations || t.total_stations > longestStations.total_stations)) longestStations = t;
+    // 距離計算
+    if (t.segments) {
+      let km = 0;
+      for (const seg of t.segments) {
+        const sl = SERVICE_LINES.find(l => l.id === seg.lineId);
+        if (!sl) continue;
+        const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
+        const toIdx = sl.stations.findIndex(s => s.name === seg.to);
+        if (fromIdx < 0 || toIdx < 0) continue;
+        const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
+        for (let i = a; i < b; i++) {
+          const s1 = sl.stations[i], s2 = sl.stations[i+1];
+          if (s1.lat != null && s2.lat != null) km += distMeters(s1.lat, s1.lon, s2.lat, s2.lon) / 1000;
+        }
+      }
+      if (!longestKm || km > longestKm._km) { longestKm = {...t, _km: km}; }
+    }
+  }
+
+  // ── 最早出発 / 最遅到着 (depart_time / arrive_time) ──
+  let earliest = null, latest = null;
+  for (const t of trips) {
+    if (t.depart_time) {
+      if (!earliest || t.depart_time < earliest.depart_time) earliest = t;
+    }
+    if (t.arrive_time) {
+      if (!latest || t.arrive_time > latest.arrive_time) latest = t;
+    }
+  }
+
+  // ── 最初の記録 / 最新の記録 ──
+  const firstTrip = dates.length > 0 ? trips.find(t => t.date === dates[0]) : null;
+  const lastTrip = dates.length > 0 ? [...trips].sort((a,b) => (b.recorded_at||b.date||'').localeCompare(a.recorded_at||a.date||''))[0] : null;
+
+  // ── レンダリング ──
+  const recordRow = (icon, label, value, sub) => `
+    <div class="mp-pr-row">
+      <span class="mp-pr-ic">${icon}</span>
+      <span class="mp-pr-lbl">${label}</span>
+      <span class="mp-pr-val">${value}</span>
+      ${sub ? `<span class="mp-pr-sub">${sub}</span>` : ''}
+    </div>
+  `;
+
+  return `
+    <div class="mp-pr-section">
+      <div class="mp-pr-section-h">📅 連続記録</div>
+      ${recordRow('🔥', '現在の連続', `${currentStreak} 日`, currentStreak === 0 ? '(今日 or 昨日に記録なし)' : '')}
+      ${recordRow('🏅', '過去最長', `${maxStreak} 日`, '')}
+    </div>
+    <div class="mp-pr-section">
+      <div class="mp-pr-section-h">🌅 1 日の最多</div>
+      ${maxTripsDay ? recordRow('🎫', '最多旅程数', `${maxTripsCount} 件`, maxTripsDay) : ''}
+      ${maxStationsDay ? recordRow('🚉', '最多訪問駅数', `${maxStationsCount} 駅`, maxStationsDay) : ''}
+    </div>
+    <div class="mp-pr-section">
+      <div class="mp-pr-section-h">🏆 最長旅程</div>
+      ${longestMin ? recordRow('⏱', '時間', `${longestMin.total_minutes} 分`, `${longestMin.date || ''} · ${longestMin.name || ''}`) : ''}
+      ${longestStations ? recordRow('🚉', '駅数', `${longestStations.total_stations} 駅`, `${longestStations.date || ''} · ${longestStations.name || ''}`) : ''}
+      ${longestKm ? recordRow('📏', '距離', `${Math.round(longestKm._km)} km`, `${longestKm.date || ''} · ${longestKm.name || ''}`) : ''}
+    </div>
+    <div class="mp-pr-section">
+      <div class="mp-pr-section-h">⏰ 時刻記録</div>
+      ${earliest ? recordRow('🌄', '最早出発', earliest.depart_time.slice(0,5), `${earliest.date || ''} · ${earliest.name || ''}`) : ''}
+      ${latest ? recordRow('🌃', '最遅到着', latest.arrive_time.slice(0,5), `${latest.date || ''} · ${latest.name || ''}`) : ''}
+    </div>
+    <div class="mp-pr-section">
+      <div class="mp-pr-section-h">📆 履歴</div>
+      ${firstTrip ? recordRow('🎉', '最初の記録', firstTrip.date, firstTrip.name || '') : ''}
+      ${lastTrip ? recordRow('📌', '最新の記録', lastTrip.date, lastTrip.name || '') : ''}
+      ${recordRow('📊', '記録日数', `${dates.length} 日`, `(全 ${trips.length} 旅程)`)}
+    </div>
+  `;
 }
 
 // ── 都道府県 BBOX テーブル (簡易判定用) ────────────────────────

@@ -493,6 +493,17 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mp-pref-count{width:65px;text-align:right;font-family:'DM Mono',monospace;font-size:9px;flex-shrink:0;}
 .mp-pref-pct{width:36px;text-align:right;font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);flex-shrink:0;}
 .mp-pref-row.unvisited .mp-pref-pct{color:var(--silver);}
+
+/* 個人記録 (PR) */
+.mp-pr-section{margin-bottom:12px;}
+.mp-pr-section:last-child{margin-bottom:0;}
+.mp-pr-section-h{font-size:10px;font-weight:700;color:var(--gold);margin-bottom:5px;padding-bottom:3px;border-bottom:1px solid rgba(46,74,99,.4);}
+.mp-pr-row{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:10px;color:var(--silver);}
+.mp-pr-ic{font-size:13px;width:18px;text-align:center;flex-shrink:0;}
+.mp-pr-lbl{flex:1;min-width:0;}
+.mp-pr-val{font-family:'DM Mono',monospace;color:var(--white);font-size:11px;font-weight:600;}
+.mp-pr-sub{font-size:9px;color:var(--silver);opacity:.7;margin-left:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;}
+@media (max-width:500px){.mp-pr-sub{max-width:100px;}}
 .mp-tip{font-size:9px;color:var(--silver);padding:6px 4px;margin-bottom:8px;line-height:1.5;}
 
 .mp-trip-wrap{padding:0 12px 80px;}
