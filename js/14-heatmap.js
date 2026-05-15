@@ -7,15 +7,15 @@
 // 依存: SERVICE_LINES, slRiddenSt (描画系), prefOfStation (13-mypage.js)
 // ══════════════════════════════════════════════════════════════
 
-// 制覇率 → 塗り色 (スペック PREF_COLOR_SCALE)
+// 制覇率 → 塗り色 (v159: 暗いタイル上でも見えるようコントラスト強化)
 const PREF_COLOR_SCALE = [
-  { max: 0,   color: 'rgba(50,50,50,0.30)'     },  // 未訪問: 暗灰
-  { max: 10,  color: 'rgba(120,80,60,0.40)'    },
-  { max: 30,  color: 'rgba(180,100,60,0.50)'   },
-  { max: 50,  color: 'rgba(220,140,60,0.60)'   },
-  { max: 80,  color: 'rgba(250,180,60,0.70)'   },
-  { max: 99,  color: 'rgba(255,200,80,0.75)'   },
-  { max: 100, color: 'rgba(255,215,0,0.85)'    },  // 完全制覇: 金
+  { max: 0,   color: 'rgba(80,90,110,0.40)'    },  // 未訪問: 青灰 (背景タイルと差別化)
+  { max: 10,  color: 'rgba(140,90,70,0.50)'    },
+  { max: 30,  color: 'rgba(200,110,70,0.60)'   },
+  { max: 50,  color: 'rgba(230,150,70,0.65)'   },
+  { max: 80,  color: 'rgba(250,185,70,0.72)'   },
+  { max: 99,  color: 'rgba(255,205,90,0.78)'   },
+  { max: 100, color: 'rgba(255,215,0,0.88)'    },  // 完全制覇: 金
 ];
 
 function prefColorForPct(pct) {
@@ -94,10 +94,10 @@ function _prefStyle(feature) {
   const pct = c ? c.pct : 0;
   return {
     fillColor: prefColorForPct(pct),
-    fillOpacity: 1,             // 色側 rgba ですでに alpha 制御
-    weight: 1,
-    color: 'rgba(255,255,255,0.25)',
-    opacity: 0.6,
+    fillOpacity: 1,                       // 色側 rgba ですでに alpha 制御
+    weight: 1.4,
+    color: 'rgba(255,255,255,0.45)',      // 県境はくっきり
+    opacity: 0.8,
   };
 }
 

@@ -39,12 +39,19 @@ function getLinePriority(line){
     line.group==='東海・中部'?3:3);
 }
 
-// ズームレベルで表示する路線優先度の閾値 (LOD仕様 §マップLOD設計 Task 6)
-// z<10 はヒートマップに譲って路線非表示、z=10 は主要 (priority 1-2) のみ
+// ズームレベルで表示する路線優先度の閾値 (Task 6 + v159 調整)
+// 低ズームでも幹線が見えていたほうが「鉄道全体感」が出る、というユーザー要望反映
+//   z<7  : 路線非表示 (ヒートマップのみ)
+//   z=7-8: priority 1 (新幹線・JR主要幹線・首都圏 JR 主要)
+//   z=9  : priority 1-2 (大手私鉄・地下鉄幹線も)
+//   z=10 : priority 1-3 (その他都市系も)
+//   z>=11: 全路線
 function getVisiblePriority(zoom){
-  if (zoom >= 11) return 4;       // 全路線
-  if (zoom >= 10) return 2;       // 主要のみ (新幹線・JR主要・地下鉄幹線)
-  return 0;                       // 路線非表示 (都道府県ヒートマップが代わりに見える)
+  if (zoom >= 11) return 4;
+  if (zoom >= 10) return 3;
+  if (zoom >= 9)  return 2;
+  if (zoom >= 7)  return 1;
+  return 0;
 }
 
 // 全Leafletレイヤーを管理
@@ -188,14 +195,15 @@ const SUPER_MEGA_STATIONS = new Set([
 ]);
 
 // 三大都市圏の判定 (lat/lon境界ボックス)
-// 都心の超密集エリアのみ (山手線~周辺の半径10km程度)
+// v159: 鉄道密集エリア全体に拡張 (八王子・立川・熊谷・千葉も「都心」扱い)
+// 「都心は別ルール」運用のため、Kanto/Kansai/Chukyo の鉄道密集帯を広めに取る
 function isMetroArea(lat, lon) {
-  // 首都圏 (山手線+周辺): 約25km × 25km
-  if (lat >= 35.60 && lat <= 35.78 && lon >= 139.60 && lon <= 139.85) return true;
-  // 大阪都心 (大阪・京都・神戸の中心部のみ): 約20km × 20km
-  if (lat >= 34.65 && lat <= 34.78 && lon >= 135.40 && lon <= 135.60) return true;
-  // 名古屋都心 (名古屋駅周辺のみ): 約15km × 15km
-  if (lat >= 35.13 && lat <= 35.22 && lon >= 136.85 && lon <= 136.97) return true;
+  // 首都圏: 八王子-千葉、熊谷-横須賀 (約 100km × 80km)
+  if (lat >= 35.30 && lat <= 36.20 && lon >= 139.10 && lon <= 140.25) return true;
+  // 関西: 神戸-京都、堺-高槻 (約 60km × 60km)
+  if (lat >= 34.45 && lat <= 35.10 && lon >= 135.10 && lon <= 135.85) return true;
+  // 中京: 名古屋圏 (約 35km × 30km)
+  if (lat >= 34.95 && lat <= 35.30 && lon >= 136.65 && lon <= 137.10) return true;
   return false;
 }
 
