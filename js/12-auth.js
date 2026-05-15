@@ -21,13 +21,22 @@ function initAuth() {
       autoRefreshToken: true,
       storage: window.localStorage,
       storageKey: 'norireco-auth',
+      detectSessionInUrl: true,
+      flowType: 'pkce',
     },
   });
 
-  // 起動時にセッション復元
-  supabaseAuthClient.auth.getSession().then(({ data }) => {
+  // URL に OAuth コールバックの痕跡があるか確認 (デバッグ用)
+  const _url = new URL(window.location.href);
+  if (_url.searchParams.has('code') || _url.hash.includes('access_token') || _url.hash.includes('error')) {
+    console.log('[Auth] OAuth コールバック検出:', _url.search || _url.hash);
+  }
+
+  // 起動時にセッション復元 (URL 中の code は SDK が自動 exchange)
+  supabaseAuthClient.auth.getSession().then(({ data, error }) => {
+    if (error) console.warn('[Auth] getSession エラー:', error.message);
     if (data.session) handleAuthChange('INITIAL_SESSION', data.session);
-    else updateAuthHeaderUI();
+    else { console.log('[Auth] 初期セッションなし (未ログイン)'); updateAuthHeaderUI(); }
   });
 
   // ログイン/ログアウトイベント購読
@@ -50,12 +59,18 @@ function handleAuthChange(event, session) {
 }
 
 // ── 認証アクション ──────────────────────────────────────────────
+// クリーンなコールバック URL を返す (現在の query/hash を除外)
+// 既存の hash (例: #map=12) が付いていると OAuth code との衝突や SDK パース失敗を招くため
+function authCleanRedirectUrl() {
+  return window.location.origin + window.location.pathname;
+}
+
 async function signInWithMagicLink(email) {
   if (!supabaseAuthClient) return { error: { message: 'SDK 未初期化' } };
   if (!email || !/.+@.+\..+/.test(email)) return { error: { message: 'メールアドレスが不正です' } };
   const { error } = await supabaseAuthClient.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: window.location.href },
+    options: { emailRedirectTo: authCleanRedirectUrl() },
   });
   return { error };
 }
@@ -64,7 +79,7 @@ async function signInWithGoogle() {
   if (!supabaseAuthClient) return { error: { message: 'SDK 未初期化' } };
   const { error } = await supabaseAuthClient.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: window.location.href },
+    options: { redirectTo: authCleanRedirectUrl() },
   });
   return { error };
 }
