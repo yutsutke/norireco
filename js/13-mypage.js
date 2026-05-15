@@ -316,9 +316,170 @@ function buildDetailContent(pane, sv, all, trips, totalUnique, totalLines) {
     buildStationProgressYearly(trips),
     `年ごとの新規訪問駅数とその累計。最初の年は当然多くなり、続ければ毎年 +N が増える形に。「今年は去年より頑張った?」をチェック。`
   ));
+
+  // ⑩ 都道府県別 訪問駅数 (公式ベース)
+  pane.appendChild(detailCard('都道府県別 訪問駅数 (公式)',
+    buildPrefectureChart(sv),
+    `47 都道府県ごとに <strong>自分が訪問した駅数 / その県の全駅数</strong> を集計。<em>verified (GPS認証) のみ</em> 対象。<br>判定は駅座標 (緯度経度) からの簡易 bbox + centroid 最近接で行うため、県境付近の数駅は誤分類されることがある。乗りつぶしオンライン・鉄レコの定番機能の簡易版。`
+  ));
 }
 
-// ── 累計駅数の推移 (月別) ─────────────────────────────────────
+// ── 都道府県 BBOX テーブル (簡易判定用) ────────────────────────
+// 各都道府県の概略の経緯度範囲。境界線上の駅は誤分類される可能性あり。
+// 重複時は bbox が小さい県 (面積優先度) でなく、centroid 距離が最も近い県を採用。
+const PREFECTURES = [
+  // [name, minLat, maxLat, minLon, maxLon, centerLat, centerLon]
+  ['北海道', 41.3, 45.6, 139.3, 146.0, 43.5, 142.6],
+  ['青森県', 40.2, 41.6, 139.4, 141.7, 40.8, 140.7],
+  ['岩手県', 38.7, 40.5, 140.6, 142.1, 39.6, 141.4],
+  ['宮城県', 37.8, 39.0, 140.3, 141.7, 38.3, 140.9],
+  ['秋田県', 38.9, 40.5, 139.7, 141.0, 39.7, 140.3],
+  ['山形県', 37.7, 39.3, 139.5, 140.8, 38.4, 140.2],
+  ['福島県', 36.8, 38.0, 139.2, 141.0, 37.4, 140.4],
+  ['茨城県', 35.8, 36.9, 139.7, 140.9, 36.3, 140.4],
+  ['栃木県', 36.2, 37.2, 139.3, 140.3, 36.7, 139.8],
+  ['群馬県', 36.0, 37.0, 138.4, 139.7, 36.4, 139.0],
+  ['埼玉県', 35.7, 36.3, 138.7, 139.9, 36.0, 139.4],
+  ['千葉県', 34.9, 36.1, 139.7, 140.9, 35.5, 140.3],
+  ['東京都', 35.5, 35.9, 139.0, 139.9, 35.69, 139.69],
+  ['神奈川県', 35.1, 35.7, 139.0, 139.8, 35.4, 139.4],
+  ['新潟県', 36.7, 38.5, 137.6, 139.6, 37.6, 138.6],
+  ['富山県', 36.3, 36.9, 136.8, 137.8, 36.6, 137.3],
+  ['石川県', 36.0, 37.6, 136.2, 137.4, 36.7, 136.8],
+  ['福井県', 35.3, 36.3, 135.4, 136.8, 35.9, 136.2],
+  ['山梨県', 35.1, 35.9, 138.2, 139.1, 35.6, 138.6],
+  ['長野県', 35.2, 37.0, 137.3, 138.9, 36.2, 138.2],
+  ['岐阜県', 35.1, 36.4, 136.2, 137.7, 35.7, 136.9],
+  ['静岡県', 34.6, 35.7, 137.4, 139.2, 35.0, 138.4],
+  ['愛知県', 34.6, 35.4, 136.7, 137.8, 35.0, 137.0],
+  ['三重県', 33.7, 35.3, 135.8, 136.9, 34.5, 136.5],
+  ['滋賀県', 34.7, 35.7, 135.7, 136.5, 35.2, 136.1],
+  ['京都府', 34.7, 35.8, 134.8, 136.0, 35.1, 135.5],
+  ['大阪府', 34.2, 35.0, 135.1, 135.7, 34.65, 135.5],
+  ['兵庫県', 34.1, 35.7, 134.2, 135.5, 34.8, 134.8],
+  ['奈良県', 33.8, 34.8, 135.6, 136.3, 34.4, 135.9],
+  ['和歌山県', 33.4, 34.4, 135.0, 136.0, 33.9, 135.5],
+  ['鳥取県', 35.0, 35.7, 133.1, 134.5, 35.4, 133.8],
+  ['島根県', 34.3, 35.7, 131.6, 133.4, 35.0, 132.6],
+  ['岡山県', 34.3, 35.3, 133.3, 134.5, 34.8, 133.9],
+  ['広島県', 34.0, 35.1, 132.0, 133.5, 34.5, 132.7],
+  ['山口県', 33.7, 34.8, 130.7, 132.2, 34.2, 131.4],
+  ['徳島県', 33.6, 34.3, 133.7, 134.9, 33.9, 134.3],
+  ['香川県', 34.0, 34.6, 133.5, 134.5, 34.3, 134.0],
+  ['愛媛県', 32.9, 34.3, 132.0, 133.7, 33.6, 132.8],
+  ['高知県', 32.7, 33.9, 132.5, 134.3, 33.3, 133.4],
+  ['福岡県', 33.1, 34.0, 130.0, 131.2, 33.6, 130.6],
+  ['佐賀県', 33.1, 33.6, 129.8, 130.6, 33.3, 130.2],
+  ['長崎県', 32.7, 34.7, 128.6, 130.4, 33.0, 129.7],
+  ['熊本県', 32.1, 33.4, 130.1, 131.2, 32.8, 130.7],
+  ['大分県', 32.7, 33.7, 130.7, 132.0, 33.2, 131.4],
+  ['宮崎県', 31.3, 32.9, 130.6, 131.9, 32.0, 131.3],
+  ['鹿児島県', 27.0, 32.2, 128.4, 131.2, 31.5, 130.5],
+  ['沖縄県', 24.0, 27.0, 122.9, 131.0, 26.2, 127.7],
+];
+
+// 駅座標 → 都道府県名 (bbox 含む県のうち centroid 最近接、無ければ centroid 最近接)
+const _prefCache = new Map();  // 'lat,lon' → 県名
+function prefOfStation(lat, lon) {
+  if (lat == null || lon == null) return null;
+  const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+  if (_prefCache.has(key)) return _prefCache.get(key);
+  let best = null, bestDist = Infinity;
+  for (const p of PREFECTURES) {
+    const [name, minLat, maxLat, minLon, maxLon, cLat, cLon] = p;
+    const inBbox = lat >= minLat && lat <= maxLat && lon >= minLon && lon <= maxLon;
+    const dx = lat - cLat, dy = lon - cLon;
+    const dist = dx*dx + dy*dy;
+    if (inBbox && dist < bestDist) { best = name; bestDist = dist; }
+  }
+  if (!best) {
+    // bbox に入らない: centroid 最近接でフォールバック
+    for (const p of PREFECTURES) {
+      const [name, , , , , cLat, cLon] = p;
+      const dx = lat - cLat, dy = lon - cLon;
+      const dist = dx*dx + dy*dy;
+      if (dist < bestDist) { best = name; bestDist = dist; }
+    }
+  }
+  _prefCache.set(key, best);
+  return best;
+}
+
+// 全駅を都道府県別に集計 (1 回だけ計算してキャッシュ)
+let _prefMasterCache = null;  // { byPref: { 県: Set<駅名> }, totalByPref: { 県: 駅数 } }
+function buildPrefectureMaster() {
+  if (_prefMasterCache) return _prefMasterCache;
+  const byPref = {};
+  for (const sl of (SERVICE_LINES || [])) {
+    for (const s of sl.stations) {
+      if (s.lat == null) continue;
+      const pref = prefOfStation(s.lat, s.lon);
+      if (!pref) continue;
+      if (!byPref[pref]) byPref[pref] = new Set();
+      byPref[pref].add(s.name);
+    }
+  }
+  _prefMasterCache = { byPref };
+  return _prefMasterCache;
+}
+
+// 都道府県別 訪問駅数チャート
+function buildPrefectureChart(snap) {
+  const master = buildPrefectureMaster();
+  // 自分が訪問した駅 (snap.slSet) から都道府県別に集計
+  const visitedByPref = {};
+  for (const sl of (SERVICE_LINES || [])) {
+    const set = snap.slSet[sl.id];
+    if (!set) continue;
+    for (const name of set) {
+      const station = sl.stations.find(s => s.name === name);
+      if (!station || station.lat == null) continue;
+      const pref = prefOfStation(station.lat, station.lon);
+      if (!pref) continue;
+      if (!visitedByPref[pref]) visitedByPref[pref] = new Set();
+      visitedByPref[pref].add(name);
+    }
+  }
+
+  // 47 都道府県でリスト化、訪問率降順 → 未訪問は最後
+  const rows = PREFECTURES.map(p => {
+    const name = p[0];
+    const total = master.byPref[name] ? master.byPref[name].size : 0;
+    const ridden = visitedByPref[name] ? visitedByPref[name].size : 0;
+    const pct = total > 0 ? Math.round(ridden / total * 100) : 0;
+    return { name, ridden, total, pct, hasData: total > 0 };
+  });
+  // 訪問あり → 完乗率降順、未訪問 → 駅数降順
+  rows.sort((a, b) => {
+    if (a.ridden > 0 && b.ridden === 0) return -1;
+    if (a.ridden === 0 && b.ridden > 0) return 1;
+    if (a.ridden > 0) return b.pct - a.pct || b.ridden - a.ridden;
+    return b.total - a.total;
+  });
+
+  const visitedPref = rows.filter(r => r.ridden > 0).length;
+  const totalPref = 47;
+
+  const chart = rows.map(r => {
+    const cls = r.ridden === 0 ? ' unvisited' : '';
+    return `<div class="mp-pref-row${cls}">
+      <span class="mp-pref-name">${r.name}</span>
+      <div class="mp-pref-bar">
+        <div class="mp-pref-fill" style="width:${r.pct}%"></div>
+      </div>
+      <span class="mp-pref-count">${r.ridden} / ${r.total}</span>
+      <span class="mp-pref-pct">${r.pct}%</span>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="mp-pref-summary">
+      <strong>${visitedPref}</strong> / ${totalPref} 都道府県で乗車記録あり
+      ${visitedPref < totalPref ? ` (未訪問 <strong style="color:var(--silver)">${totalPref - visitedPref}</strong> 県)` : ' 🎉 全国制覇!'}
+    </div>
+    <div class="mp-pref-list">${chart}</div>
+  `;
+}
 function buildStationProgressMonthly(trips) {
   const sorted = [...trips]
     .filter(t => t.date && t.segments)
