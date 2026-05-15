@@ -170,6 +170,10 @@ async function backfillUserIdForLegacyData(uid) {
 
 // ── ヘッダ UI ──────────────────────────────────────────────────
 function updateAuthHeaderUI() {
+  // body にログイン状態を反映 (CSS で .fab-login-only の表示制御に使う)
+  document.body.classList.toggle('user-authed', !!currentUser);
+  document.body.classList.toggle('user-anonymous', !currentUser);
+
   const btn = document.getElementById('auth-btn');
   if (!btn) return;
   if (currentUser) {

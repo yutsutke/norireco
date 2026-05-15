@@ -370,6 +370,9 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 .auth-msg-success{background:rgba(46,204,113,.15);color:#48d597;border:1px solid rgba(46,204,113,.4);display:block;}
 .auth-msg-error{background:rgba(232,53,42,.15);color:#ff6b5e;border:1px solid rgba(232,53,42,.4);display:block;}
 
+/* 未ログイン時は記録系 FAB を非表示 */
+body:not(.user-authed) .fab-login-only{display:none !important;}
+
 /* ── マイページ ── */
 #pane-mypage{overflow:auto;}
 
@@ -381,6 +384,11 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 .mp-uid-sm{font-size:10px;color:var(--silver);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2;}
 .mp-logout-btn-sm{width:26px;height:26px;border-radius:50%;background:rgba(140,160,179,.1);color:var(--silver);border:1px solid var(--track);font-size:14px;cursor:pointer;font-family:inherit;flex-shrink:0;line-height:1;}
 .mp-logout-btn-sm:hover{background:rgba(232,53,42,.15);color:var(--red);border-color:rgba(232,53,42,.4);}
+
+/* 常時表示の完乗率カードコンテナ */
+#mp-completion-pinned{padding:10px 12px 4px;background:rgba(14,24,36,.3);}
+#mp-completion-pinned .mp-stats-wrap{padding:0;}
+#mp-completion-pinned .mp-stat-grid{margin-bottom:0;}
 
 /* サブタブ nav (sticky) */
 .mp-subtab-nav{display:flex;gap:0;background:var(--steel);border-bottom:1px solid var(--track);position:sticky;top:46px;z-index:4;}
@@ -902,10 +910,10 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
       </div>
     </div>
     <button class="map-mode-fab" id="map-mode-btn" onclick="cycleMapMode()" title="背景切替">🗺️</button>
-    <button class="memo-fab" id="memo-btn" onclick="toggleMemoMode()" title="メモ投稿">📸</button>
-    <button class="record-fab" id="rec-btn" onclick="toggleRecordMode()" title="区間記録モード">📝</button>
+    <button class="memo-fab fab-login-only" id="memo-btn" onclick="toggleMemoMode()" title="メモ投稿 (ログイン必須)">📸</button>
+    <button class="record-fab fab-login-only" id="rec-btn" onclick="toggleRecordMode()" title="区間記録モード (ログイン必須)">📝</button>
     <button class="char-fab on" id="char-fab" onclick="toggleCharacterMode()" title="駅キャラ表示の切替 (ON/OFF)">🎭</button>
-    <button class="location-fab" id="location-fab" onclick="cycleLocationMode()" title="現在地表示 (タップで 表示→追従→OFF)">📍</button>
+    <button class="location-fab fab-login-only" id="location-fab" onclick="cycleLocationMode()" title="現在地表示 (ログイン必須)">📍</button>
     <div class="nearest-station-panel" id="nearest-station-panel">
       <!-- 開始駅選択モード (記録モード OFF 時) -->
       <div id="ns-mode-select">

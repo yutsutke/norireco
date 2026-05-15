@@ -31,7 +31,7 @@ async function renderMypage() {
     return;
   }
 
-  // 1. コンパクトユーザーヘッダ + サブタブ nav
+  // 1. コンパクトユーザーヘッダ + 常時表示の完乗率カード + サブタブ nav
   const email = (currentUser && currentUser.email) || '(メール非公開)';
   const initial = (email[0] || '?').toUpperCase();
   c.innerHTML = `
@@ -43,6 +43,7 @@ async function renderMypage() {
       </div>
       <button class="mp-logout-btn-sm" onclick="if(confirm('ログアウトしますか?'))signOutUser()">×</button>
     </div>
+    <div id="mp-completion-pinned"></div>
     <div class="mp-subtab-nav">
       <button class="mp-subtab" data-sec="stats" onclick="switchMpSection('stats')">📊 統計</button>
       <button class="mp-subtab" data-sec="trips" onclick="switchMpSection('trips')">🚃 旅程</button>
@@ -62,6 +63,13 @@ async function renderMypage() {
     console.warn('[マイページ] 取得エラー:', e.message);
   }
   _mypageCache = trips;
+
+  // 常時表示の完乗率カードを描画 (サブタブ切替に依存しない)
+  const pinned = document.getElementById('mp-completion-pinned');
+  if (pinned && Array.isArray(SERVICE_LINES) && SERVICE_LINES.length > 0) {
+    pinned.innerHTML = '';
+    pinned.appendChild(buildCompletionCards(trips));
+  }
 
   applyMpSection();
 }
@@ -99,19 +107,11 @@ function applyMpSection() {
 
 // ── 📊 統計セクション ──────────────────────────────────────────
 function renderMpStatsSection() {
-  // 1. 完乗率カード (上部)
-  // 2. 既存 renderStats を呼んで月別グラフ・直近旅程・列車制覇を描画
-  const trips = _mypageCache || [];
+  // 完乗率カードは上部に常時表示されているので、ここでは既存 renderStats だけ呼ぶ
+  // (月別グラフ・直近旅程・列車制覇など)
   const statsDiv = document.getElementById('stats-content');
   if (!statsDiv) return;
   statsDiv.innerHTML = '';
-
-  // 完乗率カード
-  if (Array.isArray(SERVICE_LINES) && SERVICE_LINES.length > 0) {
-    statsDiv.appendChild(buildCompletionCards(trips));
-  }
-
-  // 既存 renderStats を呼んで残りを描画 (内部で stats-content に append)
   try { if (typeof renderStats === 'function') renderStats(); } catch(e) { console.warn('[マイページ] renderStats:', e); }
 }
 
