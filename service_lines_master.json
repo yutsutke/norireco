@@ -6055,12 +6055,14 @@
     },
     {
       "id": "auto_内子線_四国旅客鉄道",
-      "name": "内子線",
+      "name": "予讃線(内子経由)",
       "operator": "四国旅客鉄道",
       "operator_id": "jr_shikoku",
       "color": "hsl(187, 60%, 55%)",
-      "official_line": "内子線",
-      "alias": [],
+      "official_line": "予讃線",
+      "alias": [
+        "内子線"
+      ],
       "through_lines": [],
       "is_circular": false,
       "parent_id": null,
@@ -6070,22 +6072,42 @@
       "stations": [
         {
           "order": 1,
-          "name": "内子",
+          "name": "向井原",
           "n02_match": true
         },
         {
           "order": 2,
-          "name": "五十崎",
+          "name": "伊予中山",
           "n02_match": true
         },
         {
           "order": 3,
-          "name": "喜多山",
+          "name": "伊予立川",
           "n02_match": true
         },
         {
           "order": 4,
+          "name": "内子",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "五十崎",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "喜多山",
+          "n02_match": true
+        },
+        {
+          "order": 7,
           "name": "新谷",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "五郎",
           "n02_match": true
         }
       ]
@@ -6683,141 +6705,121 @@
         },
         {
           "order": 68,
-          "name": "伊予中山",
-          "n02_match": true
-        },
-        {
-          "order": 69,
-          "name": "伊予立川",
-          "n02_match": true
-        },
-        {
-          "order": 70,
           "name": "下灘",
           "n02_match": true
         },
         {
-          "order": 71,
+          "order": 69,
           "name": "串",
           "n02_match": true
         },
         {
-          "order": 72,
+          "order": 70,
           "name": "喜多灘",
           "n02_match": true
         },
         {
-          "order": 73,
+          "order": 71,
           "name": "伊予長浜",
           "n02_match": true
         },
         {
-          "order": 74,
+          "order": 72,
           "name": "伊予出石",
           "n02_match": true
         },
         {
-          "order": 75,
+          "order": 73,
           "name": "伊予白滝",
           "n02_match": true
         },
         {
-          "order": 76,
+          "order": 74,
           "name": "八多喜",
           "n02_match": true
         },
         {
-          "order": 77,
+          "order": 75,
           "name": "春賀",
           "n02_match": true
         },
         {
-          "order": 78,
-          "name": "内子",
-          "n02_match": true
-        },
-        {
-          "order": 79,
-          "name": "新谷",
-          "n02_match": true
-        },
-        {
-          "order": 80,
+          "order": 76,
           "name": "五郎",
           "n02_match": true
         },
         {
-          "order": 81,
+          "order": 77,
           "name": "伊予大洲",
           "n02_match": true
         },
         {
-          "order": 82,
+          "order": 78,
           "name": "西大洲",
           "n02_match": true
         },
         {
-          "order": 83,
+          "order": 79,
           "name": "伊予平野",
           "n02_match": true
         },
         {
-          "order": 84,
+          "order": 80,
           "name": "千丈",
           "n02_match": true
         },
         {
-          "order": 85,
+          "order": 81,
           "name": "八幡浜",
           "n02_match": true
         },
         {
-          "order": 86,
+          "order": 82,
           "name": "双岩",
           "n02_match": true
         },
         {
-          "order": 87,
+          "order": 83,
           "name": "伊予石城",
           "n02_match": true
         },
         {
-          "order": 88,
+          "order": 84,
           "name": "上宇和",
           "n02_match": true
         },
         {
-          "order": 89,
+          "order": 85,
           "name": "卯之町",
           "n02_match": true
         },
         {
-          "order": 90,
+          "order": 86,
           "name": "下宇和",
           "n02_match": true
         },
         {
-          "order": 91,
+          "order": 87,
           "name": "立間",
           "n02_match": true
         },
         {
-          "order": 92,
+          "order": 88,
           "name": "伊予吉田",
           "n02_match": true
         },
         {
-          "order": 93,
+          "order": 89,
           "name": "高光",
           "n02_match": true
         },
         {
-          "order": 94,
+          "order": 90,
           "name": "北宇和島",
           "n02_match": true
         },
         {
-          "order": 95,
+          "order": 91,
           "name": "宇和島",
           "n02_match": true
         }
