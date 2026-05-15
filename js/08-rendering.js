@@ -218,21 +218,27 @@ function stationTier(nLines, name) {
 }
 // ズームレベルで表示するべき最小ティア (ドット用 = 小さい単色マーカー)
 // ドットは早めに出して鉄道網の形を見せる、パイチャートは後出し (getPieMinTier)
+// 戻り値は -3 〜 6 の範囲。負の値は「超密集駅は更にズームしないと出ない」のため
 function getDotMinTier(z, isMetro) {
-  // スマホ + 首都圏は駅マーカーを1ズーム遅く出す (密集対策)
   if (IS_MOBILE && isMetro) z -= 1;
-  // スマホ + 地方は駅マーカーを2ズーム早く出す (疎なので早めに見たい)
   if (IS_MOBILE && !isMetro) z += 2;
   if (IS_MOBILE) {
     if (isMetro) {
-      if (z >= 13) return 1;  // 全駅
-      if (z >= 12) return 2;
-      if (z >= 11) return 3;
-      if (z >= 10) return 4;
+      if (z >= 16) return -3;
+      if (z >= 15) return -2;
+      if (z >= 14) return -1;
+      if (z >= 13) return 0;
+      if (z >= 12) return 1;
+      if (z >= 11) return 2;
+      if (z >= 10) return 3;
+      if (z >= 9)  return 4;
       if (z >= 8)  return 5;
       if (z >= 5)  return 6;
       return 99;
     } else {
+      if (z >= 14) return -3;
+      if (z >= 13) return -2;
+      if (z >= 12) return -1;
       if (z >= 11) return 1;
       if (z >= 10) return 2;
       if (z >= 9)  return 3;
@@ -244,7 +250,11 @@ function getDotMinTier(z, isMetro) {
   } else {
     // PC/iPad
     if (isMetro) {
-      if (z >= 11) return 1;  // 全駅 (ドットだけなら早めに)
+      if (z >= 15) return -3;
+      if (z >= 14) return -2;
+      if (z >= 13) return -1;
+      if (z >= 12) return 0;
+      if (z >= 11) return 1;
       if (z >= 10) return 2;
       if (z >= 9)  return 3;
       if (z >= 8)  return 4;
@@ -252,8 +262,10 @@ function getDotMinTier(z, isMetro) {
       if (z >= 5)  return 6;
       return 99;
     } else {
-      // 地方
-      if (z >= 10) return 1;  // 全駅
+      if (z >= 13) return -3;
+      if (z >= 12) return -2;
+      if (z >= 11) return -1;
+      if (z >= 10) return 1;
       if (z >= 9)  return 2;
       if (z >= 8)  return 3;
       if (z >= 7)  return 4;
@@ -609,10 +621,19 @@ function drawStationsLayer() {
     const nLines = (ms.lines || []).length;
     if (nLines === 0) continue;
     const baseTier = stationTier(nLines, ms.name);
-    // isolation_rank (0-6): tools/compute_isolation_rank.js でプリ計算
-    // 控えめに boost: rank 5-6 (5km+) の超孤立駅のみ少しだけ早出し
-    const isolation = ms.isolation_rank || 0;
-    const isolationBonus = isolation >= 6 ? 2 : isolation >= 5 ? 1 : 0;
+    // 隣接駅までの距離 (nearest_km, tools/compute_isolation_rank.js でプリ計算) で boost
+    //   遠い (孤立): プラス boost で早出し
+    //   近い (密集): マイナス boost で更にズームしないと出ない
+    const km = ms.nearest_km;
+    let isolationBonus = 0;
+    if (km != null) {
+      if (km >= 10)        isolationBonus = 2;
+      else if (km >= 5)    isolationBonus = 1;
+      else if (km >= 0.8)  isolationBonus = 0;
+      else if (km >= 0.5)  isolationBonus = -1;
+      else if (km >= 0.3)  isolationBonus = -2;
+      else                 isolationBonus = -3;
+    }
     const tier = Math.min(6, baseTier + isolationBonus);
     const isMetro = isMetroArea(ms.lat, ms.lon);
     const mScale = nLines === 1 ? 1.0 : Math.min(2.5, 1.0 + Math.log2(nLines) * 0.5);
