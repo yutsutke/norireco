@@ -40,9 +40,9 @@ function getLinePriority(line){
 }
 
 // ズームレベルで表示する優先度の閾値
+// priority 1-3 は常時表示。地方ローカル線 (priority 4) も z=7+ で表示。
 function getVisiblePriority(zoom){
-  // 大手私鉄まで(priority 3)は常時表示。地方鉄道(priority 4)はズーム10+で
-  if(zoom>=10) return 4;
+  if (zoom >= 7) return 4;
   return 3;
 }
 
