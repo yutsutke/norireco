@@ -71,6 +71,7 @@ async function checkAppVersion(forceReload) {
 
 window.addEventListener('load',()=>{
   initMap();
+  if (typeof initAuth === 'function') initAuth();
   if (typeof updateDateFilterUI === 'function') updateDateFilterUI();
   // キャラ表示ボタンの初期状態を localStorage に合わせる
   const charBtn = document.getElementById('char-fab');

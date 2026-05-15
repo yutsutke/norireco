@@ -46,6 +46,7 @@ async function saveCharacterGrantToSupabase(charId, stationName, source, gpsData
     gps_lat: gpsData ? gpsData.lat : null,
     gps_lon: gpsData ? gpsData.lon : null,
     gps_accuracy: gpsData ? gpsData.accuracy : null,
+    user_id: (typeof currentUserId === 'function') ? currentUserId() : null,
   };
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_character_grants`, {

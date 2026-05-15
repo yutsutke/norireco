@@ -596,6 +596,8 @@ async function saveMultiSegmentTrip() {
     train_name: selectedTrainName,
     train_category: selectedTrainCategory,
     car_model: selectedCarModel,
+    // 所有者 (ログイン中なら uid、未ログインなら null → 初回ログイン時 backfill 対象)
+    user_id: (typeof currentUserId === 'function') ? currentUserId() : null,
   };
 
   // 不正検知: GPS 認証 trip の所要時間が想定の半分未満なら verified=false に降格

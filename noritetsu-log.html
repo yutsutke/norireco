@@ -1607,6 +1607,8 @@ function fmtTime(d){return d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'
 function fmtDate(d){return d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});}
 // 端末ローカル日付 (toISOString().slice(0,10) は UTC を返すため JST 早朝の記録が前日になる)
 function localDateStr(d){const dt=d instanceof Date?d:new Date();const y=dt.getFullYear();const m=String(dt.getMonth()+1).padStart(2,'0');const day=String(dt.getDate()).padStart(2,'0');return `${y}-${m}-${day}`;}
+// 地図画面でログイン済なら同じ localStorage 経由で user_id を取得 (Supabase SDK が norireco-auth キーに保存)
+function currentUserIdFromStorage(){try{const raw=localStorage.getItem('norireco-auth');if(!raw)return null;const o=JSON.parse(raw);return o?.user?.id||null;}catch(e){return null;}}
 function fmtDur(ms){const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;}
 function fmtDurShort(ms){const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60);return h>0?`${h}時間${m}分`:`${m}分${s%60}秒`;}
 
@@ -1759,6 +1761,8 @@ function saveToLocalStorage(segs, payload) {
       gps_accuracy: usedGPS ? gpsPos.accuracy : null,
       recorded_at: new Date().toISOString(),
       date_precision: 'day',
+      // 所有者 (ログイン済なら uid、未ログインなら null → 初回ログイン時 backfill 対象)
+      user_id: currentUserIdFromStorage(),
     };
 
     // localStorageに保存

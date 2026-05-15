@@ -14,6 +14,8 @@
 <!-- Leaflet -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<!-- Supabase JS SDK v2 (Auth 用) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root{--navy:#0D1B2A;--steel:#1E3448;--track:#2E4A63;--track2:#243d55;--red:#E8352A;--gold:#F2A900;--green:#2ECC71;--silver:#8CA0B3;--white:#F4F7FA;}
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -334,6 +336,39 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 .app-ver-badge.stale{background:rgba(242,169,0,.18);color:var(--gold);border-color:rgba(242,169,0,.5);animation:verpulse 1.6s ease-in-out infinite;}
 .app-ver-badge.unknown{background:rgba(140,160,179,.1);color:var(--silver);}
 .app-ver-badge.checking{background:rgba(140,160,179,.1);color:var(--silver);}
+
+/* ── 認証 (ヘッダボタン + モーダル) ── */
+.auth-btn{display:flex;align-items:center;gap:6px;background:rgba(232,53,42,.12);color:var(--red);border:1px solid rgba(232,53,42,.4);border-radius:14px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s ease;}
+.auth-btn:hover{background:rgba(232,53,42,.22);transform:scale(1.03);}
+.auth-avatar{width:18px;height:18px;border-radius:50%;background:var(--red);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;}
+.auth-email{max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+@media (max-width:600px){.auth-email{display:none;}.auth-btn{padding:5px 8px;}}
+
+.auth-modal{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);z-index:10000;display:none;align-items:center;justify-content:center;padding:20px;}
+.auth-modal.open{display:flex;}
+.auth-modal-inner{background:var(--steel);border:1px solid var(--track);border-radius:14px;width:100%;max-width:380px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5);}
+.auth-modal-hd{display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid var(--track);background:var(--navy);}
+.auth-modal-title{font-size:14px;font-weight:700;flex:1;}
+.auth-modal-x{background:none;border:none;color:var(--silver);font-size:24px;cursor:pointer;line-height:1;padding:0 4px;}
+.auth-modal-x:hover{color:var(--white);}
+.auth-modal-bd{padding:20px;}
+.auth-section{display:flex;flex-direction:column;gap:8px;}
+.auth-lbl{font-size:11px;color:var(--silver);font-weight:600;}
+.auth-input{padding:10px 12px;background:var(--navy);border:1px solid var(--track);border-radius:8px;color:var(--white);font-size:13px;font-family:inherit;outline:none;}
+.auth-input:focus{border-color:var(--red);}
+.auth-magic-btn{padding:11px 14px;background:rgba(232,53,42,.15);color:var(--red);border:1px solid rgba(232,53,42,.5);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+.auth-magic-btn:hover:not(:disabled){background:rgba(232,53,42,.25);}
+.auth-magic-btn:disabled{opacity:.5;cursor:not-allowed;}
+.auth-sub{font-size:10px;color:var(--silver);text-align:center;margin-top:2px;}
+.auth-or{text-align:center;color:var(--silver);font-size:11px;margin:18px 0;position:relative;}
+.auth-or::before,.auth-or::after{content:'';position:absolute;top:50%;width:38%;height:1px;background:var(--track);}
+.auth-or::before{left:0;}.auth-or::after{right:0;}
+.auth-google-btn{padding:11px 14px;background:rgba(66,133,244,.15);color:#4285f4;border:1px solid rgba(66,133,244,.5);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;width:100%;}
+.auth-google-btn:hover:not(:disabled){background:rgba(66,133,244,.25);}
+.auth-google-btn:disabled{opacity:.5;cursor:not-allowed;}
+.auth-msg{margin-top:14px;padding:9px 12px;border-radius:6px;font-size:11px;display:none;}
+.auth-msg-success{background:rgba(46,204,113,.15);color:#48d597;border:1px solid rgba(46,204,113,.4);display:block;}
+.auth-msg-error{background:rgba(232,53,42,.15);color:#ff6b5e;border:1px solid rgba(232,53,42,.4);display:block;}
 @keyframes verpulse{0%,100%{opacity:1}50%{opacity:.55}}
 @media (max-width:768px){
   .app-ver-badge{font-size:8px;padding:1px 5px;margin-left:5px;}
@@ -713,6 +748,30 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
   <div class="header-stats">
     <div class="hstat"><div class="hstat-val" id="h-pct">0%</div><div class="hstat-lbl">達成率</div></div>
     <div class="hstat"><div class="hstat-val" id="h-ln">0</div><div class="hstat-lbl">路線</div></div>
+    <button class="auth-btn" id="auth-btn" title="ログイン">🔑 ログイン</button>
+  </div>
+</div>
+
+<!-- ログインモーダル -->
+<div class="auth-modal" id="auth-modal">
+  <div class="auth-modal-inner">
+    <div class="auth-modal-hd">
+      <div class="auth-modal-title">🔑 ログイン / 会員登録</div>
+      <button class="auth-modal-x" onclick="closeAuthModal()">×</button>
+    </div>
+    <div class="auth-modal-bd">
+      <div class="auth-section">
+        <label class="auth-lbl">メールアドレス</label>
+        <input type="email" id="auth-email-input" class="auth-input" placeholder="you@example.com" autocomplete="email">
+        <button class="auth-magic-btn" id="auth-magic-btn" onclick="handleAuthMagicLinkSubmit()">✉️ Magic Link を送信</button>
+        <div class="auth-sub">パスワード不要。メールに届くリンクからログイン。</div>
+      </div>
+      <div class="auth-or">または</div>
+      <div class="auth-section">
+        <button class="auth-google-btn" id="auth-google-btn" onclick="handleAuthGoogleClick()">🔵 Google でログイン</button>
+      </div>
+      <div class="auth-msg" id="auth-msg"></div>
+    </div>
   </div>
 </div>
 <div class="tabs">
@@ -916,6 +975,7 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 <script src="js/07-record-mode.js"></script>
 <script src="js/08-rendering.js"></script>
 <script src="js/11-fraud-detection.js"></script>
+<script src="js/12-auth.js"></script>
 <script src="js/09-tabs-stats.js"></script>
 <script src="js/10-init.js"></script>
 </body>
