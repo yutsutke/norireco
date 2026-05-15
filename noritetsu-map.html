@@ -546,6 +546,19 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mp-unex-tag.terminal{background:rgba(232,53,42,.08);color:#ff9a8e;border-color:rgba(232,53,42,.3);}
 .mp-unex-region{margin-top:6px;}
 .mp-unex-region-h{font-size:9px;font-weight:700;color:var(--silver);margin-bottom:4px;letter-spacing:1px;}
+
+/* 会社別 年別 進捗 */
+.mp-yr-list{display:flex;flex-direction:column;gap:10px;}
+.mp-yr-row{background:rgba(14,24,36,.4);padding:8px 10px;border-radius:6px;}
+.mp-yr-header{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.mp-yr-year{font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:var(--white);width:54px;flex-shrink:0;}
+.mp-yr-bar{flex:1;height:8px;background:rgba(46,74,99,.35);border-radius:2px;overflow:hidden;}
+.mp-yr-fill{height:100%;background:linear-gradient(90deg,var(--red),#ff7e6e);}
+.mp-yr-total{font-family:'DM Mono',monospace;font-size:11px;color:var(--red);font-weight:600;width:60px;text-align:right;flex-shrink:0;}
+.mp-yr-ops{display:flex;flex-wrap:wrap;gap:4px;padding-left:62px;}
+.mp-yr-op{padding:2px 8px;background:rgba(140,160,179,.1);border:1px solid var(--track);border-radius:10px;font-size:10px;color:var(--silver);}
+.mp-yr-op strong{color:var(--gold);font-family:'DM Mono',monospace;}
+.mp-yr-op.rest{background:transparent;border:none;color:var(--silver);opacity:.6;}
 .mp-tip{font-size:9px;color:var(--silver);padding:6px 4px;margin-bottom:8px;line-height:1.5;}
 
 .mp-trip-wrap{padding:0 12px 80px;}

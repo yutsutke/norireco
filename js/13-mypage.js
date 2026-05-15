@@ -358,6 +358,86 @@ function buildDetailContent(pane, sv, all, trips, totalUnique, totalLines) {
     buildCarModelStats(trips),
     `乗車記録に紐づけた <strong>車両形式 (E5系・N700S・E353系 等)</strong> の乗車回数集計。<br>同じ形式でも複数の列車で運用されているケース (例: E353系 → あずさ・かいじ・富士回遊) は併記。<br>初回乗車日・最新乗車日も記録、希少車両 (寝台・SL・観光列車) は ✨ 表示。<br>※ 確認モーダルで車両形式を選択した旅程のみ集計。`
   ));
+
+  // ⑰ 会社別 年別 進捗
+  pane.appendChild(detailCard('🏢 会社別 年別 進捗',
+    buildOperatorYearly(trips),
+    `<strong>各年に新規訪問した駅</strong> を運営会社別に分解。<br>「2025 年は JR東日本 +40 駅、東京メトロ +15 駅...」のように、その年どの会社で新しい駅を踏んだか分かる。<br>年別の旅行スタイルの変化が見える (例: 関東中心→関西進出など)。`
+  ));
+}
+
+// ── 会社別 年別 進捗 ──────────────────────────────────────────
+function buildOperatorYearly(trips) {
+  const sorted = [...trips]
+    .filter(t => t.date && t.segments)
+    .sort((a,b) => a.date.localeCompare(b.date));
+  if (sorted.length === 0) return '<div class="mp-empty-s">データなし</div>';
+
+  const seen = new Set();
+  const yearlyByOp = {};  // 'YYYY' → { operator → new count }
+
+  for (const trip of sorted) {
+    const year = (trip.date || '').slice(0, 4);
+    if (!year) continue;
+    for (const seg of trip.segments) {
+      const sl = SERVICE_LINES.find(l => l.id === seg.lineId);
+      if (!sl) continue;
+      const op = sl.operator || '不明';
+      const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
+      const toIdx = sl.stations.findIndex(s => s.name === seg.to);
+      if (fromIdx < 0 || toIdx < 0) continue;
+      const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
+      for (let i = a; i <= b; i++) {
+        const name = sl.stations[i].name;
+        if (seen.has(name)) continue;
+        seen.add(name);
+        if (!yearlyByOp[year]) yearlyByOp[year] = {};
+        yearlyByOp[year][op] = (yearlyByOp[year][op] || 0) + 1;
+      }
+    }
+  }
+
+  const years = Object.keys(yearlyByOp).sort();
+  if (years.length === 0) return '<div class="mp-empty-s">データなし</div>';
+
+  // 全体で最大の +n を見つける (バー幅基準)
+  let maxYearTotal = 0;
+  for (const y of years) {
+    const t = Object.values(yearlyByOp[y]).reduce((s,n)=>s+n, 0);
+    if (t > maxYearTotal) maxYearTotal = t;
+  }
+
+  return `
+    <div class="mp-prog-summary" style="margin-bottom:10px">
+      <div>📅 活動年数: <strong>${years.length}</strong> 年</div>
+      <div>🏢 これまでに乗った会社数: <strong>${(() => {
+        const allOps = new Set();
+        for (const y of years) for (const op of Object.keys(yearlyByOp[y])) allOps.add(op);
+        return allOps.size;
+      })()}</strong> 社</div>
+    </div>
+    <div class="mp-yr-list">
+      ${years.map(y => {
+        const opEntries = Object.entries(yearlyByOp[y]).sort((a,b) => b[1] - a[1]);
+        const total = opEntries.reduce((s, [, n]) => s + n, 0);
+        const top = opEntries.slice(0, 6);
+        const restCount = opEntries.length - top.length;
+        return `
+          <div class="mp-yr-row">
+            <div class="mp-yr-header">
+              <span class="mp-yr-year">${y}</span>
+              <div class="mp-yr-bar"><div class="mp-yr-fill" style="width:${maxYearTotal>0?Math.round(total/maxYearTotal*100):0}%"></div></div>
+              <span class="mp-yr-total">+${total} 駅</span>
+            </div>
+            <div class="mp-yr-ops">
+              ${top.map(([op, n]) => `<span class="mp-yr-op">${op} <strong>+${n}</strong></span>`).join('')}
+              ${restCount > 0 ? `<span class="mp-yr-op rest">他 ${restCount} 社</span>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
 }
 
 // ── 車両形式コレクション ────────────────────────────────────
