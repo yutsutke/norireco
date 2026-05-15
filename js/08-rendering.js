@@ -97,17 +97,26 @@ function updateLOD() {
     }
   });
 
-  // ドット: 重要度ティアによる段階表示 (地域別閾値)
+  // ドット/パイ: 重要度ティアによる段階表示 (地域別閾値)
+  // パイチャート (_station_use_pie_threshold=true) は getPieMinTier で別管理
+  // → 低ズームでは多系統駅も単色ドットで表示、ズームが上がるとパイに昇格
   if (dotLayerRef) {
     const dotMinMetro = getDotMinTier(z, true);
     const dotMinRural = getDotMinTier(z, false);
-    const minOfBoth = Math.min(dotMinMetro, dotMinRural);
-    if (minOfBoth <= 6) {
+    const pieMinMetro = getPieMinTier(z, true);
+    const pieMinRural = getPieMinTier(z, false);
+    const minOfAll = Math.min(dotMinMetro, dotMinRural, pieMinMetro, pieMinRural);
+    if (minOfAll <= 6) {
       if (!map.hasLayer(dotLayerRef)) map.addLayer(dotLayerRef);
       dotLayerRef.eachLayer(d => {
         const t = d._station_tier || 1;
         const m = d._station_isMetro;
-        const minTier = m ? dotMinMetro : dotMinRural;
+        let minTier;
+        if (d._station_use_pie_threshold) {
+          minTier = m ? pieMinMetro : pieMinRural;
+        } else {
+          minTier = m ? dotMinMetro : dotMinRural;
+        }
         setStationVisible(d, t >= minTier);
       });
     } else {
@@ -203,21 +212,19 @@ function stationTier(nLines, name) {
   if (nLines >= 2) return 2;
   return 1;
 }
-// ズームレベルで表示するべき最小ティア (ドット用)
-// isMetro=true なら三大都市圏(密集)用の厳しめ閾値
-// isMetro=false なら地方用の早出し閾値
+// ズームレベルで表示するべき最小ティア (ドット用 = 小さい単色マーカー)
+// ドットは早めに出して鉄道網の形を見せる、パイチャートは後出し (getPieMinTier)
 function getDotMinTier(z, isMetro) {
   // スマホ + 首都圏は駅マーカーを1ズーム遅く出す (密集対策)
   if (IS_MOBILE && isMetro) z -= 1;
   // スマホ + 地方は駅マーカーを2ズーム早く出す (疎なので早めに見たい)
   if (IS_MOBILE && !isMetro) z += 2;
   if (IS_MOBILE) {
-    // モバイル: 駅数削減
     if (isMetro) {
-      if (z >= 14) return 1;
-      if (z >= 13) return 2;
-      if (z >= 12) return 3;
-      if (z >= 11) return 4;
+      if (z >= 13) return 1;  // 全駅
+      if (z >= 12) return 2;
+      if (z >= 11) return 3;
+      if (z >= 10) return 4;
       if (z >= 8)  return 5;
       if (z >= 5)  return 6;
       return 99;
@@ -231,24 +238,62 @@ function getDotMinTier(z, isMetro) {
       return 99;
     }
   } else {
-    // PC/iPad: パイチャートも単色ドットも同じ閾値で出る (タイミング統一)
-    // 全体に 1 ズーム遅らせて低ズーム時の密集を回避
+    // PC/iPad
     if (isMetro) {
-      if (z >= 13) return 1;  // 全駅
-      if (z >= 12) return 2;
-      if (z >= 11) return 3;
-      if (z >= 10) return 4;
-      if (z >= 8)  return 5;
-      if (z >= 5)  return 6;
-      return 99;
-    } else {
-      // 地方
-      if (z >= 11) return 1;  // 全駅
+      if (z >= 11) return 1;  // 全駅 (ドットだけなら早めに)
       if (z >= 10) return 2;
       if (z >= 9)  return 3;
       if (z >= 8)  return 4;
       if (z >= 7)  return 5;
       if (z >= 5)  return 6;
+      return 99;
+    } else {
+      // 地方
+      if (z >= 10) return 1;  // 全駅
+      if (z >= 9)  return 2;
+      if (z >= 8)  return 3;
+      if (z >= 7)  return 4;
+      if (z >= 6)  return 5;
+      if (z >= 5)  return 6;
+      return 99;
+    }
+  }
+}
+
+// ズームレベルで「パイチャート」を表示する最小ティア (ドットより厳しめ)
+// 多系統駅は低ズームでは単色ドットで、ズーム上がるとパイに昇格
+function getPieMinTier(z, isMetro) {
+  if (IS_MOBILE && isMetro) z -= 1;
+  if (IS_MOBILE) {
+    if (isMetro) {
+      if (z >= 14) return 2;
+      if (z >= 13) return 3;
+      if (z >= 12) return 4;
+      if (z >= 11) return 5;
+      if (z >= 9)  return 6;
+      return 99;
+    } else {
+      if (z >= 13) return 2;
+      if (z >= 12) return 3;
+      if (z >= 11) return 4;
+      if (z >= 10) return 5;
+      if (z >= 8)  return 6;
+      return 99;
+    }
+  } else {
+    if (isMetro) {
+      if (z >= 13) return 2;  // 全多系統駅をパイで
+      if (z >= 12) return 3;
+      if (z >= 11) return 4;  // Image 5 = z=11 で tier 4+
+      if (z >= 10) return 5;  // 超ターミナルのみ
+      if (z >= 9)  return 6;
+      return 99;
+    } else {
+      if (z >= 12) return 2;
+      if (z >= 11) return 3;
+      if (z >= 10) return 4;
+      if (z >= 9)  return 5;
+      if (z >= 8)  return 6;
       return 99;
     }
   }
@@ -581,21 +626,48 @@ function drawStationsLayer() {
       return sl ? sl.color : '#888';
     });
 
-    // ドット: パイ (n>1) または レベル付き単色 (n=1)
-    // 単色×Lv0/1 は circleMarker (canvas・軽量)、Lv2+ もしくはキャラ付きは divIcon
+    // 描画方針:
+    //   - 多系統駅 (nLines>1) 平常: 単色ドット + パイ (パイは別閾値で遅出し)
+    //   - 多系統駅 × (Lv2+ または キャラ): 装飾 divIcon 1個 (パイ閾値で出す)
+    //   - 単系統駅 × Lv0/1: 単色 circleMarker
+    //   - 単系統駅 × (Lv2+ または キャラ): 装飾 divIcon
     let dot;
+    let extraDot = null;  // 多系統駅にだけ作る「低ズーム用の単色ドット」
     if (nLines > 1) {
-      // 多系統駅: 常にパイマーカー
-      const baseSize = ridden ? 14 : 11;
-      const levelBonus = level >= 4 ? 4 : level >= 3 ? 2 : level >= 2 ? 1 : 0;
-      const size = Math.round((baseSize + levelBonus) * mScale);
-      dot = L.marker([ms.lat, ms.lon], {
-        icon: makePieIcon(colors, size, ridden, level, character),
-        opacity: ridden ? 1.0 : 0.7,
-        interactive: true
-      });
+      if (level >= 2 || character) {
+        // 装飾 divIcon (Lv2+/キャラ付き) — これだけパイ閾値で出す
+        const baseSize = ridden ? 14 : 11;
+        const levelBonus = level >= 4 ? 4 : level >= 3 ? 2 : level >= 2 ? 1 : 0;
+        const size = Math.round((baseSize + levelBonus) * mScale);
+        dot = L.marker([ms.lat, ms.lon], {
+          icon: makePieIcon(colors, size, ridden, level, character),
+          opacity: ridden ? 1.0 : 0.7,
+          interactive: true
+        });
+        dot._station_use_pie_threshold = true;
+      } else {
+        // 平常多系統駅: ベースの単色ドット (常に出る) + パイ (パイ閾値で遅出し)
+        const c = colors[0] || '#888';
+        const radius = (ridden ? 5.5 : 4) * Math.min(1.4, mScale);
+        dot = L.circleMarker([ms.lat, ms.lon], {
+          radius,
+          fillColor: c,
+          color: ridden ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)',
+          weight: ridden ? 1.4 : 1.2,
+          fillOpacity: ridden ? 1.0 : 0.85,
+          renderer: CANVAS,
+        });
+        // パイマーカー (上に重ねる、パイ閾値で出す)
+        const baseSize = ridden ? 14 : 11;
+        const size = Math.round(baseSize * mScale);
+        extraDot = L.marker([ms.lat, ms.lon], {
+          icon: makePieIcon(colors, size, ridden, 0, null),
+          opacity: ridden ? 1.0 : 0.7,
+          interactive: true
+        });
+        extraDot._station_use_pie_threshold = true;
+      }
     } else if (level >= 2 || character) {
-      // 単系統駅 × (Lv2+ または キャラ付き): 装飾付き divIcon
       const baseSize = ridden ? 12 : 9;
       const levelBonus = level >= 4 ? 4 : level >= 3 ? 2 : level >= 2 ? 1 : 0;
       const size = Math.round((baseSize + levelBonus) * mScale);
@@ -605,7 +677,6 @@ function drawStationsLayer() {
         interactive: true
       });
     } else {
-      // 単系統駅 × Lv0/1: 軽量 circleMarker
       const c = colors[0] || '#888';
       const radius = (ridden ? 6 : 4) * mScale;
       dot = L.circleMarker([ms.lat, ms.lon], {
@@ -641,12 +712,22 @@ function drawStationsLayer() {
       ? `<br><span style="color:rgba(255,200,100,.95);font-size:11px;font-weight:700">🎭 ${character.meta.name}</span>` +
         (character.meta.subtitle ? `<span style="color:rgba(140,160,179,.7);font-size:9px;margin-left:6px">${character.meta.subtitle}</span>` : '')
       : '';
-    dot.bindTooltip(`<b>${ms.name}</b>${riddenTag}${visitsTag}${charTag}${linesText}`, {className:'norireco-tooltip', offset:[8,0]});
+    const tooltipHtml = `<b>${ms.name}</b>${riddenTag}${visitsTag}${charTag}${linesText}`;
+    dot.bindTooltip(tooltipHtml, {className:'norireco-tooltip', offset:[8,0]});
 
     dot._station_tier = tier;
     dot._station_isMetro = isMetro;
     attachStationDotClickV2(dot, ms);
     dotLayerRef.addLayer(dot);
+
+    // パイチャート用の追加マーカー (多系統駅 × 平常時のみ)
+    if (extraDot) {
+      extraDot.bindTooltip(tooltipHtml, {className:'norireco-tooltip', offset:[8,0]});
+      extraDot._station_tier = tier;
+      extraDot._station_isMetro = isMetro;
+      attachStationDotClickV2(extraDot, ms);
+      dotLayerRef.addLayer(extraDot);
+    }
 
     // ラベル
     const labelHtml = ridden
