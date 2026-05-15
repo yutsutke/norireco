@@ -88,20 +88,35 @@ async function renderMypage() {
   applyMpSection();
 }
 
-// グローバル過去モードのバナーをマイページ上部に挿入
+// 期間フィルタが有効ならバナー表示 (タイムマシン or 今年/去年/カスタム)
 function renderMpTimeMachineBanner() {
   const c = document.getElementById('mypage-content');
   if (!c) return;
   // 既存バナーを除去
   const old = c.querySelector('.mp-tm-banner');
   if (old) old.remove();
-  if (!isTimeMachineActive()) return;
   const f = window._tripDateFilter;
+  if (!f || f.mode === 'all') return;
+
+  let label = '';
+  let cls = 'mp-tm-banner';
+  if (f.mode === 'thisYear') label = '🗓 今年のみ表示中';
+  else if (f.mode === 'lastYear') label = '🗓 去年のみ表示中';
+  else if (f.mode === 'custom') {
+    if (isTimeMachineActive()) {
+      label = `🕰 過去モード: <strong>${f.to}</strong> 時点を表示中`;
+    } else {
+      const fr = f.from || '…';
+      const to = f.to || '…';
+      label = `🗓 カスタム期間: <strong>${fr}</strong> 〜 <strong>${to}</strong>`;
+    }
+  } else return;
+
   const banner = document.createElement('div');
-  banner.className = 'mp-tm-banner';
+  banner.className = cls;
   banner.innerHTML = `
-    🕰 過去モード: <strong>${f.to}</strong> 時点を表示中
-    <button class="mp-tm-banner-clear" onclick="clearTimeMachineGlobally()">↺ 現在に戻る</button>
+    ${label}
+    <button class="mp-tm-banner-clear" onclick="if(typeof setDateFilter==='function')setDateFilter('all')">↺ 全期間に戻す</button>
   `;
   // サブタブ nav の直前に挿入
   const subNav = c.querySelector('.mp-subtab-nav');

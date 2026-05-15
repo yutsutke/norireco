@@ -134,6 +134,11 @@ function setDateFilter(mode, opts = {}) {
   saveDateFilter(window._tripDateFilter);
   updateDateFilterUI();
   applyDateFilter();
+  // マイページが開いていれば再描画 (期間フィルタを全タブに反映)
+  const mp = document.getElementById('pane-mypage');
+  if (mp && mp.classList.contains('active') && typeof renderMypage === 'function') {
+    renderMypage();
+  }
 }
 
 function toggleCustomDateFilter() {
