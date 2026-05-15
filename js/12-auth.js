@@ -10,7 +10,8 @@ let currentSession = null;
 let authBackfillRan = false;       // 初回ログインの backfill 重複防止
 
 // SDK 初期化 (CDN 経由で読み込まれた supabase グローバルを使う)
-function initAuth() {
+async function initAuth() {
+  console.log('[Auth] initAuth 開始');
   if (typeof supabase === 'undefined' || !supabase.createClient) {
     console.warn('[Auth] Supabase JS SDK が未ロード');
     return;
@@ -25,24 +26,53 @@ function initAuth() {
       flowType: 'pkce',
     },
   });
+  console.log('[Auth] client 作成完了');
 
-  // URL に OAuth コールバックの痕跡があるか確認 (デバッグ用)
-  const _url = new URL(window.location.href);
-  if (_url.searchParams.has('code') || _url.hash.includes('access_token') || _url.hash.includes('error')) {
-    console.log('[Auth] OAuth コールバック検出:', _url.search || _url.hash);
-  }
-
-  // 起動時にセッション復元 (URL 中の code は SDK が自動 exchange)
-  supabaseAuthClient.auth.getSession().then(({ data, error }) => {
-    if (error) console.warn('[Auth] getSession エラー:', error.message);
-    if (data.session) handleAuthChange('INITIAL_SESSION', data.session);
-    else { console.log('[Auth] 初期セッションなし (未ログイン)'); updateAuthHeaderUI(); }
-  });
-
-  // ログイン/ログアウトイベント購読
+  // ログイン/ログアウトイベント購読 (createClient 直後に register)
   supabaseAuthClient.auth.onAuthStateChange((event, session) => {
     handleAuthChange(event, session);
   });
+
+  // URL に OAuth コールバック痕跡があれば手動 exchange (SDK auto-detect の取りこぼし対策)
+  const _url = new URL(window.location.href);
+  const _code = _url.searchParams.get('code');
+  const _error = _url.searchParams.get('error') || (_url.hash.match(/error=([^&]+)/) || [])[1];
+  if (_error) {
+    console.warn('[Auth] OAuth エラー応答:', _error, _url.searchParams.get('error_description') || '');
+    setAuthMsg('error', `OAuth エラー: ${_error}`);
+  }
+  if (_code) {
+    console.log('[Auth] PKCE code 検出 → 手動 exchange 試行...');
+    try {
+      const { data, error } = await supabaseAuthClient.auth.exchangeCodeForSession(_code);
+      if (error) {
+        console.warn('[Auth] exchange 失敗:', error.message);
+      } else if (data?.session) {
+        console.log('[Auth] exchange 成功 uid=' + data.session.user.id.slice(0,8));
+      }
+      // URL から code を除去
+      _url.searchParams.delete('code');
+      history.replaceState({}, document.title, _url.toString());
+    } catch (e) {
+      console.warn('[Auth] exchange 例外:', e.message || e);
+    }
+  }
+
+  // 起動時にセッション復元
+  try {
+    const { data, error } = await supabaseAuthClient.auth.getSession();
+    if (error) console.warn('[Auth] getSession エラー:', error.message);
+    if (data.session) {
+      console.log('[Auth] セッション復元 uid=' + data.session.user.id.slice(0,8));
+      handleAuthChange('INITIAL_SESSION', data.session);
+    } else {
+      console.log('[Auth] 初期セッションなし (未ログイン)');
+      updateAuthHeaderUI();
+    }
+  } catch (e) {
+    console.warn('[Auth] getSession 例外:', e.message || e);
+    updateAuthHeaderUI();
+  }
 }
 
 function handleAuthChange(event, session) {
