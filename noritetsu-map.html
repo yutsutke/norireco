@@ -559,6 +559,30 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mp-yr-op{padding:2px 8px;background:rgba(140,160,179,.1);border:1px solid var(--track);border-radius:10px;font-size:10px;color:var(--silver);}
 .mp-yr-op strong{color:var(--gold);font-family:'DM Mono',monospace;}
 .mp-yr-op.rest{background:transparent;border:none;color:var(--silver);opacity:.6;}
+
+/* タイムマシン */
+.mp-tm-controls{padding:12px 14px;background:linear-gradient(135deg,rgba(199,125,255,.08),rgba(232,53,42,.05));border-bottom:1px solid var(--track);}
+.mp-tm-title{font-size:13px;font-weight:700;color:#c77dff;margin-bottom:10px;}
+.mp-tm-date-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;}
+.mp-tm-go-today{padding:6px 12px;background:rgba(232,53,42,.1);color:var(--red);border:1px solid rgba(232,53,42,.4);border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;}
+.mp-tm-go-today:hover:not(:disabled){background:rgba(232,53,42,.2);}
+.mp-tm-go-today:disabled{opacity:.4;cursor:not-allowed;}
+.mp-tm-presets{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;}
+.mp-tm-preset{padding:4px 10px;background:rgba(140,160,179,.1);color:var(--silver);border:1px solid var(--track);border-radius:14px;font-size:10px;cursor:pointer;font-family:inherit;}
+.mp-tm-preset:hover{background:rgba(199,125,255,.15);color:#c77dff;border-color:rgba(199,125,255,.4);}
+.mp-tm-preset.active{background:rgba(199,125,255,.2);color:#c77dff;border-color:#c77dff;}
+.mp-tm-context{font-size:10px;color:var(--silver);margin-top:6px;}
+.mp-tm-context strong{color:var(--white);font-family:'DM Mono',monospace;}
+
+.mp-tm-snap-h{padding:14px 14px 6px;font-size:13px;font-weight:600;color:var(--white);}
+.mp-tm-snap-h strong{color:#c77dff;font-family:'DM Mono',monospace;}
+
+.mp-tm-delta{margin:10px 12px 16px;padding:12px 14px;background:rgba(72,213,151,.06);border:1px solid rgba(72,213,151,.3);border-radius:8px;}
+.mp-tm-delta-h{font-size:12px;font-weight:700;color:#48d597;margin-bottom:10px;}
+.mp-tm-delta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;}
+.mp-tm-delta-item{text-align:center;padding:8px 6px;background:rgba(14,24,36,.4);border-radius:6px;}
+.mp-tm-delta-item span{display:block;font-family:'DM Mono',monospace;font-size:16px;font-weight:600;color:#48d597;}
+.mp-tm-delta-item label{display:block;font-size:9px;color:var(--silver);margin-top:2px;}
 .mp-tip{font-size:9px;color:var(--silver);padding:6px 4px;margin-bottom:8px;line-height:1.5;}
 
 .mp-trip-wrap{padding:0 12px 80px;}
@@ -1150,6 +1174,9 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
     </div>
     <div class="mp-subpane" id="mp-sub-lines">
       <div class="pane-inner" id="list-content"></div>
+    </div>
+    <div class="mp-subpane" id="mp-sub-timemachine">
+      <div class="pane-inner" id="mp-tm-section"></div>
     </div>
   </div>
 </div>

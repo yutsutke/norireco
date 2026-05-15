@@ -48,6 +48,7 @@ async function renderMypage() {
       <button class="mp-subtab" data-sec="stats" onclick="switchMpSection('stats')">📊 統計</button>
       <button class="mp-subtab" data-sec="trips" onclick="switchMpSection('trips')">🚃 旅程</button>
       <button class="mp-subtab" data-sec="lines" onclick="switchMpSection('lines')">📋 路線</button>
+      <button class="mp-subtab" data-sec="timemachine" onclick="switchMpSection('timemachine')">🕰 タイムマシン</button>
     </div>
   `;
 
@@ -102,15 +103,19 @@ function applyMpSection() {
   const showStats = mpActiveSection === 'stats';
   const showTrips = mpActiveSection === 'trips';
   const showLines = mpActiveSection === 'lines';
-  document.getElementById('mp-sub-stats').style.display  = showStats ? '' : 'none';
-  document.getElementById('mp-sub-trips').style.display  = showTrips ? '' : 'none';
-  document.getElementById('mp-sub-lines').style.display  = showLines ? '' : 'none';
+  const showTm    = mpActiveSection === 'timemachine';
+  document.getElementById('mp-sub-stats').style.display       = showStats ? '' : 'none';
+  document.getElementById('mp-sub-trips').style.display       = showTrips ? '' : 'none';
+  document.getElementById('mp-sub-lines').style.display       = showLines ? '' : 'none';
+  const tmEl = document.getElementById('mp-sub-timemachine');
+  if (tmEl) tmEl.style.display = showTm ? '' : 'none';
 
   // 内容描画 (遅延でレイアウト確定後)
   setTimeout(() => {
     if (showStats) { renderMpStatsSection(); }
     if (showTrips) renderMpTripsSection();
     if (showLines) { try { if (typeof renderList === 'function') renderList(); } catch(e) {} }
+    if (showTm)    renderMpTimeMachineSection();
   }, 30);
 }
 
@@ -1653,6 +1658,205 @@ function showMypageToast(text, kind) {
   el.className = 'mp-toast show' + (kind ? ' ' + kind : '');
   clearTimeout(showMypageToast._t);
   showMypageToast._t = setTimeout(() => { el.className = 'mp-toast'; }, 3500);
+}
+
+// ══════════════════════════════════════════════════════════════
+// 🕰 タイムマシン: 過去任意日付の状態を再現
+// ══════════════════════════════════════════════════════════════
+
+let _tmDate = null;  // 選択中の日付 (YYYY-MM-DD) — null = 今日
+
+// 任意日時点のスナップショット計算
+function computeSnapshotUntil(trips, untilDate, verifiedOnly) {
+  if (!Array.isArray(SERVICE_LINES) || SERVICE_LINES.length === 0) return null;
+
+  // 全駅ユニーク (分母)
+  const allUniqueStations = new Set();
+  for (const sl of SERVICE_LINES) for (const s of sl.stations) allUniqueStations.add(s.name);
+  const totalUnique = allUniqueStations.size;
+  const totalLines = SERVICE_LINES.length;
+
+  const slSet = {};
+  const visitedUnique = new Set();
+  let validTrips = 0, totalMinutes = 0, totalDistanceKm = 0;
+
+  for (const trip of trips) {
+    if (verifiedOnly && !trip.verified) continue;
+    if (!trip.date || (untilDate && trip.date > untilDate)) continue;
+    if (!trip.segments) continue;
+    validTrips++;
+    if (trip.total_minutes) totalMinutes += trip.total_minutes;
+    for (const seg of trip.segments) {
+      const sl = SERVICE_LINES.find(l => l.id === seg.lineId);
+      if (!sl) continue;
+      const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
+      const toIdx = sl.stations.findIndex(s => s.name === seg.to);
+      if (fromIdx < 0 || toIdx < 0) continue;
+      const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
+      if (!slSet[sl.id]) slSet[sl.id] = new Set();
+      for (let i = a; i <= b; i++) {
+        const name = sl.stations[i].name;
+        slSet[sl.id].add(name);
+        visitedUnique.add(name);
+      }
+      for (let i = a; i < b; i++) {
+        const s1 = sl.stations[i], s2 = sl.stations[i+1];
+        if (s1.lat != null && s2.lat != null) {
+          totalDistanceKm += distMeters(s1.lat, s1.lon, s2.lat, s2.lon) / 1000;
+        }
+      }
+    }
+  }
+
+  let lines = 0, complete = 0;
+  for (const sl of SERVICE_LINES) {
+    const r = slSet[sl.id] ? slSet[sl.id].size : 0;
+    if (r > 0) lines++;
+    if (r === sl.stations.length && sl.stations.length > 0) complete++;
+  }
+
+  return {
+    uniquePct: totalUnique > 0 ? Math.round(visitedUnique.size / totalUnique * 100) : 0,
+    uniqueRidden: visitedUnique.size,
+    totalUnique,
+    lines, totalLines, complete,
+    validTrips, totalMinutes, totalDistanceKm: Math.round(totalDistanceKm),
+  };
+}
+
+function renderMpTimeMachineSection() {
+  const sec = document.getElementById('mp-tm-section');
+  if (!sec) return;
+  sec.innerHTML = '';
+
+  const trips = _mypageCache || [];
+  if (trips.length === 0) {
+    sec.innerHTML = `<div class="mp-empty" style="padding:30px"><div class="mp-empty-ic">🕰</div><div class="mp-empty-t">乗車記録がありません</div><div class="mp-empty-s">タイムマシンは過去の旅程データを使うため、まず地図画面で記録を残してね。</div></div>`;
+    return;
+  }
+
+  // 旅程の最古日 / 最新日
+  const datesArr = trips.filter(t => t.date).map(t => t.date).sort();
+  const minDate = datesArr[0];
+  const maxDate = datesArr[datesArr.length - 1];
+  const today = (typeof localDateStr === 'function') ? localDateStr() : new Date().toISOString().slice(0,10);
+
+  // 初期値
+  if (!_tmDate) _tmDate = today;
+
+  // プリセット候補
+  const presetButtons = [
+    { label: '今日', date: today },
+    { label: '1ヶ月前', date: shiftDate(today, -30) },
+    { label: '3ヶ月前', date: shiftDate(today, -90) },
+    { label: '6ヶ月前', date: shiftDate(today, -182) },
+    { label: '1年前', date: shiftDate(today, -365) },
+    { label: '初回記録日', date: minDate },
+  ];
+
+  const isToday = _tmDate === today;
+  const isFuture = _tmDate > today;
+
+  sec.innerHTML = `
+    <div class="mp-tm-controls">
+      <div class="mp-tm-title">🕰 過去任意日付の状態を再現</div>
+      <div class="mp-tm-date-row">
+        <label class="mp-filter-lbl">📅 日付:</label>
+        <input type="date" id="mp-tm-date" class="auth-input" style="flex:1;max-width:200px" min="${minDate}" max="${today}" value="${_tmDate}" onchange="updateTmDate(this.value)">
+        <button class="mp-tm-go-today" onclick="updateTmDate('${today}')" ${isToday?'disabled':''}>📍 今日に戻す</button>
+      </div>
+      <div class="mp-tm-presets">
+        ${presetButtons.map(p => `<button class="mp-tm-preset${_tmDate === p.date ? ' active' : ''}" onclick="updateTmDate('${p.date}')">${p.label}</button>`).join('')}
+      </div>
+      <div class="mp-tm-context">
+        記録範囲: <strong>${minDate}</strong> 〜 <strong>${maxDate}</strong>
+      </div>
+    </div>
+    <div id="mp-tm-snapshot"></div>
+  `;
+
+  renderMpTimeMachineSnapshot();
+}
+
+function renderMpTimeMachineSnapshot() {
+  const target = document.getElementById('mp-tm-snapshot');
+  if (!target) return;
+  const trips = _mypageCache || [];
+  const today = (typeof localDateStr === 'function') ? localDateStr() : new Date().toISOString().slice(0,10);
+  const sel = _tmDate || today;
+
+  const svPast = computeSnapshotUntil(trips, sel, true);   // 公式 (verified)
+  const allPast = computeSnapshotUntil(trips, sel, false); // 全記録
+  const svNow = computeSnapshotUntil(trips, today, true);
+  const allNow = computeSnapshotUntil(trips, today, false);
+
+  if (!svPast || !allPast) {
+    target.innerHTML = `<div class="mp-empty-s" style="padding:20px">SERVICE_LINES 未構築のためスナップショット計算不可</div>`;
+    return;
+  }
+
+  const isToday = sel === today;
+  const deltaUnique = svNow.uniqueRidden - svPast.uniqueRidden;
+  const deltaLines = svNow.lines - svPast.lines;
+  const deltaComplete = svNow.complete - svPast.complete;
+  const deltaKm = svNow.totalDistanceKm - svPast.totalDistanceKm;
+  const deltaTrips = svNow.validTrips - svPast.validTrips;
+
+  const deltaSection = isToday ? '' : `
+    <div class="mp-tm-delta">
+      <div class="mp-tm-delta-h">🚀 あれから現在 (${today}) までの伸び</div>
+      <div class="mp-tm-delta-grid">
+        <div class="mp-tm-delta-item"><span>+${deltaUnique}</span><label>新規駅 (公式)</label></div>
+        <div class="mp-tm-delta-item"><span>+${deltaLines}</span><label>新規系統</label></div>
+        <div class="mp-tm-delta-item"><span>+${deltaComplete}</span><label>新規完乗</label></div>
+        <div class="mp-tm-delta-item"><span>+${deltaKm.toLocaleString()}</span><label>km</label></div>
+        <div class="mp-tm-delta-item"><span>+${deltaTrips}</span><label>旅程</label></div>
+      </div>
+    </div>
+  `;
+
+  target.innerHTML = `
+    <div class="mp-tm-snap-h">
+      📸 <strong>${sel}</strong> 時点の達成状況${isToday ? ' <span style="color:var(--silver);font-size:11px">(現在)</span>' : ''}
+    </div>
+    <div class="mp-stat-grid">
+      <div class="mp-scard verified">
+        <div class="mp-sc-h">🟢 公式完乗率</div>
+        <div class="mp-sc-sub">verified のみ</div>
+        <div class="mp-sc-pct">${svPast.uniquePct}<span>%</span></div>
+        <div class="mp-sc-detail">${svPast.uniqueRidden.toLocaleString()} / ${svPast.totalUnique.toLocaleString()} 駅</div>
+        <div class="mp-sc-detail">${svPast.lines} / ${svPast.totalLines} 系統 (完乗 ${svPast.complete})</div>
+      </div>
+      <div class="mp-scard all">
+        <div class="mp-sc-h">⚪ 全記録完乗率</div>
+        <div class="mp-sc-sub">manual / suspicious 含む</div>
+        <div class="mp-sc-pct">${allPast.uniquePct}<span>%</span></div>
+        <div class="mp-sc-detail">${allPast.uniqueRidden.toLocaleString()} / ${allPast.totalUnique.toLocaleString()} 駅</div>
+        <div class="mp-sc-detail">${allPast.lines} / ${allPast.totalLines} 系統 (完乗 ${allPast.complete})</div>
+      </div>
+    </div>
+    <div class="mp-prog-summary" style="margin-top:10px">
+      <div>🎫 累計旅程数: <strong>${svPast.validTrips}</strong> 件 (公式 / 全記録 ${allPast.validTrips})</div>
+      <div>📏 累計走行距離: <strong>${svPast.totalDistanceKm.toLocaleString()}</strong> km (公式 / 全記録 ${allPast.totalDistanceKm.toLocaleString()})</div>
+      <div>⏱ 累計乗車時間: <strong>${Math.floor(svPast.totalMinutes/60)}</strong> 時間 ${svPast.totalMinutes%60} 分</div>
+    </div>
+    ${deltaSection}
+  `;
+}
+
+function updateTmDate(date) {
+  _tmDate = date;
+  renderMpTimeMachineSection();  // controls 含めて再描画 (preset active 切替のため)
+}
+window.updateTmDate = updateTmDate;
+window.renderMpTimeMachineSection = renderMpTimeMachineSection;
+
+// 日付シフトヘルパー
+function shiftDate(yyyymmdd, days) {
+  const d = new Date(yyyymmdd + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  if (typeof localDateStr === 'function') return localDateStr(d);
+  return d.toISOString().slice(0, 10);
 }
 
 window.renderMypage = renderMypage;
