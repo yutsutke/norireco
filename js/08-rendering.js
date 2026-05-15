@@ -609,10 +609,11 @@ function drawStationsLayer() {
     const nLines = (ms.lines || []).length;
     if (nLines === 0) continue;
     const baseTier = stationTier(nLines, ms.name);
-    // isolation_rank (0-4): tools/compute_isolation_rank.js でプリ計算
-    // 孤立した田舎駅 (rank 高) を tier 高扱いして早出しする
+    // isolation_rank (0-6): tools/compute_isolation_rank.js でプリ計算
+    // 控えめに boost: rank 5-6 (5km+) の超孤立駅のみ少しだけ早出し
     const isolation = ms.isolation_rank || 0;
-    const tier = Math.max(baseTier, isolation);
+    const isolationBonus = isolation >= 6 ? 2 : isolation >= 5 ? 1 : 0;
+    const tier = Math.min(6, baseTier + isolationBonus);
     const isMetro = isMetroArea(ms.lat, ms.lon);
     const mScale = nLines === 1 ? 1.0 : Math.min(2.5, 1.0 + Math.log2(nLines) * 0.5);
 
