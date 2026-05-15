@@ -231,23 +231,23 @@ function getDotMinTier(z, isMetro) {
       return 99;
     }
   } else {
-    // PC/iPad: もっと早めに駅マーカー表示 (画面広くて性能あるので)
-    // パイチャートも単色ドットもこの同じ閾値で出る (タイミング統一)
+    // PC/iPad: パイチャートも単色ドットも同じ閾値で出る (タイミング統一)
+    // 全体に 1 ズーム遅らせて低ズーム時の密集を回避
     if (isMetro) {
-      if (z >= 12) return 1;  // 全駅
-      if (z >= 11) return 2;
-      if (z >= 10) return 3;
-      if (z >= 9)  return 4;
-      if (z >= 7)  return 5;
+      if (z >= 13) return 1;  // 全駅
+      if (z >= 12) return 2;
+      if (z >= 11) return 3;
+      if (z >= 10) return 4;
+      if (z >= 8)  return 5;
       if (z >= 5)  return 6;
       return 99;
     } else {
       // 地方
-      if (z >= 10) return 1;  // 全駅 (was z>=11)
-      if (z >= 9)  return 2;
-      if (z >= 8)  return 3;
-      if (z >= 7)  return 4;
-      if (z >= 6)  return 5;
+      if (z >= 11) return 1;  // 全駅
+      if (z >= 10) return 2;
+      if (z >= 9)  return 3;
+      if (z >= 8)  return 4;
+      if (z >= 7)  return 5;
       if (z >= 5)  return 6;
       return 99;
     }
