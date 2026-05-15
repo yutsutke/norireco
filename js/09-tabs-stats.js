@@ -2,13 +2,14 @@
 // TABS
 // ══════════════════════════════════════
 function switchTab(n){
-  const tabs=['map','list','stats','mypage'];
-  const panes=['pane-map','pane-list','pane-stats','pane-mypage'];
+  // 旧 'list' / 'stats' は 'mypage' にリダイレクト (タブ集約のため)
+  if(n==='list'||n==='stats')n='mypage';
+  const tabs=['map','mypage'];
+  const panes=['pane-map','pane-mypage'];
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',tabs[i]===n));
-  document.querySelectorAll('.pane').forEach((p,i)=>p.classList.toggle('active',panes[i]===`pane-${n}`));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById(`pane-${n}`)?.classList.add('active');
   if(n==='map'&&map)setTimeout(()=>map.invalidateSize(),50);
-  if(n==='list')renderList();
-  if(n==='stats')renderStats();
   if(n==='mypage'&&typeof renderMypage==='function')renderMypage();
 }
 
@@ -66,9 +67,13 @@ async function renderStats(){
     </div>`;
   c.appendChild(tripSection);
 
-  // Supabaseから統計を非同期取得
-  fetch(`${SUPABASE_URL}/rest/v1/norireco_trips?select=*`, {
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+  // Supabaseから統計を非同期取得 — ログイン中なら自分のデータのみ
+  const _uid = (typeof currentUserId === 'function') ? currentUserId() : null;
+  const _statsUrl = _uid
+    ? `${SUPABASE_URL}/rest/v1/norireco_trips?select=*&user_id=eq.${_uid}`
+    : `${SUPABASE_URL}/rest/v1/norireco_trips?select=*`;
+  fetch(_statsUrl, {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${typeof authBearerToken==='function'?authBearerToken():SUPABASE_KEY}` }
   }).then(r => r.json()).then(trips => {
     const totalTrips = trips.length;
     const totalStations = trips.reduce((s,t) => s + (t.total_stations||0), 0);

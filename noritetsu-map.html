@@ -833,8 +833,6 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 </div>
 <div class="tabs">
   <button class="tab active" onclick="switchTab('map')">🗾 地図</button>
-  <button class="tab" onclick="switchTab('list')">📋 路線一覧</button>
-  <button class="tab" onclick="switchTab('stats')">📊 統計</button>
   <button class="tab" onclick="switchTab('mypage')">👤 マイページ</button>
 </div>
 <div class="content">
@@ -981,9 +979,12 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
     <button class="btn-cls" onclick="closeRestoreModal()">閉じる</button>
   </div>
 </div>
-  <div class="pane" id="pane-list"><div class="pane-inner" id="list-content"></div></div>
-  <div class="pane" id="pane-stats"><div class="pane-inner" id="stats-content"></div></div>
-  <div class="pane" id="pane-mypage"><div class="pane-inner" id="mypage-content"></div></div>
+  <div class="pane" id="pane-mypage">
+    <div class="pane-inner" id="mypage-content"></div>
+    <!-- 統計・路線一覧の既存レンダラ書き込み先 (マイページ内のサブセクション) -->
+    <div class="pane-inner" id="stats-content" style="border-top:1px solid var(--track);margin-top:8px;"></div>
+    <div class="pane-inner" id="list-content" style="border-top:1px solid var(--track);margin-top:8px;"></div>
+  </div>
 </div>
 
 <!-- Memo Modal -->

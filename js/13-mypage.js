@@ -12,6 +12,13 @@ async function renderMypage() {
   if (!c) return;
   c.innerHTML = '';
 
+  // 既存の 統計 + 路線一覧 セクション (#stats-content / #list-content) も最後にレンダリングする
+  // → これらは「自分の旅程」由来の集計なのでマイページ配下に集約する設計
+  setTimeout(() => {
+    try { if (typeof renderStats === 'function') renderStats(); } catch(e) { console.warn('[マイページ] renderStats:', e); }
+    try { if (typeof renderList === 'function') renderList(); } catch(e) { console.warn('[マイページ] renderList:', e); }
+  }, 50);
+
   // 未ログイン
   const uid = (typeof currentUserId === 'function') ? currentUserId() : null;
   if (!uid) {
