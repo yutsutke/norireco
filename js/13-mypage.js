@@ -149,18 +149,18 @@ function buildCompletionCards(trips) {
 
   wrap.innerHTML = `
     <div class="mp-stat-grid">
-      <div class="mp-scard verified">
+      <div class="mp-scard verified" title="公式完乗率: GPS 認証された旅程のみで集計\n分母は営業系統ごとに駅をカウント (同じ駅が複数系統に属する場合は各々で 1 駅)">
         <div class="mp-sc-h">🟢 公式完乗率</div>
         <div class="mp-sc-sub">verified のみ</div>
         <div class="mp-sc-pct">${sv.pct}<span>%</span></div>
-        <div class="mp-sc-detail">${sv.ridden} / ${sv.stations} 駅</div>
+        <div class="mp-sc-detail">${sv.ridden} / ${sv.stations} 駅 <span style="opacity:.6;font-size:9px">(系統単位)</span></div>
         <div class="mp-sc-detail">${sv.lines} 系統 (完乗 ${sv.complete})</div>
       </div>
-      <div class="mp-scard all">
+      <div class="mp-scard all" title="全記録完乗率: manual / suspicious を含む全旅程で集計\n分母は営業系統ごとに駅をカウント">
         <div class="mp-sc-h">⚪ 全記録完乗率</div>
         <div class="mp-sc-sub">manual / suspicious 含む</div>
         <div class="mp-sc-pct">${all.pct}<span>%</span></div>
-        <div class="mp-sc-detail">${all.ridden} / ${all.stations} 駅</div>
+        <div class="mp-sc-detail">${all.ridden} / ${all.stations} 駅 <span style="opacity:.6;font-size:9px">(系統単位)</span></div>
         <div class="mp-sc-detail">${all.lines} 系統 (完乗 ${all.complete})</div>
       </div>
     </div>

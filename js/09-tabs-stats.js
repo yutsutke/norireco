@@ -48,20 +48,12 @@ async function renderList(){
 async function renderStats(){
   const c=document.getElementById('stats-content');c.innerHTML='';
   await buildServiceLines();
-  const gs=slGlobalStats();
-  const totalLines = SERVICE_LINES.length;
 
-  // ── 乗りつぶし進捗 ──
-  const g=document.createElement('div');g.className='stat-grid';
-  g.innerHTML=`
-    <div class="scard"><div class="sc-l">全体達成率</div><div class="sc-v">${gs.pct}<span class="sc-u">%</span></div><div class="sc-s">${gs.rt}/${gs.ts}駅</div></div>
-    <div class="scard"><div class="sc-l">乗車系統数</div><div class="sc-v">${gs.la}<span class="sc-u">/${totalLines}</span></div><div class="sc-s">完乗: ${gs.ld}系統</div></div>
-  `;
-  c.appendChild(g);
+  // 完乗率カードはマイページ上部に常時表示されるため、ここでは活動量メトリクスのみ
 
   // ── Supabaseからの旅程統計（非同期） ──
   const tripSection = document.createElement('div');
-  tripSection.innerHTML = `<div class="sec-lbl">旅程統計 <span style="font-size:9px;color:var(--silver)">☁️ Supabase</span></div>
+  tripSection.innerHTML = `<div class="sec-lbl">活動量 <span style="font-size:9px;color:var(--silver)">☁️ Supabase</span></div>
     <div class="stat-grid" id="trip-stat-grid">
       <div class="scard"><div class="sc-l">読み込み中...</div><div class="sc-v" style="font-size:14px">...</div></div>
     </div>`;
@@ -94,7 +86,7 @@ async function renderStats(){
     if (!grid) return;
     grid.innerHTML = `
       <div class="scard"><div class="sc-l">総旅程数</div><div class="sc-v">${totalTrips}<span class="sc-u">回</span></div></div>
-      <div class="scard"><div class="sc-l">総乗車駅数</div><div class="sc-v">${totalStations}<span class="sc-u">駅</span></div></div>
+      <div class="scard" title="同じ駅を複数回通過した場合は都度カウント (重複あり)"><div class="sc-l">延べ乗車駅数</div><div class="sc-v">${totalStations}<span class="sc-u">駅</span></div><div class="sc-s" style="font-size:8px;color:var(--silver);opacity:.7">重複含む</div></div>
       <div class="scard"><div class="sc-l">総乗換回数</div><div class="sc-v">${totalTransfers}<span class="sc-u">回</span></div></div>
       <div class="scard"><div class="sc-l">総乗車時間</div><div class="sc-v">${Math.floor(totalMinutes/60)}<span class="sc-u">時間</span>${totalMinutes%60}<span class="sc-u">分</span></div></div>
     `;
