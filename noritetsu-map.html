@@ -530,6 +530,15 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mp-st-tl-count{text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);font-weight:600;}
 .mp-st-tl-bar{height:4px;background:rgba(46,74,99,.35);border-radius:2px;overflow:hidden;margin-top:3px;}
 .mp-st-tl-fill{height:100%;background:linear-gradient(90deg,var(--gold),#ffd44d);}
+
+/* 時間帯×曜日ヒートマップ */
+.mp-hm-wrap{overflow-x:auto;}
+.mp-hm-grid{display:grid;grid-template-columns:32px repeat(24, 1fr);gap:1px;background:var(--navy);padding:6px;border-radius:6px;min-width:520px;}
+.mp-hm-corner{}
+.mp-hm-hr{font-size:8px;color:var(--silver);text-align:center;font-family:'DM Mono',monospace;}
+.mp-hm-dow{font-size:9px;color:var(--silver);text-align:right;padding-right:4px;line-height:14px;display:flex;align-items:center;justify-content:flex-end;}
+.mp-hm-dow.weekend{color:var(--red);}
+.mp-hm-cell{height:14px;background:rgba(232,53,42,0);border-radius:1px;border:1px solid rgba(46,74,99,.2);}
 .mp-tip{font-size:9px;color:var(--silver);padding:6px 4px;margin-bottom:8px;line-height:1.5;}
 
 .mp-trip-wrap{padding:0 12px 80px;}

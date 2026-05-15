@@ -340,6 +340,74 @@ function buildDetailContent(pane, sv, all, trips, totalUnique, totalLines) {
     buildStationTimeline(trips),
     `自分が訪問した駅を <strong>訪問回数の多い順</strong> に Top 50 表示。<br>各駅に <strong>初回訪問日</strong>・<strong>最新訪問日</strong> を併記。<br>ホーム駅・通勤通学最寄駅・乗換駅などが上位に来やすい。「初めて◯◯駅に行ったのはいつ?」が振り返れる。<br>※ 経路上の通過駅も含む (segment 内の中間駅もカウント)。`
   ));
+
+  // ⑭ 時間帯×曜日ヒートマップ
+  pane.appendChild(detailCard('🗓 利用パターン (曜日×時間帯)',
+    buildTimeHeatmap(trips),
+    `<strong>出発時刻</strong>を曜日 × 時間帯のヒートマップで可視化。色が濃いほど利用回数が多い。<br>通勤時間帯 (平日 7-9 時) や休日のお出かけパターンが一目でわかる。<br>Strava の活動傾向グラフを駅版に応用。`
+  ));
+}
+
+// ── 時間帯×曜日ヒートマップ ────────────────────────────────
+function buildTimeHeatmap(trips) {
+  // 7 曜日 × 24 時間
+  const grid = Array.from({length: 7}, () => Array(24).fill(0));
+  const dowNames = ['日','月','火','水','木','金','土'];
+
+  let total = 0;
+  for (const t of trips) {
+    if (!t.date || !t.depart_time) continue;
+    const d = new Date(t.date + 'T00:00:00');
+    if (isNaN(d.getTime())) continue;
+    const dow = d.getDay();
+    const hour = parseInt(t.depart_time.slice(0, 2), 10);
+    if (isNaN(hour) || hour < 0 || hour > 23) continue;
+    grid[dow][hour]++;
+    total++;
+  }
+
+  if (total === 0) return '<div class="mp-empty-s">depart_time 付き旅程がありません</div>';
+
+  // 最大値 (色強度の基準)
+  let max = 0;
+  for (let d = 0; d < 7; d++) for (let h = 0; h < 24; h++) if (grid[d][h] > max) max = grid[d][h];
+
+  // 平日朝 / 休日 のサマリ
+  let weekdayMorning = 0, weekendDay = 0;
+  for (let d = 1; d <= 5; d++) for (let h = 6; h < 10; h++) weekdayMorning += grid[d][h];
+  for (let d of [0, 6]) for (let h = 9; h < 18; h++) weekendDay += grid[d][h];
+
+  // ピーク時間帯
+  let peakDow = 0, peakHour = 0, peakVal = 0;
+  for (let d = 0; d < 7; d++) for (let h = 0; h < 24; h++) {
+    if (grid[d][h] > peakVal) { peakVal = grid[d][h]; peakDow = d; peakHour = h; }
+  }
+
+  // ヒートマップ描画 (横: 時間 0-23, 縦: 曜日 日-土)
+  let html = '<div class="mp-hm-wrap">';
+  html += '<div class="mp-hm-grid">';
+  html += '<div class="mp-hm-corner"></div>';
+  for (let h = 0; h < 24; h++) {
+    html += `<div class="mp-hm-hr">${h%3===0?h:''}</div>`;
+  }
+  for (let d = 0; d < 7; d++) {
+    html += `<div class="mp-hm-dow${d===0||d===6?' weekend':''}">${dowNames[d]}</div>`;
+    for (let h = 0; h < 24; h++) {
+      const v = grid[d][h];
+      const intensity = max > 0 ? v / max : 0;
+      const opacity = v > 0 ? (0.15 + 0.85 * intensity) : 0;
+      const title = v > 0 ? `${dowNames[d]}曜 ${h}時台: ${v} 件` : '';
+      html += `<div class="mp-hm-cell" style="background:rgba(232,53,42,${opacity})" title="${title}"></div>`;
+    }
+  }
+  html += '</div>';
+  html += `<div class="mp-prog-summary">
+    <div>🔥 ピーク: <strong>${dowNames[peakDow]}曜 ${peakHour}時台</strong> (${peakVal} 件)</div>
+    <div>💼 平日朝 (6-10時): <strong>${weekdayMorning}</strong> 件</div>
+    <div>🎒 休日昼 (9-18時): <strong>${weekendDay}</strong> 件</div>
+  </div>`;
+  html += '</div>';
+  return html;
 }
 
 // ── 駅タイムライン (初回/最新訪問日 + 訪問回数 Top 50) ─────
