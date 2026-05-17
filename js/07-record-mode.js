@@ -394,6 +394,12 @@ function openRecConfirm() {
       timeSec.style.display = 'none';
     } else {
       timeSec.style.display = '';
+      // 精度セレクタは minute (正確な時刻) で初期化
+      const precSel = document.getElementById('rec-edit-precision');
+      if (precSel) precSel.value = 'minute';
+      // 年/月セレクタを populate
+      _populateRecEditYearMonth();
+      // minute 用の入力初期値
       const dateInp = document.getElementById('rec-edit-date');
       const depInp = document.getElementById('rec-edit-depart');
       const arrInp = document.getElementById('rec-edit-arrive');
@@ -411,6 +417,8 @@ function openRecConfirm() {
         const ed = new Date(endTs);
         arrInp.value = ed.toTimeString().slice(0,5);
       }
+      // 行の表示状態をデフォルト (minute) に
+      onRecEditPrecisionChange();
     }
   }
   document.getElementById('rec-confirm-modal')?.classList.add('open');
@@ -444,6 +452,56 @@ window.openRecConfirm = openRecConfirm;
 window.closeRecConfirm = closeRecConfirm;
 window.confirmAndSaveRecord = confirmAndSaveRecord;
 window.discardRecord = discardRecord;
+
+// 乗車日時編集セクション — 精度セレクタによる表示切替 / 年月セレクタ populate
+function onRecEditPrecisionChange() {
+  const sel = document.getElementById('rec-edit-precision');
+  if (!sel) return;
+  const v = sel.value;
+  const set = (id, show) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = show ? '' : 'none';
+  };
+  set('rec-edit-date-row',    v === 'minute' || v === 'day');
+  set('rec-edit-time-row',    v === 'minute');
+  set('rec-edit-month-row',   v === 'month');
+  set('rec-edit-year-row',    v === 'year');
+  set('rec-edit-unknown-row', v === 'unknown');
+}
+window.onRecEditPrecisionChange = onRecEditPrecisionChange;
+
+// 年/月 セレクタを過去 20 年で populate (一度だけ)
+function _populateRecEditYearMonth() {
+  const now = new Date();
+  const curY = now.getFullYear();
+  const startY = curY - 20;
+  const populateYear = (id) => {
+    const sel = document.getElementById(id);
+    if (!sel || sel.options.length > 0) return;
+    for (let y = curY; y >= startY; y--) {
+      const o = document.createElement('option');
+      o.value = String(y); o.textContent = String(y);
+      sel.appendChild(o);
+    }
+  };
+  populateYear('rec-edit-year-m');
+  populateYear('rec-edit-year-y');
+  const mSel = document.getElementById('rec-edit-month-m');
+  if (mSel && mSel.options.length === 0) {
+    for (let m = 1; m <= 12; m++) {
+      const o = document.createElement('option');
+      o.value = String(m).padStart(2,'0'); o.textContent = String(m);
+      mSel.appendChild(o);
+    }
+  }
+  // デフォルト: 今年・今月
+  const yM = document.getElementById('rec-edit-year-m');
+  const mM = document.getElementById('rec-edit-month-m');
+  const yY = document.getElementById('rec-edit-year-y');
+  if (yM && !yM.value) yM.value = String(curY);
+  if (mM && !mM.value) mM.value = String(now.getMonth()+1).padStart(2,'0');
+  if (yY && !yY.value) yY.value = String(curY);
+}
 
 // ─ 「📍 ここで終了 (GPS)」: 現在地から終点駅を選んで確認モーダルへ ─
 let endStationCandidates = [];
@@ -605,30 +663,54 @@ async function saveMultiSegmentTrip() {
       totalMinutes = Math.max(0, Math.round((endDate - startDate) / 60000));
     }
   }
-  // 手動記録: ユーザーが時刻編集セクションで入力した値があれば上書き
+  // 手動記録: 精度セレクタで選んだ粒度に応じて trip フィールドを構築
   // (GPS 記録は実時刻が正確なので上書きしない)
   let datePrecision = 'day';
   if (!recordStartedViaGPS) {
-    const editDate = document.getElementById('rec-edit-date')?.value;
-    const editDep = document.getElementById('rec-edit-depart')?.value;
-    const editArr = document.getElementById('rec-edit-arrive')?.value;
-    if (editDate) tripDate = editDate;
-    if (editDep) {
-      departTime = `${editDep}:00`;
-      datePrecision = 'minute';
-    }
-    if (editArr) {
-      arriveTime = `${editArr}:00`;
-      datePrecision = 'minute';
-    }
-    // 出発・到着両方入力されたら所要分を再計算 (日跨ぎ補正)
-    if (editDep && editArr) {
-      const [dh,dm] = editDep.split(':').map(Number);
-      const [ah,am] = editArr.split(':').map(Number);
-      let diff = (ah*60+am) - (dh*60+dm);
-      if (diff < 0) diff += 24*60; // 日跨ぎ
-      totalMinutes = diff;
-      elapsedSec = diff * 60;
+    const prec = document.getElementById('rec-edit-precision')?.value || 'minute';
+    if (prec === 'minute') {
+      const editDate = document.getElementById('rec-edit-date')?.value;
+      const editDep = document.getElementById('rec-edit-depart')?.value;
+      const editArr = document.getElementById('rec-edit-arrive')?.value;
+      if (editDate) tripDate = editDate;
+      if (editDep) departTime = `${editDep}:00`;
+      if (editArr) arriveTime = `${editArr}:00`;
+      datePrecision = (editDep || editArr) ? 'minute' : 'day';
+      // 出発・到着両方入力されたら所要分を再計算 (日跨ぎ補正)
+      if (editDep && editArr) {
+        const [dh,dm] = editDep.split(':').map(Number);
+        const [ah,am] = editArr.split(':').map(Number);
+        let diff = (ah*60+am) - (dh*60+dm);
+        if (diff < 0) diff += 24*60;
+        totalMinutes = diff;
+        elapsedSec = diff * 60;
+      }
+    } else if (prec === 'day') {
+      const editDate = document.getElementById('rec-edit-date')?.value;
+      if (editDate) tripDate = editDate;
+      departTime = ''; arriveTime = ''; totalMinutes = 0; elapsedSec = 0;
+      datePrecision = 'day';
+    } else if (prec === 'month') {
+      const y = document.getElementById('rec-edit-year-m')?.value;
+      const m = document.getElementById('rec-edit-month-m')?.value;
+      if (y && m) {
+        tripDate = `${y}-${m}-01`;
+        departTime = ''; arriveTime = ''; totalMinutes = 0; elapsedSec = 0;
+        datePrecision = 'month';
+      }
+    } else if (prec === 'year') {
+      const y = document.getElementById('rec-edit-year-y')?.value;
+      if (y) {
+        tripDate = `${y}-01-01`;
+        departTime = ''; arriveTime = ''; totalMinutes = 0; elapsedSec = 0;
+        datePrecision = 'year';
+      }
+    } else if (prec === 'unknown') {
+      // 日時不明: date を null にすると Supabase の NOT NULL 制約で失敗するため、
+      // 保存日 (recorded_at の日付) を入れておく。フィルタは date_precision='unknown' で別途除外
+      tripDate = today;
+      departTime = ''; arriveTime = ''; totalMinutes = 0; elapsedSec = 0;
+      datePrecision = 'unknown';
     }
   }
   const tripId = `trip_${Date.now()}`;

@@ -1554,11 +1554,27 @@ function buildTripList(trips) {
       badge = '<span class="mp-badge suspicious" title="不正検知で降格">🟡 要確認</span>';
     }
 
-    const timeStr = (trip.depart_time && trip.arrive_time)
-      ? `${trip.depart_time.slice(0,5)}〜${trip.arrive_time.slice(0,5)}${trip.total_minutes ? ` (${trip.total_minutes}分)` : ''}`
+    // 乗車日時を date_precision に応じて整形
+    const prec = trip.date_precision || 'day';
+    let displayDate, timeStr = '';
+    if (prec === 'unknown' || !trip.date) {
+      displayDate = '日時不明';
+    } else if (prec === 'year') {
+      displayDate = `${trip.date.slice(0,4)}年ごろ`;
+    } else if (prec === 'month') {
+      displayDate = `${trip.date.slice(0,4)}年${parseInt(trip.date.slice(5,7),10)}月ごろ`;
+    } else {
+      displayDate = trip.date;
+      if (prec === 'minute' && trip.depart_time && trip.arrive_time) {
+        timeStr = `${trip.depart_time.slice(0,5)}〜${trip.arrive_time.slice(0,5)}${trip.total_minutes ? ` (${trip.total_minutes}分)` : ''}`;
+      }
+    }
+    const precBadge = (prec === 'year' || prec === 'month' || prec === 'unknown')
+      ? `<span class="mp-badge fuzzy" title="日付の精度: ${prec}">${prec === 'unknown' ? '❓' : '〜'}</span>`
       : '';
 
     // 記録した日 (recorded_at) と 乗車日 (date) の差分で「後追い記録」判定
+    // unknown / year / month の場合も recorded_at と date が違えば後追い扱い
     let recordedAtStr = '';
     let isAfterTheFact = false;
     if (trip.recorded_at) {
@@ -1567,7 +1583,11 @@ function buildTripList(trips) {
         const ymd = `${rd.getFullYear()}-${String(rd.getMonth()+1).padStart(2,'0')}-${String(rd.getDate()).padStart(2,'0')}`;
         const hm = rd.toTimeString().slice(0,5);
         recordedAtStr = `${ymd} ${hm}`;
-        if (trip.date && ymd !== trip.date) isAfterTheFact = true;
+        if (prec === 'unknown') {
+          isAfterTheFact = true;  // 日時不明 = 確実に後追い
+        } else if (trip.date && ymd !== trip.date) {
+          isAfterTheFact = true;
+        }
       } catch(e) {}
     }
     const afterTheFactBadge = isAfterTheFact
@@ -1589,7 +1609,8 @@ function buildTripList(trips) {
 
     card.innerHTML = `
       <div class="mp-tcard-head">
-        <span class="mp-tcard-date">${trip.date || ''}</span>
+        <span class="mp-tcard-date">${displayDate}</span>
+        ${precBadge}
         ${timeStr ? `<span class="mp-tcard-time">${timeStr}</span>` : ''}
         ${badge}
         ${afterTheFactBadge}

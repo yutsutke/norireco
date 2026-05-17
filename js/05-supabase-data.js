@@ -136,6 +136,8 @@ function filterTripsByDate(trips) {
   else if (f.mode === 'custom') { fromStr = f.from || '0000-01-01'; toStr = f.to || '9999-12-31'; }
   else return trips;
   return trips.filter(t => {
+    // 日時不明 (date_precision='unknown') は specific フィルタから除外 (all のみで表示)
+    if (t.date_precision === 'unknown') return false;
     const d = (t.date || '').slice(0, 10);
     return d && d >= fromStr && d <= toStr;
   });
