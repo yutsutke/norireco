@@ -1124,7 +1124,7 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
       <input id="rec-car-model-custom" type="text" oninput="onCarModelCustomInput()" placeholder="例: 209系2000番台、ED75、キハ110系 など"
               style="display:none;width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--gold);border-radius:6px;font-size:12px;margin-bottom:6px;box-sizing:border-box" />
     </div>
-    <button class="btn-gen" onclick="confirmAndSaveRecord()">💾 保存する</button>
+    <button class="btn-gen" id="rec-confirm-save-btn" onclick="confirmAndSaveRecord()">💾 手動記録で保存する</button>
     <button class="btn-cls" onclick="closeRecConfirm()">✏️ 戻って編集する</button>
     <button class="btn-discard" onclick="discardRecord()">❌ 破棄する</button>
   </div>

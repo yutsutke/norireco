@@ -380,6 +380,13 @@ function openRecConfirm() {
       </div>
     `;
   }
+  // 保存ボタンのラベルを記録種別に応じて切替
+  const saveBtn = document.getElementById('rec-confirm-save-btn');
+  if (saveBtn) {
+    saveBtn.textContent = recordStartedViaGPS
+      ? '💾 GPS 記録で保存する'
+      : '💾 手動記録で保存する';
+  }
   document.getElementById('rec-confirm-modal')?.classList.add('open');
   // 列車セレクタをリセット (前回の選択を持ち越さない)
   resetTrainSelector();
