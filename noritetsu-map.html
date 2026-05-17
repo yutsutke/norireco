@@ -1152,25 +1152,25 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
       <!-- minute / day モード -->
       <div id="rec-edit-date-row" style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
         <label style="font-size:10px;color:var(--silver);min-width:40px">📅 乗車日</label>
-        <input type="date" id="rec-edit-date" style="flex:1;min-width:140px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
+        <input type="date" id="rec-edit-date" oninput="updateRecConfirmTimeRow()" style="flex:1;min-width:140px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
       </div>
       <!-- minute モードのみ -->
       <div id="rec-edit-time-row" style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
         <label style="font-size:10px;color:var(--silver);min-width:40px">🕐 出発</label>
-        <input type="time" id="rec-edit-depart" style="flex:1;min-width:110px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
+        <input type="time" id="rec-edit-depart" oninput="updateRecConfirmTimeRow()" style="flex:1;min-width:110px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
         <label style="font-size:10px;color:var(--silver);min-width:40px">🕑 到着</label>
-        <input type="time" id="rec-edit-arrive" style="flex:1;min-width:110px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
+        <input type="time" id="rec-edit-arrive" oninput="updateRecConfirmTimeRow()" style="flex:1;min-width:110px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
       </div>
       <!-- month モード -->
       <div id="rec-edit-month-row" style="display:none;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
         <label style="font-size:10px;color:var(--silver);min-width:40px">🗓 年月</label>
-        <select id="rec-edit-year-m" style="background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-size:12px"></select>年
-        <select id="rec-edit-month-m" style="background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-size:12px"></select>月
+        <select id="rec-edit-year-m" onchange="updateRecConfirmTimeRow()" style="background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-size:12px"></select>年
+        <select id="rec-edit-month-m" onchange="updateRecConfirmTimeRow()" style="background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-size:12px"></select>月
       </div>
       <!-- year モード -->
       <div id="rec-edit-year-row" style="display:none;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
         <label style="font-size:10px;color:var(--silver);min-width:40px">📆 年</label>
-        <select id="rec-edit-year-y" style="background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-size:12px"></select>年
+        <select id="rec-edit-year-y" onchange="updateRecConfirmTimeRow()" style="background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-size:12px"></select>年
       </div>
       <!-- unknown モード -->
       <div id="rec-edit-unknown-row" style="display:none;padding:8px 10px;background:rgba(95,181,255,.08);border-left:3px solid #5fb5ff;border-radius:0 6px 6px 0;font-size:11px;color:var(--silver);line-height:1.5">

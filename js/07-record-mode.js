@@ -304,23 +304,15 @@ function openRecConfirm() {
     ? '<span class="rec-confirm-verified-badge">🟢 GPS 記録</span>'
     : '<span class="rec-confirm-verified-badge" style="background:rgba(140,160,179,.15);color:var(--silver);border-color:var(--track)">⚪ 手動記録</span>';
 
-  // 時刻情報 (depart_time / arrive_time / total_minutes プレビュー)
-  // GPS 経由なら recordStartGPS.timestamp、それ以外でも記録モード突入時刻 (recordStartedAt) を使う
+  // 時刻情報行 (depart_time / arrive_time / total_minutes プレビュー)
+  // GPS 経由なら recordStartGPS.timestamp、それ以外は手動入力の精度に応じて更新される
   const startTs = (recordStartGPS && recordStartGPS.timestamp) || recordStartedAt;
-  let timeRowHtml = '';
-  if (startTs) {
-    const startDate = new Date(startTs);
-    const startStr = startDate.toTimeString().slice(0, 5); // HH:MM
-    const endDate = recordEndTime ? new Date(recordEndTime) : new Date();
-    const endStr = endDate.toTimeString().slice(0, 5);
-    const mins = Math.max(0, Math.round((endDate - startDate) / 60000));
-    timeRowHtml = `
-      <div class="rec-confirm-stat-row">
-        <span class="rec-confirm-stat-lbl">🕒 時刻</span>
-        <span class="rec-confirm-stat-val">${startStr} → ${endStr} (${mins}分)</span>
-      </div>
-    `;
-  }
+  // プレースホルダのみ作成 (中身は updateRecConfirmTimeRow が埋める)
+  // openRecConfirm の末尾で精度に応じて中身が動的に書き換わる
+  const timeRowHtml = `<div class="rec-confirm-stat-row" id="rec-confirm-time-row" style="display:none">
+      <span class="rec-confirm-stat-lbl" id="rec-confirm-time-lbl">🕒 時刻</span>
+      <span class="rec-confirm-stat-val" id="rec-confirm-time-val"></span>
+    </div>`;
 
   if (isVisitOnly) {
     // 1駅のみ「訪問」記録
@@ -421,6 +413,8 @@ function openRecConfirm() {
       onRecEditPrecisionChange();
     }
   }
+  // 確認モーダル上部の 🕒 時刻行を確実に更新 (GPS 記録は実時刻、手動はプレースホルダ非表示)
+  updateRecConfirmTimeRow();
   document.getElementById('rec-confirm-modal')?.classList.add('open');
   // 列車セレクタをリセット (前回の選択を持ち越さない)
   resetTrainSelector();
@@ -467,8 +461,83 @@ function onRecEditPrecisionChange() {
   set('rec-edit-month-row',   v === 'month');
   set('rec-edit-year-row',    v === 'year');
   set('rec-edit-unknown-row', v === 'unknown');
+  // 確認モーダル上部の 🕒 時刻行も精度に合わせて更新
+  updateRecConfirmTimeRow();
 }
 window.onRecEditPrecisionChange = onRecEditPrecisionChange;
+
+// 確認モーダル上部の 🕒 時刻行を、記録種別 + 精度 + 入力値に応じて書き換え
+function updateRecConfirmTimeRow() {
+  const row = document.getElementById('rec-confirm-time-row');
+  const lbl = document.getElementById('rec-confirm-time-lbl');
+  const val = document.getElementById('rec-confirm-time-val');
+  if (!row || !lbl || !val) return;
+
+  // GPS 記録: 実 GPS 時刻を表示
+  if (recordStartedViaGPS) {
+    const startTs = (recordStartGPS && recordStartGPS.timestamp) || recordStartedAt;
+    if (!startTs) { row.style.display = 'none'; return; }
+    const sd = new Date(startTs);
+    const ed = recordEndTime ? new Date(recordEndTime) : new Date();
+    const mins = Math.max(0, Math.round((ed - sd) / 60000));
+    lbl.textContent = '🕒 乗車時刻';
+    val.textContent = `${sd.toTimeString().slice(0,5)} → ${ed.toTimeString().slice(0,5)} (${mins}分)`;
+    row.style.display = '';
+    return;
+  }
+
+  // 手動記録: 精度セレクタの値に応じて表現を変える
+  const prec = document.getElementById('rec-edit-precision')?.value || 'minute';
+  if (prec === 'minute') {
+    const dep = document.getElementById('rec-edit-depart')?.value;
+    const arr = document.getElementById('rec-edit-arrive')?.value;
+    const date = document.getElementById('rec-edit-date')?.value;
+    if (dep && arr) {
+      const [dh,dm] = dep.split(':').map(Number);
+      const [ah,am] = arr.split(':').map(Number);
+      let diff = (ah*60+am) - (dh*60+dm);
+      if (diff < 0) diff += 24*60;
+      lbl.textContent = '🕒 乗車時刻';
+      val.textContent = `${date || ''} ${dep} → ${arr} (${diff}分)`;
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  } else if (prec === 'day') {
+    const date = document.getElementById('rec-edit-date')?.value;
+    if (date) {
+      lbl.textContent = '📅 乗車日';
+      val.textContent = date;
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  } else if (prec === 'month') {
+    const y = document.getElementById('rec-edit-year-m')?.value;
+    const m = document.getElementById('rec-edit-month-m')?.value;
+    if (y && m) {
+      lbl.textContent = '🗓 乗車月';
+      val.textContent = `${y}年${parseInt(m,10)}月ごろ`;
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  } else if (prec === 'year') {
+    const y = document.getElementById('rec-edit-year-y')?.value;
+    if (y) {
+      lbl.textContent = '📆 乗車年';
+      val.textContent = `${y}年ごろ`;
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  } else if (prec === 'unknown') {
+    lbl.textContent = '❓ 日時';
+    val.textContent = '不明（記録時刻のみ保存）';
+    row.style.display = '';
+  }
+}
+window.updateRecConfirmTimeRow = updateRecConfirmTimeRow;
 
 // 年/月 セレクタを過去 20 年で populate (一度だけ)
 function _populateRecEditYearMonth() {
