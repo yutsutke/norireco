@@ -32794,12 +32794,12 @@
         },
         {
           "order": 5,
-          "name": "飯能",
+          "name": "東飯能",
           "n02_match": true
         },
         {
           "order": 6,
-          "name": "東飯能",
+          "name": "飯能",
           "n02_match": true
         },
         {
@@ -44170,7 +44170,7 @@
       "id": "auto_駿豆線_伊豆箱根鉄道",
       "name": "駿豆線",
       "operator": "伊豆箱根鉄道",
-      "operator_id": "op_______",
+      "operator_id": "izuhakone",
       "color": "hsl(88, 60%, 55%)",
       "official_line": "駿豆線",
       "alias": [],
@@ -44252,7 +44252,7 @@
       "id": "auto_大雄山線_伊豆箱根鉄道",
       "name": "大雄山線",
       "operator": "伊豆箱根鉄道",
-      "operator_id": "op_______",
+      "operator_id": "izuhakone",
       "color": "hsl(156, 60%, 55%)",
       "official_line": "大雄山線",
       "alias": [],
@@ -55443,9 +55443,9 @@
     },
     {
       "id": "auto_鋼索線_小田急箱根",
-      "name": "鋼索線",
+      "name": "箱根登山ケーブルカー",
       "operator": "小田急箱根",
-      "operator_id": "op______",
+      "operator_id": "hakone_tozan",
       "color": "hsl(291, 60%, 55%)",
       "official_line": "鋼索線",
       "alias": [],
@@ -55490,9 +55490,9 @@
     },
     {
       "id": "auto_鉄道線_小田急箱根",
-      "name": "鉄道線",
+      "name": "箱根登山電車",
       "operator": "小田急箱根",
-      "operator_id": "op______",
+      "operator_id": "hakone_tozan",
       "color": "hsl(176, 60%, 55%)",
       "official_line": "鉄道線",
       "alias": [],
