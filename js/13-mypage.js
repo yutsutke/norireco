@@ -347,7 +347,7 @@ function buildDetailContent(pane, sv, all, trips, totalUnique, totalLines) {
   // ⑦ 認証ステータス分布
   pane.appendChild(detailCard('認証ステータス分布',
     buildAuthBreakdown(trips),
-    `自分の全旅程を 🟢 公式 (GPS 認証) / 🟡 要確認 (不正検知で降格) / ⚪ 自己申告 (manual) で分類。シェア機能 (将来) は 🟢 公式のみ対象になる予定。`
+    `自分の全旅程を 🟢 GPS 記録 (GPS 認証) / 🟡 要確認 (不正検知で降格) / ⚪ 手動記録 (manual) で分類。シェア機能 (将来) は 🟢 GPS 記録のみ対象になる予定。`
   ));
 
   // ⑧ 累計駅数の推移 (月別)
@@ -365,7 +365,7 @@ function buildDetailContent(pane, sv, all, trips, totalUnique, totalLines) {
   // ⑩ 都道府県別 訪問駅数 (公式ベース)
   pane.appendChild(detailCard('都道府県別 訪問駅数 (公式)',
     buildPrefectureChart(sv),
-    `47 都道府県ごとに <strong>自分が訪問した駅数 / その県の全駅数</strong> を集計。<em>verified (GPS認証) のみ</em> 対象。<br>判定は駅座標 (緯度経度) からの簡易 bbox + centroid 最近接で行うため、県境付近の数駅は誤分類されることがある。乗りつぶしオンライン・鉄レコの定番機能の簡易版。`
+    `47 都道府県ごとに <strong>自分が訪問した駅数 / その県の全駅数</strong> を集計。<em>verified (GPS 記録) のみ</em> 対象。<br>判定は駅座標 (緯度経度) からの簡易 bbox + centroid 最近接で行うため、県境付近の数駅は誤分類されることがある。乗りつぶしオンライン・鉄レコの定番機能の簡易版。`
   ));
 
   // ⑪ 個人記録 (PR) + 連続乗車日数
@@ -1399,9 +1399,9 @@ function buildAuthBreakdown(trips) {
   const total = trips.length;
   const pct = (n) => total > 0 ? Math.round(n/total*100) : 0;
   return `
-    <div class="mp-d-row"><span class="mp-d-l">🟢 公式 (verified)</span><strong>${verified}</strong> 件 <span class="mp-d-pct">(${pct(verified)}%)</span></div>
+    <div class="mp-d-row"><span class="mp-d-l">🟢 GPS 記録 (verified)</span><strong>${verified}</strong> 件 <span class="mp-d-pct">(${pct(verified)}%)</span></div>
     <div class="mp-d-row"><span class="mp-d-l">🟡 要確認 (降格)</span><strong>${suspicious}</strong> 件 <span class="mp-d-pct">(${pct(suspicious)}%)</span></div>
-    <div class="mp-d-row"><span class="mp-d-l">⚪ 自己申告 (manual)</span><strong>${manual}</strong> 件 <span class="mp-d-pct">(${pct(manual)}%)</span></div>
+    <div class="mp-d-row"><span class="mp-d-l">⚪ 手動記録 (manual)</span><strong>${manual}</strong> 件 <span class="mp-d-pct">(${pct(manual)}%)</span></div>
     <div class="mp-d-bar">
       <div class="mp-d-bar-seg verified" style="width:${pct(verified)}%"></div>
       <div class="mp-d-bar-seg suspicious" style="width:${pct(suspicious)}%"></div>
@@ -1459,8 +1459,8 @@ function buildTripFilterBar() {
       <label class="mp-filter-lbl">🛡 認証</label>
       <select class="mp-filter-sel" id="mp-fil-auth" onchange="updateMpFilter('auth',this.value)">
         <option value="all" ${mpTripFilter.auth==='all'?'selected':''}>すべて</option>
-        <option value="verified" ${mpTripFilter.auth==='verified'?'selected':''}>🟢 公式 (認証済)</option>
-        <option value="manual" ${mpTripFilter.auth==='manual'?'selected':''}>⚪ 自己申告</option>
+        <option value="verified" ${mpTripFilter.auth==='verified'?'selected':''}>🟢 GPS 記録</option>
+        <option value="manual" ${mpTripFilter.auth==='manual'?'selected':''}>⚪ 手動記録</option>
         <option value="suspicious" ${mpTripFilter.auth==='suspicious'?'selected':''}>🟡 要確認 (降格)</option>
       </select>
     </div>
@@ -1547,9 +1547,9 @@ function buildTripList(trips) {
     card.className = 'mp-tcard';
     card.dataset.tripId = trip.id;
 
-    let badge = '<span class="mp-badge manual" title="手動 (自己申告)">⚪ 自己申告</span>';
+    let badge = '<span class="mp-badge manual" title="手動記録 (自己申告)">⚪ 手動記録</span>';
     if (trip.verified) {
-      badge = '<span class="mp-badge verified" title="GPS 認証">🟢 認証済</span>';
+      badge = '<span class="mp-badge verified" title="GPS 記録 (認証済)">🟢 GPS 記録</span>';
     } else if (typeof fraudIsDowngraded === 'function' && fraudIsDowngraded(trip)) {
       badge = '<span class="mp-badge suspicious" title="不正検知で降格">🟡 要確認</span>';
     }

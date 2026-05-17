@@ -281,7 +281,7 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
   border-radius:12px;padding:10px 12px;box-shadow:0 4px 16px rgba(0,0,0,.6);
   color:var(--white);font-size:12px;display:none;max-height:50vh;overflow-y:auto;
 }
-.rec-panel.on{display:block;} /* v113: 手動フロー (📝 ボタン) では従来 UI を表示。GPS フローでは JS で非表示にする */
+.rec-panel.on{display:block;} /* v113: 手動記録 (📝 ボタン) では従来 UI を表示。GPS 記録では JS で非表示にする */
 .rec-title{font-size:11px;color:var(--gold);margin-bottom:6px;letter-spacing:.05em;}
 .rec-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px;line-height:1.6;}
 .rec-chip{
@@ -1058,15 +1058,15 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
     </div>
     <button class="map-mode-fab" id="map-mode-btn" onclick="cycleMapMode()" title="背景切替">🗺️</button>
     <button class="memo-fab fab-login-only" id="memo-btn" onclick="toggleMemoMode()" title="メモ投稿 (ログイン必須)">📸</button>
-    <button class="record-fab fab-login-only" id="rec-btn" onclick="toggleRecordMode()" title="区間記録モード (ログイン必須)">📝</button>
+    <button class="record-fab fab-login-only" id="rec-btn" onclick="toggleRecordMode()" title="手動記録 — 駅をタップして経路を記録 (ログイン必須)">📝</button>
     <button class="char-fab on" id="char-fab" onclick="toggleCharacterMode()" title="駅キャラ表示の切替 (ON/OFF)">🎭</button>
     <button class="location-fab fab-login-only" id="location-fab" onclick="cycleLocationMode()" title="現在地表示 (ログイン必須)">📍</button>
     <div class="nearest-station-panel" id="nearest-station-panel">
       <!-- 開始駅選択モード (記録モード OFF 時) -->
       <div id="ns-mode-select">
-        <div class="ns-header">📍 近くの駅を選んで記録開始</div>
+        <div class="ns-header">📍 近くの駅を選んで GPS 記録開始</div>
         <div class="ns-list" id="ns-list"></div>
-        <button class="ns-btn" onclick="startRecordFromNearest()">🔖 選んだ駅から記録開始</button>
+        <button class="ns-btn" onclick="startRecordFromNearest()">🔖 選んだ駅から GPS 記録開始</button>
       </div>
       <!-- 記録中モード (記録モード ON 時) — 地図を見やすくするためボタンのみ -->
       <div id="ns-mode-recording" style="display:none">
@@ -1077,7 +1077,7 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
       </div>
     </div>
     <div class="rec-panel" id="rec-panel">
-      <div class="rec-title">📝 区間記録モード — 駅をタップして選択</div>
+      <div class="rec-title">📝 手動記録 — 駅をタップして選択</div>
       <div class="rec-row" id="rec-chips"></div>
       <div class="rec-line-pick" id="rec-line-pick"></div>
       <div class="rec-row" id="rec-actions" style="margin-top:6px;margin-bottom:0"></div>

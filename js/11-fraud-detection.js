@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════════════════════════
 // 不正検知 (Fraud Detection)
-// GPS 認証 trip の所要時間が物理的に不可能な速さなら suspicious に降格
+// GPS 記録 (verified=true) の trip で所要時間が物理的に不可能な速さなら suspicious に降格
 //
 // 方針 (memory/project_fraud_detection.md):
 // - 区間正規所要時間 × 0.5 未満 → verified=false に降格
@@ -94,7 +94,7 @@ function fraudExpectedMinutes(trip) {
 }
 
 // 不正検知本体
-// 判定対象: GPS フロー (source='gps_button') の trip のみ
+// 判定対象: GPS 記録 (source='gps_button') の trip のみ
 // 戻り値: { suspicious, reason, expectedMinutes, ratio, elapsedMinutes }
 //
 // 注: total_minutes は四捨五入 (0-29 秒 → 0 分)。「ほぼ瞬時」=最も怪しいケースなので

@@ -1,5 +1,7 @@
 // ════════════════════════════════════════════
-// 区間記録モード (RECORD MODE)
+// 記録モード (RECORD MODE)
+// - 手動記録: 📝 ボタン経由 (verified=false、source='manual')
+// - GPS 記録: 📍 → 「ここから記録開始」経由 (verified=true、source='gps_button')
 // ════════════════════════════════════════════
 let recordMode = false;
 const recordSelection = [];      // [{name, lat, lon}]
@@ -21,7 +23,7 @@ function toggleRecordMode() {
     refreshRecPanel();
     if(map) map.getContainer().style.cursor='crosshair';
     if (recordStartedViaGPS) {
-      // GPS フロー: ミニマルな最寄駅パネル (記録中) を表示、rec-panel は隠す
+      // GPS 記録: ミニマルな最寄駅パネル (記録中) を表示、rec-panel は隠す
       panel.style.display = 'none';
       if (lastUserGps && typeof updateNearestStationPanel === 'function') {
         updateNearestStationPanel(lastUserGps.lat, lastUserGps.lon);
@@ -37,7 +39,7 @@ function toggleRecordMode() {
         }
       }
     } else {
-      // 手動フロー (📝 ボタン経由): 従来の rec-panel UI を表示、最寄駅パネルは隠す
+      // 手動記録 (📝 ボタン経由): 従来の rec-panel UI を表示、最寄駅パネルは隠す
       panel.style.display = '';
       const np = document.getElementById('nearest-station-panel');
       if (np) np.classList.remove('show');
@@ -50,7 +52,7 @@ function toggleRecordMode() {
     recordStartGPS = null;
     recordStartedAt = null;
     recordEndTime = null;
-    // rec-panel の inline display をリセット (手動フローで '' にしていたぶん)
+    // rec-panel の inline display をリセット (手動記録で '' にしていたぶん)
     panel.style.display = '';
     // 最寄駅パネルの mode DOM を必ず切替 (lastUserGps の有無に関わらず)
     const _np = document.getElementById('nearest-station-panel');
@@ -266,7 +268,7 @@ function refreshRecPanel() {
       pickDiv.appendChild(summary);
 
       // 手動「終了して確認」 (現在の selection で終了)
-      // rec-panel は手動フロー専用なので「ここで終了 (GPS)」ボタンは出さない (v116〜)
+      // rec-panel は手動記録専用なので「ここで終了 (GPS)」ボタンは出さない (v116〜)
       const saveBtn = document.createElement('button');
       saveBtn.className = 'rec-save';
       saveBtn.style.cssText = 'background:rgba(140,160,179,.2);color:var(--white);border:1px solid var(--track)';
@@ -299,8 +301,8 @@ function openRecConfirm() {
   const body = document.getElementById('rec-confirm-body');
   if (!body) return;
   const verifiedBadge = recordStartedViaGPS
-    ? '<span class="rec-confirm-verified-badge">🟢 GPS認証</span>'
-    : '<span class="rec-confirm-verified-badge" style="background:rgba(140,160,179,.15);color:var(--silver);border-color:var(--track)">⚪ 自己申告</span>';
+    ? '<span class="rec-confirm-verified-badge">🟢 GPS 記録</span>'
+    : '<span class="rec-confirm-verified-badge" style="background:rgba(140,160,179,.15);color:var(--silver);border-color:var(--track)">⚪ 手動記録</span>';
 
   // 時刻情報 (depart_time / arrive_time / total_minutes プレビュー)
   // GPS 経由なら recordStartGPS.timestamp、それ以外でも記録モード突入時刻 (recordStartedAt) を使う
@@ -659,7 +661,7 @@ async function saveMultiSegmentTrip() {
       : `${tripSegments.length}区間 ${totalStations}駅`;
     showRecordToast(`✅ 記録${verifiedTag}: ${summary}`);
     if (fraud.suspicious) {
-      showRecordToast(`🟡 認証を「自己申告」に降格しました\n${fraud.reason}`, 'warn', 8000);
+      showRecordToast(`🟡 GPS 認証を取り消しました (要確認)\n${fraud.reason}`, 'warn', 8000);
     }
   } else {
     showRecordToast(`⚠️ ローカル保存のみ (Supabase 失敗)\n${errInfo}`, 'warn', 9000);

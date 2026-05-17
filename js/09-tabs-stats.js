@@ -116,7 +116,7 @@ async function renderStats(){
         // 認証バッジ: 🟢 = GPS 認証 / 🟡 = 不正検知で降格 / なし = 手動
         let verifiedBadge = '';
         if (t.verified) {
-          verifiedBadge = '<span style="color:#48d597;font-size:10px;margin-left:4px" title="GPS認証">🟢</span>';
+          verifiedBadge = '<span style="color:#48d597;font-size:10px;margin-left:4px" title="GPS 記録 (認証済)">🟢</span>';
         } else if (typeof fraudIsDowngraded === 'function' && fraudIsDowngraded(t)) {
           let reasonTip = '不正検知で降格';
           if (typeof fraudAssessTrip === 'function') {

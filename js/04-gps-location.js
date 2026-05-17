@@ -105,8 +105,8 @@ function updateNearestStationPanel(lat, lon) {
   const selectModeEl = document.getElementById('ns-mode-select');
   const recModeEl = document.getElementById('ns-mode-recording');
 
-  // 記録モード中: GPS フローのみ「記録中」ミニマル UI を表示
-  // 手動フロー (📝 ボタン経由) では rec-panel が UI を担当するので最寄駅パネルは隠す
+  // 記録モード中: GPS 記録のみ「記録中」ミニマル UI を表示
+  // 手動記録 (📝 ボタン経由) では rec-panel が UI を担当するので最寄駅パネルは隠す
   if (recordMode) {
     if (recordStartedViaGPS) {
       if (selectModeEl) selectModeEl.style.display = 'none';
