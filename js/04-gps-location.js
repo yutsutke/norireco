@@ -331,10 +331,22 @@ function drawObtainableIndicators() {
   if (!charModeOn) return;
   if (!MERGED_STATIONS || !MERGED_STATIONS.length) return;
 
+  const _mapMode = window._mapDisplayMode || 'both';
   let count = 0;
   for (const ms of MERGED_STATIONS) {
     const chars = getObtainableCharactersAt(ms.name);
     if (chars.length === 0) continue;
+
+    // マップ表示モードに応じて駅単位で skip
+    if (_mapMode !== 'both' && typeof slRiddenSt === 'object') {
+      let ridden = false;
+      for (const slId of (ms.lines || [])) {
+        const rs = slRiddenSt[slId];
+        if (rs && rs.has(ms.name)) { ridden = true; break; }
+      }
+      if (_mapMode === 'ridden' && !ridden) continue;
+      if (_mapMode === 'unridden' && ridden) continue;
+    }
 
     const marker = L.marker([ms.lat, ms.lon], {
       icon: makeObtainableIndicator(chars.length),

@@ -657,6 +657,28 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
   .dfilter-icon{display:none;}
 }
 
+/* マップ表示モード切替 (両方/乗車のみ/未乗車のみ) */
+.map-mode-box{
+  display:flex;align-items:center;gap:2px;
+  background:rgba(13,27,42,.92);border:1px solid var(--track);border-radius:14px;
+  padding:3px 6px;backdrop-filter:blur(8px);
+  font-family:'Zen Kaku Gothic New',sans-serif;
+  box-shadow:0 2px 8px rgba(0,0,0,.4);
+}
+.mfilter-icon{font-size:11px;margin:0 3px 0 2px;color:var(--silver);}
+.mfilter-chip{
+  border:none;background:transparent;color:var(--silver);
+  padding:4px 9px;font-size:11px;cursor:pointer;border-radius:10px;
+  font-family:inherit;white-space:nowrap;
+}
+.mfilter-chip:hover{background:rgba(140,160,179,.15);color:var(--white);}
+.mfilter-chip.active{background:var(--gold);color:var(--navy);font-weight:700;}
+@media (max-width: 768px){
+  .map-mode-box{padding:3px 5px;gap:1px;}
+  .mfilter-chip{padding:3px 7px;font-size:10px;}
+  .mfilter-icon{display:none;}
+}
+
 /* Leaflet tooltip style */
 .merged-pie-marker {
   background: transparent !important;
@@ -1045,6 +1067,13 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
           <button class="dfilter-pop-apply" onclick="applyUntilMonthFilter()">適用</button>
           <button class="dfilter-pop-cancel" onclick="closeUntilMonthFilter()">×</button>
         </div>
+      </div>
+      <!-- マップ表示モード切替 (両方/乗車のみ/未乗車のみ) -->
+      <div class="map-mode-box" id="map-mode-box">
+        <span class="mfilter-icon">🗾</span>
+        <button class="mfilter-chip active" data-mode="both"     onclick="setMapDisplayMode('both')"    title="乗車路線・未乗車路線の両方を表示">両方</button>
+        <button class="mfilter-chip"        data-mode="ridden"   onclick="setMapDisplayMode('ridden')"  title="乗ったことのある区間だけ表示 (達成感)">🟢 乗車のみ</button>
+        <button class="mfilter-chip"        data-mode="unridden" onclick="setMapDisplayMode('unridden')" title="まだ乗っていない区間だけ表示 (旅行計画)">⚪ 未乗車のみ</button>
       </div>
     </div>
     <div class="map-stats-box">

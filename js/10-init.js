@@ -73,6 +73,7 @@ window.addEventListener('load',()=>{
   initMap();
   if (typeof initAuth === 'function') initAuth();
   if (typeof updateDateFilterUI === 'function') updateDateFilterUI();
+  if (typeof updateMapDisplayModeUI === 'function') updateMapDisplayModeUI();
   // キャラ表示ボタンの初期状態を localStorage に合わせる
   const charBtn = document.getElementById('char-fab');
   if (charBtn) charBtn.classList.toggle('on', charModeOn);

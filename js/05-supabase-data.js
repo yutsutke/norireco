@@ -52,6 +52,47 @@ function tripsToSegs(trips) {
 }
 
 // ══════════════════════════════════════════════
+// マップ表示モード (両方 / 乗車のみ / 未乗車のみ)
+// ══════════════════════════════════════════════
+const MAP_DISPLAY_MODE_KEY = 'norireco_map_display_mode';
+const MAP_DISPLAY_MODES = ['both', 'ridden', 'unridden'];
+
+function loadMapDisplayMode() {
+  try {
+    const v = localStorage.getItem(MAP_DISPLAY_MODE_KEY);
+    if (v && MAP_DISPLAY_MODES.includes(v)) return v;
+  } catch(e) {}
+  return 'both';
+}
+window._mapDisplayMode = loadMapDisplayMode();
+
+function setMapDisplayMode(mode) {
+  if (!MAP_DISPLAY_MODES.includes(mode)) return;
+  window._mapDisplayMode = mode;
+  try { localStorage.setItem(MAP_DISPLAY_MODE_KEY, mode); } catch(e) {}
+  // UI 反映
+  document.querySelectorAll('.mfilter-chip').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+  // 地図再描画
+  if (typeof map !== 'undefined' && map && typeof dotLayerRef !== 'undefined' && dotLayerRef) {
+    allLayers.forEach(l => { try { map.removeLayer(l); } catch(e){} });
+    allLayers.length = 0;
+    dotLayerRef.clearLayers();
+    if (typeof labelLayerRef !== 'undefined' && labelLayerRef) labelLayerRef.clearLayers();
+    if (typeof drawLines === 'function') drawLines();
+    if (typeof updateOverlays === 'function') updateOverlays();
+  }
+}
+
+function updateMapDisplayModeUI() {
+  const mode = window._mapDisplayMode || 'both';
+  document.querySelectorAll('.mfilter-chip').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+}
+
+// ══════════════════════════════════════════════
 // 期間フィルタ (trip.date)
 // ══════════════════════════════════════════════
 const TRIP_DATE_FILTER_KEY = 'norireco_date_filter';

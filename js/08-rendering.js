@@ -514,6 +514,10 @@ function getServiceLinePriority(sl) {
 }
 
 // 営業系統 1本のポリライン描画
+// 表示モード (window._mapDisplayMode):
+//   'both'     — 通常 (未乗車=点線 / 乗車済=点線+solid run)
+//   'ridden'   — 乗車区間のみ表示 (純未乗車系統は skip、partial の bg dotted は隠す)
+//   'unridden' — 未乗車区間のみ表示 (完全乗車系統は skip、partial の solid run は隠す)
 function drawServiceLineBase(sl) {
   const canvas = CANVAS;
   if (!sl || !sl.stations || sl.stations.length < 2) return;
@@ -521,13 +525,19 @@ function drawServiceLineBase(sl) {
   if (sl.circular) latlngs.push(latlngs[0]);
   const rs = slRiddenSt[sl.id];
   const isRidden = rs && rs.size > 0;
+  const isFullyRidden = isRidden && rs.size >= sl.stations.length;
   const priority = getServiceLinePriority(sl);
   const stats = slStats(sl);
   const z = map ? map.getZoom() : 5;
   const visible = priority <= getVisiblePriority(z);
+  const mode = window._mapDisplayMode || 'both';
+
+  // モードによる早期 skip
+  if (mode === 'ridden' && !isRidden) return;          // 完全未乗車は隠す
+  if (mode === 'unridden' && isFullyRidden) return;    // 完全乗車は隠す
 
   if (!isRidden) {
-    // 未乗車: 色付き点線 + 薄いグロー
+    // 未乗車系統: 色付き点線 + 薄いグロー (mode='unridden' or 'both')
     const glow = L.polyline(latlngs, {
       color: sl.color, weight: 5, opacity: 0.07,
       lineCap: 'round', renderer: canvas
@@ -551,14 +561,17 @@ function drawServiceLineBase(sl) {
       if (visible) hover.addTo(map);
     }
   } else {
-    // 乗車済み (一部含む): 背景の薄い点線 + 乗車区間のグロー
-    const bg = L.polyline(latlngs, {
-      color: sl.color, weight: 2.2, opacity: 0.35,
-      dashArray: '6 5', lineCap: 'round', renderer: canvas
-    });
-    bg._norireco_priority = priority;
-    allLayers.push(bg);
-    if (visible) bg.addTo(map);
+    // 乗車済み (一部 or 完全): 背景点線 (未乗区間) + solid 乗車区間
+    // mode='ridden' なら背景点線を抑制、mode='unridden' なら solid 乗車区間を抑制
+    if (mode !== 'ridden') {
+      const bg = L.polyline(latlngs, {
+        color: sl.color, weight: 2.2, opacity: 0.35,
+        dashArray: '6 5', lineCap: 'round', renderer: canvas
+      });
+      bg._norireco_priority = priority;
+      allLayers.push(bg);
+      if (visible) bg.addTo(map);
+    }
     if (!IS_MOBILE) {
       const hover = L.polyline(latlngs, {color:'transparent',weight:10,opacity:0,lineCap:'round'})
         .bindTooltip(
@@ -569,22 +582,24 @@ function drawServiceLineBase(sl) {
       allLayers.push(hover);
       if (visible) hover.addTo(map);
     }
-    // 乗車済み連続ランを区間ごとにグロー描画
-    let ss = null;
-    for (let i = 0; i < sl.stations.length; i++) {
-      const ir = rs.has(sl.stations[i].name);
-      if (ir && ss === null) ss = i;
-      if (!ir && ss !== null) {
-        drawSlRiddenRun(sl, ss, i - 1, canvas, priority, visible);
-        ss = null;
+    if (mode !== 'unridden') {
+      // 乗車済み連続ランを区間ごとにグロー描画
+      let ss = null;
+      for (let i = 0; i < sl.stations.length; i++) {
+        const ir = rs.has(sl.stations[i].name);
+        if (ir && ss === null) ss = i;
+        if (!ir && ss !== null) {
+          drawSlRiddenRun(sl, ss, i - 1, canvas, priority, visible);
+          ss = null;
+        }
+        if (i === sl.stations.length - 1 && ss !== null) {
+          drawSlRiddenRun(sl, ss, i, canvas, priority, visible);
+        }
       }
-      if (i === sl.stations.length - 1 && ss !== null) {
-        drawSlRiddenRun(sl, ss, i, canvas, priority, visible);
+      if (sl.circular && sl.stations.length >= 2 &&
+          rs.has(sl.stations[0].name) && rs.has(sl.stations[sl.stations.length-1].name)) {
+        drawSlRiddenWrap(sl, canvas, priority, visible);
       }
-    }
-    if (sl.circular && sl.stations.length >= 2 &&
-        rs.has(sl.stations[0].name) && rs.has(sl.stations[sl.stations.length-1].name)) {
-      drawSlRiddenWrap(sl, canvas, priority, visible);
     }
   }
 }
@@ -651,6 +666,13 @@ function drawStationsLayer() {
       const rs = slRiddenSt[slId];
       if (rs && rs.has(ms.name)) { ridden = true; break; }
     }
+
+    // マップ表示モードに応じて駅もフィルタ
+    //   'ridden'   : 乗車駅のみ表示
+    //   'unridden' : 未乗車駅のみ表示
+    const _mapMode = window._mapDisplayMode || 'both';
+    if (_mapMode === 'ridden' && !ridden) continue;
+    if (_mapMode === 'unridden' && ridden) continue;
 
     // 訪問回数 → 個人化レベル (1-4回:Lv1, 5-9:Lv2, 10-49:Lv3, 50+:Lv4)
     const visits = slVisitCount[ms.name] || 0;

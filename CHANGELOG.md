@@ -1121,3 +1121,55 @@ TODO 🟢 データ充実 の 3 項目をまとめて対応。`service_lines_mas
 - GPS 記録の場合: `💾 GPS 記録で保存する`
 
 `openRecConfirm()` でモーダルを開く直前にラベルを書き換える。`#rec-confirm-save-btn` を追加。
+
+---
+
+## 26. v177 — マップ表示モード切替「両方 / 乗車のみ / 未乗車のみ」 (2026-05-17)
+
+地図ピル下に新トグル追加。乗車区間だけ・未乗車区間だけを切り替えて表示できる。〜月指定 (v174) と組み合わせて「2024 年 3 月時点で乗っていない区間だけ表示」のような旅行計画 / 振り返り体験が可能に。
+
+### 仕様
+
+- 「両方」(`both`): デフォルト。従来通り、未乗車は点線・乗車済は solid + 背景点線
+- 「🟢 乗車のみ」(`ridden`): 乗車区間 (solid run) だけを描画
+  - 完全未乗車系統は skip
+  - 部分乗車系統は背景点線を抑制、solid 乗車区間のみ表示
+  - 駅マーカーは乗車駅のみ表示
+  - キャラ獲得インジケータも乗車駅のみ
+- 「⚪ 未乗車のみ」(`unridden`): 未乗車区間 (点線) だけを描画
+  - 完全乗車系統は skip
+  - 部分乗車系統は solid 乗車区間を抑制、背景点線のみ表示
+  - 駅マーカーは未乗車駅のみ表示
+  - キャラ獲得インジケータも未乗車駅のみ (= まだ獲得できていない駅のヒント)
+
+### ファイル変更
+
+- `js/05-supabase-data.js`:
+  - `MAP_DISPLAY_MODE_KEY` / `loadMapDisplayMode` / `setMapDisplayMode` / `updateMapDisplayModeUI` を追加
+  - `setMapDisplayMode` は localStorage 永続化 + 地図再描画 (drawLines + updateOverlays)
+- `noritetsu-map.html`:
+  - 期間フィルタピル直下に新ピル `#map-mode-box` (両方/乗車のみ/未乗車のみ) を追加
+  - `.map-mode-box` / `.mfilter-chip` / `.mfilter-icon` の CSS を期間フィルタと同スタイルで追加
+- `js/08-rendering.js`:
+  - `drawServiceLineBase(sl)` に `mode` 分岐を追加 — 完全乗車/完全未乗車の early skip と、部分乗車系統の bg/solid 選択描画
+  - `drawStationsLayer()` に `_mapMode` フィルタを追加 — 乗車/未乗車駅のスキップ
+- `js/04-gps-location.js`:
+  - `drawObtainableIndicators()` にも同モードフィルタを追加 (✨ インジケータが隠れている駅に乗らないように)
+- `js/10-init.js`:
+  - 起動時に `updateMapDisplayModeUI()` を呼んで前回モードのチップを active 表示
+
+### 〜月指定 と組み合わせた使い方
+
+1. 地図ピル「〜月指定」で 2024-03 を選択 → 2024-03 末時点の達成状態に切替
+2. 「⚪ 未乗車のみ」をクリック → 2024-03 末時点で乗っていなかった区間だけ表示
+3. 「過去の自分は次にどこへ乗りに行くべきだったか」が地図一面でわかる
+
+### Phase 3.8 ステータス更新
+
+- ✅ マップ LOD 整理 (v158〜v172)
+- ✅ 予讃線 Y 字分岐解消 (v164〜v167)
+- ✅ データ補修 (v173)
+- ✅ 期間指定機能拡充「〜月指定」+ タイムマシン廃止 (v174)
+- ✅ 記録モード用語統一 (v175)
+- ✅ 保存ボタン記録種別明記 (v176)
+- ✅ マップ表示モード切替 (v177)
