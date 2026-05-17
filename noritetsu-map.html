@@ -578,6 +578,8 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mp-badge.verified{background:rgba(72,213,151,.15);color:#48d597;border:1px solid rgba(72,213,151,.4);}
 .mp-badge.suspicious{background:rgba(242,169,0,.15);color:var(--gold);border:1px solid rgba(242,169,0,.4);}
 .mp-badge.manual{background:rgba(140,160,179,.1);color:var(--silver);border:1px solid var(--track);}
+.mp-badge.after-fact{background:rgba(95,181,255,.12);color:#5fb5ff;border:1px solid rgba(95,181,255,.4);}
+.mp-tcard-recorded{font-size:9px;color:var(--silver);opacity:.75;margin-top:3px;font-family:'DM Mono',monospace;}
 .mp-tcard-name{font-size:13px;font-weight:700;margin:2px 0;}
 .mp-tcard-sub{font-size:10px;color:var(--silver);}
 .mp-tcard-train{font-size:10px;color:var(--gold);margin-top:3px;}
@@ -1133,6 +1135,21 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
     <div class="modal-title">📋 経路を確認</div>
     <div class="modal-sub" style="color:var(--silver);font-size:11px;margin-bottom:14px">この内容で記録しますか？</div>
     <div id="rec-confirm-body"></div>
+    <!-- 乗車日時の編集 (手動記録のときだけ表示) -->
+    <div id="rec-time-edit-section" style="display:none;margin-top:14px;border-top:1px solid var(--track);padding-top:12px">
+      <div style="font-size:11px;color:var(--gold);margin-bottom:8px">🕒 乗車日時を入力（後追い記録向け）</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+        <label style="font-size:10px;color:var(--silver);min-width:40px">📅 乗車日</label>
+        <input type="date" id="rec-edit-date" style="flex:1;min-width:140px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+        <label style="font-size:10px;color:var(--silver);min-width:40px">🕐 出発</label>
+        <input type="time" id="rec-edit-depart" style="flex:1;min-width:110px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
+        <label style="font-size:10px;color:var(--silver);min-width:40px">🕑 到着</label>
+        <input type="time" id="rec-edit-arrive" style="flex:1;min-width:110px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
+      </div>
+      <div style="font-size:9px;color:var(--silver);opacity:.7;line-height:1.5">未入力なら記録モード突入時刻が使われます。記録時刻 (recorded_at) は常に「保存ボタン押下時」が保存されます。</div>
+    </div>
     <!-- 列車選択 (任意) — カテゴリ → 列車 → 車両形式 の Cascading + 手入力 -->
     <div id="rec-train-picker" style="margin-top:14px;border-top:1px solid var(--track);padding-top:12px">
       <div style="font-size:11px;color:var(--silver);margin-bottom:6px">🚆 列車種別 (任意)</div>

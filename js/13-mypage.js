@@ -1558,6 +1558,25 @@ function buildTripList(trips) {
       ? `${trip.depart_time.slice(0,5)}〜${trip.arrive_time.slice(0,5)}${trip.total_minutes ? ` (${trip.total_minutes}分)` : ''}`
       : '';
 
+    // 記録した日 (recorded_at) と 乗車日 (date) の差分で「後追い記録」判定
+    let recordedAtStr = '';
+    let isAfterTheFact = false;
+    if (trip.recorded_at) {
+      try {
+        const rd = new Date(trip.recorded_at);
+        const ymd = `${rd.getFullYear()}-${String(rd.getMonth()+1).padStart(2,'0')}-${String(rd.getDate()).padStart(2,'0')}`;
+        const hm = rd.toTimeString().slice(0,5);
+        recordedAtStr = `${ymd} ${hm}`;
+        if (trip.date && ymd !== trip.date) isAfterTheFact = true;
+      } catch(e) {}
+    }
+    const afterTheFactBadge = isAfterTheFact
+      ? `<span class="mp-badge after-fact" title="乗車日と記録日が違う = 後から登録">📝 後追い</span>`
+      : '';
+    const recordedAtLine = recordedAtStr
+      ? `<div class="mp-tcard-recorded">📌 記録: ${recordedAtStr}</div>`
+      : '';
+
     let trainBit = '';
     if (trip.train_name) {
       const customMark = trip.train_id ? '' : ' 📝';
@@ -1573,10 +1592,12 @@ function buildTripList(trips) {
         <span class="mp-tcard-date">${trip.date || ''}</span>
         ${timeStr ? `<span class="mp-tcard-time">${timeStr}</span>` : ''}
         ${badge}
+        ${afterTheFactBadge}
       </div>
       <div class="mp-tcard-name">${trip.name || ''}</div>
       <div class="mp-tcard-sub">${trip.total_stations || 0}駅 · 乗換${trip.transfers || 0}回</div>
       ${trainBit}
+      ${recordedAtLine}
       <div class="mp-tcard-actions">
         ${verifyBtn}
         <button class="mp-act-btn delete" onclick="deleteTripFromMypage('${trip.id}')">🗑 削除</button>

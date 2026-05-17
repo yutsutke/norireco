@@ -387,6 +387,32 @@ function openRecConfirm() {
       ? '💾 GPS 記録で保存する'
       : '💾 手動記録で保存する';
   }
+  // 時刻編集セクション: 手動記録のときだけ表示、初期値は記録モード突入時刻
+  const timeSec = document.getElementById('rec-time-edit-section');
+  if (timeSec) {
+    if (recordStartedViaGPS) {
+      timeSec.style.display = 'none';
+    } else {
+      timeSec.style.display = '';
+      const dateInp = document.getElementById('rec-edit-date');
+      const depInp = document.getElementById('rec-edit-depart');
+      const arrInp = document.getElementById('rec-edit-arrive');
+      if (startTs) {
+        const sd = new Date(startTs);
+        const ymd = `${sd.getFullYear()}-${String(sd.getMonth()+1).padStart(2,'0')}-${String(sd.getDate()).padStart(2,'0')}`;
+        if (dateInp) dateInp.value = ymd;
+        if (depInp) depInp.value = sd.toTimeString().slice(0,5);
+      } else {
+        if (dateInp) dateInp.value = (typeof localDateStr === 'function') ? localDateStr() : new Date().toISOString().slice(0,10);
+        if (depInp) depInp.value = '';
+      }
+      if (arrInp) {
+        const endTs = recordEndTime || new Date().toISOString();
+        const ed = new Date(endTs);
+        arrInp.value = ed.toTimeString().slice(0,5);
+      }
+    }
+  }
   document.getElementById('rec-confirm-modal')?.classList.add('open');
   // 列車セレクタをリセット (前回の選択を持ち越さない)
   resetTrainSelector();
@@ -579,6 +605,32 @@ async function saveMultiSegmentTrip() {
       totalMinutes = Math.max(0, Math.round((endDate - startDate) / 60000));
     }
   }
+  // 手動記録: ユーザーが時刻編集セクションで入力した値があれば上書き
+  // (GPS 記録は実時刻が正確なので上書きしない)
+  let datePrecision = 'day';
+  if (!recordStartedViaGPS) {
+    const editDate = document.getElementById('rec-edit-date')?.value;
+    const editDep = document.getElementById('rec-edit-depart')?.value;
+    const editArr = document.getElementById('rec-edit-arrive')?.value;
+    if (editDate) tripDate = editDate;
+    if (editDep) {
+      departTime = `${editDep}:00`;
+      datePrecision = 'minute';
+    }
+    if (editArr) {
+      arriveTime = `${editArr}:00`;
+      datePrecision = 'minute';
+    }
+    // 出発・到着両方入力されたら所要分を再計算 (日跨ぎ補正)
+    if (editDep && editArr) {
+      const [dh,dm] = editDep.split(':').map(Number);
+      const [ah,am] = editArr.split(':').map(Number);
+      let diff = (ah*60+am) - (dh*60+dm);
+      if (diff < 0) diff += 24*60; // 日跨ぎ
+      totalMinutes = diff;
+      elapsedSec = diff * 60;
+    }
+  }
   const tripId = `trip_${Date.now()}`;
   const trip = {
     id: tripId, date: tripDate, name: tripName,
@@ -598,7 +650,7 @@ async function saveMultiSegmentTrip() {
     gps_lon: recordStartGPS ? recordStartGPS.lon : null,
     gps_accuracy: recordStartGPS ? recordStartGPS.accuracy : null,
     recorded_at: new Date().toISOString(),
-    date_precision: 'day',
+    date_precision: datePrecision,
     // 列車種別 (任意、確認モーダルで選択 or 手入力)
     // train_id IS NULL かつ train_name IS NOT NULL = マニア手入力 (後でマスター調査・追加用)
     train_id: selectedTrainId,

@@ -1173,3 +1173,56 @@ TODO 🟢 データ充実 の 3 項目をまとめて対応。`service_lines_mas
 - ✅ 記録モード用語統一 (v175)
 - ✅ 保存ボタン記録種別明記 (v176)
 - ✅ マップ表示モード切替 (v177)
+
+---
+
+## 27. v178 — 手動記録の乗車日時編集 + 「後追い記録」可視化 (2026-05-17)
+
+「後追い記録モード（時間を空けてから登録）」TODO の第一段。Supabase スキーマ変更なしで、既存フィールド (`date` / `depart_time` / `arrive_time` / `total_minutes` / `recorded_at` / `date_precision`) を UI から編集可能にした。
+
+### 仕様
+
+**1. 記録確認モーダルに時刻編集セクション追加（手動記録のみ）**
+
+- `📋 経路を確認` モーダル内、経路情報の下に展開済の `🕒 乗車日時を入力` セクション
+- 入力欄:
+  - 📅 乗車日 (date input)
+  - 🕐 出発 / 🕑 到着 (time input)
+- 初期値は記録モード突入時刻 + 終了時刻 (現行どおりの挙動)
+- 入力されたら `saveMultiSegmentTrip` で trip フィールドを上書き
+  - `date` ← editDate
+  - `depart_time` / `arrive_time` ← `HH:MM:00`
+  - `total_minutes` / `_elapsed_sec` ← (到着 − 出発)、日跨ぎ補正あり
+  - `date_precision` ← `'minute'` (時刻入力時) / `'day'` (日付のみ)
+- GPS 記録のときは時刻が正確なので編集セクション非表示
+
+**2. `recorded_at` (記録した日時) をマイページ旅程カードに表示**
+
+- 旅程カード末尾に `📌 記録: YYYY-MM-DD HH:MM` を追加
+- 乗車日と記録日が異なる場合は **`📝 後追い`** バッジを認証バッジの隣に表示
+- バッジカラー: 青系 (`#5fb5ff`) — 不正・要確認ではなく中立的な情報マーク
+
+### Supabase スキーマは無改修
+
+- 必要なフィールドは全て既存:
+  - `date` (YYYY-MM-DD)
+  - `depart_time` / `arrive_time` (HH:MM:SS)
+  - `total_minutes` (int)
+  - `recorded_at` (ISO timestamp) — `new Date().toISOString()` で自動セット
+  - `date_precision` ('day' / 'minute' / 'year')
+- 既存データとも完全互換、`date_precision` が `'day'` のままでも OK
+
+### 残タスク
+
+`trip.notes` / `delay_minutes` / `station_notes` の追加（メモ・遅延入力）は別バージョンで対応予定。TODO 「後追い記録モードの拡張」に整理済。
+
+### Phase 3.8 ステータス更新
+
+- ✅ マップ LOD 整理 (v158〜v172)
+- ✅ 予讃線 Y 字分岐解消 (v164〜v167)
+- ✅ データ補修 (v173)
+- ✅ 期間指定機能拡充「〜月指定」+ タイムマシン廃止 (v174)
+- ✅ 記録モード用語統一 (v175)
+- ✅ 保存ボタン記録種別明記 (v176)
+- ✅ マップ表示モード切替 (v177)
+- ✅ 手動記録 乗車日時編集 + recorded_at 表示 (v178)
