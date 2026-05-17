@@ -999,3 +999,60 @@ TODO 🟢 データ充実 の 3 項目をまとめて対応。`service_lines_mas
 - `service_lines_master.json` に `operator_id` が `op____` 系の placeholder のまま残る系統が約 277 件あり (横浜市営・京都市営・京福電気鉄道・埼玉高速 等)。`detectServiceLineGroup` の地域グループ分類が「首都圏・ローカル」「その他」にフォールバックしてしまうので、今後一括補修すると路線一覧の見出しが正しく出るようになる
 - 距離スキャンでは複数系統に「東京駅」「関」など同名駅が含まれる影響で、駅順バグ検出には系統内の per-line 座標 (`buildPerLineCoordMap`) を使う必要がある。簡易な offline 検査では偽陽性が多くなる（次回検査時の覚え書き）
 
+
+---
+
+## 23. v174 — 「〜月指定」期間フィルタ追加 + タイムマシン subtab 廃止 (2026-05-17)
+
+「マイページ 🕰 タイムマシン サブタブ」を廃止し、その役割を地図画面の期間フィルタピルに新チップ **「〜月指定」** として統合。日付任意精度のスナップショット選択 → **年月単位** のシンプル UI に置き換え。
+
+### 変更内容
+
+**1. 期間フィルタに `untilMonth` モード追加**
+
+- `js/05-supabase-data.js`:
+  - `_lastDayOfMonth(yyyymm)` ヘルパー追加 (`'2024-03'` → `'2024-03-31'`)
+  - `filterTripsByDate(trips)` に `mode === 'untilMonth'` 分岐追加 — `from=0000-01-01`、`to=指定月末` で絞り込み
+  - `updateDateFilterUI()` に `dfilter-um-label` 反映 (例: `〜2024/03`)
+  - `toggleUntilMonthFilter` / `applyUntilMonthFilter` / `closeUntilMonthFilter` を追加
+  - year セレクタは過去 15 年 + 今年、month セレクタは 1-12 月
+
+- `noritetsu-map.html`:
+  - 期間フィルタピルに新チップ追加: `全期間 / 今年 / 去年 / 〜月指定 / カスタム`
+  - 専用 popup `#dfilter-um-pop` (年/月 dropdown + 適用ボタン)
+  - select 要素用 CSS 追加
+
+- バナー (`renderMpTimeMachineBanner`): `untilMonth` モード時は `🕰 〜2024/03 までの記録で表示中` と表示
+
+**2. タイムマシン subtab 削除**
+
+- `noritetsu-map.html`: `<div id="mp-sub-timemachine">` 撤去
+- `js/13-mypage.js`:
+  - サブタブ nav から「🕰 タイムマシン」ボタン削除
+  - `applyMpSection` で旧 `'timemachine'` 選択は `'stats'` にフォールバック
+  - `_tmDate`、`computeSnapshotUntil`、`renderMpTimeMachineSection`、`renderMpTimeMachineSnapshot`、`updateTmDate`、`applyTimeMachineGlobally`、`clearTimeMachineGlobally`、`shiftDate` を削除 (約 240 行のdead code 除去)
+  - `isTimeMachineActive` は残す (バナー表示で使用)、`untilMonth` モードにも対応するように更新
+- `noritetsu-map.html` の `mp-tm-controls` 系 CSS (約 30 行) も削除、`mp-tm-banner` 系は残す
+
+### 統計連動の確認
+
+- 統計タブ (`js/09-tabs-stats.js:71`): `filterTripsByDate(rawTrips)` で既に絞り込み済 ✅
+- 路線タブ (`renderList()`): `slStats(sl)` → `slRiddenSt` を参照、`applyDateFilter()` で `RIDDEN_SEGS` が再構築されるため絞り込み追随 ✅
+- マイページ完乗率カード (`buildCompletionCards`): `filterTripsByDate(trips)` で絞り込み済 ✅
+- 旅程タブ (`js/13-mypage.js:1501`): `filterTripsByDate` 適用済 ✅
+
+地図側も `applyDateFilter()` 内で `drawLines()` + `updateOverlays()` を再実行するため、`untilMonth` 設定で当該月までの「乗車路線・乗車駅」のみが描画される。
+
+### ユーザー体験
+
+- **以前**: マイページ → 🕰 タイムマシン サブタブ → 日付選択 → 「🌍 全タブを過去状態にする」ボタンで全タブ反映 (2 アクション + 確認)
+- **以後**: 地図画面 上部ピル「〜月指定」→ 年月選択 → 適用 (1 アクション)、地図・統計・路線・旅程 全てが当該月末時点に切替
+
+複雑な日付ピッカー UI を撤去して年月の Select だけにしたので、モバイル含めて操作が軽くなった。
+
+### Phase 3.8 ステータス更新
+
+- ✅ マップ LOD 整理 (v158〜v172)
+- ✅ 予讃線 Y 字分岐解消 (v164〜v167)
+- ✅ データ補修 (v173)
+- ✅ 期間指定機能拡充「〜月指定」+ タイムマシン廃止 (v174)

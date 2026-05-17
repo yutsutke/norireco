@@ -560,41 +560,7 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mp-yr-op strong{color:var(--gold);font-family:'DM Mono',monospace;}
 .mp-yr-op.rest{background:transparent;border:none;color:var(--silver);opacity:.6;}
 
-/* タイムマシン */
-.mp-tm-controls{padding:12px 14px;background:linear-gradient(135deg,rgba(199,125,255,.08),rgba(232,53,42,.05));border-bottom:1px solid var(--track);}
-.mp-tm-title{font-size:13px;font-weight:700;color:#c77dff;margin-bottom:10px;}
-.mp-tm-date-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;}
-.mp-tm-go-today{padding:6px 12px;background:rgba(232,53,42,.1);color:var(--red);border:1px solid rgba(232,53,42,.4);border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;}
-.mp-tm-go-today:hover:not(:disabled){background:rgba(232,53,42,.2);}
-.mp-tm-go-today:disabled{opacity:.4;cursor:not-allowed;}
-.mp-tm-presets{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;}
-.mp-tm-preset{padding:4px 10px;background:rgba(140,160,179,.1);color:var(--silver);border:1px solid var(--track);border-radius:14px;font-size:10px;cursor:pointer;font-family:inherit;}
-.mp-tm-preset:hover{background:rgba(199,125,255,.15);color:#c77dff;border-color:rgba(199,125,255,.4);}
-.mp-tm-preset.active{background:rgba(199,125,255,.2);color:#c77dff;border-color:#c77dff;}
-.mp-tm-context{font-size:10px;color:var(--silver);margin-top:6px;}
-.mp-tm-context strong{color:var(--white);font-family:'DM Mono',monospace;}
-
-.mp-tm-snap-h{padding:14px 14px 6px;font-size:13px;font-weight:600;color:var(--white);}
-.mp-tm-snap-h strong{color:#c77dff;font-family:'DM Mono',monospace;}
-
-.mp-tm-delta{margin:10px 12px 16px;padding:12px 14px;background:rgba(72,213,151,.06);border:1px solid rgba(72,213,151,.3);border-radius:8px;}
-.mp-tm-delta-h{font-size:12px;font-weight:700;color:#48d597;margin-bottom:10px;}
-.mp-tm-delta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;}
-.mp-tm-delta-item{text-align:center;padding:8px 6px;background:rgba(14,24,36,.4);border-radius:6px;}
-.mp-tm-delta-item span{display:block;font-family:'DM Mono',monospace;font-size:16px;font-weight:600;color:#48d597;}
-.mp-tm-delta-item label{display:block;font-size:9px;color:var(--silver);margin-top:2px;}
-
-/* タイムマシン グローバル適用ボタン + バナー */
-.mp-tm-apply-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
-.mp-tm-apply-btn{flex:1;padding:9px 14px;background:linear-gradient(135deg,#c77dff,#9b4ddb);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(199,125,255,.3);min-width:220px;}
-.mp-tm-apply-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 16px rgba(199,125,255,.5);}
-.mp-tm-apply-btn:disabled{background:rgba(140,160,179,.2);color:var(--silver);box-shadow:none;cursor:not-allowed;}
-.mp-tm-clear-btn{padding:9px 14px;background:rgba(232,53,42,.12);color:var(--red);border:1px solid rgba(232,53,42,.4);border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;}
-.mp-tm-clear-btn:hover{background:rgba(232,53,42,.22);}
-.mp-tm-active-note{margin-top:8px;padding:8px 12px;background:rgba(199,125,255,.1);border-left:3px solid #c77dff;border-radius:0 6px 6px 0;font-size:10px;color:var(--silver);line-height:1.5;}
-.mp-tm-active-note strong{color:#c77dff;font-family:'DM Mono',monospace;}
-
-/* マイページ上部バナー (グローバル過去モード時) */
+/* マイページ上部バナー (期間フィルタ・〜月指定モード時) */
 .mp-tm-banner{display:flex;align-items:center;gap:10px;padding:9px 14px;background:linear-gradient(90deg,rgba(199,125,255,.18),rgba(199,125,255,.06));border-bottom:2px solid #c77dff;font-size:12px;color:var(--white);position:sticky;top:46px;z-index:6;}
 .mp-tm-banner strong{color:#c77dff;font-family:'DM Mono',monospace;}
 .mp-tm-banner-clear{margin-left:auto;padding:4px 10px;background:rgba(232,53,42,.15);color:var(--red);border:1px solid rgba(232,53,42,.4);border-radius:12px;font-size:10px;cursor:pointer;font-family:inherit;}
@@ -660,6 +626,11 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
   flex:1;background:#060f1a;border:1px solid var(--track);border-radius:6px;
   color:var(--white);padding:5px 7px;font-family:'DM Mono',monospace;font-size:11px;
   color-scheme:dark;
+}
+.dfilter-pop-row select{
+  background:#060f1a;border:1px solid var(--track);border-radius:6px;
+  color:var(--white);padding:5px 6px;font-family:'DM Mono',monospace;font-size:11px;
+  color-scheme:dark;cursor:pointer;
 }
 .dfilter-pop-actions{display:flex;gap:6px;margin-top:2px;}
 .dfilter-pop-apply{
@@ -1043,10 +1014,11 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
     <div class="date-filter-wrap" id="date-filter-wrap">
       <div class="date-filter-box" id="date-filter-box">
         <span class="dfilter-icon">📅</span>
-        <button class="dfilter-chip active" data-mode="all"      onclick="setDateFilter('all')">全期間</button>
-        <button class="dfilter-chip"        data-mode="thisYear" onclick="setDateFilter('thisYear')">今年</button>
-        <button class="dfilter-chip"        data-mode="lastYear" onclick="setDateFilter('lastYear')">去年</button>
-        <button class="dfilter-chip"        data-mode="custom"   onclick="toggleCustomDateFilter()"><span id="dfilter-custom-label">カスタム</span></button>
+        <button class="dfilter-chip active" data-mode="all"        onclick="setDateFilter('all')">全期間</button>
+        <button class="dfilter-chip"        data-mode="thisYear"   onclick="setDateFilter('thisYear')">今年</button>
+        <button class="dfilter-chip"        data-mode="lastYear"   onclick="setDateFilter('lastYear')">去年</button>
+        <button class="dfilter-chip"        data-mode="untilMonth" onclick="toggleUntilMonthFilter()" title="最初から指定月までを表示 (タイムマシン)"><span id="dfilter-um-label">〜月指定</span></button>
+        <button class="dfilter-chip"        data-mode="custom"     onclick="toggleCustomDateFilter()"><span id="dfilter-custom-label">カスタム</span></button>
       </div>
       <div class="dfilter-pop" id="dfilter-pop">
         <div class="dfilter-pop-row">
@@ -1060,6 +1032,18 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
         <div class="dfilter-pop-actions">
           <button class="dfilter-pop-apply" onclick="applyCustomDateFilter()">適用</button>
           <button class="dfilter-pop-cancel" onclick="closeCustomDateFilter()">×</button>
+        </div>
+      </div>
+      <div class="dfilter-pop" id="dfilter-um-pop">
+        <div class="dfilter-pop-row">
+          <label>最初から</label>
+          <select id="dfilter-um-year"></select>
+          <select id="dfilter-um-month"></select>
+          <span style="font-size:11px;color:var(--silver)">まで</span>
+        </div>
+        <div class="dfilter-pop-actions">
+          <button class="dfilter-pop-apply" onclick="applyUntilMonthFilter()">適用</button>
+          <button class="dfilter-pop-cancel" onclick="closeUntilMonthFilter()">×</button>
         </div>
       </div>
     </div>
@@ -1191,9 +1175,6 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
     </div>
     <div class="mp-subpane" id="mp-sub-lines">
       <div class="pane-inner" id="list-content"></div>
-    </div>
-    <div class="mp-subpane" id="mp-sub-timemachine">
-      <div class="pane-inner" id="mp-tm-section"></div>
     </div>
   </div>
 </div>

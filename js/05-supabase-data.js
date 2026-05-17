@@ -71,6 +71,15 @@ function saveDateFilter(f) {
 }
 window._tripDateFilter = loadDateFilter();
 
+// 「YYYY-MM」 → 月末日付 (YYYY-MM-LL)
+function _lastDayOfMonth(yyyymm) {
+  if (!yyyymm) return null;
+  const m = yyyymm.match(/^(\d{4})-(\d{2})$/);
+  if (!m) return null;
+  const last = new Date(+m[1], +m[2], 0).getDate();
+  return `${m[1]}-${m[2]}-${String(last).padStart(2,'0')}`;
+}
+
 function filterTripsByDate(trips) {
   const f = window._tripDateFilter || { mode: 'all' };
   if (!f || f.mode === 'all') return trips;
@@ -78,6 +87,11 @@ function filterTripsByDate(trips) {
   let fromStr, toStr;
   if (f.mode === 'thisYear') { fromStr = `${y}-01-01`; toStr = `${y}-12-31`; }
   else if (f.mode === 'lastYear') { fromStr = `${y-1}-01-01`; toStr = `${y-1}-12-31`; }
+  else if (f.mode === 'untilMonth') {
+    if (!f.month) return trips;
+    fromStr = '0000-01-01';
+    toStr = _lastDayOfMonth(f.month) || '9999-12-31';
+  }
   else if (f.mode === 'custom') { fromStr = f.from || '0000-01-01'; toStr = f.to || '9999-12-31'; }
   else return trips;
   return trips.filter(t => {
@@ -99,6 +113,14 @@ function updateDateFilterUI() {
       label.textContent = `${fr}〜${to}`;
     } else {
       label.textContent = 'カスタム';
+    }
+  }
+  const umLabel = document.getElementById('dfilter-um-label');
+  if (umLabel) {
+    if (f.mode === 'untilMonth' && f.month) {
+      umLabel.textContent = `〜${f.month.replace('-','/')}`;
+    } else {
+      umLabel.textContent = '〜月指定';
     }
   }
 }
@@ -172,6 +194,64 @@ function applyCustomDateFilter() {
   if (from && to && from > to) { alert('開始日は終了日以前にしてください'); return; }
   setDateFilter('custom', { from, to });
   closeCustomDateFilter();
+}
+
+// 「最初から〜YYYY/MM まで」モード
+function toggleUntilMonthFilter() {
+  const pop = document.getElementById('dfilter-um-pop');
+  if (!pop) return;
+  if (pop.classList.contains('open')) { closeUntilMonthFilter(); return; }
+  const f = window._tripDateFilter || {};
+  const yearSel = document.getElementById('dfilter-um-year');
+  const monthSel = document.getElementById('dfilter-um-month');
+  if (yearSel && monthSel) {
+    // 年セレクタ: 過去 15 年 + 今年
+    const now = new Date();
+    const curY = now.getFullYear();
+    const startY = curY - 15;
+    if (!yearSel.options.length) {
+      for (let y = curY; y >= startY; y--) {
+        const o = document.createElement('option');
+        o.value = String(y); o.textContent = `${y}年`;
+        yearSel.appendChild(o);
+      }
+    }
+    // 月セレクタ
+    if (!monthSel.options.length) {
+      for (let m = 1; m <= 12; m++) {
+        const o = document.createElement('option');
+        o.value = String(m).padStart(2,'0'); o.textContent = `${m}月`;
+        monthSel.appendChild(o);
+      }
+    }
+    // 現在値プリセット (or 今月)
+    if (f.mode === 'untilMonth' && f.month) {
+      const [y,m] = f.month.split('-');
+      yearSel.value = y; monthSel.value = m;
+    } else {
+      yearSel.value = String(curY);
+      monthSel.value = String(now.getMonth()+1).padStart(2,'0');
+    }
+  }
+  pop.classList.add('open');
+  setTimeout(() => document.addEventListener('mousedown', _umfilterOutsideClick), 0);
+}
+function _umfilterOutsideClick(e) {
+  const wrap = document.getElementById('date-filter-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    closeUntilMonthFilter();
+  }
+}
+function closeUntilMonthFilter() {
+  document.getElementById('dfilter-um-pop')?.classList.remove('open');
+  document.removeEventListener('mousedown', _umfilterOutsideClick);
+}
+function applyUntilMonthFilter() {
+  const y = document.getElementById('dfilter-um-year')?.value || '';
+  const m = document.getElementById('dfilter-um-month')?.value || '';
+  if (!y || !m) { alert('年月を選択してください'); return; }
+  setDateFilter('untilMonth', { month: `${y}-${m}` });
+  closeUntilMonthFilter();
 }
 
 // Supabaseから全旅程を取得して地図を更新
