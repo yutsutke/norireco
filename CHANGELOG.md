@@ -1383,3 +1383,69 @@ NOTIFY pgrst, 'reload schema';
 ### Phase 3.8 ステータス更新
 
 - ✅ 後追い記録モード拡張 (メモ + 遅延) (v181)
+
+---
+
+## 31. v182 — 統計タブ「📌 直近の旅程」 + 旅程タブ並び替え (2026-05-18)
+
+v181 のメモ・遅延が「マイページ旅程タブを開くと最新カードに出る」だけだと統計タブから直行できず動線が遠かった。
+そこで **統計タブに「📌 直近の旅程」セクション** を追加し、recorded_at が最新の旅程カードを 1 件だけフル表示する。同時に **旅程タブに並び替えセレクタ** を追加して「乗車日／駅数／乗車時間／記録日／遅延」の 5 軸で並べ替え可能にした。
+
+### 直近の旅程セクション (統計タブ)
+
+`buildRecordsRanks` (履歴ミニ表) と並んで、`buildRecentTripCard(trips)` を「🏆 個人記録 (PR)」の直前に挿入。
+- 中身は `tripCardHtml(latest)` 1 件だけ
+- 旅程タブと同じカード見た目 → メモ・遅延・後追いバッジ・列車種別・GPS 認証ボタン等が全て表示される
+
+これに合わせて `buildTripList` のループ本体を **`tripCardHtml(trip)` という関数** に抽出。`buildTripList` は `trips.map(tripCardHtml).join('')` を innerHTML に詰めるだけになる。
+
+```js
+// 抽出後
+function tripCardHtml(trip) { /* ... 旧ループ本体 ... */ return `<div class="mp-tcard" ...>...</div>`; }
+function buildTripList(trips) {
+  const list = document.createElement('div');
+  list.className = 'mp-trip-list';
+  list.innerHTML = trips.map(tripCardHtml).join('');
+  return list;
+}
+function buildRecentTripCard(trips) {
+  if (!trips || trips.length === 0) return '<div class="mp-empty-s">乗車記録がありません</div>';
+  const latest = [...trips].sort((a,b) => (b.recorded_at||b.date||'').localeCompare(a.recorded_at||a.date||''))[0];
+  return `<div class="mp-trip-list">${tripCardHtml(latest)}</div>`;
+}
+```
+
+### 旅程タブの並び替え
+
+`mpTripFilter` に `sort: 'date_desc'` を追加。`buildTripFilterBar` の最後に新セレクトを追加：
+
+| 値 | 並び順 |
+|---|---|
+| `date_desc` (デフォルト) | 📅 乗車日 (新しい順) |
+| `date_asc` | 📅 乗車日 (古い順) |
+| `stations_desc` | 🚉 訪問駅数 (多い順) |
+| `minutes_desc` | ⏱ 乗車時間 (長い順) |
+| `recorded_desc` | 📌 記録日 (新しい順) |
+| `delay_desc` | 🐢 遅延 (多い順) — 同値は記録日新しい順で安定化 |
+
+`_MP_SORT_COMPARATORS` というキー→比較関数のマップを定義し、`applyTripFilters` の末尾で `[...filtered].sort(cmp)` する。`resetMpFilter` も `sort: 'date_desc'` を含む形に更新。
+
+### 影響範囲
+
+- `js/13-mypage.js`
+  - `mpTripFilter` に `sort` を追加、`resetMpFilter` を更新
+  - `tripCardHtml(trip)` を新設 (旧 `buildTripList` のループ本体を移動)
+  - `buildTripList` は `trips.map(tripCardHtml).join('')` に簡略化
+  - `buildRecentTripCard(trips)` を新設 (`buildPersonalRecords` の直前に配置)
+  - 統計タブ pane の `buildPersonalRecords` の前で `📌 直近の旅程` detailCard を appendChild
+  - `buildTripFilterBar` に `⇅ 並び替え` セレクト追加
+  - `_MP_SORT_COMPARATORS` マップを新設、`applyTripFilters` で末尾ソート
+- `sw.js` — `CACHE_VERSION = 'v182'`
+
+### 落とし穴: card.dataset → data-trip-id
+
+旧コードは `card.dataset.tripId = trip.id` で属性を設定していたが、`tripCardHtml` ではテンプレートリテラルで `<div class="mp-tcard" data-trip-id="${trip.id}">` を埋め込む形に変えた。`document.querySelector('[data-trip-id="..."]')` 経由のアクセスは引き続き同じ挙動。`trip.id` は内部生成の `trip_<timestamp>` なのでエスケープ不要。
+
+### Phase 3.8 ステータス更新
+
+- ✅ 統計タブ「📌 直近の旅程」 + 旅程タブ並び替え (v182)
