@@ -418,10 +418,12 @@ function openRecConfirm() {
   document.getElementById('rec-confirm-modal')?.classList.add('open');
   // 列車セレクタをリセット (前回の選択を持ち越さない)
   resetTrainSelector();
-  // メモ・遅延もリセット (前回値を持ち越さない)
-  const delayInp = document.getElementById('rec-edit-delay');
+  // メモ・遅延もリセット (前回値を持ち越さない) — v185: 時間+分の 2 input
+  const delayHInp = document.getElementById('rec-edit-delay-h');
+  const delayMInp = document.getElementById('rec-edit-delay-m');
   const notesInp = document.getElementById('rec-edit-notes');
-  if (delayInp) delayInp.value = '';
+  if (delayHInp) delayHInp.value = '';
+  if (delayMInp) delayMInp.value = '';
   if (notesInp) notesInp.value = '';
 }
 
@@ -796,13 +798,19 @@ async function saveMultiSegmentTrip() {
       datePrecision = 'unknown';
     }
   }
-  // 後追い記録モード拡張: メモ・遅延 (v181)
+  // 後追い記録モード拡張: メモ・遅延 (v181, v185 で時間+分対応)
   // 空 input は null として保存 (Supabase 側のフィルタ/表示で扱いやすい)
-  const delayRaw = document.getElementById('rec-edit-delay')?.value;
+  const delayHRaw = document.getElementById('rec-edit-delay-h')?.value;
+  const delayMRaw = document.getElementById('rec-edit-delay-m')?.value;
   const notesRaw = document.getElementById('rec-edit-notes')?.value;
-  const delayMinutes = (delayRaw !== undefined && delayRaw !== null && delayRaw !== '')
-    ? Math.max(0, Math.min(999, parseInt(delayRaw, 10) || 0))
-    : null;
+  const delayH = (delayHRaw !== undefined && delayHRaw !== null && delayHRaw !== '')
+    ? Math.max(0, Math.min(99, parseInt(delayHRaw, 10) || 0))
+    : 0;
+  const delayM = (delayMRaw !== undefined && delayMRaw !== null && delayMRaw !== '')
+    ? Math.max(0, Math.min(59, parseInt(delayMRaw, 10) || 0))
+    : 0;
+  const delayTotal = delayH * 60 + delayM;
+  const delayMinutes = (delayTotal > 0) ? Math.min(5999, delayTotal) : null;
   const tripNotes = (notesRaw || '').trim() || null;
 
   const tripId = `trip_${Date.now()}`;

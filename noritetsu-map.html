@@ -1207,8 +1207,11 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
       <div style="font-size:11px;color:var(--silver);margin-bottom:6px">📝 メモ・遅延 (任意)</div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
         <label style="font-size:10px;color:var(--silver);min-width:50px">⏱ 遅延</label>
-        <input type="number" id="rec-edit-delay" min="0" max="999" step="1" placeholder="0"
-               style="width:90px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
+        <input type="number" id="rec-edit-delay-h" min="0" max="99" step="1" placeholder="0"
+               style="width:64px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
+        <span style="font-size:10px;color:var(--silver)">時間</span>
+        <input type="number" id="rec-edit-delay-m" min="0" max="59" step="1" placeholder="0"
+               style="width:64px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
         <span style="font-size:10px;color:var(--silver)">分遅れ</span>
       </div>
       <textarea id="rec-edit-notes" rows="2" placeholder="自由メモ (車内エピソード・運休情報など)"
@@ -1238,8 +1241,11 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
     <input type="hidden" id="trip-edit-id" value="">
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
       <label style="font-size:10px;color:var(--silver);min-width:50px">⏱ 遅延</label>
-      <input type="number" id="trip-edit-delay" min="0" max="999" step="1" placeholder="0"
-             style="width:90px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
+      <input type="number" id="trip-edit-delay-h" min="0" max="99" step="1" placeholder="0"
+             style="width:64px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
+      <span style="font-size:10px;color:var(--silver)">時間</span>
+      <input type="number" id="trip-edit-delay-m" min="0" max="59" step="1" placeholder="0"
+             style="width:64px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
       <span style="font-size:10px;color:var(--silver)">分遅れ</span>
     </div>
     <textarea id="trip-edit-notes" rows="4" placeholder="自由メモ (車内エピソード・運休情報など)"

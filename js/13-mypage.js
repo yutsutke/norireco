@@ -5,6 +5,18 @@
 // - 完乗率二本立て・GPS 後追い認証・削除
 // ══════════════════════════════════════════════════════════════
 
+// v185: delay_minutes (整数) を「N時間M分」「N分」「N時間」形式に整形。
+// 0 or null は空文字。
+function formatDelayMin(min) {
+  const n = (typeof min === 'number') ? min : parseInt(min, 10);
+  if (!n || n <= 0) return '';
+  if (n < 60) return `${n}分`;
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  return m > 0 ? `${h}時間${m}分` : `${h}時間`;
+}
+window.formatDelayMin = formatDelayMin;
+
 let _mypageCache = null;            // 取得した自分の trip[]
 let mpActiveSection = 'stats';      // 'stats' | 'trips' | 'lines'
 let mpTripFilter = {
@@ -1665,9 +1677,9 @@ function tripCardHtml(trip) {
     trainBit = `<div class="mp-tcard-train">🚆 ${trip.train_name}${customMark}${trip.car_model?` <span class="mp-car">[${trip.car_model}]</span>`:''}</div>`;
   }
 
-  // v181: 後追い記録モード拡張 — 遅延分・自由メモ
+  // v181/v185: 後追い記録モード拡張 — 遅延分・自由メモ (時間+分表記)
   const delayBit = (typeof trip.delay_minutes === 'number' && trip.delay_minutes > 0)
-    ? `<span class="mp-badge delay" title="到着遅延">⏱ ${trip.delay_minutes}分遅れ</span>`
+    ? `<span class="mp-badge delay" title="到着遅延">⏱ ${formatDelayMin(trip.delay_minutes)}遅れ</span>`
     : '';
   let notesLine = '';
   if (trip.notes && String(trip.notes).trim()) {
@@ -1713,15 +1725,19 @@ function openTripEditModal(tripId) {
   const trip = (_mypageCache || []).find(t => t.id === tripId);
   if (!trip) { alert('旅程が見つかりません'); return; }
   const idInp = document.getElementById('trip-edit-id');
-  const delayInp = document.getElementById('trip-edit-delay');
+  const delayHInp = document.getElementById('trip-edit-delay-h');
+  const delayMInp = document.getElementById('trip-edit-delay-m');
   const notesInp = document.getElementById('trip-edit-notes');
   const subTitle = document.getElementById('trip-edit-subtitle');
   if (idInp) idInp.value = tripId;
-  if (delayInp) delayInp.value = (typeof trip.delay_minutes === 'number') ? String(trip.delay_minutes) : '';
+  // v185: 既存 delay_minutes を 時間+分 に分解してプリセット
+  const total = (typeof trip.delay_minutes === 'number' && trip.delay_minutes > 0) ? trip.delay_minutes : 0;
+  if (delayHInp) delayHInp.value = total >= 60 ? String(Math.floor(total / 60)) : '';
+  if (delayMInp) delayMInp.value = (total % 60) > 0 ? String(total % 60) : (total > 0 && total < 60 ? String(total) : '');
   if (notesInp) notesInp.value = trip.notes || '';
   if (subTitle) {
     const label = trip.name || tripId;
-    subTitle.textContent = `${label} の 📝 自由メモ と ⏱ 遅延分 を編集します。`;
+    subTitle.textContent = `${label} の 📝 自由メモ と ⏱ 遅延 を編集します。`;
   }
   document.getElementById('trip-edit-modal')?.classList.add('open');
 }
@@ -1738,11 +1754,18 @@ function saveTripEdit() {
   const trip = (_mypageCache || []).find(t => t.id === tripId);
   if (!trip) { alert('旅程が見つかりません'); closeTripEditModal(); return; }
 
-  const delayRaw = document.getElementById('trip-edit-delay')?.value;
+  // v185: 時間+分 から delay_minutes (分) を算出
+  const delayHRaw = document.getElementById('trip-edit-delay-h')?.value;
+  const delayMRaw = document.getElementById('trip-edit-delay-m')?.value;
   const notesRaw = document.getElementById('trip-edit-notes')?.value;
-  const newDelay = (delayRaw !== undefined && delayRaw !== null && delayRaw !== '')
-    ? Math.max(0, Math.min(999, parseInt(delayRaw, 10) || 0))
-    : null;
+  const dh = (delayHRaw !== undefined && delayHRaw !== null && delayHRaw !== '')
+    ? Math.max(0, Math.min(99, parseInt(delayHRaw, 10) || 0))
+    : 0;
+  const dm = (delayMRaw !== undefined && delayMRaw !== null && delayMRaw !== '')
+    ? Math.max(0, Math.min(59, parseInt(delayMRaw, 10) || 0))
+    : 0;
+  const dTotal = dh * 60 + dm;
+  const newDelay = (dTotal > 0) ? Math.min(5999, dTotal) : null;
   const newNotes = (notesRaw || '').trim() || null;
 
   // _mypageCache 内の trip を直接更新
