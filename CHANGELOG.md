@@ -1449,3 +1449,59 @@ function buildRecentTripCard(trips) {
 ### Phase 3.8 ステータス更新
 
 - ✅ 統計タブ「📌 直近の旅程」 + 旅程タブ並び替え (v182)
+
+---
+
+## 32. v183 — メモ/遅延が表示されないバグ修正 (localStorage merge) (2026-05-18)
+
+v181 で `📝 メモ` と `⏱ 遅延` を確認モーダルに追加したが、実際の旅程カードに表示されないユーザー報告。原因は v181 自体のワークアラウンドの副作用。
+
+### 原因
+
+v181 で `tripForSupabase()` を導入し、Supabase スキーマに `notes` / `delay_minutes` 列がない間は送信 body から除外していた。一方、マイページは `_mypageCache` を **Supabase からの取得のみ** で構築するため、保存しても再読込時にはこれらフィールドが復元されない。
+
+つまり：
+- `saveMultiSegmentTrip()` 時点: trip オブジェクトに notes/delay_minutes あり → localStorage には保存される
+- Supabase 送信時: `tripForSupabase()` で除外 → DB には載らない
+- マイページ表示時: `fetch(...norireco_trips)` で取得 → notes/delay_minutes フィールドなし → カード未表示
+
+### 修正
+
+`renderMypage()` の trip fetch 直後で localStorage の `norireco_trips` を id ベースで merge：
+
+```js
+const localTrips = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
+const localById = new Map(localTrips.map(t => [t.id, t]));
+trips = trips.map(t => {
+  const lt = localById.get(t.id);
+  if (!lt) return t;
+  const merged = { ...t };
+  if (merged.notes == null && lt.notes != null) merged.notes = lt.notes;
+  if (merged.delay_minutes == null && lt.delay_minutes != null) merged.delay_minutes = lt.delay_minutes;
+  return merged;
+});
+```
+
+- Supabase 由来の値を優先しつつ、**欠落フィールドだけ** localStorage で補完（将来 DB に直接保存できる状態になっても上書きしない）
+- 同一デバイス内では即時表示される
+- 別デバイスからの閲覧では localStorage が空のため表示されない → Supabase スキーマ拡張で根本解決される暫定措置
+
+### 撤去予定
+
+`norireco_trips` テーブルに以下の SQL でカラム追加後、`tripForSupabase()` workaround と本 localStorage merge ロジックの両方を撤去する：
+
+```sql
+ALTER TABLE norireco_trips
+  ADD COLUMN notes text,
+  ADD COLUMN delay_minutes integer;
+NOTIFY pgrst, 'reload schema';
+```
+
+### 影響範囲
+
+- `js/13-mypage.js` `renderMypage()` の trip fetch 直後に localStorage merge を追加
+- `sw.js` — `CACHE_VERSION = 'v183'`
+
+### Phase 3.8 ステータス更新
+
+- ✅ メモ/遅延の表示バグ修正 (localStorage merge) (v183)

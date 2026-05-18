@@ -69,6 +69,29 @@ async function renderMypage() {
   } catch (e) {
     console.warn('[マイページ] 取得エラー:', e.message);
   }
+
+  // v183: Supabase スキーマ未拡張のフィールド (notes / delay_minutes) を
+  // localStorage から id ベースで merge して補完する。
+  // v181 で tripForSupabase() により notes/delay_minutes は Supabase に送らない
+  // ため、Supabase からの再取得時にこれらが欠落する。スキーマ拡張後に撤去。
+  try {
+    const localTrips = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
+    if (Array.isArray(localTrips) && localTrips.length > 0) {
+      const localById = new Map(localTrips.map(t => [t.id, t]));
+      trips = trips.map(t => {
+        const lt = localById.get(t.id);
+        if (!lt) return t;
+        // Supabase 由来の値を優先しつつ、欠落フィールドだけ localStorage で補完
+        const merged = { ...t };
+        if (merged.notes == null && lt.notes != null) merged.notes = lt.notes;
+        if (merged.delay_minutes == null && lt.delay_minutes != null) merged.delay_minutes = lt.delay_minutes;
+        return merged;
+      });
+    }
+  } catch (e) {
+    console.warn('[マイページ] localStorage merge エラー:', e.message);
+  }
+
   _mypageCache = trips;
 
   // グローバル過去モード (_tripDateFilter) が有効ならバナー表示
