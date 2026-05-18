@@ -4,14 +4,14 @@
 詳しい仕様や経緯は `CHANGELOG.md`（更新履歴詳細）、ビジネス背景は [Notion 開発ノート](https://www.notion.so/35b71b458b63818494afe7c1ab917ca5)。
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v180 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v181 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13-..` 機能別分割（v131〜v138、`CHANGELOG.md §20, §21` 参照）
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
 **マイページ**: 3 サブタブ (統計 / 旅程 / 路線)、詳細統計 16 種、期間指定で過去状態 (地図ピル「〜月指定」)
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **保存ボタン**: 記録種別に応じて「💾 手動記録で保存する」/「💾 GPS 記録で保存する」に動的切替（v176）
-**直近の作業**: 確認モーダルの 🕒 時刻行を精度連動表示「乗車時刻 / 乗車日 / 乗車月 / 乗車年 / 日時不明」（v180、Phase 3.8）
+**直近の作業**: 後追い記録モード拡張 — 確認モーダルに 📝 メモ / ⏱ 遅延 を追加、マイページ旅程カードに表示（v181、Phase 3.8）
 
 ---
 
@@ -36,13 +36,18 @@
   - 利点: 過去の旅程をまとめて編集、後から特急列車種別を登録、メモ追記が片手間にできる
   - 地図 / 📋 ログ / 👤 マイページ の 3 タブナビに統合
 
-- [ ] **後追い記録モードの拡張（メモ・遅延入力）**
-  - v178 で「乗車日 / 出発 / 到着」の手動入力は対応済（`date_precision='minute'`）
+- [ ] **後追い記録モードの拡張（駅メモ + Supabase 列追加）**
+  - v178 で「乗車日 / 出発 / 到着」の手動入力対応済（`date_precision='minute'`）
+  - v181 で `trip.notes` (text) / `trip.delay_minutes` (int) を確認モーダル + マイページに実装済（CHANGELOG §30）
+    - 現状は Supabase 送信時に `tripForSupabase()` で除外、localStorage のみ保存
+    - **Supabase スキーマ追加 SQL** を実行後、workaround を撤去:
+      ```sql
+      ALTER TABLE norireco_trips ADD COLUMN notes text, ADD COLUMN delay_minutes integer;
+      NOTIFY pgrst, 'reload schema';
+      ```
+      その後、`js/07-record-mode.js` の `tripForSupabase()` 呼び出しを `JSON.stringify(trip)` に戻す
   - 残り:
-    - 列車遅延 (○○分遅れ) のメモ
-    - 駅の設備メモ（トイレあり、混雑度、改札位置 等）
-    - 当該乗車のエピソード・所感メモ
-  - `trip.notes` (text) / `trip.delay_minutes` (int) / `trip.station_notes` (jsonb) を Supabase に追加する想定
+    - **駅の設備メモ**（トイレあり、混雑度、改札位置 等） — `trip.station_notes` (jsonb) を駅ごとに保存。構造設計大きいため別タスク
 
 - [ ] **`stop_type` 反映の駅UI個人化**
   - 「降りた駅 (alighted) = ●大」/「乗車のみ (boarded) = ◎中」/「通過 (passed) = ○小」

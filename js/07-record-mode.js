@@ -418,6 +418,11 @@ function openRecConfirm() {
   document.getElementById('rec-confirm-modal')?.classList.add('open');
   // 列車セレクタをリセット (前回の選択を持ち越さない)
   resetTrainSelector();
+  // メモ・遅延もリセット (前回値を持ち越さない)
+  const delayInp = document.getElementById('rec-edit-delay');
+  const notesInp = document.getElementById('rec-edit-notes');
+  if (delayInp) delayInp.value = '';
+  if (notesInp) notesInp.value = '';
 }
 
 function closeRecConfirm() {
@@ -674,6 +679,15 @@ window.selectEndStationCand = selectEndStationCand;
 window.closeEndStation = closeEndStation;
 window.confirmEndStation = confirmEndStation;
 
+// Supabase スキーマ未拡張のフィールドを送信時に除外 (列追加されたら撤去)
+// v122→v123 で認証フィールド向けに同じパターンを使い、列追加後に撤去した前例あり
+// 現状: notes / delay_minutes (v181)
+function tripForSupabase(trip) {
+  const { notes, delay_minutes, ...rest } = trip;
+  return rest;
+}
+window.tripForSupabase = tripForSupabase;
+
 async function saveMultiSegmentTrip() {
   if (!recordSelection || recordSelection.length === 0) return;
   const isVisitOnly = recordSelection.length === 1 && (!currentSegments || currentSegments.length === 0);
@@ -782,6 +796,15 @@ async function saveMultiSegmentTrip() {
       datePrecision = 'unknown';
     }
   }
+  // 後追い記録モード拡張: メモ・遅延 (v181)
+  // 空 input は null として保存 (Supabase 側のフィルタ/表示で扱いやすい)
+  const delayRaw = document.getElementById('rec-edit-delay')?.value;
+  const notesRaw = document.getElementById('rec-edit-notes')?.value;
+  const delayMinutes = (delayRaw !== undefined && delayRaw !== null && delayRaw !== '')
+    ? Math.max(0, Math.min(999, parseInt(delayRaw, 10) || 0))
+    : null;
+  const tripNotes = (notesRaw || '').trim() || null;
+
   const tripId = `trip_${Date.now()}`;
   const trip = {
     id: tripId, date: tripDate, name: tripName,
@@ -808,6 +831,10 @@ async function saveMultiSegmentTrip() {
     train_name: selectedTrainName,
     train_category: selectedTrainCategory,
     car_model: selectedCarModel,
+    // 後追い記録モード拡張 (v181): メモ・遅延 — Supabase スキーマ追加待ちのため
+    // tripForSupabase() で送信時に除外。localStorage には保存される
+    notes: tripNotes,
+    delay_minutes: delayMinutes,
     // 所有者 (ログイン中なら uid、未ログインなら null → 初回ログイン時 backfill 対象)
     user_id: (typeof currentUserId === 'function') ? currentUserId() : null,
   };
@@ -835,7 +862,7 @@ async function saveMultiSegmentTrip() {
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal',
       },
-      body: JSON.stringify(trip),
+      body: JSON.stringify(tripForSupabase(trip)),
     });
     if (res.ok) {
       saved = true;

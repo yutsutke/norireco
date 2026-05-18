@@ -1603,6 +1603,18 @@ function buildTripList(trips) {
       trainBit = `<div class="mp-tcard-train">🚆 ${trip.train_name}${customMark}${trip.car_model?` <span class="mp-car">[${trip.car_model}]</span>`:''}</div>`;
     }
 
+    // v181: 後追い記録モード拡張 — 遅延分・自由メモ
+    // (HTML エスケープは escapeHtml ヘルパ未整備のため最低限の textContent 経由で行う)
+    const delayBit = (typeof trip.delay_minutes === 'number' && trip.delay_minutes > 0)
+      ? `<span class="mp-badge delay" title="到着遅延">⏱ ${trip.delay_minutes}分遅れ</span>`
+      : '';
+    let notesLine = '';
+    if (trip.notes && String(trip.notes).trim()) {
+      const tmp = document.createElement('div');
+      tmp.textContent = String(trip.notes).trim();
+      notesLine = `<div class="mp-tcard-notes">📝 ${tmp.innerHTML}</div>`;
+    }
+
     const verifyBtn = !trip.verified
       ? `<button class="mp-act-btn verify" onclick="retroactivelyVerifyTrip('${trip.id}')">📍 GPSで認証</button>`
       : '';
@@ -1614,10 +1626,12 @@ function buildTripList(trips) {
         ${timeStr ? `<span class="mp-tcard-time">${timeStr}</span>` : ''}
         ${badge}
         ${afterTheFactBadge}
+        ${delayBit}
       </div>
       <div class="mp-tcard-name">${trip.name || ''}</div>
       <div class="mp-tcard-sub">${trip.total_stations || 0}駅 · 乗換${trip.transfers || 0}回</div>
       ${trainBit}
+      ${notesLine}
       ${recordedAtLine}
       <div class="mp-tcard-actions">
         ${verifyBtn}
