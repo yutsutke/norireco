@@ -163,6 +163,42 @@
   - Phase 2 で改善したが、まだ重い駅がある（多系統駅のパイ・キャラ）
   - 必要なら viewport culling、divIcon → canvas への寄せを再検討
 
+## 🌱 布石（B カテゴリ：設計だけ今・実装は後）
+
+長期スケール（10万〜100万 MAU）で必要になるが、今やらないと後で改修コストが爆発する項目。「今のうちにやること」欄を必ず明記する。詳細・運用ルールは [🌱 布石リスト（Notion）](https://www.notion.so/36471b458b6381198769fcbf5ab630bd) と [🏗 インフラ戦略（Notion）](https://www.notion.so/36171b458b63818f8687d3d05ad0926e)。
+
+- [ ] **#1 静的アセット: GitHub Pages → Cloudflare Pages 移行**
+  - 理由: GitHub Pages は帯域 100GB/月のソフト上限。1 万 MAU で警告ライン、それ以上で読み込み障害。Cloudflare Pages なら帯域無制限・無料
+  - 発動条件: **今すぐ**（ユーザー数関係なし、デメリットほぼなし）
+  - 今のうちにやること: リポジトリ連携設定・カスタムドメイン DNS 切替・GitHub Pages は当面残してフォールバックに
+
+- [ ] **#2 画像ストレージ: Cloudflare R2 + Workers API ゲートウェイ**
+  - 理由: 写真保存は将来必ず量が爆発。R2 の egress 無料を最初から取らないと月額 30 倍以上の差（Supabase Storage は地獄）
+  - 発動条件: 画像機能（旅程の写真添付・OGP 生成）の実装着手時 ≒ Phase 2（500〜2,000 ユーザー）
+  - 今のうちにやること: 画像保存先を Supabase Storage にしない。新規 API を書くなら Worker 前提で設計
+
+- [ ] **#3 `norireco_trips` テーブルの将来シャーディング可能化**
+  - 理由: 100 万 MAU で trip データ 2TB、Postgres 単一テーブルは 10 万 MAU で限界。`created_year` で水平分割できる構造にしておけば Neon 移行時もスムーズ
+  - 発動条件: 10 万 MAU 手前で実際の `PARTITION BY RANGE` 設定
+  - 今のうちにやること: 新規テーブル設計時は `created_year`（または同等のパーティションキー）カラムを含める。`PARTITION` 自体は今まだ設定しない
+
+- [ ] **#4 API を Workers 経由に統一**
+  - 理由: 現状は Supabase SDK でブラウザ → 直接 DB。Cloudflare Workers の API ゲートウェイ経由にしておけば、後で DB を Neon に差し替えてもフロントエンドを触らずに済む
+  - 発動条件: 画像機能着手時（= #2 と同時、Phase 2 頃）
+  - 今のうちにやること: 新規 API エンドポイントは Worker で書く。ブラウザから Supabase SDK で直接 DB を叩くコードをこれ以上増やさない
+
+- [ ] **#5 認証ベンダーロックイン回避**
+  - 理由: Supabase Enterprise は \$数千/月でコスト交渉力が低い。10 万 MAU で Auth を Clerk / Auth.js に逃がせる選択肢を残す
+  - 発動条件: 10 万 MAU 手前でベンダー比較開始。今は Supabase Auth 一本で OK
+  - 今のうちにやること: Magic Link / Google OAuth の UI コードは Supabase 依存を 1 関数に集約する（ユーザー情報取得・JWT 検証の口を狭める）
+
+- [ ] **#6 垢 BAN 設計（共有のみ停止・個人記録は維持）** ← 🔥 残 TODO の「垢BAN 対応」と連動
+  - 理由: シェア機能（OGP）リリース後に垢 BAN を後付けすると trip / share テーブルの flag 設計がスパゲッティになる
+  - 発動条件: シェア機能リリース時 or 不正検知が一定数の偽陽性を出した時
+  - 今のうちにやること: シェア機能設計時に `users.share_status`（warn / share_banned / full_banned）と RLS を含める。trip / character_grant は触らない設計に
+
+---
+
 ## 🎮 将来（コア層 → マス層フェーズ）
 
 ### キャラシステム拡張
