@@ -1680,6 +1680,9 @@ function tripCardHtml(trip) {
     ? `<button class="mp-act-btn verify" onclick="retroactivelyVerifyTrip('${trip.id}')">📍 GPSで認証</button>`
     : '';
 
+  // v184: 既存旅程にもメモ・遅延を後追い編集できるボタン
+  const editBtn = `<button class="mp-act-btn edit-memo" onclick="openTripEditModal('${trip.id}')">✏️ メモ編集</button>`;
+
   return `
     <div class="mp-tcard" data-trip-id="${trip.id}">
       <div class="mp-tcard-head">
@@ -1697,10 +1700,77 @@ function tripCardHtml(trip) {
       ${recordedAtLine}
       <div class="mp-tcard-actions">
         ${verifyBtn}
+        ${editBtn}
         <button class="mp-act-btn delete" onclick="deleteTripFromMypage('${trip.id}')">🗑 削除</button>
       </div>
     </div>`;
 }
+
+// v184: 旅程カードからメモ・遅延を後追い編集 ────────────────────
+// Supabase スキーマ未拡張のため、編集結果は localStorage と _mypageCache に書き戻すのみ。
+// 旅程タブ・統計タブ「直近の旅程」を即時再描画して反映する。
+function openTripEditModal(tripId) {
+  const trip = (_mypageCache || []).find(t => t.id === tripId);
+  if (!trip) { alert('旅程が見つかりません'); return; }
+  const idInp = document.getElementById('trip-edit-id');
+  const delayInp = document.getElementById('trip-edit-delay');
+  const notesInp = document.getElementById('trip-edit-notes');
+  const subTitle = document.getElementById('trip-edit-subtitle');
+  if (idInp) idInp.value = tripId;
+  if (delayInp) delayInp.value = (typeof trip.delay_minutes === 'number') ? String(trip.delay_minutes) : '';
+  if (notesInp) notesInp.value = trip.notes || '';
+  if (subTitle) {
+    const label = trip.name || tripId;
+    subTitle.textContent = `${label} の 📝 自由メモ と ⏱ 遅延分 を編集します。`;
+  }
+  document.getElementById('trip-edit-modal')?.classList.add('open');
+}
+window.openTripEditModal = openTripEditModal;
+
+function closeTripEditModal() {
+  document.getElementById('trip-edit-modal')?.classList.remove('open');
+}
+window.closeTripEditModal = closeTripEditModal;
+
+function saveTripEdit() {
+  const tripId = document.getElementById('trip-edit-id')?.value;
+  if (!tripId) { closeTripEditModal(); return; }
+  const trip = (_mypageCache || []).find(t => t.id === tripId);
+  if (!trip) { alert('旅程が見つかりません'); closeTripEditModal(); return; }
+
+  const delayRaw = document.getElementById('trip-edit-delay')?.value;
+  const notesRaw = document.getElementById('trip-edit-notes')?.value;
+  const newDelay = (delayRaw !== undefined && delayRaw !== null && delayRaw !== '')
+    ? Math.max(0, Math.min(999, parseInt(delayRaw, 10) || 0))
+    : null;
+  const newNotes = (notesRaw || '').trim() || null;
+
+  // _mypageCache 内の trip を直接更新
+  trip.delay_minutes = newDelay;
+  trip.notes = newNotes;
+
+  // localStorage 側も同期更新 (新規エントリだったら追加)
+  try {
+    const local = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
+    const idx = local.findIndex(t => t.id === tripId);
+    if (idx >= 0) {
+      local[idx] = { ...local[idx], delay_minutes: newDelay, notes: newNotes };
+    } else {
+      // Supabase からのみ取得した旧 trip を初めて localStorage に置く場合
+      local.push({ ...trip });
+    }
+    localStorage.setItem('norireco_trips', JSON.stringify(local));
+  } catch (e) {
+    console.warn('[マイページ] localStorage 更新失敗:', e.message);
+  }
+
+  closeTripEditModal();
+  // 旅程タブ・統計タブ「直近の旅程」を再描画
+  if (typeof renderMpTripsSection === 'function') renderMpTripsSection();
+  applyMpSection();
+  if (typeof showMypageToast === 'function') showMypageToast('✏️ メモ・遅延を保存しました');
+}
+window.saveTripEdit = saveTripEdit;
 
 function buildTripList(trips) {
   const list = document.createElement('div');

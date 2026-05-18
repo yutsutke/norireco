@@ -593,6 +593,8 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mp-act-btn.verify:hover{background:rgba(72,213,151,.2);}
 .mp-act-btn.delete{background:rgba(232,53,42,.08);color:var(--red);border-color:rgba(232,53,42,.3);}
 .mp-act-btn.delete:hover{background:rgba(232,53,42,.18);}
+.mp-act-btn.edit-memo{background:rgba(95,181,255,.1);color:#5fb5ff;border-color:rgba(95,181,255,.4);}
+.mp-act-btn.edit-memo:hover{background:rgba(95,181,255,.2);}
 
 .mp-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--steel);color:var(--white);padding:10px 18px;border-radius:24px;font-size:12px;font-weight:600;border:1px solid var(--track);box-shadow:0 8px 24px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:all .25s ease;z-index:9999;}
 .mp-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -1224,6 +1226,29 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
     <div class="sh"></div>
     <div id="char-modal-body"></div>
     <button class="btn-cls" onclick="closeCharModal()">閉じる</button>
+  </div>
+</div>
+
+<!-- v184: 旅程の📝メモ・⏱遅延 後追い編集モーダル (マイページ旅程カードから開く) -->
+<div class="memo-modal" id="trip-edit-modal" onclick="if(event.target===this)closeTripEditModal()">
+  <div class="memo-sheet">
+    <div class="sh"></div>
+    <div class="modal-title">✏️ メモ・遅延を編集</div>
+    <div class="modal-sub" style="color:var(--silver);font-size:11px;margin-bottom:14px" id="trip-edit-subtitle">旅程の📝 自由メモ と ⏱ 遅延分 を後から追加・編集できます。</div>
+    <input type="hidden" id="trip-edit-id" value="">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+      <label style="font-size:10px;color:var(--silver);min-width:50px">⏱ 遅延</label>
+      <input type="number" id="trip-edit-delay" min="0" max="999" step="1" placeholder="0"
+             style="width:90px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
+      <span style="font-size:10px;color:var(--silver)">分遅れ</span>
+    </div>
+    <textarea id="trip-edit-notes" rows="4" placeholder="自由メモ (車内エピソード・運休情報など)"
+              style="width:100%;box-sizing:border-box;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:8px;font-size:12px;resize:vertical;min-height:80px;font-family:inherit;margin-bottom:10px"></textarea>
+    <div style="font-size:9px;color:var(--silver);opacity:.7;line-height:1.5;margin-bottom:12px">
+      ※ メモと遅延は現在この端末の localStorage のみに保存されます。Supabase スキーマ拡張後に同期されます。
+    </div>
+    <button class="btn-gen" onclick="saveTripEdit()">💾 保存する</button>
+    <button class="btn-cls" onclick="closeTripEditModal()">キャンセル</button>
   </div>
 </div>
 

@@ -1505,3 +1505,53 @@ NOTIFY pgrst, 'reload schema';
 ### Phase 3.8 ステータス更新
 
 - ✅ メモ/遅延の表示バグ修正 (localStorage merge) (v183)
+
+---
+
+## 33. v184 — 旅程カードからメモ・遅延を後追い編集 (2026-05-18)
+
+v181 でメモ・遅延の入力欄を確認モーダルに追加したが、**v181 デプロイ以前の旅程** と **保存時に入力し忘れた旅程** には書き戻す手段がなかった。`v178` の「後追い記録」コンセプトと整合させて、旅程カードから後追いで編集できる UI を追加。
+
+### UI
+
+各旅程カードの actions 行に **「✏️ メモ編集」** ボタンを追加（GPS 認証ボタン / 削除ボタンと並ぶ位置、青系の色）。
+タップすると `#trip-edit-modal` が開き：
+- ⏱ 遅延 (number input, 0–999)
+- 📝 自由メモ (textarea, 4 行)
+- 💾 保存 / キャンセル
+
+既存値があれば input にプリセットされる。
+
+### 保存処理
+
+`saveTripEdit()`:
+1. `_mypageCache` 内の trip オブジェクトを直接更新 (delay_minutes / notes)
+2. `localStorage.norireco_trips` も同期更新 (該当 id がなければ追加 = Supabase からのみ取得した旧 trip を初めて localStorage に置く形)
+3. モーダル閉じる → `renderMpTripsSection()` + `applyMpSection()` で旅程タブ・統計タブ「直近の旅程」を再描画
+4. トースト「✏️ メモ・遅延を保存しました」
+
+Supabase に PATCH は送らない（スキーマ未拡張のため列なしエラーを避ける）。v183 の localStorage merge と同じく、スキーマ拡張後に同期できるようになる。
+
+### 影響範囲
+
+- `noritetsu-map.html`
+  - `#trip-edit-modal` モーダル新設（`#char-modal` 直下）
+  - `.mp-act-btn.edit-memo` (青系) スタイル追加
+- `js/13-mypage.js`
+  - `tripCardHtml` の actions に `✏️ メモ編集` ボタン追加
+  - `openTripEditModal(tripId)` / `closeTripEditModal()` / `saveTripEdit()` 新設
+  - `window.openTripEditModal` / `window.closeTripEditModal` / `window.saveTripEdit` を公開
+- `sw.js` — `CACHE_VERSION = 'v184'`
+
+### v181〜v184 の役割整理
+
+| Ver | 何を追加したか |
+|---|---|
+| v181 | 確認モーダルにメモ・遅延の入力欄、tripForSupabase workaround |
+| v182 | 統計タブ「📌 直近の旅程」、旅程タブの並び替え 5 軸 |
+| v183 | Supabase fetch 後に localStorage を id merge して欠落を補完 |
+| v184 | 旅程カードからメモ・遅延を後追い編集できる UI |
+
+### Phase 3.8 ステータス更新
+
+- ✅ 旅程カードからメモ・遅延を後追い編集 (v184)
