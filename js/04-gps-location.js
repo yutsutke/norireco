@@ -415,48 +415,9 @@ function pickStationCharacter(stationName, charId) {
     redrawAllLinesAfterTripChange();
   }
 }
-async function loadMergedStations() {
-  try {
-    const res = await fetch('merged_stations.json');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    MERGED_STATIONS = data.stations || [];
-    slMergedStationMap.clear();
-    for (const ms of MERGED_STATIONS) {
-      // 営業系統 id で索引
-      for (const lid of (ms.lines || [])) {
-        slMergedStationMap.set(`${lid}:${ms.name}`, ms);
-      }
-    }
-    console.log(`[乗レコ] 統合駅 ${MERGED_STATIONS.length}駅 (索引 ${slMergedStationMap.size}件)`);
-  } catch (e) {
-    console.warn('[乗レコ] merged_stations.json 読込失敗:', e.message);
-  }
-}
-
-// ── 営業系統マスター (service_lines_master.json) ──
-// 物理路線(N02)とは別に、乗客視点の「営業系統」を polyline で重ね描き
-// 路線一覧・統計タブの達成率計算もこちらをベースにする
-let SERVICE_LINES_MASTER = null;
-let SERVICE_LINES = []; // 駅座標解決済み + 候補 N02 id を持つ
-let serviceLinesLoaded = false;
-let serviceLinesBuilt = false;
-
-async function loadServiceLinesMaster() {
-  if (SERVICE_LINES_MASTER) return SERVICE_LINES_MASTER;
-  try {
-    const res = await fetch('service_lines_master.json');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    SERVICE_LINES_MASTER = data.service_lines || [];
-    console.log(`[乗レコ] 営業系統 ${SERVICE_LINES_MASTER.length}系統 読込`);
-    return SERVICE_LINES_MASTER;
-  } catch (e) {
-    console.warn('[乗レコ] service_lines_master.json 読込失敗:', e.message);
-    SERVICE_LINES_MASTER = [];
-    return SERVICE_LINES_MASTER;
-  }
-}
+// ── データローダー (loadMergedStations / loadServiceLinesMaster / loadLines) は
+// v191 で 02-data-loaders.js に移管された。SERVICE_LINES_MASTER / SERVICE_LINES /
+// serviceLinesLoaded / serviceLinesBuilt 等のグローバル状態も 02 で宣言される。
 
 // N02 物理路線ごとの「駅名→座標」マップを構築
 // キーは line.id。同 id N02 エントリ(富山地方鉄道本線の鉄道線+軌道線等)はマージ
@@ -598,79 +559,8 @@ function slGlobalStats() {
   return { ts, rt, la, ld, pct: ts > 0 ? Math.round(rt/ts*100) : 0 };
 }
 
-// 優先度別JSONファイル（N02-25 全国データ・606路線・10154駅）
-const PRIORITY_FILES = {
-  1: 'lines-p1.json',  // 新幹線（ズーム5〜）
-  2: 'lines-p2.json',  // JR在来線（ズーム7〜）
-  3: 'lines-p3.json',  // 大手私鉄・都市鉄道（ズーム8〜）
-  4: 'lines-p4.json',  // 地方鉄道・路面電車（ズーム10〜）
-};
-
-// ズームレベル→読み込む優先度の閾値
-function getPriorityThreshold(zoom) {
-  if (zoom >= 10) return 4;
-  if (zoom >= 8) return 3;
-  if (zoom >= 7) return 2;
-  return 1;
-}
-
-// 路線データを非同期で読み込む
-async function loadLines(priority) {
-  if (loadedPriorities.has(priority)) return;
-  if (pendingLoads.has(priority)) {
-    // 既に読み込み中なら完了を待つ
-    return new Promise(resolve => {
-      const check = setInterval(() => {
-        if (loadedPriorities.has(priority) || !pendingLoads.has(priority)) {
-          clearInterval(check);
-          resolve();
-        }
-      }, 100);
-    });
-  }
-  pendingLoads.add(priority);
-
-  const url = PRIORITY_FILES[priority];
-  if (!url) { pendingLoads.delete(priority); return; }
-
-  console.log(`[乗レコ] P${priority} fetch開始: ${url}`);
-  try {
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const newLines = await resp.json();
-
-    const existingIds = new Set(LINES.map(l => l.id));
-    const added = newLines.filter(l => !existingIds.has(l.id));
-    LINES.push(...added);
-
-    loadedPriorities.add(priority);
-    pendingLoads.delete(priority);
-
-    console.log(`[乗レコ] P${priority}完了: +${added.length}路線（計${LINES.length}路線）`);
-
-    rebuildRiddenStations();
-    // Phase 2: 描画は SERVICE_LINES 構築後の drawLines() に一任。
-    // ここで個別 N02 line を描画する必要はない。
-  } catch(e) {
-    pendingLoads.delete(priority);
-    loadedPriorities.add(priority); // エラーでも再試行しない
-    console.error(`[乗レコ] P${priority}エラー:`, e);
-  }
-}
-
-// 注: 以前 Supabase から路線・駅情報を取得する関数 (loadLinesFromSupabase /
-// loadManualLinesFromSupabase) があったが、現状は lines-p?.json が唯一のソースのため削除
-// Supabase の norireco_lines / norireco_stations テーブルも未使用
-
-// ズームに応じて必要な優先度を読み込む
-async function loadLinesForZoom(zoom) {
-  const maxP = getPriorityThreshold(zoom);
-  for (let p = 1; p <= maxP; p++) {
-    if (!loadedPriorities.has(p)) {
-      loadLines(p); // 非同期で並行実行
-    }
-  }
-}
+// 路線データ遅延読み込み系 (PRIORITY_FILES / getPriorityThreshold / loadLines /
+// loadLinesForZoom) は v191 で 02-data-loaders.js に移管。
 
 // 旧ID（v1のローマ字ID）→ 新ID（N02-25 路線名_会社名）のマッピング
 // localStorage や Supabase に旧形式の lineId が残っていても新データと紐づくように

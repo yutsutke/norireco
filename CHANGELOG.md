@@ -1820,6 +1820,57 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 40. v191 — `04-gps-location.js` のデータローダーを `02-data-loaders.js` に移管 (2026-05-19)
+
+### 背景
+
+`js/04-gps-location.js` (1037 行、最大ファイル) の中に v131 分割時の経緯で混入していたマスターローダー 3 関数を、本来あるべき `02-data-loaders.js` に移管。「ファイル名 `gps-location` なのに現在地表示と関係ないローダーがいる」という認知負荷を解消。Notion §2.5 落とし穴「04-gps-location.js にデータローダーがいる」を正式に解消した。
+
+### 移管した関数・状態 (04 → 02)
+
+| 種別 | 名前 | 説明 |
+|---|---|---|
+| ローダー | `loadMergedStations()` | `merged_stations.json` → `MERGED_STATIONS` + `slMergedStationMap` 構築 |
+| ローダー | `loadServiceLinesMaster()` | `service_lines_master.json` → `SERVICE_LINES_MASTER` 構築 |
+| ローダー | `loadLines(priority)` | `lines-p1〜p4.json` の遅延読込 (LOD) |
+| ローダー | `loadLinesForZoom(zoom)` | ズームに応じて必要な priority を loadLines する |
+| 定数 | `PRIORITY_FILES` | `{1: 'lines-p1.json', ...}` |
+| 関数 | `getPriorityThreshold(zoom)` | ズーム→priority 閾値 |
+| 状態 | `SERVICE_LINES_MASTER` / `SERVICE_LINES` | `let` 宣言を 02 へ |
+| 状態 | `serviceLinesLoaded` / `serviceLinesBuilt` | `let` 宣言を 02 へ |
+
+### 04 に残したもの
+
+「ローダー」ではなく「構築・分類」ロジックなので 04 に残置:
+
+- `buildServiceLines()` — SERVICE_LINES を構築 (将来は別ファイル候補)
+- `buildPerLineCoordMap()` — N02 line ごとの座標索引
+- `deriveN02IdFromAutoId()` — sl.id → N02 id (※ 04 内に同名定義が 2 回ある古い自己重複あり、別タスクで整理予定)
+- `regionOf()` / `_JR_OP_IDS` / `_METRO_TOEI` / `_KANTO_EAST_NORTH` / `_KANTO_SOUTH_WEST` / `detectServiceLineGroup()` — 地域分類
+- `slStats()` / `slGlobalStats()` — 達成率集計
+
+これら「SERVICE_LINES 構築の重み」が大きくなったら、将来 04 から `02b-service-lines-builder.js` 等に切り出す余地あり。
+
+### ロード順は無変更
+
+`02-data-loaders.js` は `01-constants.js` の直後にロードされており、`04-gps-location.js` より先。これは v131 時点から変わっていないので、移管後の依存関係は問題なし (むしろデータローダーが 04 より先にあるべき形になった)。
+
+### 影響範囲
+
+- `js/02-data-loaders.js` — 227 → 346 行 (+119)
+- `js/04-gps-location.js` — 1037 → 927 行 (-110)
+- `sw.js` — `CACHE_VERSION = 'v191'` (STATIC_ASSETS は無変更、ファイル数も同じ)
+
+### つまずきポイントなし
+
+機能的にはコード移動のみ。グローバル変数 (`MERGED_STATIONS` / `LINES` / `loadedPriorities` / `pendingLoads`) はすでに 02 で `let` / `const` 宣言されていたので、移管した関数からそのまま参照できる。クラシック script ロードのグローバル共有が今回は逆に味方になった (ES Module 化時にはここを明示 `import` する必要が出るが、それは将来セッションへ持ち越し)。
+
+### Phase 3.8 ステータス更新
+
+- ✅ `04-gps-location.js` のデータローダー (`loadServiceLinesMaster` / `loadLines` / `loadMergedStations` 他) を `02-data-loaders.js` に移管、Notion §2.5 落とし穴を解消 (v191)
+
+---
+
 ## 39. v190 — `js/13-mypage.js` を 4 ファイル分割 + `window.NORIRECO` 名前空間導入 (2026-05-19)
 
 ### 背景
