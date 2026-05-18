@@ -1820,6 +1820,101 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 39. v190 — `js/13-mypage.js` を 4 ファイル分割 + `window.NORIRECO` 名前空間導入 (2026-05-19)
+
+### 背景
+
+`js/13-mypage.js` が v138 (初版) → v189 で約 **1947 行** に成長。詳細統計 16 種・旅程フィルタ・Trip 編集モーダル・後追い認証・トースト等がすべて 1 ファイルに同居し、これ以上の追加 (stop_type 編集 UI / シェア機能 / キャラ図鑑) を入れると 2500 行を超えて grep も diff も辛くなる。Notion §2.4「次のモジュール化セッションで仕込む布石」の優先度順 ①③④ を実施。
+
+### 布石セクションのうち実施した項目
+
+- ⭐ ① `window.NORIRECO` 名前空間の導入（議論ベース → 採用）
+- ⭐ ③ 13-mypage.js から共通部分を `13-mypage-common.js` に抽出
+- ④ 13a-stats / 13b-trips / 13c-lines に分割（`NORIRECO.mypage.xxx` に登録）
+
+スコープ外（今回はやらない）:
+- ②シンタックスチェック自動化 (package.json scripts)
+- ⑤ Supabase 呼び出しを `NORIRECO.api.xxx` ラッパー化
+- ES Module 化 / TypeScript 化 / 既存 `slStats` 等の書き換え
+
+### 分割後のファイル構成
+
+| ファイル | 行数 | 担当 |
+|---|---|---|
+| `js/13-mypage-common.js` | 366 | NORIRECO 名前空間初期化 / 状態 (`_mypageCache`, `mpActiveSection`, `mpTripFilter`) / `renderMypage` / `applyMpSection` / `switchMpSection` / `tripCardHtml` / `_MP_SORT_COMPARATORS` / `showMypageToast` / `isTimeMachineActive` / `formatDelayMin` |
+| `js/13a-stats.js` | 1308 | 📊 統計タブ + 詳細統計 16 種 (`buildCompletionCards` / `buildDetailContent` / `buildOperatorYearly` / `buildCarModelStats` / `buildUnexplored` / `buildTimeHeatmap` / `buildStationTimeline` / `buildLineTimeline` / `buildRecentTripCard` / `buildPersonalRecords` / `buildPrefectureChart` 他) + `PREFECTURES` / `MAJOR_TERMINALS` / `prefOfStation` / `detailCard` |
+| `js/13b-trips.js` | 354 | 🚃 旅程タブ + フィルタバー (`renderMpTripsSection` / `buildTripFilterBar` / `applyTripFilters`) + Trip 編集モーダル (v184/v185 メモ・遅延後追い編集) + `retroactivelyVerifyTrip` (GPS 後追い認証 v138) + `deleteTripFromMypage` |
+| `js/13c-lines.js` | 21 | 📋 路線タブ (renderList ラッパー + 将来拡張ポイント) |
+
+合計 2049 行 (旧 1947 行 + 102 行は `NORIRECO.mypage.xxx = ...` 登録行とヘッダコメント)。
+
+### 名前空間の入れ方 (両建て方式)
+
+- 関数定義は `function xxx() {}` のまま保持
+- 末尾に `NORIRECO.mypage.xxx = xxx;` を追加して名前空間にも登録
+- HTML onclick から呼ばれる関数 (`renderMypage` / `switchMpSection` / `toggleDetailPane` / `toggleInfo` / `openTripEditModal` / `closeTripEditModal` / `saveTripEdit` / `retroactivelyVerifyTrip` / `deleteTripFromMypage` / `updateMpFilter` / `resetMpFilter`) は従来通り `window.xxx = xxx` も維持
+- 既存の `slStats` 等は書き換えしない（布石の精神どおり、新規・移動分のみルール導入）
+
+### 状態変数の扱い
+
+クラシック script ロードゆえに変数は同じグローバル Script 環境を共有するため、`_mypageCache` / `mpActiveSection` / `mpTripFilter` は 13-mypage-common.js のトップレベル `let` のまま据え置き。13a/13b から直接参照する（v189 までと挙動同一）。状態の名前空間化は ES Module 化セッションで一括検討。
+
+### 13c-lines.js を薄く切った理由
+
+路線一覧は `09-tabs-stats.js` の `renderList()` を再利用しているため、現状ロジックは実質ゼロ。それでも 13a/13b と並ぶ「3 タブ 3 ファイル」構成を維持するために `renderMpLinesSection` だけのプレースホルダを置いた。将来「路線色のユーザーカスタマイズ」「路線別バッジ表示」等が来る器。
+
+### ロード順 (noritetsu-map.html)
+
+```
+01-constants → 02-data-loaders → 03-characters → 04-gps-location
+→ 05-supabase-data → 06-map-leaflet → 07-record-mode → 08-rendering
+→ 11-fraud-detection → 12-auth
+→ 13-mypage-common → 13a-stats → 13b-trips → 13c-lines  ← v190 新規
+→ 09-tabs-stats → 10-init
+```
+
+13系の中の依存: common → a/b/c。13a/13b は `_mypageCache` / `mpTripFilter` / `tripCardHtml` / `_MP_SORT_COMPARATORS` / `showMypageToast` を 13-common から参照。
+
+### つまずきポイント
+
+**全角カッコの混入**: `buildByGroup` の `order` 配列で「首都圏・私鉄（東・北）」「首都圏・私鉄（南・西）」が全角カッコ `（）` (U+FF08/U+FF09) なのを、初版で半角 `()` に取り違えた。SERVICE_LINES の group 名と文字列一致しなくなると、これらの路線がソート位置の末尾 (999) に追いやられて見た目が崩れる。CLAUDE.md にもある「漢字を扱うときは見た目の似た文字に注意」が刺さる事例。`python -c` でコードポイント直接確認 (0xff08/0xff09) して修正。
+
+**`function buildTimeHeatmap` の `const grid` ローカル変数**: v127 の二重宣言事故と同名だが、これは関数スコープ内なのでグローバル衝突しない。ただし将来 13a-stats.js を更に分割するときに偶然トップレベル `const grid` を作ると v127 が再発する。今回は `heatGrid` にリネームして将来の事故予防もしておいた。
+
+### 影響範囲
+
+- `js/13-mypage.js` — **削除** (1947 行)
+- `js/13-mypage-common.js` — 新規 (366 行)
+- `js/13a-stats.js` — 新規 (1308 行)
+- `js/13b-trips.js` — 新規 (354 行)
+- `js/13c-lines.js` — 新規 (21 行)
+- `noritetsu-map.html` — 1395-1398 の `<script src>` を 4 行に置換
+- `sw.js` — `STATIC_ASSETS` に 4 ファイル追加 + `CACHE_VERSION = 'v190'`
+
+### 動作確認チェック (デプロイ後にやる)
+
+- マイページの 📊 統計 / 🚃 旅程 / 📋 路線 サブタブ切替
+- 完乗率カード (公式 / 全記録) の表示
+- 詳細統計 16 種すべての展開
+- 旅程フィルタ (期間 / 認証 / 種別 / 並び替え)
+- Trip 編集モーダル (✏️ メモ編集 → 保存)
+- GPS 後追い認証 (📍 GPSで認証 ボタン)
+- 旅程削除
+- 統計タブ「📌 直近の旅程」カード表示
+- 「〜月指定」バナー表示
+
+### Phase 3.8 ステータス更新
+
+- ✅ `13-mypage.js` 1947 行を 4 ファイル (common / 13a-stats / 13b-trips / 13c-lines) に分割、`window.NORIRECO` 名前空間を導入 (v190)
+
+### 次への布石
+
+- ES Module 化セッション本番は別途。これは「ES Module 化に向けた構造的予防」第一弾
+- 04-gps-location.js からデータローダー (`loadServiceLinesMaster` 他) を 02-data-loaders.js に移管する作業はまだ残っている
+- `NORIRECO.api.xxx` ラッパー (布石⑤) は次に 13系を触るときに `supabase.from('norireco_trips')` 直接呼び出しを置換していく
+
+---
+
 ## 38. v189 — 駅フィルタアイコンを 📍 → 🚉 (location-fab との重複解消) (2026-05-18)
 
 地図 FAB の現在地ボタン (`location-fab` = 📍) と地図上部の駅フィルタアイコン (`ctrl-icon-station` = 📍) が同じ絵文字でかぶっていた。

@@ -11,7 +11,7 @@
 **マイページ**: 3 サブタブ (統計 / 旅程 / 路線)、詳細統計 16 種、期間指定で過去状態 (地図ピル「〜月指定」)
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **保存ボタン**: 記録種別に応じて「💾 手動記録で保存する」/「💾 GPS 記録で保存する」に動的切替（v176）
-**直近の作業**: 駅フィルタアイコンを 📍 → 🚉 に変更（現在地 FAB との重複解消）。地図上部は [📅] [🚉] の 2 アイコン構成（v189、Phase 3.8）
+**直近の作業**: `js/13-mypage.js` (1947 行) を 4 ファイル (`13-mypage-common` / `13a-stats` / `13b-trips` / `13c-lines`) に分割、`window.NORIRECO` 名前空間を導入（v190、Phase 3.8）
 
 ---
 
@@ -38,17 +38,22 @@
 
 ## 🔥 最優先（プロダクトとして欠けている）
 
-- [ ] **ES Modules 化 + 13-mypage 内分割（次セッション着手予定 / 2026-05-19〜）**
+- [ ] **ES Modules 化 (本番、13-mypage 分割は v190 で完了済)**
   - **理由**: 今 N=1 (ユーザー自分だけ) のうちが破壊的リファクタの唯一の安全窓。シェア機能でユーザーが増える前にやる
-  - **現状の課題**: クラシック `<script>` ロードで全 13 ファイルが同じグローバル Script 環境を共有 → v127 で `const grid` 重複宣言で全滅した教訓。13-mypage.js が約 2000 行に肥大化、04-gps-location.js にデータローダーが混在
+  - **現状の課題**: クラシック `<script>` ロードで全 16 ファイルが同じグローバル Script 環境を共有 → v127 で `const grid` 重複宣言で全滅した教訓
+  - **v190 で完了済 (Notion §2.4 布石①③④)**:
+    - ✅ `window.NORIRECO` 名前空間を導入 (新規・移動分は `NORIRECO.mypage.xxx` に登録、既存はそのまま)
+    - ✅ `js/13-mypage.js` (1947行) を 4 ファイル分割: `13-mypage-common.js` (366) / `13a-stats.js` (1308) / `13b-trips.js` (354) / `13c-lines.js` (21)
+    - ✅ HTML `<script src>` リスト・`sw.js` STATIC_ASSETS・CACHE_VERSION 連動更新（v189→v190）
   - **進め方 (段階的・各段階で 1 デプロイ = 1 CACHE_VERSION 上げ)**:
     1. `<script type="module">` 化 + グローバル状態 (SERVICE_LINES / MERGED_STATIONS / RIDDEN_SEGS など) を中央ストア (`js/00-store.js` 等) に集約する方針決め
-    2. ファイル単位で export/import 移行 (1 日 1-2 ファイル、依存順 01 → 13)
+    2. ファイル単位で export/import 移行 (1 日 1-2 ファイル、依存順 01 → 13c)
     3. SW の `STATIC_ASSETS` と `<script>` ロード戦略を再確認 (Network-First 維持できるか)
-    4. 13-mypage.js を 13a-stats / 13b-trips / 13c-lines に分割
-    5. 04-gps-location.js からデータローダー (loadServiceLinesMaster 等) を 02-data-loaders.js に移管
+    4. 04-gps-location.js からデータローダー (loadServiceLinesMaster 等) を 02-data-loaders.js に移管 ← 別タスク、布石⑤と一緒にやってもよい
+    5. Notion §2.4 布石② シンタックスチェック自動化 (`npm run check` / pre-commit)
+    6. Notion §2.4 布石⑤ Supabase 呼び出しを `NORIRECO.api.xxx` ラッパー化 (13系で触る部分から段階的に)
   - **安全装置**: 「動くマップが画面に出る」を毎ステップで確認、各段階を独立コミット (戻せる)。Cloudflare Pages 移行は別タスクに切り出し、今は GitHub Pages のままで完結させる
-  - 詳細仕様: 2.4 コード構成（js/01〜13）§ 落とし穴 「13-mypage.js の肥大化」/「04-gps-location.js にデータローダーがいる」参照
+  - 詳細仕様: 2.4 コード構成（js/01〜13c）§ 落とし穴 「04-gps-location.js にデータローダーがいる」参照
 
 - [ ] **シェア機能（OGP 画像生成）**
   - 自分の達成地図のスクショ → Twitter/X で拡散
