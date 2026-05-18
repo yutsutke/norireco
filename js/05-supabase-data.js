@@ -93,6 +93,57 @@ function updateMapDisplayModeUI() {
 }
 
 // ══════════════════════════════════════════════
+// v186: stop_type フィルタ (●大 降車 / ◎中 乗車のみ / ○小 通過のみ)
+// 各種別ごとに表示/非表示を切り替えられる。
+// localStorage: { alighted: true, boarded: true, passed: true }
+// ══════════════════════════════════════════════
+const STOP_TYPE_FILTER_KEY = 'norireco_stop_type_filter';
+
+function loadStopTypeFilter() {
+  try {
+    const s = localStorage.getItem(STOP_TYPE_FILTER_KEY);
+    if (s) {
+      const f = JSON.parse(s);
+      if (f && typeof f === 'object') {
+        return {
+          alighted: f.alighted !== false,
+          boarded: f.boarded !== false,
+          passed: f.passed !== false,
+        };
+      }
+    }
+  } catch(e) {}
+  return { alighted: true, boarded: true, passed: true };
+}
+window._stopTypeFilter = loadStopTypeFilter();
+
+function toggleStopTypeFilter(stype) {
+  if (!['alighted', 'boarded', 'passed'].includes(stype)) return;
+  window._stopTypeFilter = window._stopTypeFilter || { alighted: true, boarded: true, passed: true };
+  window._stopTypeFilter[stype] = !window._stopTypeFilter[stype];
+  try { localStorage.setItem(STOP_TYPE_FILTER_KEY, JSON.stringify(window._stopTypeFilter)); } catch(e) {}
+  updateStopTypeFilterUI();
+  // 駅レイヤだけ再描画 (路線は影響なし)
+  if (typeof map !== 'undefined' && map && typeof dotLayerRef !== 'undefined' && dotLayerRef) {
+    dotLayerRef.clearLayers();
+    if (typeof labelLayerRef !== 'undefined' && labelLayerRef) labelLayerRef.clearLayers();
+    if (typeof drawStationsLayer === 'function') drawStationsLayer();
+    if (typeof updateOverlays === 'function') updateOverlays();
+  }
+}
+window.toggleStopTypeFilter = toggleStopTypeFilter;
+
+function updateStopTypeFilterUI() {
+  const f = window._stopTypeFilter || { alighted: true, boarded: true, passed: true };
+  document.querySelectorAll('.stfilter-chip').forEach(b => {
+    const t = b.dataset.stype;
+    if (!t) return;
+    b.classList.toggle('active', !!f[t]);
+  });
+}
+window.updateStopTypeFilterUI = updateStopTypeFilterUI;
+
+// ══════════════════════════════════════════════
 // 期間フィルタ (trip.date)
 // ══════════════════════════════════════════════
 const TRIP_DATE_FILTER_KEY = 'norireco_date_filter';

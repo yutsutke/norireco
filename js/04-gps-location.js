@@ -900,6 +900,11 @@ const riddenServiceIds = new Set();
 const slRiddenSt = {};
 // Phase 2.5: 駅名 → 訪問回数 (個人化UI: 育つマーカー用)
 const slVisitCount = {};
+// v186: 駅名 → stop_type ('alighted' | 'boarded' | 'passed')
+// rebuildRiddenStations 末尾で集計。優先度 alighted (降車経験あり) > boarded (乗車のみ) > passed (通過のみ)
+// — 駅 UI のサイズと表示/非表示フィルタに使う
+const slStopType = {};
+const _STYPE_PRIORITY = { alighted: 3, boarded: 2, passed: 1 };
 
 // 営業系統(SERVICE_LINES)id から N02 路線セグメントへの解決
 // 新形式の trip (lineId='jr_chuo_main', 'auto_xxx' 等) に対応
@@ -991,6 +996,35 @@ function rebuildRiddenStations() {
       }
       if (slSet.size > 0) slRiddenSt[sl.id] = slSet;
     }
+  }
+
+  // v186: 駅ごとの stop_type 集計 (営業系統 SERVICE_LINES ベース)
+  //   - seg.from = boarded (乗車駅)
+  //   - seg.to   = alighted (降車駅)
+  //   - 中間駅   = passed (通過)
+  // 複数 seg / 複数 trip で同じ駅が出る場合は最高優先度 (alighted > boarded > passed) を採用。
+  // 乗換駅は実質「降りて乗った」ので alighted 扱いになる (どこかの seg.to に必ず該当)。
+  Object.keys(slStopType).forEach(k => delete slStopType[k]);
+  if (SERVICE_LINES && SERVICE_LINES.length > 0) {
+    RIDDEN_SEGS.forEach(seg => {
+      const sl = SERVICE_LINES.find(x => x.id === seg.lineId);
+      if (!sl || !sl.stations) return;
+      const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
+      const toIdx = sl.stations.findIndex(s => s.name === seg.to);
+      if (fromIdx < 0 || toIdx < 0) return;
+      const lo = Math.min(fromIdx, toIdx), hi = Math.max(fromIdx, toIdx);
+      for (let i = lo; i <= hi; i++) {
+        const nm = sl.stations[i].name;
+        let type;
+        if (i === fromIdx) type = 'boarded';
+        else if (i === toIdx) type = 'alighted';
+        else type = 'passed';
+        const cur = slStopType[nm];
+        if (!cur || _STYPE_PRIORITY[type] > _STYPE_PRIORITY[cur]) {
+          slStopType[nm] = type;
+        }
+      }
+    });
   }
 
   if (RIDDEN_SEGS.length > 0) {

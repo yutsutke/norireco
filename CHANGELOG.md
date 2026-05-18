@@ -1616,3 +1616,91 @@ function formatDelayMin(min) {
 ### Phase 3.8 ステータス更新
 
 - ✅ 遅延入力を「時間 + 分」に分割 (v185)
+
+---
+
+## 35. v186 — stop_type 反映の駅 UI 個人化 + 表示/非表示フィルタ (2026-05-18)
+
+TODO 🟡「`stop_type` 反映の駅UI個人化」着手。
+- **降りた駅 (alighted) = ●大** (1.25 倍)
+- **乗車のみ (boarded) = ◎中** (等倍)
+- **通過のみ (passed) = ○小** (0.8 倍)
+
+各 stop_type ごとに **表示/非表示** を切り替えるフィルタチップを地図画面に追加。
+状態は `localStorage.norireco_stop_type_filter` に保存され、リロードしても保持される。
+
+### stop_type の自動派生
+
+新たに記録モード Step b の入力 UI を作らず、**既存の `RIDDEN_SEGS` から自動派生** する MVP 設計：
+- `seg.from` = boarded（その区間の乗車駅）
+- `seg.to` = alighted（その区間の降車駅）
+- 中間駅 = passed
+- 複数 seg / 複数 trip で同じ駅が出る場合は最高優先度を採用 (`alighted > boarded > passed`)
+
+→ 乗換駅は必ずどこかの `seg.to` に該当するため alighted 扱いになり、感覚と一致する。
+
+### データレイヤ (`js/04-gps-location.js`)
+
+```js
+const slStopType = {};                        // station_name → stop_type
+const _STYPE_PRIORITY = { alighted: 3, boarded: 2, passed: 1 };
+// rebuildRiddenStations() 末尾で SERVICE_LINES ベースに集計
+// (legacy N02 id は SERVICE_LINES で見つからないので無視 — 既存 trip は新形式 lineId 移行済)
+```
+
+### フィルタ state (`js/05-supabase-data.js`)
+
+```js
+window._stopTypeFilter = { alighted: true, boarded: true, passed: true };
+toggleStopTypeFilter(stype);   // チップタップで該当 stop_type を ON/OFF
+updateStopTypeFilterUI();      // チップの .active クラス更新
+```
+
+切替時は **駅レイヤだけ再描画**（`dotLayerRef.clearLayers()` + `drawStationsLayer()`）。路線は影響を受けないので不変。
+
+### 描画反映 (`js/08-rendering.js` `drawStationsLayer`)
+
+```js
+const stype = ridden ? slStopType[ms.name] : undefined;
+if (stype) {
+  const stf = window._stopTypeFilter || {alighted:true,boarded:true,passed:true};
+  if (stf[stype] === false) continue;          // フィルタで非表示
+}
+const stypeMul = stype === 'alighted' ? 1.25
+               : stype === 'passed'   ? 0.8
+               : 1.0;
+// 既存 4 分岐 (divIcon × 2, circleMarker × 2) の size/radius に stypeMul を乗算
+```
+
+未訪問駅 (`ridden=false`) は `stype=undefined` でフィルタ・倍率の影響を受けない（既存マップ表示モード `両方/乗車のみ/未乗車のみ` でハンドル）。
+
+### UI (`noritetsu-map.html`)
+
+`map-mode-box` (両方/乗車のみ/未乗車のみ) の右隣に新たに `stop-type-box` を追加：
+```
+📍 [●降車] [◎乗車] [○通過]
+```
+各チップはタップで ON/OFF、`.active` のときは緑系 (`#48d597`)、非アクティブは透明度 0.45 の灰色。
+モバイル時 (`max-width: 768px`) はパディング・フォントを縮小。
+
+### 初期化 (`js/10-init.js`)
+
+`window.addEventListener('load')` 内で `updateStopTypeFilterUI()` を呼んで localStorage 状態を UI に反映。
+
+### Step b (記録モードでの stop_type 編集) は次タスク
+
+「乗換駅で一度降りた」「終点で降りずに引き返した」などの例外シナリオは現状の自動派生では正確に拾えない。
+将来 trip.stop_types (jsonb) を追加して確認モーダルで編集できるようにする → 別タスク (Step b)。
+
+### 影響範囲
+
+- `js/04-gps-location.js` — `slStopType` 宣言と集計ループ追加（`rebuildRiddenStations` 末尾）
+- `js/05-supabase-data.js` — `loadStopTypeFilter` / `toggleStopTypeFilter` / `updateStopTypeFilterUI`
+- `js/08-rendering.js` — `drawStationsLayer` 内 4 分岐の size/radius に `stypeMul` 乗算、フィルタ skip
+- `js/10-init.js` — 初期化フックで `updateStopTypeFilterUI` 呼び出し
+- `noritetsu-map.html` — `stop-type-box` UI + `.stfilter-chip` CSS
+- `sw.js` — `CACHE_VERSION = 'v186'`
+
+### Phase 3.8 ステータス更新
+
+- ✅ stop_type 反映の駅 UI 個人化 + 表示/非表示フィルタ (v186)

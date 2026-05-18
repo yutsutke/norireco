@@ -674,6 +674,17 @@ function drawStationsLayer() {
     if (_mapMode === 'ridden' && !ridden) continue;
     if (_mapMode === 'unridden' && ridden) continue;
 
+    // v186: stop_type ('alighted' | 'boarded' | 'passed' | undefined)
+    //  - 未訪問駅は stype=undefined、フィルタの影響は受けない (上の mapMode で扱う)
+    //  - サイズ倍率: alighted=1.25 / boarded=1.0 / passed=0.8
+    //  - フィルタ: 該当 stype が false ならその駅を skip
+    const stype = ridden ? slStopType[ms.name] : undefined;
+    if (stype) {
+      const stf = window._stopTypeFilter || { alighted: true, boarded: true, passed: true };
+      if (stf[stype] === false) continue;
+    }
+    const stypeMul = stype === 'alighted' ? 1.25 : stype === 'passed' ? 0.8 : 1.0;
+
     // 訪問回数 → 個人化レベル (1-4回:Lv1, 5-9:Lv2, 10-49:Lv3, 50+:Lv4)
     const visits = slVisitCount[ms.name] || 0;
     const level = getStationLevel(visits);
@@ -699,7 +710,7 @@ function drawStationsLayer() {
         // 装飾 divIcon (Lv2+/キャラ付き) — これだけパイ閾値で出す
         const baseSize = ridden ? 14 : 11;
         const levelBonus = level >= 4 ? 4 : level >= 3 ? 2 : level >= 2 ? 1 : 0;
-        const size = Math.round((baseSize + levelBonus) * mScale);
+        const size = Math.round((baseSize + levelBonus) * mScale * stypeMul);
         dot = L.marker([ms.lat, ms.lon], {
           icon: makePieIcon(colors, size, ridden, level, character),
           opacity: ridden ? 1.0 : 0.7,
@@ -709,7 +720,7 @@ function drawStationsLayer() {
       } else {
         // 平常多系統駅: ベースの単色ドット (常に出る) + パイ (パイ閾値で遅出し)
         const c = colors[0] || '#888';
-        const radius = (ridden ? 5.5 : 4) * Math.min(1.4, mScale);
+        const radius = (ridden ? 5.5 : 4) * Math.min(1.4, mScale) * stypeMul;
         dot = L.circleMarker([ms.lat, ms.lon], {
           radius,
           fillColor: c,
@@ -720,7 +731,7 @@ function drawStationsLayer() {
         });
         // パイマーカー (上に重ねる、パイ閾値で出す)
         const baseSize = ridden ? 14 : 11;
-        const size = Math.round(baseSize * mScale);
+        const size = Math.round(baseSize * mScale * stypeMul);
         extraDot = L.marker([ms.lat, ms.lon], {
           icon: makePieIcon(colors, size, ridden, 0, null),
           opacity: ridden ? 1.0 : 0.7,
@@ -731,7 +742,7 @@ function drawStationsLayer() {
     } else if (level >= 2 || character) {
       const baseSize = ridden ? 12 : 9;
       const levelBonus = level >= 4 ? 4 : level >= 3 ? 2 : level >= 2 ? 1 : 0;
-      const size = Math.round((baseSize + levelBonus) * mScale);
+      const size = Math.round((baseSize + levelBonus) * mScale * stypeMul);
       dot = L.marker([ms.lat, ms.lon], {
         icon: makePieIcon(colors, size, ridden, level, character),
         opacity: ridden ? 1.0 : 0.7,
@@ -739,7 +750,7 @@ function drawStationsLayer() {
       });
     } else {
       const c = colors[0] || '#888';
-      const radius = (ridden ? 6 : 4) * mScale;
+      const radius = (ridden ? 6 : 4) * mScale * stypeMul;
       dot = L.circleMarker([ms.lat, ms.lon], {
         radius,
         fillColor: c,

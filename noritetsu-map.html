@@ -686,6 +686,25 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
   .mfilter-icon{display:none;}
 }
 
+/* v186: stop_type フィルタ (降車●大 / 乗車のみ◎中 / 通過のみ○小) */
+.stop-type-box{
+  display:flex;align-items:center;gap:2px;
+  background:rgba(13,27,42,.92);border:1px solid var(--track);border-radius:14px;
+  padding:4px 6px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  box-shadow:0 2px 8px rgba(0,0,0,.4);
+}
+.stfilter-chip{
+  border:none;background:transparent;color:var(--silver);
+  padding:4px 9px;font-size:11px;cursor:pointer;border-radius:10px;
+  font-family:inherit;white-space:nowrap;opacity:.45;
+}
+.stfilter-chip:hover{background:rgba(140,160,179,.15);color:var(--white);opacity:.85;}
+.stfilter-chip.active{background:rgba(72,213,151,.18);color:#48d597;opacity:1;font-weight:700;}
+@media (max-width: 768px){
+  .stop-type-box{padding:3px 5px;gap:1px;}
+  .stfilter-chip{padding:3px 7px;font-size:10px;}
+}
+
 /* Leaflet tooltip style */
 .merged-pie-marker {
   background: transparent !important;
@@ -1081,6 +1100,13 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
         <button class="mfilter-chip active" data-mode="both"     onclick="setMapDisplayMode('both')"    title="乗車路線・未乗車路線の両方を表示">両方</button>
         <button class="mfilter-chip"        data-mode="ridden"   onclick="setMapDisplayMode('ridden')"  title="乗ったことのある区間だけ表示 (達成感)">🟢 乗車のみ</button>
         <button class="mfilter-chip"        data-mode="unridden" onclick="setMapDisplayMode('unridden')" title="まだ乗っていない区間だけ表示 (旅行計画)">⚪ 未乗車のみ</button>
+      </div>
+      <!-- v186: stop_type フィルタ (降車 / 乗車のみ / 通過 の表示・非表示) -->
+      <div class="stop-type-box" id="stop-type-box">
+        <span class="mfilter-icon">📍</span>
+        <button class="stfilter-chip active" data-stype="alighted" onclick="toggleStopTypeFilter('alighted')" title="降車経験のある駅 (●大)">●降車</button>
+        <button class="stfilter-chip active" data-stype="boarded"  onclick="toggleStopTypeFilter('boarded')"  title="乗車のみの駅 (◎中)">◎乗車</button>
+        <button class="stfilter-chip active" data-stype="passed"   onclick="toggleStopTypeFilter('passed')"   title="通過のみの駅 (○小)">○通過</button>
       </div>
     </div>
     <div class="map-stats-box">
