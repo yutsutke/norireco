@@ -1704,3 +1704,56 @@ const stypeMul = stype === 'alighted' ? 1.25
 ### Phase 3.8 ステータス更新
 
 - ✅ stop_type 反映の駅 UI 個人化 + 表示/非表示フィルタ (v186)
+
+---
+
+## 36. v187 — 地図フィルタを 3 アイコンに集約 + 未訪問駅 ON/OFF (2026-05-18)
+
+v186 までで地図上部に **3 段** のピル (期間 / マップ表示モード / 駅フィルタ) が並んで重く感じる + 「未乗車駅も ON/OFF したい」というユーザー指摘。
+3 つの円形アイコンに集約してタップで開閉、駅フィルタに `unvisited` 種別を追加。
+
+### UI 集約
+
+```
+[📅] [🗾] [📍]   ← 常時このアイコン行のみ表示
+  ↓ タップ
+[全期間 / 今年 / 去年 / 〜月指定 / カスタム]   ← 該当バーだけ表示
+```
+
+- 同じアイコン再タップで閉じる
+- 別アイコンタップで前のを閉じて新しいのを開く
+- 地図側 (date-filter-wrap 外) クリックで全部閉じる
+- 既存の期間サブポップ (`dfilter-pop` / `dfilter-um-pop`) も閉じる連動
+
+### 未訪問駅フィルタ
+
+`_stopTypeFilter` に `unvisited: true` を追加。`drawStationsLayer` で
+```js
+const stype = ridden ? (slStopType[ms.name] || 'boarded') : 'unvisited';
+if (stf[stype] === false) continue;
+```
+として未訪問駅 (`ridden=false`) も同じフィルタ仕組みに乗せる。
+
+これでマップ表示モード（路線レベル: 両方/乗車路線/未乗車路線）と駅フィルタ（駅レベル: 降車/乗車/通過/未訪問）を **独立に組み合わせ可能** に：
+- 「乗車路線だけ表示」+「駅は降車のみ」→ 路線網のうち実際に降りた駅だけハイライト
+- 「両方表示」+「駅は未訪問のみ」→ まだ訪れていない駅を計画ピックアップ
+
+### 影響範囲
+
+- `noritetsu-map.html`
+  - `date-filter-wrap` の先頭に `.map-ctrl-bar` (3 円形アイコン) を追加
+  - 既存 `date-filter-box` / `map-mode-box` / `stop-type-box` に `style="display:none"` を付与
+  - `stop-type-box` に `□未訪問` チップを追加
+  - 既存の絵文字ラベル (`📅` `🗾` `📍`) を各バー内から撤去（アイコンに集約済み）
+  - `.map-ctrl-bar` / `.map-ctrl-icon` の CSS 追加（モバイル時は 28×28）
+- `js/05-supabase-data.js`
+  - `loadStopTypeFilter` / `toggleStopTypeFilter` を `unvisited` 対応に拡張
+  - `toggleMapCtrl(which, ev)` / `closeAllMapCtrl()` を新設
+  - `document.addEventListener('click')` で外側クリック閉じ
+- `js/08-rendering.js`
+  - 駅描画で未訪問駅 (`ridden=false`) も `unvisited` 種別としてフィルタ評価
+- `sw.js` — `CACHE_VERSION = 'v187'`
+
+### Phase 3.8 ステータス更新
+
+- ✅ 地図フィルタ 3 アイコン集約 + 未訪問駅 ON/OFF (v187)

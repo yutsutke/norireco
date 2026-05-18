@@ -674,15 +674,12 @@ function drawStationsLayer() {
     if (_mapMode === 'ridden' && !ridden) continue;
     if (_mapMode === 'unridden' && ridden) continue;
 
-    // v186: stop_type ('alighted' | 'boarded' | 'passed' | undefined)
-    //  - 未訪問駅は stype=undefined、フィルタの影響は受けない (上の mapMode で扱う)
-    //  - サイズ倍率: alighted=1.25 / boarded=1.0 / passed=0.8
-    //  - フィルタ: 該当 stype が false ならその駅を skip
-    const stype = ridden ? slStopType[ms.name] : undefined;
-    if (stype) {
-      const stf = window._stopTypeFilter || { alighted: true, boarded: true, passed: true };
-      if (stf[stype] === false) continue;
-    }
+    // v186/v187: stop_type ('alighted' | 'boarded' | 'passed' | 未訪問は 'unvisited' 扱い)
+    //  - サイズ倍率: alighted=1.25 / boarded=1.0 / passed=0.8 / unvisited=1.0
+    //  - フィルタ: 該当 stype が false ならその駅を skip (未訪問駅も含む)
+    const stype = ridden ? (slStopType[ms.name] || 'boarded') : 'unvisited';
+    const stf = window._stopTypeFilter || { alighted: true, boarded: true, passed: true, unvisited: true };
+    if (stf[stype] === false) continue;
     const stypeMul = stype === 'alighted' ? 1.25 : stype === 'passed' ? 0.8 : 1.0;
 
     // 訪問回数 → 個人化レベル (1-4回:Lv1, 5-9:Lv2, 10-49:Lv3, 50+:Lv4)

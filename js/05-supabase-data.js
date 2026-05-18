@@ -109,17 +109,18 @@ function loadStopTypeFilter() {
           alighted: f.alighted !== false,
           boarded: f.boarded !== false,
           passed: f.passed !== false,
+          unvisited: f.unvisited !== false,
         };
       }
     }
   } catch(e) {}
-  return { alighted: true, boarded: true, passed: true };
+  return { alighted: true, boarded: true, passed: true, unvisited: true };
 }
 window._stopTypeFilter = loadStopTypeFilter();
 
 function toggleStopTypeFilter(stype) {
-  if (!['alighted', 'boarded', 'passed'].includes(stype)) return;
-  window._stopTypeFilter = window._stopTypeFilter || { alighted: true, boarded: true, passed: true };
+  if (!['alighted', 'boarded', 'passed', 'unvisited'].includes(stype)) return;
+  window._stopTypeFilter = window._stopTypeFilter || { alighted: true, boarded: true, passed: true, unvisited: true };
   window._stopTypeFilter[stype] = !window._stopTypeFilter[stype];
   try { localStorage.setItem(STOP_TYPE_FILTER_KEY, JSON.stringify(window._stopTypeFilter)); } catch(e) {}
   updateStopTypeFilterUI();
@@ -134,7 +135,7 @@ function toggleStopTypeFilter(stype) {
 window.toggleStopTypeFilter = toggleStopTypeFilter;
 
 function updateStopTypeFilterUI() {
-  const f = window._stopTypeFilter || { alighted: true, boarded: true, passed: true };
+  const f = window._stopTypeFilter || { alighted: true, boarded: true, passed: true, unvisited: true };
   document.querySelectorAll('.stfilter-chip').forEach(b => {
     const t = b.dataset.stype;
     if (!t) return;
@@ -142,6 +143,53 @@ function updateStopTypeFilterUI() {
   });
 }
 window.updateStopTypeFilterUI = updateStopTypeFilterUI;
+
+// ══════════════════════════════════════════════
+// v187: 地図フィルタを 3 つの円形アイコンに集約
+//   📅 (date) / 🗾 (mode) / 📍 (station) のいずれかを開く。
+//   再タップで閉じる。他のアイコンタップで前のを閉じる。
+//   外側タップでも全部閉じる (document クリックハンドラ)
+// ══════════════════════════════════════════════
+const _MAP_CTRL_TARGETS = {
+  date:    'date-filter-box',
+  mode:    'map-mode-box',
+  station: 'stop-type-box',
+};
+
+function toggleMapCtrl(which, ev) {
+  if (ev) ev.stopPropagation();   // 外側タップ閉じハンドラ抑止
+  const target = _MAP_CTRL_TARGETS[which];
+  if (!target) return;
+  const isOpen = (document.getElementById(target)?.style.display === 'flex');
+  // 全部閉じる (期間ポップオーバーも含む)
+  closeAllMapCtrl();
+  // 押したやつが閉じていたなら開く
+  if (!isOpen) {
+    const el = document.getElementById(target);
+    if (el) el.style.display = 'flex';
+    document.getElementById(`ctrl-icon-${which}`)?.classList.add('active');
+  }
+}
+window.toggleMapCtrl = toggleMapCtrl;
+
+function closeAllMapCtrl() {
+  Object.entries(_MAP_CTRL_TARGETS).forEach(([k, id]) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+    document.getElementById(`ctrl-icon-${k}`)?.classList.remove('active');
+  });
+  // 期間フィルタのサブポップアップも閉じる
+  document.querySelectorAll('.dfilter-pop').forEach(p => p.classList.remove('open'));
+}
+window.closeAllMapCtrl = closeAllMapCtrl;
+
+// 外側クリックで閉じる (date-filter-wrap 内のクリックは閉じない)
+document.addEventListener('click', (ev) => {
+  const wrap = document.getElementById('date-filter-wrap');
+  if (!wrap) return;
+  if (wrap.contains(ev.target)) return;
+  closeAllMapCtrl();
+});
 
 // ══════════════════════════════════════════════
 // 期間フィルタ (trip.date)
