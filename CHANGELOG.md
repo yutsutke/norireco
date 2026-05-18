@@ -1757,3 +1757,63 @@ if (stf[stype] === false) continue;
 ### Phase 3.8 ステータス更新
 
 - ✅ 地図フィルタ 3 アイコン集約 + 未訪問駅 ON/OFF (v187)
+
+---
+
+## 37. v188 — 路線モード切替を撤廃、駅フィルタから自動派生に統合 (2026-05-18)
+
+v187 で「マップ表示モード (路線レベル) と駅フィルタ (駅レベル) が独立 = 複雑で分かりにくい」「🗾 は 📍 があれば十分」というフィードバック。
+🗾 アイコンと `map-mode-box` を撤去し、**路線描画モードは駅フィルタの状態から自動派生** する形に統合。
+
+### 派生ロジック
+
+```js
+function deriveMapDisplayMode(stf) {
+  const hasRidden = !!(stf.alighted || stf.boarded || stf.passed);
+  const hasUnvisited = !!stf.unvisited;
+  if (hasRidden && hasUnvisited) return 'both';     // 両方表示
+  if (hasRidden) return 'ridden';                    // 乗車路線のみ
+  if (hasUnvisited) return 'unridden';               // 未乗車路線のみ
+  return 'both';                                     // 全部 OFF (実用想定外) は両方
+}
+```
+
+- 駅フィルタの「●降車 / ◎乗車 / ○通過」がどれか ON → 乗車路線も描画
+- 「□未訪問」が ON → 未乗車路線も描画
+- 結果として 1 軸の駅フィルタ操作だけで、路線レベルの「両方/乗車のみ/未乗車のみ」が自然に表現される
+
+### UI
+
+地図上部のアイコン行が `[📅] [📍]` の 2 つに。`[🗾]` は撤去。`stop-type-box` をタップで開いて駅レベルを ON/OFF すると、路線も追従して再描画される。
+
+### 撤去したもの
+
+- `noritetsu-map.html`
+  - 🗾 アイコン `#ctrl-icon-mode`
+  - `map-mode-box` バー (両方/乗車のみ/未乗車のみ チップ)
+- `js/05-supabase-data.js`
+  - `MAP_DISPLAY_MODE_KEY` / `MAP_DISPLAY_MODES` 定数
+  - `loadMapDisplayMode()` / `setMapDisplayMode()` / `updateMapDisplayModeUI()` 関数
+  - `_MAP_CTRL_TARGETS` から `mode: 'map-mode-box'` を削除
+- `js/10-init.js`
+  - 起動時の `updateMapDisplayModeUI()` 呼び出し
+
+`localStorage.norireco_map_display_mode` のキーはユーザー端末に残る可能性があるが、新ロジックは参照しないので無害。
+
+### 残したもの
+
+- `window._mapDisplayMode` グローバル変数自体（`drawServiceLineBase` 等が参照）
+  - 値は `_refreshMapDisplayModeFromStopFilter()` が駅フィルタから派生して書き込む
+  - 初期化時 + `toggleStopTypeFilter` ごとに更新
+- 路線描画 (`drawServiceLineBase`) と駅描画 (`drawStationsLayer`) の既存ロジックは無変更
+
+### 影響範囲
+
+- `noritetsu-map.html` — 🗾 アイコンと map-mode-box 削除（5 行短縮）
+- `js/05-supabase-data.js` — `setMapDisplayMode` 系を `deriveMapDisplayMode` + `_refreshMapDisplayModeFromStopFilter` に置換、`toggleStopTypeFilter` 内で路線レイヤも refresh
+- `js/10-init.js` — `updateMapDisplayModeUI` 呼び出し削除
+- `sw.js` — `CACHE_VERSION = 'v188'`
+
+### Phase 3.8 ステータス更新
+
+- ✅ 路線モード切替を撤廃、駅フィルタから自動派生に統合 (v188)

@@ -1080,11 +1080,10 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
     <div id="leaflet-map"></div>
     <!-- Overlays -->
     <div class="date-filter-wrap" id="date-filter-wrap">
-      <!-- v187: 3 つの円形アイコンに集約 (タップで対応するバーを開閉) -->
+      <!-- v187/v188: 2 つの円形アイコンに集約 (期間 + 駅フィルタ。路線レベルは駅フィルタから派生) -->
       <div class="map-ctrl-bar">
         <button class="map-ctrl-icon" id="ctrl-icon-date"    onclick="toggleMapCtrl('date', event)"    title="期間フィルタ">📅</button>
-        <button class="map-ctrl-icon" id="ctrl-icon-mode"    onclick="toggleMapCtrl('mode', event)"    title="マップ表示モード">🗾</button>
-        <button class="map-ctrl-icon" id="ctrl-icon-station" onclick="toggleMapCtrl('station', event)" title="駅フィルタ">📍</button>
+        <button class="map-ctrl-icon" id="ctrl-icon-station" onclick="toggleMapCtrl('station', event)" title="駅フィルタ (●降車 / ◎乗車 / ○通過 / □未訪問)">📍</button>
       </div>
       <div class="date-filter-box" id="date-filter-box" style="display:none">
         <button class="dfilter-chip active" data-mode="all"        onclick="setDateFilter('all')">全期間</button>
@@ -1119,13 +1118,9 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
           <button class="dfilter-pop-cancel" onclick="closeUntilMonthFilter()">×</button>
         </div>
       </div>
-      <!-- マップ表示モード切替 (両方/乗車のみ/未乗車のみ) -->
-      <div class="map-mode-box" id="map-mode-box" style="display:none">
-        <button class="mfilter-chip active" data-mode="both"     onclick="setMapDisplayMode('both')"    title="乗車路線・未乗車路線の両方を表示">両方</button>
-        <button class="mfilter-chip"        data-mode="ridden"   onclick="setMapDisplayMode('ridden')"  title="乗ったことのある区間だけ表示 (達成感)">🟢 乗車のみ</button>
-        <button class="mfilter-chip"        data-mode="unridden" onclick="setMapDisplayMode('unridden')" title="まだ乗っていない区間だけ表示 (旅行計画)">⚪ 未乗車のみ</button>
-      </div>
       <!-- v186/v187: 駅フィルタ (降車 / 乗車 / 通過 / 未訪問 の表示・非表示) -->
+      <!-- 路線レベル (両方/乗車のみ/未乗車のみ) は v188 で駅フィルタから自動派生に統合 -->
+
       <div class="stop-type-box" id="stop-type-box" style="display:none">
         <button class="stfilter-chip active" data-stype="alighted"  onclick="toggleStopTypeFilter('alighted')"  title="降車経験のある駅 (●大)">●降車</button>
         <button class="stfilter-chip active" data-stype="boarded"   onclick="toggleStopTypeFilter('boarded')"   title="乗車のみの駅 (◎中)">◎乗車</button>

@@ -52,44 +52,21 @@ function tripsToSegs(trips) {
 }
 
 // ══════════════════════════════════════════════
-// マップ表示モード (両方 / 乗車のみ / 未乗車のみ)
+// v188: マップ表示モード (両方 / 乗車のみ / 未乗車のみ) は駅フィルタから派生
+// 旧 .mfilter-chip UI と localStorage キー (norireco_map_display_mode) は撤去。
+// drawServiceLineBase 等が参照する window._mapDisplayMode は駅フィルタの状態から計算する。
 // ══════════════════════════════════════════════
-const MAP_DISPLAY_MODE_KEY = 'norireco_map_display_mode';
-const MAP_DISPLAY_MODES = ['both', 'ridden', 'unridden'];
-
-function loadMapDisplayMode() {
-  try {
-    const v = localStorage.getItem(MAP_DISPLAY_MODE_KEY);
-    if (v && MAP_DISPLAY_MODES.includes(v)) return v;
-  } catch(e) {}
-  return 'both';
+function deriveMapDisplayMode(stf) {
+  const f = stf || { alighted: true, boarded: true, passed: true, unvisited: true };
+  const hasRidden = !!(f.alighted || f.boarded || f.passed);
+  const hasUnvisited = !!f.unvisited;
+  if (hasRidden && hasUnvisited) return 'both';
+  if (hasRidden) return 'ridden';
+  if (hasUnvisited) return 'unridden';
+  return 'both'; // 全部 OFF (実用想定外) は両方扱い
 }
-window._mapDisplayMode = loadMapDisplayMode();
-
-function setMapDisplayMode(mode) {
-  if (!MAP_DISPLAY_MODES.includes(mode)) return;
-  window._mapDisplayMode = mode;
-  try { localStorage.setItem(MAP_DISPLAY_MODE_KEY, mode); } catch(e) {}
-  // UI 反映
-  document.querySelectorAll('.mfilter-chip').forEach(b => {
-    b.classList.toggle('active', b.dataset.mode === mode);
-  });
-  // 地図再描画
-  if (typeof map !== 'undefined' && map && typeof dotLayerRef !== 'undefined' && dotLayerRef) {
-    allLayers.forEach(l => { try { map.removeLayer(l); } catch(e){} });
-    allLayers.length = 0;
-    dotLayerRef.clearLayers();
-    if (typeof labelLayerRef !== 'undefined' && labelLayerRef) labelLayerRef.clearLayers();
-    if (typeof drawLines === 'function') drawLines();
-    if (typeof updateOverlays === 'function') updateOverlays();
-  }
-}
-
-function updateMapDisplayModeUI() {
-  const mode = window._mapDisplayMode || 'both';
-  document.querySelectorAll('.mfilter-chip').forEach(b => {
-    b.classList.toggle('active', b.dataset.mode === mode);
-  });
+function _refreshMapDisplayModeFromStopFilter() {
+  window._mapDisplayMode = deriveMapDisplayMode(window._stopTypeFilter);
 }
 
 // ══════════════════════════════════════════════
@@ -117,6 +94,8 @@ function loadStopTypeFilter() {
   return { alighted: true, boarded: true, passed: true, unvisited: true };
 }
 window._stopTypeFilter = loadStopTypeFilter();
+// v188: 起動時にも駅フィルタから路線表示モードを派生
+_refreshMapDisplayModeFromStopFilter();
 
 function toggleStopTypeFilter(stype) {
   if (!['alighted', 'boarded', 'passed', 'unvisited'].includes(stype)) return;
@@ -124,11 +103,14 @@ function toggleStopTypeFilter(stype) {
   window._stopTypeFilter[stype] = !window._stopTypeFilter[stype];
   try { localStorage.setItem(STOP_TYPE_FILTER_KEY, JSON.stringify(window._stopTypeFilter)); } catch(e) {}
   updateStopTypeFilterUI();
-  // 駅レイヤだけ再描画 (路線は影響なし)
+  // v188: 駅フィルタから路線表示モード(_mapDisplayMode) も派生し、路線+駅 まとめて再描画
+  _refreshMapDisplayModeFromStopFilter();
   if (typeof map !== 'undefined' && map && typeof dotLayerRef !== 'undefined' && dotLayerRef) {
+    allLayers.forEach(l => { try { map.removeLayer(l); } catch(e){} });
+    allLayers.length = 0;
     dotLayerRef.clearLayers();
     if (typeof labelLayerRef !== 'undefined' && labelLayerRef) labelLayerRef.clearLayers();
-    if (typeof drawStationsLayer === 'function') drawStationsLayer();
+    if (typeof drawLines === 'function') drawLines();
     if (typeof updateOverlays === 'function') updateOverlays();
   }
 }
@@ -152,7 +134,6 @@ window.updateStopTypeFilterUI = updateStopTypeFilterUI;
 // ══════════════════════════════════════════════
 const _MAP_CTRL_TARGETS = {
   date:    'date-filter-box',
-  mode:    'map-mode-box',
   station: 'stop-type-box',
 };
 
