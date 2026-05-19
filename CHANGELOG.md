@@ -1820,6 +1820,44 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 54. v205 — ES Modules パイロット (案 β) stage 2 拡張: 13b-trips.js を `<script type="module">` 化 (2026-05-19)
+
+### 背景
+
+stage 2 の 4 番目。13c-lines (v204) より大きい 354 行ファイルだが、**v190 の分割時から既に `window.X` + `NORIRECO.mypage.X` の両建て登録**を行っていたため、stage 2 追加 bridge ゼロで済む。
+
+### 13b-trips を選んだ理由
+
+| 観点 | 13b-trips の特徴 |
+|---|---|
+| ファイルサイズ | 354 行 |
+| state 数 | 0 (v201 で _mypageCache 等を `NORIRECO.mypage.state` に集約済) |
+| 外部公開関数 | 9 個 全て v190 で window + NORIRECO.mypage 両建て登録済 |
+| classic 依存 | `tripCardHtml` / `showMypageToast` / `filterTripsByDate` / `_MP_SORT_COMPARATORS` 等 — 全て classic 経由でアクセス可 |
+
+### 変更内容 (3 ファイル)
+
+- `noritetsu-map.html`: `<script src="js/13b-trips.js">` → `<script type="module" src=...>`
+- `js/13b-trips.js`: コメントに stage 2 ノート追記 (機能変更なし)
+- `sw.js` CACHE_VERSION v204 → v205
+
+### 累積 stage 2 進捗
+
+| ファイル | バージョン | window bridge 追加行数 | 戦略 |
+|---|---|---|---|
+| 12-auth | v202 | 4 | initial pilot — 関数 4 個を新規 window 公開 |
+| 11-fraud | v203 | 2 | state 0 — fraudAssess/Is を新規 window 公開 |
+| 13c-lines | v204 | 0 | NORIRECO.mypage.X 既存公開で足りる |
+| **13b-trips** | **v205** | **0** | v190 で window + NORIRECO.mypage 両建て登録済 |
+
+**4/18 ファイル完了**。残り 14: 13a-stats / 13-mypage-common / 09-tabs-stats / 10-init / 03-characters / 04-gps / 04b / 05-supabase / 06-map / 07-record / 08-rendering / 01-constants / 02 / 02b。
+
+### 観察
+
+stage 2 のコストは「**v190 (NORIRECO 名前空間 + 両建て登録) の徹底度**」に強く依存する。13 サブ族 (13a/13b/13c/13-common) は v190 で徹底済のため、stage 2 がほぼ無料。一方、04/06/07/08 等は v195〜v201 stage 1 で state 集約はしたが、**関数の window 公開はまだ穴がある**ため、stage 2 で追加 bridge が必要になる見込み。
+
+---
+
 ## 53. v204 — ES Modules パイロット (案 β) stage 2 拡張: 13c-lines.js を `<script type="module">` 化 (2026-05-19)
 
 ### 背景

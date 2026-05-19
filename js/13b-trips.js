@@ -10,6 +10,12 @@
 //   - NORIRECO.mypage.state._mypageCache / NORIRECO.mypage.state.mpTripFilter / _MP_SORT_COMPARATORS
 //   - tripCardHtml / showMypageToast / applyMpSection / renderMypage
 // 新規・移動分の関数は NORIRECO.mypage.xxx にも公開。
+//
+// v205 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
+// 内部関数は既に末尾で `window.X = X` + `NORIRECO.mypage.X = X` の両建て登録済みのため、
+// stage 2 追加 bridge ゼロ。外部参照 (tripCardHtml / showMypageToast / filterTripsByDate /
+// _MP_SORT_COMPARATORS) は classic function 宣言 + Global Lexical Env 経由で module から
+// bare 識別子として読める。
 // ══════════════════════════════════════════════════════════════
 
 // ── 🚃 旅程セクション ──────────────────────────────────────────
