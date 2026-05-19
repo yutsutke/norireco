@@ -1,6 +1,9 @@
 // ══════════════════════════════════════════════
 // 現在地表示 (Phase 1)
 // 3状態トグル: off → on (中心化) → follow (追従) → off
+//
+// v216 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
+// 末尾で 10 個の window bridge を追加 (07/08/04b など module/classic 双方からの bare 呼出に対応)。
 // ══════════════════════════════════════════════
 
 // v198 ES Modules パイロット (案 β) — 状態を window.NORIRECO.gps に集約。
@@ -435,4 +438,17 @@ function pickStationCharacter(stationName, charId) {
 // (slRiddenSt / slStopType / slVisitCount / riddenServiceIds / rebuildRiddenStations)
 // は v194 で 04b-ride-record.js に切り出し、NORIRECO.rideRecord.{rebuild,normStName}
 // として公開。dead code だった resolveLineId はこのとき削除。
+
+// v216 stage 2: 07 (classic) / 08 (module) / 04b (module) から bare 呼出される関数の window 公開
+window.stopLocationTracking = stopLocationTracking;
+window.findNearestStations = findNearestStations;
+window.formatDist = formatDist;
+window.updateNearestStationPanel = updateNearestStationPanel;
+window.renderRecordingSummary = renderRecordingSummary;
+window.updateLocationButton = updateLocationButton;
+window.getObtainableCharactersAt = getObtainableCharactersAt;
+window.drawObtainableIndicators = drawObtainableIndicators;
+window.getStationCharacterChoice = getStationCharacterChoice;
+window.getStationCharacter = getStationCharacter;
+window.pickStationCharacter = pickStationCharacter;
 

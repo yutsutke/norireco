@@ -1820,6 +1820,16 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 65. v216 — ES Modules パイロット (案 β) stage 2 拡張: 04-gps-location.js を `<script type="module">` 化 (2026-05-19)
+
+stage 2 の 15 番目。現在地・最寄駅・GPS 記録パネル・キャラ表示。11 個の window bridge (`stopLocationTracking` / `findNearestStations` / `formatDist` / `updateNearestStationPanel` / `renderRecordingSummary` / `updateLocationButton` / `getObtainableCharactersAt` / `drawObtainableIndicators` / `getStationCharacterChoice` / `getStationCharacter` / `pickStationCharacter`) を追加。
+
+### 累積 stage 2 進捗
+
+**15/18 ファイル module 化済み**。残り 3: 07 / 08 / 02。
+
+---
+
 ## 64. v215 — ES Modules パイロット (案 β) stage 2 拡張: 05-supabase-data.js を `<script type="module">` 化 (2026-05-19)
 
 stage 2 の 14 番目。データ層 (filter / supabase sync / stats helper)。HTML onclick + 多数 module からの bare 呼出を受けるため **14 個の window bridge** を末尾に集約。
