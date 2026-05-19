@@ -83,10 +83,18 @@ async function saveCharacterGrantToSupabase(charId, stationName, source, gpsData
 }
 
 // Supabase ↔ localStorage の双方向同期
+// v233: 未ログイン時は他人の grant まで anon key で fetch していたので、
+//   - ログイン中: user_id=eq.<uid> でフィルタ
+//   - 未ログイン: skip
 export async function syncCharacterGrantsFromSupabase() {
   if (typeof SUPABASE_URL === 'undefined' || typeof SUPABASE_KEY === 'undefined') return;
+  const uid = currentUserId();
+  if (!uid) {
+    console.log('[乗レコ] キャラ獲得同期スキップ (未ログイン)');
+    return;
+  }
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_character_grants?select=character_id`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_character_grants?user_id=eq.${uid}&select=character_id`, {
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
     });
     if (!res.ok) {

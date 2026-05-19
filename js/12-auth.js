@@ -30,8 +30,9 @@
 //   なので ES Modules の hoisting で解決される (03 ↔ 07 と同じ前例)。
 import { renderMypage } from './13-mypage-common.js';
 import { redrawAllLinesAfterTripChange } from './07-record-mode.js';
-import { updateStorageUI } from './05-supabase-data.js';
+import { updateStorageUI, syncFromSupabase } from './05-supabase-data.js';
 import { updateOverlays } from './08-rendering.js';
+import { syncCharacterGrantsFromSupabase } from './03-characters.js';
 
 window.NORIRECO = window.NORIRECO || {};
 window.NORIRECO.auth = window.NORIRECO.auth || {
@@ -114,10 +115,14 @@ function handleAuthChange(event, session) {
   console.log(`[Auth] ${event}`, auth.currentUser ? `uid=${auth.currentUser.id.slice(0,8)}` : '(logout)');
   updateAuthHeaderUI();
   closeAuthModal();
-  // 初回ログイン (SIGNED_IN) は backfill
+  // 初回ログイン (SIGNED_IN) は backfill + Supabase 同期 (trip + キャラ獲得)。
+  // v233: 未ログイン状態の sync は user_id 取得不可で skip するように変更したため、
+  // 認証確定時に明示的に再同期して自分の trip / キャラを地図とローカルに反映する。
   if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && auth.currentUser && !auth.authBackfillRan) {
     auth.authBackfillRan = true;
     backfillUserIdForLegacyData(auth.currentUser.id);
+    syncFromSupabase();
+    syncCharacterGrantsFromSupabase();
   }
   // v228: ログアウト時はローカルに残った前ユーザーの乗車データ・キャラ獲得を purge し、
   // 地図を空状態で再描画する (Supabase のデータは破壊しない)。

@@ -12,6 +12,7 @@
 import { runCharacterGrantCheck } from './03-characters.js';
 import { drawLines, updateOverlays } from './08-rendering.js';
 import { renderMypage } from './13-mypage-common.js';
+import { currentUserId, authBearerToken } from './12-auth.js';
 
 // 静的フォールバック（localStorageが空の端末用）
 const RIDDEN_SEGS_STATIC=[
@@ -388,12 +389,21 @@ function applyUntilMonthFilter() {
   closeUntilMonthFilter();
 }
 
-// Supabaseから全旅程を取得して地図を更新
+// Supabaseから旅程を取得して地図を更新。
+// v233: 未ログイン時は他人の trip まで anon key で fetch していたので、
+//   - ログイン中: user_id=eq.<uid> でフィルタ
+//   - 未ログイン: skip (localStorage / 静的データのまま)
+// に変更。Bearer も anon key 直挿しから authBearerToken() (access_token 優先) へ。
 export async function syncFromSupabase() {
+  const uid = currentUserId();
+  if (!uid) {
+    console.log('[乗レコ] Supabase 同期スキップ (未ログイン)');
+    return;
+  }
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/norireco_trips?select=*&order=created_at.asc`,
-      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+      `${SUPABASE_URL}/rest/v1/norireco_trips?user_id=eq.${uid}&select=*&order=created_at.asc`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${authBearerToken()}` } }
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const trips = await res.json();
