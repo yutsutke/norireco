@@ -1820,6 +1820,42 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 55. v206 — ES Modules パイロット (案 β) stage 2 拡張: 13a-stats.js (1308 行・最大ファイル) を `<script type="module">` 化 (2026-05-19)
+
+### 背景
+
+stage 2 の 5 番目。1308 行と **18 ファイル中最大**だが、v190 の名前空間徹底で stage 2 コストはほぼゼロ。call site の僅かな修正 (2 箇所、13-mypage-common.js の bare 参照を `NORIRECO.mypage.X` 経由に置換) のみ。
+
+### 変更内容 (4 ファイル)
+
+- `noritetsu-map.html`: `<script src="js/13a-stats.js">` → `<script type="module" src=...>`
+- `js/13a-stats.js`: コメントに stage 2 ノート追記
+- `js/13-mypage-common.js`: bare 参照を NORIRECO.mypage 経由に置換 (2 箇所)
+  - `buildCompletionCards(tripsForCards)` → `NORIRECO.mypage.buildCompletionCards(tripsForCards)`
+  - `renderMpStatsSection()` → `NORIRECO.mypage.renderMpStatsSection()`
+  - 同じ block で `renderMpTripsSection()` → `NORIRECO.mypage.renderMpTripsSection()` も予防的に統一 (13b は既に module 化済み)
+- `sw.js` CACHE_VERSION v205 → v206
+
+### 教訓: 「bare 参照→namespace 経由」の defensive 置換
+
+13a/13b/13c が module 化される過程で、13-mypage-common.js (classic) から bare で呼ばれていた関数は **moduleスコープ化された瞬間に消える**。grep で「該当 module 関数を bare で呼んでいる箇所」を洗い出して `NORIRECO.<domain>.X` 経由に統一しておくのが安全。
+
+call site 1 つを置換するコストは小さいが、**bare 参照に頼ったまま module 化する**と silent runtime error になり、デバッグが面倒。
+
+### 累積 stage 2 進捗
+
+| ファイル | バージョン | LOC | 戦略 |
+|---|---|---|---|
+| 12-auth | v202 | 261 | window bridge 4 関数追加 |
+| 11-fraud | v203 | 156 | window bridge 2 関数追加 |
+| 13c-lines | v204 | 22 | bridge 不要 (NORIRECO.mypage.X 既存) |
+| 13b-trips | v205 | 354 | bridge 不要 (v190 両建て登録済) |
+| **13a-stats** | **v206** | **1308** | classic 側 bare → namespace 置換 2 箇所 |
+
+stage 2 で **5/18 ファイル module 化済み**。
+
+---
+
 ## 54. v205 — ES Modules パイロット (案 β) stage 2 拡張: 13b-trips.js を `<script type="module">` 化 (2026-05-19)
 
 ### 背景

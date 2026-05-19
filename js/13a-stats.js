@@ -9,6 +9,11 @@
 //   - tripCardHtml (直近の旅程カード)
 //   - showMypageToast / isTimeMachineActive
 // 新規・移動分の関数は NORIRECO.mypage.xxx にも公開。
+//
+// v206 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
+// 全 24 関数は既に末尾で `NORIRECO.mypage.X = X` 登録済 (一部 `window.X` 両建て)。
+// 13-mypage-common.js (classic) からの bare 参照 (buildCompletionCards /
+// renderMpStatsSection) は同 commit で `NORIRECO.mypage.X` 経由に書き換え (2 箇所)。
 // ══════════════════════════════════════════════════════════════
 
 // ── 📊 統計セクション ──────────────────────────────────────────

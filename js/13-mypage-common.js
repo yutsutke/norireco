@@ -130,7 +130,7 @@ async function renderMypage() {
     pinned.innerHTML = '';
     if (Array.isArray(NORIRECO.data.SERVICE_LINES) && NORIRECO.data.SERVICE_LINES.length > 0) {
       const tripsForCards = (typeof filterTripsByDate === 'function') ? filterTripsByDate(trips) : trips;
-      pinned.appendChild(buildCompletionCards(tripsForCards));
+      pinned.appendChild(NORIRECO.mypage.buildCompletionCards(tripsForCards));
     } else {
       pinned.innerHTML = `<div class="mp-empty-s" style="padding:14px">⚠ 営業系統マスターの読込に失敗しました</div>`;
     }
@@ -210,8 +210,8 @@ function applyMpSection() {
 
   // 内容描画 (遅延でレイアウト確定後)
   setTimeout(() => {
-    if (showStats) { renderMpStatsSection(); }
-    if (showTrips) renderMpTripsSection();
+    if (showStats) { NORIRECO.mypage.renderMpStatsSection(); }
+    if (showTrips) NORIRECO.mypage.renderMpTripsSection();
     if (showLines) { try { if (typeof renderList === 'function') renderList(); } catch(e) {} }
   }, 30);
 }
