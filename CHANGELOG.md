@@ -1820,6 +1820,58 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 56. v207 — ES Modules パイロット (案 β) stage 2 拡張: 13-mypage-common.js を `<script type="module">` 化 (mypage 系完結) (2026-05-19)
+
+### 背景
+
+stage 2 の 6 番目。13-mypage-common を module 化すれば **mypage 4 ファイル (13-common/13a/13b/13c) 全てが module** になり、マイページ系が stage 2 完結。
+
+### 追加した window bridge (5 個)
+
+13a / 13b (既に module) と 05 / 09 (classic) から bare 識別子で呼ばれる関数を window 公開:
+
+```js
+window.applyMpSection = applyMpSection;
+window.showMypageToast = showMypageToast;
+window.tripCardHtml = tripCardHtml;
+window.isTimeMachineActive = isTimeMachineActive;
+window._MP_SORT_COMPARATORS = _MP_SORT_COMPARATORS;
+```
+
+既存の `window.formatDelayMin / renderMypage / switchMpSection` (v190 で登録済) と合わせて、外部呼出される全 8 関数が window 経由で classic / module 両対応。
+
+### 変更内容 (3 ファイル)
+
+- `noritetsu-map.html`: `<script src="js/13-mypage-common.js">` → `<script type="module" src=...>`
+- `js/13-mypage-common.js`: 末尾に 5 個の window bridge を追加 + コメント更新
+- `sw.js` CACHE_VERSION v206 → v207
+
+### 累積 stage 2 進捗
+
+| ファイル | バージョン | LOC | window bridge 追加 |
+|---|---|---|---|
+| 12-auth | v202 | 261 | 4 個 |
+| 11-fraud | v203 | 156 | 2 個 |
+| 13c-lines | v204 | 22 | 0 個 |
+| 13b-trips | v205 | 354 | 0 個 |
+| 13a-stats | v206 | 1308 | 0 個 (classic 側 bare 参照を namespace 経由に置換) |
+| **13-mypage-common** | **v207** | **377** | **5 個** |
+
+**6/18 ファイル module 化済み** (mypage 系 4 ファイル + auth + fraud)。残り 12: 09 / 10 / 03 / 04 / 04b / 05 / 06 / 07 / 08 / 01 / 02 / 02b。
+
+### 教訓: 「中心ファイル」を module 化する時の追加コスト
+
+13c/13b/13a の module 化は追加 bridge ゼロ〜数個で済んだが、**他からの参照を受ける中心ファイル** (13-common) を module 化する時は、参照される関数の数だけ window bridge が必要。
+
+スケール感:
+- 末端ファイル (受けるだけ) → 0 bridge
+- ハブファイル (参照されまくる) → 5〜10 bridge
+- 巨大ハブ (02-data-loaders、ほぼ全ファイルから参照される) → 20+ bridge を予想
+
+最後に手を付ける 02 が最大の bridge 作業になる見込み。
+
+---
+
 ## 55. v206 — ES Modules パイロット (案 β) stage 2 拡張: 13a-stats.js (1308 行・最大ファイル) を `<script type="module">` 化 (2026-05-19)
 
 ### 背景

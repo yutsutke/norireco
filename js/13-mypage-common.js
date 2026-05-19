@@ -8,7 +8,11 @@
 //
 // 13a-stats.js / 13b-trips.js / 13c-lines.js は本ファイルに依存する。
 // 新規・移動分の関数は NORIRECO.mypage.xxx にも公開 (v127 const grid 二重宣言事故の構造的予防)。
-// クラシック script ロードのため、変数 (MP._mypageCache 等) は従来通りトップレベル let で全ファイル共有。
+//
+// v207 ES Modules パイロット (案 β) stage 2: 13-mypage-common を本ファイルも含めて
+// 全 4 ファイル module 化。13a/13b/13c (既に module) と 05/09 (classic) からの bare
+// 参照を支えるため、末尾で applyMpSection / showMypageToast / tripCardHtml /
+// isTimeMachineActive / _MP_SORT_COMPARATORS の window bridge を明示追加。
 // ══════════════════════════════════════════════════════════════
 
 // ── NORIRECO 名前空間の初期化 ──────────────────────────────────
@@ -369,3 +373,12 @@ function isTimeMachineActive() {
   return f.to < today;
 }
 NORIRECO.mypage.isTimeMachineActive = isTimeMachineActive;
+
+// v207 stage 2 (type=module 化) で必要になった window bridge。
+// 13a-stats / 13b-trips (module) や 05-supabase / 09-tabs-stats (classic) からの
+// bare 参照を支えるため明示公開。
+window.applyMpSection = applyMpSection;
+window.showMypageToast = showMypageToast;
+window.tripCardHtml = tripCardHtml;
+window.isTimeMachineActive = isTimeMachineActive;
+window._MP_SORT_COMPARATORS = _MP_SORT_COMPARATORS;
