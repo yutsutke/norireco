@@ -1,5 +1,9 @@
 // ══════════════════════════════════════════════
 // 乗車記録：localStorage優先、フォールバックとして静的データ
+//
+// v215 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
+// 既存 window 公開 (toggleStopTypeFilter / updateStopTypeFilterUI / toggleMapCtrl /
+// closeAllMapCtrl) に加え、stage 2 で必要になった bridge を末尾に集約。
 // ══════════════════════════════════════════════
 
 // 静的フォールバック（localStorageが空の端末用）
@@ -547,3 +551,19 @@ function gStats(){
   NORIRECO.data.LINES.forEach(l=>{const s=lStats(l);ts+=s.t;rt+=s.r;if(s.r>0)la++;if(s.pct===100)ld++;});
   return{ts,rt,la,ld,pct:ts>0?Math.round(rt/ts*100):0};
 }
+
+// v215 stage 2: classic / module 両方から bare 呼出される関数を window 公開
+window.filterTripsByDate = filterTripsByDate;
+window.updateDateFilterUI = updateDateFilterUI;
+window.setDateFilter = setDateFilter;
+window.toggleCustomDateFilter = toggleCustomDateFilter;
+window.closeCustomDateFilter = closeCustomDateFilter;
+window.applyCustomDateFilter = applyCustomDateFilter;
+window.toggleUntilMonthFilter = toggleUntilMonthFilter;
+window.closeUntilMonthFilter = closeUntilMonthFilter;
+window.applyUntilMonthFilter = applyUntilMonthFilter;
+window.syncFromSupabase = syncFromSupabase;
+window.getStorageStats = getStorageStats;
+window.updateStorageUI = updateStorageUI;
+window.lStats = lStats;
+window.gStats = gStats;

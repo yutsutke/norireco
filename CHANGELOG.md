@@ -1820,6 +1820,16 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 64. v215 — ES Modules パイロット (案 β) stage 2 拡張: 05-supabase-data.js を `<script type="module">` 化 (2026-05-19)
+
+stage 2 の 14 番目。データ層 (filter / supabase sync / stats helper)。HTML onclick + 多数 module からの bare 呼出を受けるため **14 個の window bridge** を末尾に集約。
+
+### 累積 stage 2 進捗
+
+**14/18 ファイル module 化済み**。残り 4: 04 / 07 / 08 / 02。
+
+---
+
 ## 63. v214 — ES Modules パイロット (案 β) stage 2 拡張: 06-map-leaflet.js を `<script type="module">` 化 (2026-05-19)
 
 stage 2 の 13 番目。06 は地図初期化。`initMap` を window 公開 1 個追加。
