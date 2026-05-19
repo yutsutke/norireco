@@ -1820,6 +1820,16 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 67. v218 — ES Modules パイロット (案 β) stage 2 拡張: 08-rendering.js を `<script type="module">` 化 (2026-05-19)
+
+stage 2 の 17 番目。描画エンジン本体。12 個の window bridge (drawLines / updateLOD / updateOverlays / メモモーダル系 / キャラモーダル系 / drawServiceLineBase)。
+
+### 累積 stage 2 進捗
+
+**17/18 ファイル module 化済み**。残り 1: **02-data-loaders (最後)**。
+
+---
+
 ## 66. v217 — ES Modules パイロット (案 β) stage 2 拡張: 07-record-mode.js を `<script type="module">` 化 (2026-05-19)
 
 stage 2 の 16 番目。記録モード本体。既存 window 公開 11 個に加え 6 個追加 (`toggleRecordMode` / `onRecordStationClick` / `saveMultiSegmentTrip` / `redrawAllLinesAfterTripChange` / `showRecordToast` / `fitToRiddenLines`)。

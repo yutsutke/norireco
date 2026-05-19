@@ -32,6 +32,11 @@ const LINE_PRIORITY = {
   'chitose':2,'yosan':2,'tosa':2,'kintetsu':2,'kintetsu-kyoto':2,
   'kintetsu-nagoya':2,'jr-osaka-kobe':2,'jr-kyoto':2,
 };
+// v218 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
+// 末尾で 12 個の window bridge を追加 (drawLines / updateLOD / updateOverlays /
+// toggleMemoMode / openMemo / closeMemo / selChip / togTag / genMemo / openCharModal /
+// closeCharModal / drawServiceLineBase)。
+
 function getLinePriority(line){
   return LINE_PRIORITY[line.id] || (line.group==='新幹線'?1:
     line.group==='首都圏'?3:
@@ -1059,3 +1064,17 @@ function genMemo(){
   const ta=document.getElementById('out-ta');
   ta.value=text;document.getElementById('out-area').style.display='block';ta.select();
 }
+
+// v218 stage 2: classic / module 双方から bare 呼出される関数の window 公開
+window.drawLines = drawLines;
+window.updateLOD = updateLOD;
+window.updateOverlays = updateOverlays;
+window.toggleMemoMode = toggleMemoMode;
+window.openMemo = openMemo;
+window.closeMemo = closeMemo;
+window.selChip = selChip;
+window.togTag = togTag;
+window.genMemo = genMemo;
+window.openCharModal = openCharModal;
+window.closeCharModal = closeCharModal;
+window.drawServiceLineBase = drawServiceLineBase;
