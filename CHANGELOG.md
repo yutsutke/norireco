@@ -1820,6 +1820,68 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 52. v203 — ES Modules パイロット (案 β) stage 2 拡張: 11-fraud-detection.js を `<script type="module">` 化 (2026-05-19)
+
+### 背景
+
+v202 (12-auth) に続く stage 2 の 2 番目。**state ゼロのファイル** を選び、stage 2 が「外部 API の window bridge を書くだけ」の機械作業であることを実証。
+
+### 11-fraud-detection を選んだ理由
+
+| 観点 | 11-fraud-detection の特徴 |
+|---|---|
+| state 数 | **0 個** (定数のみ、Pure 関数群) |
+| 外部公開関数 | 2 個 (`fraudAssessTrip` / `fraudIsDowngraded`) |
+| classic 依存 | 2 個 (`distMeters` from 03 / `NORIRECO.data.SERVICE_LINES`) |
+| 失敗時の影響 | 不正検知のみ、地図描画には無影響 |
+
+state が無いということは v195-v201 の windowization で**手を入れる必要がなかった**ファイル。stage 2 は完全に script tag + window bridge の 2 点だけで済む。
+
+### 変更内容 (3 ファイル)
+
+#### 1. `noritetsu-map.html`
+
+```diff
+-<script src="js/11-fraud-detection.js"></script>
++<script type="module" src="js/11-fraud-detection.js"></script>
+```
+
+#### 2. `js/11-fraud-detection.js` 末尾に window bridge を追加
+
+```js
+window.fraudAssessTrip = fraudAssessTrip;
+window.fraudIsDowngraded = fraudIsDowngraded;
+```
+
+呼出元は全て `typeof fraudAssessTrip === 'function'` の defensive check 付き (07/09/13-common/13a/13b 計 5 箇所)。bridge が無くても crash しないが、機能が silent fail するので明示的に公開。
+
+#### 3. `sw.js` CACHE_VERSION v202 → v203
+
+### classic ↔ module 識別子可視性検証
+
+- `distMeters` (03-characters.js, classic, `function`) — module から bare 参照可 (globalThis property)
+- `NORIRECO.data.SERVICE_LINES` (window property) — どこからでも参照可
+- `parseHmsToSec` / `fraudExpectedMinutes` 等の内部関数 — module-local のままで OK (外部から呼ばれない)
+
+### 進捗 (案 β stage 2)
+
+| ファイル | バージョン | state | 外部公開 fn | LOC |
+|---|---|---|---|---|
+| 12-auth | v202 | 4 | 8 (init/sign*/handle*/openAuth*/...) | 261 |
+| **11-fraud** | **v203** | **0** | **2** (fraudAssess/Is) | 156 |
+| 13c-lines (次) | v204 | 0 | 1 | 21 |
+| 03-characters | v205 | ~5 keys | 多数 | 306 |
+| ... | ... | ... | ... | ... |
+
+stage 2 の **6/18 ファイル完了** (12-auth + 11 = 2、未完: 03/04/04b/05/06/07/08/09/10/13c/13-common/13a/13b/02/02b/01)。
+
+### 教訓
+
+- **state 0 ファイル → stage 2 は 3 行の編集**: HTML 1 行 + window bridge 2 行 + sw.js version bump。stage 1 の準備量に対して stage 2 のコストはほぼゼロ
+- 「state が無いファイル」を先に処理することで、stage 2 の安全性と機械性が validate できる。state を持つファイル (03/06/02 等) への展開は次セッション以降
+
+---
+
 ## 51. v202 — ES Modules パイロット (案 β) **stage 2 着手**: 12-auth.js を `<script type="module">` 化 (2026-05-19)
 
 ### 背景

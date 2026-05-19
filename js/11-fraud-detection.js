@@ -12,6 +12,11 @@
 // - 不変条件: source='gps_button' は記録時 verified=true で生まれる
 //   → 後で verified=false なら「降格された」と一意に判別可能
 // - 理由テキストは UI 描画時に fraudAssessTrip() で再計算
+//
+// v203 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
+// state ゼロ (定数のみ) で外部 API は fraudAssessTrip / fraudIsDowngraded の 2 関数のみ。
+// module-local function を classic script consumer (07/09/13-common/13a/13b) から
+// 呼べるよう、末尾で window.X = X の bridge を明示。
 // ══════════════════════════════════════════════════════════════
 
 // カテゴリ別の標準運転速度 (停車込みの実効速度 km/h)
@@ -147,3 +152,7 @@ function parseHmsToSec(hms) {
 function fraudIsDowngraded(trip) {
   return !!trip && trip.source === 'gps_button' && trip.verified === false;
 }
+
+// v203: classic script consumer (07/09/13-common/13a/13b) からの呼出用 window bridge。
+window.fraudAssessTrip = fraudAssessTrip;
+window.fraudIsDowngraded = fraudIsDowngraded;
