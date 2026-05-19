@@ -1820,6 +1820,30 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 57. v208 — ES Modules パイロット (案 β) stage 2 拡張: 09-tabs-stats.js を `<script type="module">` 化 (2026-05-19)
+
+### 背景
+
+stage 2 の 7 番目。09 はタブ切替 (`switchTab`) + 路線一覧 (`renderList`) + 統計集計 (`renderStats`) の 3 関数。HTML onclick と module からの bare 呼出があるため window bridge 3 個を追加。
+
+### 変更内容 (3 ファイル)
+
+- `noritetsu-map.html`: `<script src="js/09-tabs-stats.js">` → `<script type="module" src=...>`
+- `js/09-tabs-stats.js`: 末尾に window bridge 3 個 + stage 2 コメント
+- `sw.js` CACHE_VERSION v207 → v208
+
+```js
+window.switchTab = switchTab;    // HTML onclick から
+window.renderList = renderList;  // 13-mypage-common / 13c (module) から bare 呼出
+window.renderStats = renderStats;// 13a (module) から bare 呼出
+```
+
+### 累積 stage 2 進捗
+
+**7/18 ファイル module 化済み** (mypage 4 + auth + fraud + tabs-stats)。残り 11: 10 / 03 / 04 / 04b / 05 / 06 / 07 / 08 / 01 / 02 / 02b。
+
+---
+
 ## 56. v207 — ES Modules パイロット (案 β) stage 2 拡張: 13-mypage-common.js を `<script type="module">` 化 (mypage 系完結) (2026-05-19)
 
 ### 背景

@@ -1,5 +1,10 @@
 // ══════════════════════════════════════
 // TABS
+//
+// v208 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
+// 末尾で switchTab / renderList / renderStats を window に明示公開。
+// switchTab は HTML onclick から、renderList / renderStats は 13-mypage-common / 13a / 13c
+// (module) から bare 識別子で呼ばれる。
 // ══════════════════════════════════════
 function switchTab(n){
   // 旧 'list' / 'stats' は 'mypage' にリダイレクト (タブ集約のため)
@@ -297,3 +302,9 @@ async function renderStats(){
   achs.forEach(a=>{const el=document.createElement('div');el.className='ach'+(a.on?' on':'');el.innerHTML=`<div class="ach-ic">${a.ic}</div><div><div class="ach-nm">${a.nm}</div><div class="ach-ds">${a.ds}</div></div>${a.on?'<div class="ach-bj">UNLOCKED</div>':''}`;al.appendChild(el);});
   c.appendChild(al);
 }
+
+// v208 stage 2 (type=module 化) で必要になった window bridge。
+// switchTab: HTML onclick / renderList: 13-mypage-common, 13c から / renderStats: 13a から
+window.switchTab = switchTab;
+window.renderList = renderList;
+window.renderStats = renderStats;
