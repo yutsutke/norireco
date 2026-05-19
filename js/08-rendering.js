@@ -527,7 +527,7 @@ function drawServiceLineBase(sl) {
   const isRidden = rs && rs.size > 0;
   const isFullyRidden = isRidden && rs.size >= sl.stations.length;
   const priority = getServiceLinePriority(sl);
-  const stats = slStats(sl);
+  const stats = NORIRECO.serviceLines.stats(sl);
   const z = map ? map.getZoom() : 5;
   const visible = priority <= getVisiblePriority(z);
   const mode = window._mapDisplayMode || 'both';
@@ -1000,7 +1000,7 @@ function updateOverlays(){
   // 営業系統 — 乗車済みのみ、達成率降順
   if (SERVICE_LINES && SERVICE_LINES.length > 0) {
     const ridSls = SERVICE_LINES
-      .map(sl => ({sl, stats: slStats(sl)}))
+      .map(sl => ({sl, stats: NORIRECO.serviceLines.stats(sl)}))
       .filter(x => x.stats.r > 0)
       .sort((a,b) => b.stats.pct - a.stats.pct);
     if (ridSls.length > 0) {

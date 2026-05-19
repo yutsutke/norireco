@@ -25,16 +25,16 @@ const SL_GROUP_ORDER = [
 
 async function renderList(){
   const c=document.getElementById('list-content');c.innerHTML='';
-  await buildServiceLines();
+  await NORIRECO.serviceLines.build();
   const grouped={};SERVICE_LINES.forEach(sl=>{const g=sl.group||'その他';if(!grouped[g])grouped[g]=[];grouped[g].push(sl);});
   const groupOrder = [...SL_GROUP_ORDER, ...Object.keys(grouped).filter(g => !SL_GROUP_ORDER.includes(g))];
   groupOrder.forEach(grp => {
     const lines = grouped[grp]; if (!lines || lines.length === 0) return;
     // グループ内: 達成率(降順) → 路線名
-    lines.sort((a,b) => slStats(b).pct - slStats(a).pct || a.name.localeCompare(b.name, 'ja'));
+    lines.sort((a,b) => NORIRECO.serviceLines.stats(b).pct - NORIRECO.serviceLines.stats(a).pct || a.name.localeCompare(b.name, 'ja'));
     const t=document.createElement('div');t.className='sec-lbl';t.textContent=`${grp} (${lines.length})`;c.appendChild(t);
     lines.forEach(sl=>{
-      const s=slStats(sl);const card=document.createElement('div');
+      const s=NORIRECO.serviceLines.stats(sl);const card=document.createElement('div');
       card.className='lcard'+(s.pct===100?' done':s.r>0?' partial':'');
       card.innerHTML=`<div class="lc-h"><div class="lc-dot" style="background:${sl.color}"></div><span class="lc-name">${sl.name}</span><span class="lc-reg">${sl.operator||''}</span><span class="lc-pct" style="color:${s.r>0?sl.color:'var(--silver)'}">${s.pct}%</span></div><div class="prog"><div class="prog-bar" style="width:${s.pct}%;background:${sl.color}"></div></div><div class="lc-sub">${s.r}/${s.t}駅${s.pct===100?' ✓ 完乗！':''}</div>`;
       c.appendChild(card);
@@ -47,7 +47,7 @@ async function renderList(){
 // ══════════════════════════════════════
 async function renderStats(){
   const c=document.getElementById('stats-content');c.innerHTML='';
-  await buildServiceLines();
+  await NORIRECO.serviceLines.build();
 
   // 完乗率カードはマイページ上部に常時表示されるため、ここでは活動量メトリクスのみ
 
@@ -272,11 +272,11 @@ async function renderStats(){
   });
 
   // ── 系統別達成率 (乗車済みのみ) ──
-  const rLines=SERVICE_LINES.filter(l=>slStats(l).r>0).sort((a,b)=>slStats(b).pct-slStats(a).pct);
+  const rLines=SERVICE_LINES.filter(l=>NORIRECO.serviceLines.stats(l).r>0).sort((a,b)=>NORIRECO.serviceLines.stats(b).pct-NORIRECO.serviceLines.stats(a).pct);
   if(rLines.length){
     const hdr=document.createElement('div');hdr.className='sec-lbl';hdr.textContent=`乗車系統別 達成率 (${rLines.length})`;c.appendChild(hdr);
     const ch=document.createElement('div');ch.className='bc';
-    rLines.forEach(sl=>{const s=slStats(sl);const row=document.createElement('div');row.className='bc-r';row.innerHTML=`<div class="bc-l">${sl.name}</div><div class="bc-bg"><div class="bc-fill" style="width:${s.pct}%;background:${sl.color}"></div></div><div class="bc-n">${s.pct}%</div>`;ch.appendChild(row);});
+    rLines.forEach(sl=>{const s=NORIRECO.serviceLines.stats(sl);const row=document.createElement('div');row.className='bc-r';row.innerHTML=`<div class="bc-l">${sl.name}</div><div class="bc-bg"><div class="bc-fill" style="width:${s.pct}%;background:${sl.color}"></div></div><div class="bc-n">${s.pct}%</div>`;ch.appendChild(row);});
     c.appendChild(ch);
   }
 

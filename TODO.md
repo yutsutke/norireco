@@ -4,14 +4,14 @@
 詳しい仕様や経緯は `CHANGELOG.md`（更新履歴詳細）、ビジネス背景は [Notion 開発ノート](https://www.notion.so/35b71b458b63818494afe7c1ab917ca5)。
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v189 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v192 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13-..` 機能別分割（v131〜v138、`CHANGELOG.md §20, §21` 参照）
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
 **マイページ**: 3 サブタブ (統計 / 旅程 / 路線)、詳細統計 16 種、期間指定で過去状態 (地図ピル「〜月指定」)
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **保存ボタン**: 記録種別に応じて「💾 手動記録で保存する」/「💾 GPS 記録で保存する」に動的切替（v176）
-**直近の作業**: `04-gps-location.js` のデータローダー (`loadServiceLinesMaster` / `loadLines` / `loadMergedStations` 他) を `02-data-loaders.js` に移管（v191）/ `13-mypage.js` を 4 ファイル + `window.NORIRECO` 名前空間導入（v190）
+**直近の作業**: SERVICE_LINES 構築ロジック (`buildServiceLines` / `slStats` / `detectServiceLineGroup` 他) を `02b-service-lines-builder.js` に切り出し、`NORIRECO.serviceLines` ドメイン名前空間で公開（v192）/ `04-gps-location.js` のデータローダーを `02-data-loaders.js` に移管（v191）/ `13-mypage.js` を 4 ファイル + `window.NORIRECO` 名前空間導入（v190）
 
 ---
 
@@ -47,15 +47,20 @@
     - ✅ HTML `<script src>` リスト・`sw.js` STATIC_ASSETS・CACHE_VERSION 連動更新（v189→v190）
   - **v191 で完了済**:
     - ✅ `04-gps-location.js` のデータローダー (`loadMergedStations` / `loadServiceLinesMaster` / `loadLines` / `loadLinesForZoom` / `PRIORITY_FILES` / `getPriorityThreshold`) と関連状態 (`SERVICE_LINES_MASTER` / `SERVICE_LINES` / `serviceLinesLoaded` / `serviceLinesBuilt`) を `02-data-loaders.js` に移管 (04: 1037→927 / 02: 227→346)。Notion §2.5 落とし穴「04 にローダーがいる」を解消
-  - **進め方 (段階的・各段階で 1 デプロイ = 1 CACHE_VERSION 上げ)**:
-    1. `<script type="module">` 化 + グローバル状態 (SERVICE_LINES / MERGED_STATIONS / RIDDEN_SEGS など) を中央ストア (`js/00-store.js` 等) に集約する方針決め
-    2. ファイル単位で export/import 移行 (1 日 1-2 ファイル、依存順 01 → 13c)
-    3. SW の `STATIC_ASSETS` と `<script>` ロード戦略を再確認 (Network-First 維持できるか)
-    4. Notion §2.4 布石② シンタックスチェック自動化 (`npm run check` / pre-commit)
-    5. Notion §2.4 布石⑤ Supabase 呼び出しを `NORIRECO.api.xxx` ラッパー化 (13系で触る部分から段階的に)
-    6. SERVICE_LINES 構築ロジック (`buildServiceLines` / `buildPerLineCoordMap` / `detectServiceLineGroup` 等) を 04 から `02b-service-lines-builder.js` 等に切り出すかは要相談 (まだ 04 に同居中)
+  - **v192 で完了済 (案 D 採用: ES Modules の最終形に近いドメイン分割)**:
+    - ✅ SERVICE_LINES 構築・分類・達成率ロジック (`buildServiceLines` / `buildPerLineCoordMap` / `deriveN02IdFromAutoId` / `regionOf` / `detectServiceLineGroup` / `_JR_OP_IDS` 他 / `slStats` / `slGlobalStats`) を `js/02b-service-lines-builder.js` (166 行、IIFE) に切り出し
+    - ✅ `NORIRECO.serviceLines = { build, stats, globalStats, detectGroup, regionOf }` ドメイン名前空間で公開
+    - ✅ call site (06/08/09/05/13-common 計 12 箇所) を `NORIRECO.serviceLines.xxx` に書き換え
+    - ✅ `deriveN02IdFromAutoId` の 04 内自己重複を解消 (v191 の積み残し)
+    - 04: 927→788 行 / HTML `<script>` リスト・sw.js STATIC_ASSETS 更新・CACHE_VERSION v191→v192
+  - **次セッション v193 候補**:
+    1. `<script type="module">` 化パイロット — 02b を最初に `export { build, stats, ... }` 化、call site を `import` に置換。02b は IIFE なので外しやすい構造
+    2. SW (`sw.js`) の Network-First が `type="module"` でも維持できるか確認
+    3. Notion §2.4 布石② シンタックスチェック自動化 (`npm run check` / pre-commit)
+    4. Notion §2.4 布石⑤ Supabase 呼び出しを `NORIRECO.api.xxx` ラッパー化
+    5. 残るドメイン分割候補: `slRiddenSt` / `slStopType` / `slVisitCount` (04 で宣言) を `NORIRECO.rideRecord` ドメインに集約 (`rebuildRiddenStations` 周辺と一緒に)
   - **安全装置**: 「動くマップが画面に出る」を毎ステップで確認、各段階を独立コミット (戻せる)。Cloudflare Pages 移行は別タスクに切り出し、今は GitHub Pages のままで完結させる
-  - 詳細仕様: 2.4 コード構成（js/01〜13c）§ 落とし穴 「04-gps-location.js にデータローダーがいる」参照
+  - 詳細仕様: 2.4 コード構成（js/01〜13c）参照
 
 - [ ] **シェア機能（OGP 画像生成）**
   - 自分の達成地図のスクショ → Twitter/X で拡散
@@ -326,7 +331,7 @@
 ## メモ
 
 - **main 直 push 運用**（個人開発、PR・専用ブランチ不要、自動承認設定済み）
-- 編集後は **`sw.js` の `CACHE_VERSION` を上げる**こと（現在 v172）
+- 編集後は **`sw.js` の `CACHE_VERSION` を上げる**こと（現在 v192）
 - HTML 編集後は `</script></body></html>` が末尾に残っているか必ず確認
 - **JS 編集後は必ずシンタックスチェック** (`CHANGELOG.md §20` 末尾の node ワンライナー、v127 で失敗の教訓)
 - 新規 trip の `lineId` は `service_lines_master.json` の id を使う（旧 N02 id も `LEGACY_LINE_ID_ALIAS` で透過解決）

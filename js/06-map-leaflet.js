@@ -114,7 +114,7 @@ function initMap(){
     console.log(`[乗レコ] 初期ロード完了: 計${LINES.length}路線`);
     fitToRiddenLines();
     // 営業系統(SERVICE_LINES)を構築 → 新形式 trip(jr_xxx/auto_xxx) を再解決して再描画
-    buildServiceLines().then(() => {
+    NORIRECO.serviceLines.build().then(() => {
       rebuildRiddenStations();
       if (typeof redrawAllLinesAfterTripChange === 'function') redrawAllLinesAfterTripChange();
       updateOverlays();

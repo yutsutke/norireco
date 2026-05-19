@@ -83,7 +83,7 @@ async function renderMypage() {
   let trips = [];
   try {
     const [_, tripsRes] = await Promise.all([
-      (typeof buildServiceLines === 'function' ? buildServiceLines() : Promise.resolve()),
+      ((window.NORIRECO && NORIRECO.serviceLines) ? NORIRECO.serviceLines.build() : Promise.resolve()),
       fetch(`${SUPABASE_URL}/rest/v1/norireco_trips?user_id=eq.${uid}&select=*&order=recorded_at.desc`, {
         headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${typeof authBearerToken==='function'?authBearerToken():SUPABASE_KEY}` }
       }),

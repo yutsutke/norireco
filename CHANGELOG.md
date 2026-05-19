@@ -1820,6 +1820,69 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 41. v192 — SERVICE_LINES 構築ロジックを `04` → `02b-service-lines-builder.js` に切り出し + `NORIRECO.serviceLines` ドメイン名前空間 (2026-05-19)
+
+### 背景
+
+v190 (13-mypage 分割 + `window.NORIRECO` 導入) / v191 (04 → 02 ローダー移管) の続きとして、**ES Modules 化本番 (次セッション v193 予定) の地ならし**。N=1 (ユーザー自分だけ) のうちが破壊的リファクタの唯一の安全窓なので、シェア機能で新規ユーザーが入る前に進める。
+
+中央ストア方針として 3 案を比較し、議論を経て **案 D「将来そのまま 1 ES Module になる形でドメイン名前空間に切り出す」** を採用:
+
+- 案 A (`SERVICE_LINES` 自体を `NORIRECO.store` に集約) は 8 ファイル 30 箇所超を一度に書き換える単一障害点になりやすい。「巨大グローバルオブジェクト」は ES Modules の最終形ではなく中間形なので二度手間
+- 案 B (名前空間の器だけ作る) は中立だが、関数移動だけだと「中央ストアの中身が空」で先送り感が強い
+- 案 D = 「02b は IIFE + `NORIRECO.serviceLines = { build, stats, globalStats, detectGroup, regionOf }` でドメイン単位に切り出す」。ES Modules 化のときは IIFE を外して `export { ... }`、call site の `NORIRECO.serviceLines.build()` → `import { build } from './02b-service-lines-builder.js'` に**機械置換だけ**で済む
+
+スケール志向の最終形は「ES Modules + ドメイン分割 export」であり、Redux/Zustand 的な中央ストアではない (`SERVICE_LINES` のようなマスターは domain-owned が自然) — という認識に揃えてから着手。
+
+### 切り出した関数 (04 → 02b)
+
+| 名前 | 公開名 |
+|---|---|
+| `buildServiceLines()` | `NORIRECO.serviceLines.build()` |
+| `slStats(sl)` | `NORIRECO.serviceLines.stats(sl)` |
+| `slGlobalStats()` | `NORIRECO.serviceLines.globalStats()` |
+| `detectServiceLineGroup()` | `NORIRECO.serviceLines.detectGroup()` |
+| `regionOf(lat, lon)` | `NORIRECO.serviceLines.regionOf()` |
+| `buildPerLineCoordMap()` | (IIFE 内部、非公開) |
+| `deriveN02IdFromAutoId()` | (IIFE 内部、非公開) |
+| `_JR_OP_IDS` / `_METRO_TOEI` / `_KANTO_EAST_NORTH` / `_KANTO_SOUTH_WEST` | (IIFE 内部、非公開) |
+
+加えて `deriveN02IdFromAutoId` の **04 内自己重複 (442/448 行で同一本体 2 回宣言)** を切り出し時に統合し、コメントを 1 本に整理 (v191 の宿題消化)。
+
+### call site 書き換え (12 箇所、5 ファイル)
+
+- `js/06-map-leaflet.js:117` `buildServiceLines()` → `NORIRECO.serviceLines.build()`
+- `js/09-tabs-stats.js:28,34,37,50,275,279` `buildServiceLines` / `slStats` → `NORIRECO.serviceLines.{build,stats}`
+- `js/08-rendering.js:530,1003` `slStats(sl)` → `NORIRECO.serviceLines.stats(sl)`
+- `js/05-supabase-data.js:545` `slGlobalStats()` → `NORIRECO.serviceLines.globalStats()`
+- `js/13-mypage-common.js:86` `typeof buildServiceLines === 'function'` ガードも `NORIRECO.serviceLines` ガードに置換
+
+### ロード順 (02 → 02b → 03 → 04)
+
+02b は内部で `LINES` / `SERVICE_LINES_MASTER` / `SERVICE_LINES` / `serviceLinesLoaded` / `serviceLinesBuilt` (02 で `let` 宣言) と `loadServiceLinesMaster` / `loadLines` (02 で定義) を参照するため、02 の直後にロード。`stats(sl)` は `slRiddenSt` (04 で `let` 宣言) を runtime に読むが、02b パース時には未宣言でも関数本体は評価されないので問題なし (実際の呼び出しは 04 ロード後のユーザー操作時)。
+
+### 影響範囲
+
+- 新規 `js/02b-service-lines-builder.js` — 166 行 (IIFE 包み + JSDoc コメント含む)
+- `js/04-gps-location.js` — 927 → 788 行 (-139)
+- `noritetsu-map.html` — `<script src="js/02b-service-lines-builder.js">` を 02 と 03 の間に追加
+- `sw.js` — `STATIC_ASSETS` に 02b 追加 + `CACHE_VERSION = 'v192'`
+- シンタックスチェックワンライナーのファイルリスト 16 → 17
+
+### つまずきポイント
+
+- IIFE 内で `'use strict';` を入れた上で `SERVICE_LINES = []` のような無修飾代入を行うが、これは 02 の `let SERVICE_LINES` がスクリプト共有レキシカル環境に存在するため strict mode でも合法。クラシック script ロードの「全ファイル同一スクリプト環境」を逆に活用
+- 全角カッコ U+FF08/U+FF09 (`首都圏・私鉄（東・北）` 等) は 02b 移管後も保全されているか Python でコードポイント検証 (v190 で半角に誤変換した教訓踏襲)
+- 02b は IIFE で内部関数を**スコープ閉じ込め**にしたので、v127 の `const grid` 重複宣言事故型の名前衝突は構造的に発生しない (将来 02c, 02d… を作っても同様)
+
+### Phase 3.8 ステータス更新
+
+- ✅ SERVICE_LINES 構築ロジックを `02b-service-lines-builder.js` に切り出し、`NORIRECO.serviceLines` ドメイン名前空間で公開 (v192)
+- ✅ `deriveN02IdFromAutoId` の 04 内自己重複を解消 (v192、v191 の積み残し)
+- 🔜 次セッション v193 で `<script type="module">` 化パイロット (02b → 02 → 01 の順に `export`/`import` 化、ロード戦略・SW Network-First 影響を確認)
+
+---
+
 ## 40. v191 — `04-gps-location.js` のデータローダーを `02-data-loaders.js` に移管 (2026-05-19)
 
 ### 背景

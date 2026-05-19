@@ -9,7 +9,7 @@
 //   2. GitHubにpush
 //   3. ユーザーがハードリロード or アプリ再起動で更新が反映される
 
-const CACHE_VERSION = 'v191';
+const CACHE_VERSION = 'v192';
 const CACHE_NAME = `norireco-${CACHE_VERSION}`;
 
 // 起動時にプリキャッシュする静的アセット
@@ -18,6 +18,7 @@ const STATIC_ASSETS = [
   './noritetsu-map.html',
   './js/01-constants.js',
   './js/02-data-loaders.js',
+  './js/02b-service-lines-builder.js',
   './js/03-characters.js',
   './js/04-gps-location.js',
   './js/05-supabase-data.js',

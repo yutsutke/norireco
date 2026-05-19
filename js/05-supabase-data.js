@@ -542,7 +542,7 @@ function serviceColor(serviceId) {
 }
 // 全体統計: SERVICE_LINES が構築済みならそちらを優先、未構築なら N02 物理路線で代用
 function gStats(){
-  if (SERVICE_LINES && SERVICE_LINES.length > 0) return slGlobalStats();
+  if (SERVICE_LINES && SERVICE_LINES.length > 0) return NORIRECO.serviceLines.globalStats();
   let ts=0,rt=0,la=0,ld=0;
   LINES.forEach(l=>{const s=lStats(l);ts+=s.t;rt+=s.r;if(s.r>0)la++;if(s.pct===100)ld++;});
   return{ts,rt,la,ld,pct:ts>0?Math.round(rt/ts*100):0};
