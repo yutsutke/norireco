@@ -19,9 +19,9 @@ function toggleRecordMode() {
     // 記録モード突入時刻を必ずセット (GPS 経由でなくても depart_time 計算に使う)
     recordStartedAt = new Date().toISOString();
     // メモモードと排他
-    if (memoMode) toggleMemoMode();
+    if (NORIRECO.map.memoMode) toggleMemoMode();
     refreshRecPanel();
-    if(map) map.getContainer().style.cursor='crosshair';
+    if(NORIRECO.map.instance) NORIRECO.map.instance.getContainer().style.cursor='crosshair';
     if (recordStartedViaGPS) {
       // GPS 記録: ミニマルな最寄駅パネル (記録中) を表示、rec-panel は隠す
       panel.style.display = 'none';
@@ -46,7 +46,7 @@ function toggleRecordMode() {
     }
   } else {
     clearRecSelection();
-    if(map) map.getContainer().style.cursor='';
+    if(NORIRECO.map.instance) NORIRECO.map.instance.getContainer().style.cursor='';
     // 記録モード終了時に GPS 認証フラグと時刻もリセット
     recordStartedViaGPS = false;
     recordStartGPS = null;
@@ -91,20 +91,20 @@ function addRecordHighlight(station) {
     radius: 13, color: '#F2A900', weight: 3,
     fill: false, opacity: 1,
     interactive: false,
-  }).addTo(map);
+  }).addTo(NORIRECO.map.instance);
   recordHighlights.push({station, marker: h});
 }
 
 function removeRecordHighlight(station) {
   const idx = recordHighlights.findIndex(h => sameStation(h.station, station));
   if (idx >= 0) {
-    map.removeLayer(recordHighlights[idx].marker);
+    NORIRECO.map.instance.removeLayer(recordHighlights[idx].marker);
     recordHighlights.splice(idx, 1);
   }
 }
 
 function clearAllRecordHighlights() {
-  recordHighlights.forEach(h => { try { map.removeLayer(h.marker); } catch(e){} });
+  recordHighlights.forEach(h => { try { NORIRECO.map.instance.removeLayer(h.marker); } catch(e){} });
   recordHighlights.length = 0;
 }
 
@@ -935,9 +935,9 @@ async function saveMultiSegmentTrip() {
 // 地図全体のポリライン/駅ドット/ラベルを再描画 (riddenSt 更新後に呼ぶ)
 // 既存の Supabase 同期後の再描画と同じパターンを使う
 function redrawAllLinesAfterTripChange() {
-  if (!map || !dotLayerRef) return;
+  if (!NORIRECO.map.instance || !dotLayerRef) return;
   // 既存ポリラインを削除
-  allLayers.forEach(l => { try { map.removeLayer(l); } catch(e){} });
+  allLayers.forEach(l => { try { NORIRECO.map.instance.removeLayer(l); } catch(e){} });
   allLayers.length = 0;
   // 既存ドット/ラベルをクリア
   dotLayerRef.clearLayers();
@@ -977,7 +977,7 @@ function fitToRiddenLines(){
       if(riddenSt[line.id].has(s.n)) pts.push([s.lat,s.lon]);
     });
   });
-  if(pts.length===0){ map.setView([36.5,138.0],5); return; }
+  if(pts.length===0){ NORIRECO.map.instance.setView([36.5,138.0],5); return; }
   const bounds=L.latLngBounds(pts);
-  map.fitBounds(bounds,{padding:[40,40],maxZoom:9,animate:false});
+  NORIRECO.map.instance.fitBounds(bounds,{padding:[40,40],maxZoom:9,animate:false});
 }

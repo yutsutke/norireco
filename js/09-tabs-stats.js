@@ -9,7 +9,7 @@ function switchTab(n){
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',tabs[i]===n));
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
   document.getElementById(`pane-${n}`)?.classList.add('active');
-  if(n==='map'&&map)setTimeout(()=>map.invalidateSize(),50);
+  if(n==='map'&&NORIRECO.map.instance)setTimeout(()=>NORIRECO.map.instance.invalidateSize(),50);
   if(n==='mypage'&&typeof renderMypage==='function')renderMypage();
 }
 

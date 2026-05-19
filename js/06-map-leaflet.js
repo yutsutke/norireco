@@ -1,10 +1,19 @@
 // ══════════════════════════════════════
 // LEAFLET MAP（国土地理院タイル）
 // ══════════════════════════════════════
-let map=null, memoMode=false, clickInfo={};
+
+// v196 ES Modules パイロット (案 β) — 状態を window.NORIRECO.map に集約。
+// stage 2 (type=module 化) で `export const map = NORIRECO.map` ブリッジに置換予定。
+window.NORIRECO = window.NORIRECO || {};
+NORIRECO.map = NORIRECO.map || {
+  instance: null,     // L.map(...) インスタンス (init 後に set、以後単一代入)
+  memoMode: false,    // 📸 メモモード ON/OFF (07/08 から read/write)
+  clickInfo: {},      // 直近のマップクリック context {line, station, lat, lon}
+};
+const M = NORIRECO.map;
 
 function initMap(){
-  map=L.map('leaflet-map',{
+  M.instance=L.map('leaflet-map',{
     center:[36.5,138.0], zoom:5,
     zoomControl:false,
     preferCanvas:true,
@@ -40,19 +49,19 @@ function initMap(){
   let gsiErrors=0;
   gsiPaleTile.on('tileerror',()=>{
     gsiErrors++;
-    if(gsiErrors>3 && map.hasLayer(gsiPaleTile)){
-      map.removeLayer(gsiPaleTile);
-      cartoTile.addTo(map);
+    if(gsiErrors>3 && M.instance.hasLayer(gsiPaleTile)){
+      M.instance.removeLayer(gsiPaleTile);
+      cartoTile.addTo(M.instance);
       const tp=document.querySelector('.leaflet-tile-pane');
       if(tp) tp.style.filter='none';
     }
   });
 
   function applyMapMode(mode){
-    window._mapTiles.forEach(t=>{ if(map.hasLayer(t)) map.removeLayer(t); });
-    if(map.hasLayer(cartoTile)) map.removeLayer(cartoTile);
+    window._mapTiles.forEach(t=>{ if(M.instance.hasLayer(t)) M.instance.removeLayer(t); });
+    if(M.instance.hasLayer(cartoTile)) M.instance.removeLayer(cartoTile);
     const tile = window._mapTiles[mode];
-    tile.addTo(map);
+    tile.addTo(M.instance);
     setTimeout(()=>{
       const tp=document.querySelector('.leaflet-tile-pane');
       if(tp) tp.style.filter = FILTERS[mode];
@@ -70,7 +79,7 @@ function initMap(){
   // タッチデバイス(iPad/スマホ): Leafletの拡大縮小ボタンを出さない
   // PC: 右下 FAB スタックの上に配置 (CSS で margin-bottom 調整)
   if (!IS_TOUCH) {
-    L.control.zoom({position:'bottomright'}).addTo(map);
+    L.control.zoom({position:'bottomright'}).addTo(M.instance);
   } else {
     // bodyにクラスを付けて、もしどこかで生成されてもCSSで隠す
     document.body.classList.add('no-zoom-control');
@@ -126,8 +135,8 @@ function initMap(){
   })();
 
   // ズーム変更時にP3/P4を追加読み込み + LOD更新
-  map.on('zoomend', () => {
-    const z = map.getZoom();
+  M.instance.on('zoomend', () => {
+    const z = M.instance.getZoom();
     loadLinesForZoom(z);
     updateLOD();
   });
@@ -137,8 +146,8 @@ function initMap(){
   let _labelsHidden = false;
   function hideLabelsTemporarily() {
     if (_labelsHidden) return;
-    if (labelLayerRef && map.hasLayer(labelLayerRef)) {
-      map.removeLayer(labelLayerRef);
+    if (labelLayerRef && M.instance.hasLayer(labelLayerRef)) {
+      M.instance.removeLayer(labelLayerRef);
       _labelsHidden = true;
     }
   }
@@ -147,22 +156,22 @@ function initMap(){
     _labelsHidden = false;
     updateLOD();  // updateLOD が必要なラベルを addLayer して labelLayer を map に戻す
   }
-  map.on('movestart', hideLabelsTemporarily);
-  map.on('zoomstart', hideLabelsTemporarily);
-  map.on('moveend', restoreLabelsAfterMove);
+  M.instance.on('movestart', hideLabelsTemporarily);
+  M.instance.on('zoomstart', hideLabelsTemporarily);
+  M.instance.on('moveend', restoreLabelsAfterMove);
   // zoomend は上で既に updateLOD を呼ぶので追加処理不要
 
   // メモモード or 記録モード のクリックハンドラ
-  map.on('click',e=>{
-    if(!memoMode && !recordMode) return;
+  M.instance.on('click',e=>{
+    if(!M.memoMode && !recordMode) return;
     let bLine=null,bSt=null,bD=Infinity;
     LINES.forEach(line=>line.stations.forEach(s=>{
-      const d=map.distance([s.lat,s.lon],e.latlng);
+      const d=M.instance.distance([s.lat,s.lon],e.latlng);
       if(d<bD){bD=d;bLine=line;bSt=s;}
     }));
     if (!bSt || bD > 2000) return;
-    if (memoMode) {
-      clickInfo={line:bLine,station:bSt,lat:e.latlng.lat.toFixed(5),lon:e.latlng.lng.toFixed(5)};
+    if (M.memoMode) {
+      M.clickInfo={line:bLine,station:bSt,lat:e.latlng.lat.toFixed(5),lon:e.latlng.lng.toFixed(5)};
       openMemo();
     } else if (recordMode) {
       onRecordStationClick({name: bSt.n, lat: bSt.lat, lon: bSt.lon});

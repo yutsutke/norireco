@@ -105,8 +105,8 @@ function toggleStopTypeFilter(stype) {
   updateStopTypeFilterUI();
   // v188: 駅フィルタから路線表示モード(_mapDisplayMode) も派生し、路線+駅 まとめて再描画
   _refreshMapDisplayModeFromStopFilter();
-  if (typeof map !== 'undefined' && map && typeof dotLayerRef !== 'undefined' && dotLayerRef) {
-    allLayers.forEach(l => { try { map.removeLayer(l); } catch(e){} });
+  if (NORIRECO.map.instance && typeof dotLayerRef !== 'undefined' && dotLayerRef) {
+    allLayers.forEach(l => { try { NORIRECO.map.instance.removeLayer(l); } catch(e){} });
     allLayers.length = 0;
     dotLayerRef.clearLayers();
     if (typeof labelLayerRef !== 'undefined' && labelLayerRef) labelLayerRef.clearLayers();
@@ -264,8 +264,8 @@ function applyDateFilter() {
   segs.forEach(s => RIDDEN_SEGS.push(s));
   NORIRECO.rideRecord.rebuild();
   // 地図再描画
-  if (typeof map !== 'undefined' && map && typeof dotLayerRef !== 'undefined' && dotLayerRef) {
-    allLayers.forEach(l => { try { map.removeLayer(l); } catch(e){} });
+  if (NORIRECO.map.instance && typeof dotLayerRef !== 'undefined' && dotLayerRef) {
+    allLayers.forEach(l => { try { NORIRECO.map.instance.removeLayer(l); } catch(e){} });
     allLayers.length = 0;
     dotLayerRef.clearLayers();
     if (typeof labelLayerRef !== 'undefined' && labelLayerRef) labelLayerRef.clearLayers();
@@ -399,8 +399,8 @@ async function syncFromSupabase() {
     NORIRECO.rideRecord.rebuild();
 
     // 地図を再描画
-    if (map && dotLayerRef) {
-      allLayers.forEach(l => { try { map.removeLayer(l); } catch(e){} });
+    if (NORIRECO.map.instance && dotLayerRef) {
+      allLayers.forEach(l => { try { NORIRECO.map.instance.removeLayer(l); } catch(e){} });
       allLayers.length = 0;
       dotLayerRef.clearLayers();
       if (labelLayerRef) labelLayerRef.clearLayers();

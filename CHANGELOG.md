@@ -1820,6 +1820,70 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 45. v196 — ES Modules パイロット (案 β) stage 1: map domain state を `window.NORIRECO.map` に集約 (2026-05-19)
+
+### 背景
+
+v195 (auth pilot) で確立した「state を `window.NORIRECO.<domain>.X` の mutable object property に集約」パターンを **2 番目のドメイン (map)** に適用。`map` (Leaflet インスタンス) は cross-file 参照の三大塊の一つで、6 ファイル 39 箇所で使われる。
+
+`map` を選んだ理由: state 数が少なく (3 個) Leaflet インスタンスの実体は 1 度だけ代入される (init 後は read-only に近い) ため、`let → object property` の機械的置換が最も安全。v200 で着手予定の `data` (LINES/SERVICE_LINES/MERGED_STATIONS 等の最大規模ドメイン) に進む前に、中規模で書き換え手順を習熟する位置付け。
+
+### 移行した state (3 個)
+
+| 旧 (top-level `let`) | 新 (NORIRECO.map プロパティ) |
+|---|---|
+| `map` (Leaflet インスタンス) | `NORIRECO.map.instance` |
+| `memoMode` (📸 メモモード ON/OFF) | `NORIRECO.map.memoMode` |
+| `clickInfo` (直近マップクリック context) | `NORIRECO.map.clickInfo` |
+
+`map` は **単一代入** (init で一度だけ `L.map(...)` を代入) なので `let map = null` → `NORIRECO.map.instance = null; ... .instance = L.map(...)` の単純置換で済む。`memoMode` / `clickInfo` は read/write 両方ある mutable プロパティ。
+
+06-map-leaflet.js 内では `const M = NORIRECO.map` の local alias で `M.instance` / `M.memoMode` / `M.clickInfo` の短い形を維持。外部 (04 / 05 / 07 / 08 / 09) からはフルパス `NORIRECO.map.instance` 等。
+
+### call site 書き換え (6 ファイル、約 50 箇所)
+
+- `js/06-map-leaflet.js` — 宣言箇所 + 内部 16 箇所 (`M.instance` / `M.memoMode` / `M.clickInfo`)
+- `js/04-gps-location.js` — 8 箇所 (`map.setView` / `map.getZoom` / `map.removeLayer` / `addTo(map)` / `if(!map)`)
+- `js/05-supabase-data.js` — 4 箇所 (`map.removeLayer` ×3 + `typeof map !== 'undefined' && map` / `if (map && dotLayerRef)`)
+- `js/07-record-mode.js` — 9 箇所 (`map.removeLayer` ×3 / `map.setView` / `map.fitBounds` / `map.getContainer` ×2 / `addTo(map)` / `if(!map)` / `memoMode`)
+- `js/08-rendering.js` — 約 20 箇所 (`map.hasLayer` / `map.addLayer` / `map.removeLayer` / `map.getZoom` / `map.getBounds` / `map.getContainer` / `addTo(map)` ×8 / `memoMode` ×4 / `clickInfo` ×6)
+- `js/09-tabs-stats.js` — 1 箇所 (`map.invalidateSize`)
+
+`Array.prototype.map(...)` の呼び出し (`stations.map(s => ...)` 等) と区別するため、`map.X` と `map ?` / `if(map)` / `addTo(map)` をそれぞれ別パターンで処理。最終確認で grep で bare `map` が残っていないことを検証。
+
+### 設計上の判断
+
+- **`NORIRECO.map.instance` を選んだ理由**: Leaflet インスタンスは「the map」というドメインの主役なので、ドメイン名前空間自体を `NORIRECO.map` にした。`NORIRECO.map.leaflet` / `NORIRECO.map.L` 等の代案もあったが、将来 Mapbox 等への乗り換え可能性を残すために中立な `instance` を採用。
+- **`memoMode` を `NORIRECO.map` 配下に置いた理由**: メモモードは map クリックハンドラと一体で動くため (`map.on('click', ...)` の中で `memoMode` を読む)、論理的に同じドメイン。`NORIRECO.memo` を切るのは過剰分割。
+- **`M` local alias を 06 内のみに留めた理由**: 外部ファイル (04/05/07/08/09) は単一短縮命名 (`M`) を共有できない (`M` が別の意味で使われる可能性)。フルパス `NORIRECO.map.X` は冗長だがファイル横断で曖昧性ゼロ。
+
+### 影響範囲
+
+- `js/06-map-leaflet.js` — 宣言部 + 19 箇所書き換え (機能無変更)
+- `js/04-gps-location.js` / `05-supabase-data.js` / `07-record-mode.js` / `08-rendering.js` / `09-tabs-stats.js` — call site 書き換えのみ
+- `sw.js` — `CACHE_VERSION = 'v196'`
+- `npm run check` — 18/18 OK
+- 機能リグレッション: なし (state 名前空間化のみ、ロジック無変更)
+
+### v195 との比較
+
+| 観点 | v195 (auth) | v196 (map) |
+|---|---|---|
+| state 数 | 4 | 3 |
+| 関係ファイル | 2 | 6 |
+| call site 数 | 22 | 約 50 |
+| state の mutability | 全て mutable | 1 単一代入 + 2 mutable |
+| Array.prototype.map 等との曖昧性 | なし | あり (`.map(...)` 多用) |
+
+map の方が規模が大きいが、`let map=null` の単一代入性のおかげで実装は機械的に済んだ。次の `record` (07) / `gps` (04) / `data` (02 LINES 系) は更に規模拡大の見込み。
+
+### 教訓
+
+- **`Array.prototype.map(...)` の曖昧性対策**: `\bmap\b` で grep すると `arr.map(...)` も大量にヒットする。`map.X` (member access) と `addTo(map)` / `if(map)` / `map ?` のパターンを分けて edit するのが安全。`map.` (literal) の replace_all は `_mapMode` や `arr.map(` には誤マッチしないので利用可。
+- **`typeof map !== 'undefined' && map`**: v131 ロード順事故の名残で defensiveness が複数箇所にあった。`NORIRECO.map.instance` 化で `typeof X !== 'undefined'` の必要性が消える (`NORIRECO.map` は常に存在する)。コードが少し短くなる副作用。
+
+---
+
 ## 44. v195 — ES Modules パイロット (案 β) stage 1: 認証 state を `window.NORIRECO.auth` に集約 (2026-05-19)
 
 ### 背景

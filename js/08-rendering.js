@@ -87,17 +87,17 @@ function drawLines(){
 
 // ── LOD：ズームに応じて路線・ドット・ラベルを表示/非表示 ──
 function updateLOD() {
-  if (!map) return;
-  const z = map.getZoom();
+  if (!NORIRECO.map.instance) return;
+  const z = NORIRECO.map.instance.getZoom();
   const maxP = getVisiblePriority(z);
 
   // 路線ラインのLOD
   allLayers.forEach(layer => {
     const p = layer._norireco_priority || 3;
     if (p <= maxP) {
-      if (!map.hasLayer(layer)) map.addLayer(layer);
+      if (!NORIRECO.map.instance.hasLayer(layer)) NORIRECO.map.instance.addLayer(layer);
     } else {
-      if (map.hasLayer(layer)) map.removeLayer(layer);
+      if (NORIRECO.map.instance.hasLayer(layer)) NORIRECO.map.instance.removeLayer(layer);
     }
   });
 
@@ -111,7 +111,7 @@ function updateLOD() {
     const pieMinRural = getPieMinTier(z, false);
     const minOfAll = Math.min(dotMinMetro, dotMinRural, pieMinMetro, pieMinRural);
     if (minOfAll <= 6) {
-      if (!map.hasLayer(dotLayerRef)) map.addLayer(dotLayerRef);
+      if (!NORIRECO.map.instance.hasLayer(dotLayerRef)) NORIRECO.map.instance.addLayer(dotLayerRef);
       dotLayerRef.eachLayer(d => {
         const t = d._station_tier || 1;
         const m = d._station_isMetro;
@@ -124,7 +124,7 @@ function updateLOD() {
         setStationVisible(d, t >= minTier);
       });
     } else {
-      if (map.hasLayer(dotLayerRef)) map.removeLayer(dotLayerRef);
+      if (NORIRECO.map.instance.hasLayer(dotLayerRef)) NORIRECO.map.instance.removeLayer(dotLayerRef);
     }
   }
 
@@ -134,10 +134,10 @@ function updateLOD() {
     const labelMinRural = getLabelMinTier(z, false);
     const minOfBoth = Math.min(labelMinMetro, labelMinRural);
     if (minOfBoth <= 6) {
-      if (!map.hasLayer(labelLayerRef)) map.addLayer(labelLayerRef);
+      if (!NORIRECO.map.instance.hasLayer(labelLayerRef)) NORIRECO.map.instance.addLayer(labelLayerRef);
       // ★最重要最適化: ビューポート内のラベルだけDOMに追加
       // 画面外の駅名は読み込まない → 巨大エリアでも軽量
-      const _bounds = map.getBounds().pad(0.15);  // 少しゆとり持つ
+      const _bounds = NORIRECO.map.instance.getBounds().pad(0.15);  // 少しゆとり持つ
       (window._allLabels || []).forEach(l => {
         const t = l._station_tier || 1;
         const m = l._station_isMetro;
@@ -152,7 +152,7 @@ function updateLOD() {
         }
       });
     } else {
-      if (map.hasLayer(labelLayerRef)) map.removeLayer(labelLayerRef);
+      if (NORIRECO.map.instance.hasLayer(labelLayerRef)) NORIRECO.map.instance.removeLayer(labelLayerRef);
     }
   }
 }
@@ -528,7 +528,7 @@ function drawServiceLineBase(sl) {
   const isFullyRidden = isRidden && rs.size >= sl.stations.length;
   const priority = getServiceLinePriority(sl);
   const stats = NORIRECO.serviceLines.stats(sl);
-  const z = map ? map.getZoom() : 5;
+  const z = NORIRECO.map.instance ? NORIRECO.map.instance.getZoom() : 5;
   const visible = priority <= getVisiblePriority(z);
   const mode = window._mapDisplayMode || 'both';
 
@@ -549,7 +549,7 @@ function drawServiceLineBase(sl) {
     glow._norireco_priority = priority;
     main._norireco_priority = priority;
     allLayers.push(glow, main);
-    if (visible) { glow.addTo(map); main.addTo(map); }
+    if (visible) { glow.addTo(NORIRECO.map.instance); main.addTo(NORIRECO.map.instance); }
     if (!IS_MOBILE) {
       const hover = L.polyline(latlngs, {color:'transparent',weight:10,opacity:0,lineCap:'round'})
         .bindTooltip(
@@ -558,7 +558,7 @@ function drawServiceLineBase(sl) {
         );
       hover._norireco_priority = priority;
       allLayers.push(hover);
-      if (visible) hover.addTo(map);
+      if (visible) hover.addTo(NORIRECO.map.instance);
     }
   } else {
     // 乗車済み (一部 or 完全): 背景点線 (未乗区間) + solid 乗車区間
@@ -570,7 +570,7 @@ function drawServiceLineBase(sl) {
       });
       bg._norireco_priority = priority;
       allLayers.push(bg);
-      if (visible) bg.addTo(map);
+      if (visible) bg.addTo(NORIRECO.map.instance);
     }
     if (!IS_MOBILE) {
       const hover = L.polyline(latlngs, {color:'transparent',weight:10,opacity:0,lineCap:'round'})
@@ -580,7 +580,7 @@ function drawServiceLineBase(sl) {
         );
       hover._norireco_priority = priority;
       allLayers.push(hover);
-      if (visible) hover.addTo(map);
+      if (visible) hover.addTo(NORIRECO.map.instance);
     }
     if (mode !== 'unridden') {
       // 乗車済み連続ランを区間ごとにグロー描画
@@ -614,7 +614,7 @@ function drawSlRiddenRun(sl, fromIdx, toIdx, canvas, priority, visible) {
   main._norireco_priority = priority;
   hi._norireco_priority = priority;
   allLayers.push(glow, main, hi);
-  if (visible) { glow.addTo(map); main.addTo(map); hi.addTo(map); }
+  if (visible) { glow.addTo(NORIRECO.map.instance); main.addTo(NORIRECO.map.instance); hi.addTo(NORIRECO.map.instance); }
 }
 
 function drawSlRiddenWrap(sl, canvas, priority, visible) {
@@ -628,7 +628,7 @@ function drawSlRiddenWrap(sl, canvas, priority, visible) {
   main._norireco_priority = priority;
   hi._norireco_priority = priority;
   allLayers.push(glow, main, hi);
-  if (visible) { glow.addTo(map); main.addTo(map); hi.addTo(map); }
+  if (visible) { glow.addTo(NORIRECO.map.instance); main.addTo(NORIRECO.map.instance); hi.addTo(NORIRECO.map.instance); }
 }
 
 // 全駅マーカー+ラベル (mergedStationsベース) — 1パスで描画
@@ -817,7 +817,7 @@ function attachStationDotClickV2(dot, ms) {
     if (recordMode) {
       onRecordStationClick({name: ms.name, lat: ms.lat, lon: ms.lon});
       L.DomEvent.stopPropagation(e);
-    } else if (memoMode) {
+    } else if (NORIRECO.map.memoMode) {
       // memo モード用に代表系統を pseudoLine として渡す
       const firstSlId = ms.lines && ms.lines[0];
       const sl = firstSlId ? SERVICE_LINES.find(x => x.id === firstSlId) : null;
@@ -825,7 +825,7 @@ function attachStationDotClickV2(dot, ms) {
         ? {id: sl.id, name: sl.name, color: sl.color, region: sl.operator || ''}
         : {id: 'unknown', name: ms.name, color: '#888', region: ''};
       const pseudoSt = {n: ms.name, lat: ms.lat, lon: ms.lon};
-      clickInfo = {line: pseudoLine, station: pseudoSt, lat: (+ms.lat).toFixed(5), lon: (+ms.lon).toFixed(5)};
+      NORIRECO.map.clickInfo = {line: pseudoLine, station: pseudoSt, lat: (+ms.lat).toFixed(5), lon: (+ms.lon).toFixed(5)};
       openMemo();
       L.DomEvent.stopPropagation(e);
     } else {
@@ -1021,15 +1021,16 @@ function updateOverlays(){
 
 // Memo mode
 function toggleMemoMode(){
-  memoMode=!memoMode;
+  NORIRECO.map.memoMode=!NORIRECO.map.memoMode;
   const btn=document.getElementById('memo-btn');
-  btn.classList.toggle('on',memoMode);
-  if(map)map.getContainer().style.cursor=memoMode?'crosshair':'';
+  btn.classList.toggle('on',NORIRECO.map.memoMode);
+  if(NORIRECO.map.instance)NORIRECO.map.instance.getContainer().style.cursor=NORIRECO.map.memoMode?'crosshair':'';
 }
 
 function openMemo(){
-  document.getElementById('m-title').textContent=`📸 ${clickInfo.station?.n||''} のメモ`;
-  document.getElementById('m-sub').textContent=`${clickInfo.line?.name||''}  ·  ${clickInfo.lat}, ${clickInfo.lon}`;
+  const ci = NORIRECO.map.clickInfo;
+  document.getElementById('m-title').textContent=`📸 ${ci.station?.n||''} のメモ`;
+  document.getElementById('m-sub').textContent=`${ci.line?.name||''}  ·  ${ci.lat}, ${ci.lon}`;
   document.getElementById('m-comment').value='';
   document.getElementById('m-photo').value='';
   document.getElementById('out-area').style.display='none';
@@ -1047,12 +1048,13 @@ function genMemo(){
   const tags=[...document.querySelectorAll('.chip[data-tag].tag-on')].map(b=>b.dataset.tag);
   const comment=document.getElementById('m-comment').value.trim();
   const photo=document.getElementById('m-photo').value.trim();
+  const ci = NORIRECO.map.clickInfo;
   const payload={_type:'駅メモ_記録',
-    タイトル:`${clickInfo.station?.n||''}（${clickInfo.line?.name||''}）`,
-    駅名:type!=='路線'?clickInfo.station?.n||'':'',路線名:clickInfo.line?.name||'',
+    タイトル:`${ci.station?.n||''}（${ci.line?.name||''}）`,
+    駅名:type!=='路線'?ci.station?.n||'':'',路線名:ci.line?.name||'',
     種別:type,コメント:comment,写真URL:photo,
     日付:localDateStr(),
-    気分:mood,タグ:tags.join('、'),緯度:clickInfo.lat||'',経度:clickInfo.lon||''};
+    気分:mood,タグ:tags.join('、'),緯度:ci.lat||'',経度:ci.lon||''};
   const text=`📸駅メモデータ\n${JSON.stringify(payload)}\nこのデータをNotionの「駅メモ」DBに保存してください。`;
   const ta=document.getElementById('out-ta');
   ta.value=text;document.getElementById('out-area').style.display='block';ta.select();

@@ -23,7 +23,7 @@ function cycleLocationMode() {
     // フォロー突入時は最後の位置で即座にセンター
     if (locationMode === 2 && userLocationMarker) {
       const ll = userLocationMarker.getLatLng();
-      map.setView(ll, Math.max(map.getZoom(), 15), { animate: true });
+      NORIRECO.map.instance.setView(ll, Math.max(NORIRECO.map.instance.getZoom(), 15), { animate: true });
     }
   }
   updateLocationButton();
@@ -48,11 +48,11 @@ function startLocationTracking() {
       updateNearestStationPanel(lat, lon);
       if (locationMode === 1 && !didInitialCenter) {
         // 初回のみ中心化、その後はマーカーだけ更新
-        map.setView([lat, lon], Math.max(map.getZoom(), 15), { animate: true });
+        NORIRECO.map.instance.setView([lat, lon], Math.max(NORIRECO.map.instance.getZoom(), 15), { animate: true });
         didInitialCenter = true;
       } else if (locationMode === 2) {
         // 追従モード: 毎回中心化 (ズームは維持)
-        map.setView([lat, lon], map.getZoom(), { animate: true });
+        NORIRECO.map.instance.setView([lat, lon], NORIRECO.map.instance.getZoom(), { animate: true });
       }
     },
     err => {
@@ -242,7 +242,7 @@ function startRecordFromNearest() {
 window.startRecordFromNearest = startRecordFromNearest;
 
 function updateUserLocationMarker(lat, lon, accuracy) {
-  if (!map) return;
+  if (!NORIRECO.map.instance) return;
   if (!userLocationMarker) {
     // 青ドット (Google Maps風)
     userLocationMarker = L.marker([lat, lon], {
@@ -254,7 +254,7 @@ function updateUserLocationMarker(lat, lon, accuracy) {
       }),
       interactive: false,
       zIndexOffset: 2000,
-    }).addTo(map);
+    }).addTo(NORIRECO.map.instance);
     // 精度円
     userLocationCircle = L.circle([lat, lon], {
       radius: accuracy,
@@ -264,7 +264,7 @@ function updateUserLocationMarker(lat, lon, accuracy) {
       weight: 1,
       opacity: 0.45,
       interactive: false,
-    }).addTo(map);
+    }).addTo(NORIRECO.map.instance);
   } else {
     userLocationMarker.setLatLng([lat, lon]);
     if (userLocationCircle) {
@@ -276,11 +276,11 @@ function updateUserLocationMarker(lat, lon, accuracy) {
 
 function removeUserLocationMarker() {
   if (userLocationMarker) {
-    try { map.removeLayer(userLocationMarker); } catch(e) {}
+    try { NORIRECO.map.instance.removeLayer(userLocationMarker); } catch(e) {}
     userLocationMarker = null;
   }
   if (userLocationCircle) {
-    try { map.removeLayer(userLocationCircle); } catch(e) {}
+    try { NORIRECO.map.instance.removeLayer(userLocationCircle); } catch(e) {}
     userLocationCircle = null;
   }
 }
@@ -368,7 +368,7 @@ function drawObtainableIndicators() {
       openCharModal(ms, ownedChar || chars[0]);
     });
 
-    marker.addTo(map);
+    marker.addTo(NORIRECO.map.instance);
     allLayers.push(marker);
     count++;
   }
