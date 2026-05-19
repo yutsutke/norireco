@@ -1820,6 +1820,69 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 84. v235 — 完乗率の集計方式を「ユニーク駅単位」に統一 (2026-05-19)
+
+### 背景
+
+ユーザー報告: ヘッダ「達成率 10%」とマイページ「全記録完乗率 4%」と「公式完乗率 0%」、3 つの異なる数字が並んでいて一瞬で何が違うのか分からない。
+
+### 原因
+
+- **ヘッダ 10%** = `globalStats()` ([js/02b-service-lines-builder.js](js/02b-service-lines-builder.js)) の `pct` = 系統単位の駅数集計 (1 駅が複数系統に属すると複数回カウント、ts ≈ 10,446)
+- **マイページ 全記録 4%** = `buildCompletionCards()` の `collect(false).uniquePct` = ユニーク駅単位 (Set で重複排除、ts ≈ 8,491)
+- **マイページ 公式 0%** = `collect(true).uniquePct` = `trip.verified === true` のみ
+
+ヘッダと全記録は同じ「全記録」を見ていたが集計方式 (系統単位 vs ユニーク駅単位) が違うため数字がズレ、初見ユーザーには判別不能だった。
+
+### 変更内容
+
+#### 1. `globalStats()` をユニーク駅単位に変更 ([js/02b-service-lines-builder.js:156-172](js/02b-service-lines-builder.js:156))
+
+```js
+function globalStats() {
+  const allStations = new Set();
+  const riddenStations = new Set();
+  let la = 0, ld = 0;
+  NORIRECO.data.SERVICE_LINES.forEach(sl => {
+    for (const s of sl.stations) allStations.add(s.name);
+    const rs = slRiddenSt[sl.id];
+    const r = rs ? rs.size : 0;
+    if (rs) for (const n of rs) riddenStations.add(n);
+    if (r > 0) la++;
+    if (r === sl.stations.length && sl.stations.length > 0) ld++;
+  });
+  const ts = allStations.size;
+  const rt = riddenStations.size;
+  return { ts, rt, la, ld, pct: ts > 0 ? Math.round(rt/ts*100) : 0 };
+}
+```
+
+`la` (乗車系統数) と `ld` (完乗系統数) は系統単位を維持。`pct` だけがユニーク駅単位に。
+
+#### 2. ヘッダ・右パネルのラベル統一 ([noritetsu-map.html:1045-1046](noritetsu-map.html:1045), [noritetsu-map.html:1132-1134](noritetsu-map.html:1132))
+
+- ヘッダ: `達成率 10% / 路線 81` → `完乗率 4% / 系統 81`
+- 右パネル: `全体 10% / 乗車路線 81系統 / 完乗 25系統` → `完乗率 4% / 乗車系統 81系統 / 完乗系統 25系統`
+- title 属性で説明追記 (hover で「ユニーク駅単位の完乗率 (全記録)」)
+
+#### 3. マイページ完乗率カードのサブタイトル明確化 ([js/13a-stats.js:117-130](js/13a-stats.js:117))
+
+- `verified のみ` → `GPS 認証された乗車記録のみ`
+- `manual / suspicious 含む` → `手動記録も含む全ての乗車`
+
+### 結果
+
+- ヘッダ「完乗率 4%」= マイページ「全記録完乗率 4%」が完全一致
+- マイページ「公式完乗率 0%」(GPS のみ) との対比が「全記録 vs GPS 認証」の 2 軸で明快に
+- 「達成率」「路線」など曖昧だった用語を全て「完乗率」「系統」に統一
+
+### 落とし穴メモ
+
+- `gStats()` / `globalStats()` を直接読む他の場所 (もしあれば) は `pct` の意味が変わるので注意。検索 → `updateOverlays` ([js/08-rendering.js:897-903](js/08-rendering.js:897)) と `mp-completion-pinned` の calc 経路のみ。後者は既にユニーク駅ベースなので影響なし
+- `stats(sl)` (系統単位) と `globalStats()` (ユニーク駅単位) で `pct` の意味が分岐するので、命名 / コメントで明示
+
+---
+
 ## 83. v234 — 静的デモデータ `RIDDEN_SEGS_STATIC` を撤去 (2026-05-19)
 
 ### 背景

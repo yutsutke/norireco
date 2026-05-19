@@ -152,15 +152,25 @@ import { loadServiceLinesMaster, loadLines } from './02-data-loaders.js';
     return { t, r, pct: t > 0 ? Math.round(r/t*100) : 0 };
   }
 
-  // 全営業系統の集計
+  // 全営業系統の集計。
+  // v235: pct を「ユニーク駅単位」に変更 — マイページの「全記録完乗率」と一致させる。
+  //   旧 (系統単位): 1 駅が複数系統に属すると複数回カウント (ts=10446 等)
+  //   新 (ユニーク): 駅名 Set で重複排除 (ts=8491 等)
+  //   ts, rt 共にユニーク駅数。la (乗車系統数) と ld (完乗系統数) は系統単位据え置き。
   function globalStats() {
-    let ts = 0, rt = 0, la = 0, ld = 0;
+    const allStations = new Set();
+    const riddenStations = new Set();
+    let la = 0, ld = 0;
     NORIRECO.data.SERVICE_LINES.forEach(sl => {
-      const s = stats(sl);
-      ts += s.t; rt += s.r;
-      if (s.r > 0) la++;
-      if (s.pct === 100) ld++;
+      for (const s of sl.stations) allStations.add(s.name);
+      const rs = slRiddenSt[sl.id];
+      const r = rs ? rs.size : 0;
+      if (rs) for (const n of rs) riddenStations.add(n);
+      if (r > 0) la++;
+      if (r === sl.stations.length && sl.stations.length > 0) ld++;
     });
+    const ts = allStations.size;
+    const rt = riddenStations.size;
     return { ts, rt, la, ld, pct: ts > 0 ? Math.round(rt/ts*100) : 0 };
   }
 

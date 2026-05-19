@@ -116,14 +116,14 @@ function buildCompletionCards(trips) {
   cards.innerHTML = `
     <div class="mp-scard verified">
       <div class="mp-sc-h">🟢 公式完乗率</div>
-      <div class="mp-sc-sub">verified のみ</div>
+      <div class="mp-sc-sub">GPS 認証された乗車記録のみ</div>
       <div class="mp-sc-pct">${sv.uniquePct}<span>%</span></div>
       <div class="mp-sc-detail">${sv.uniqueRidden.toLocaleString()} / ${totalUnique.toLocaleString()} 駅</div>
       <div class="mp-sc-detail">${sv.lines} / ${totalLines} 系統 (完乗 ${sv.complete})</div>
     </div>
     <div class="mp-scard all">
       <div class="mp-sc-h">⚪ 全記録完乗率</div>
-      <div class="mp-sc-sub">manual / suspicious 含む</div>
+      <div class="mp-sc-sub">手動記録も含む全ての乗車</div>
       <div class="mp-sc-pct">${all.uniquePct}<span>%</span></div>
       <div class="mp-sc-detail">${all.uniqueRidden.toLocaleString()} / ${totalUnique.toLocaleString()} 駅</div>
       <div class="mp-sc-detail">${all.lines} / ${totalLines} 系統 (完乗 ${all.complete})</div>
