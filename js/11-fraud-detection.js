@@ -81,10 +81,10 @@ function fraudSegmentDistanceKm(sl, fromName, toName) {
 // trip の想定所要時間 (分) — 各区間の (距離 / 速度) を合計
 function fraudExpectedMinutes(trip) {
   if (!trip || !trip.segments || trip.segments.length === 0) return 0;
-  if (!Array.isArray(SERVICE_LINES) || SERVICE_LINES.length === 0) return 0;
+  if (!Array.isArray(NORIRECO.data.SERVICE_LINES) || NORIRECO.data.SERVICE_LINES.length === 0) return 0;
   let total = 0;
   for (const seg of trip.segments) {
-    const sl = SERVICE_LINES.find(l => l.id === seg.lineId);
+    const sl = NORIRECO.data.SERVICE_LINES.find(l => l.id === seg.lineId);
     if (!sl) continue;
     const distKm = fraudSegmentDistanceKm(sl, seg.from, seg.to);
     const speed = fraudEstimateSpeedKmh(sl, trip.train_category);

@@ -76,7 +76,7 @@ window.addEventListener('load',()=>{
   if (typeof updateStopTypeFilterUI === 'function') updateStopTypeFilterUI();
   // キャラ表示ボタンの初期状態を localStorage に合わせる
   const charBtn = document.getElementById('char-fab');
-  if (charBtn) charBtn.classList.toggle('on', charModeOn);
+  if (charBtn) charBtn.classList.toggle('on', NORIRECO.data.charModeOn);
   if('serviceWorker'in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(()=>{});
     // 新SWがアクティベートされたらバッジ更新

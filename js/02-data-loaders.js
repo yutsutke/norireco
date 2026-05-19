@@ -2,8 +2,27 @@
 // 路線データ遅延読み込みシステム
 // JSON分離 + LODによるズームレベル別読み込み
 // ════════════════════════════════════════════════
-let LINES = [];
 
+// v200 ES Modules パイロット (案 β) — データドメイン state を window.NORIRECO.data に集約。
+// 案 β 5 ドメイン目、最大規模 (state 11 個 / 15 ファイル / 146 cross-file 参照)。
+// 外部 (全 18 ファイルから参照あり) は NORIRECO.data.X、内部 (02) は D.X 短縮。
+window.NORIRECO = window.NORIRECO || {};
+NORIRECO.data = NORIRECO.data || {
+  LINES: [],                       // N02 物理路線 (606) — central master
+  RUNNING_SERVICES: {},            // running_services.json (後方互換のみ)
+  MERGED_STATIONS: [],             // 統合駅 (9017)
+  slMergedStationMap: new Map(),   // 営業系統 id → mergedStation 索引
+  SERVICE_LINES_MASTER: null,      // service_lines_master.json
+  SERVICE_LINES: [],               // 駅座標解決済み + 候補 N02 id 付き (637+α)
+  serviceLinesLoaded: false,
+  serviceLinesBuilt: false,
+  CHARACTERS: {},                  // id → {meta, innerSvg}
+  stationCharMap: new Map(),       // station name → [character objects]
+  charModeOn: false,               // 🎭 キャラ表示 ON/OFF (init で localStorage から復元)
+};
+const D = NORIRECO.data;
+
+// 内部 state (02 内のみで参照されるため NORIRECO.data には載せない)
 const loadedPriorities = new Set();
 const pendingLoads = new Set();
 
@@ -49,17 +68,17 @@ async function loadLines(priority) {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const newLines = await resp.json();
 
-    const existingIds = new Set(LINES.map(l => l.id));
+    const existingIds = new Set(D.LINES.map(l => l.id));
     const added = newLines.filter(l => !existingIds.has(l.id));
-    LINES.push(...added);
+    D.LINES.push(...added);
 
     loadedPriorities.add(priority);
     pendingLoads.delete(priority);
 
-    console.log(`[乗レコ] P${priority}完了: +${added.length}路線（計${LINES.length}路線）`);
+    console.log(`[乗レコ] P${priority}完了: +${added.length}路線（計${D.LINES.length}路線）`);
 
     NORIRECO.rideRecord.rebuild();
-    // Phase 2: 描画は SERVICE_LINES 構築後の drawLines() に一任。
+    // Phase 2: 描画は D.SERVICE_LINES 構築後の drawLines() に一任。
     // ここで個別 N02 line を描画する必要はない。
   } catch(e) {
     pendingLoads.delete(priority);
@@ -82,24 +101,21 @@ async function loadLinesForZoom(zoom) {
   }
 }
 
-// 運行系統定義 (running_services.json から読み込み)
-let RUNNING_SERVICES = {};
+// 運行系統定義 (running_services.json から読み込み) — state は NORIRECO.data.D.RUNNING_SERVICES
 async function loadRunningServices() {
   try {
     const res = await fetch('running_services.json');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    RUNNING_SERVICES = data.services || {};
-    console.log(`[乗レコ] 運行系統 ${Object.keys(RUNNING_SERVICES).length}件 読込`);
+    D.RUNNING_SERVICES = data.services || {};
+    console.log(`[乗レコ] 運行系統 ${Object.keys(D.RUNNING_SERVICES).length}件 読込`);
   } catch (e) {
     console.warn('[乗レコ] running_services.json 読込失敗:', e.message);
   }
 }
 
 // 統合駅マスター: 同名近接駅を1点に集約 (Phase 1: 表示統合)
-let MERGED_STATIONS = [];
-// 営業系統 id → mergedStation 索引 (描画・lookup用)
-let slMergedStationMap = new Map();
+// state は NORIRECO.data.D.MERGED_STATIONS / .D.slMergedStationMap
 
 // 統合駅マスターを読み込む (v191 で 04-gps-location.js から移管)
 async function loadMergedStations() {
@@ -107,15 +123,15 @@ async function loadMergedStations() {
     const res = await fetch('merged_stations.json');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    MERGED_STATIONS = data.stations || [];
-    slMergedStationMap.clear();
-    for (const ms of MERGED_STATIONS) {
+    D.MERGED_STATIONS = data.stations || [];
+    D.slMergedStationMap.clear();
+    for (const ms of D.MERGED_STATIONS) {
       // 営業系統 id で索引
       for (const lid of (ms.lines || [])) {
-        slMergedStationMap.set(`${lid}:${ms.name}`, ms);
+        D.slMergedStationMap.set(`${lid}:${ms.name}`, ms);
       }
     }
-    console.log(`[乗レコ] 統合駅 ${MERGED_STATIONS.length}駅 (索引 ${slMergedStationMap.size}件)`);
+    console.log(`[乗レコ] 統合駅 ${D.MERGED_STATIONS.length}駅 (索引 ${D.slMergedStationMap.size}件)`);
   } catch (e) {
     console.warn('[乗レコ] merged_stations.json 読込失敗:', e.message);
   }
@@ -124,33 +140,29 @@ async function loadMergedStations() {
 // ── 営業系統マスター (service_lines_master.json) ── (v191 で 04-gps-location.js から移管)
 // 物理路線(N02)とは別に、乗客視点の「営業系統」を polyline で重ね描き
 // 路線一覧・統計タブの達成率計算もこちらをベースにする
-let SERVICE_LINES_MASTER = null;
-let SERVICE_LINES = []; // 駅座標解決済み + 候補 N02 id を持つ
-let serviceLinesLoaded = false;
-let serviceLinesBuilt = false;
+// state は NORIRECO.data.{D.SERVICE_LINES_MASTER, D.SERVICE_LINES, D.serviceLinesLoaded, D.serviceLinesBuilt}
 
 async function loadServiceLinesMaster() {
-  if (SERVICE_LINES_MASTER) return SERVICE_LINES_MASTER;
+  if (D.SERVICE_LINES_MASTER) return D.SERVICE_LINES_MASTER;
   try {
     const res = await fetch('service_lines_master.json');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    SERVICE_LINES_MASTER = data.service_lines || [];
-    console.log(`[乗レコ] 営業系統 ${SERVICE_LINES_MASTER.length}系統 読込`);
-    return SERVICE_LINES_MASTER;
+    D.SERVICE_LINES_MASTER = data.service_lines || [];
+    console.log(`[乗レコ] 営業系統 ${D.SERVICE_LINES_MASTER.length}系統 読込`);
+    return D.SERVICE_LINES_MASTER;
   } catch (e) {
     console.warn('[乗レコ] service_lines_master.json 読込失敗:', e.message);
-    SERVICE_LINES_MASTER = [];
-    return SERVICE_LINES_MASTER;
+    D.SERVICE_LINES_MASTER = [];
+    return D.SERVICE_LINES_MASTER;
   }
 }
 
 // ══════════════════════════════════════════════
 // 駅キャラクター (Phase 2.5)
 // characters_master.json + characters/*.svg
+// state は NORIRECO.data.D.CHARACTERS / .D.stationCharMap
 // ══════════════════════════════════════════════
-const CHARACTERS = {};            // id → {meta, innerSvg}
-const stationCharMap = new Map(); // station name → [character objects]
 
 async function loadCharacters() {
   try {
@@ -166,16 +178,16 @@ async function loadCharacters() {
         // <svg>...</svg> の中身だけ抽出 (描画時に外側 svg を再構築)
         const m = txt.match(/<svg[^>]*>([\s\S]*?)<\/svg>/i);
         const inner = m ? m[1] : '';
-        CHARACTERS[c.id] = { meta: c, innerSvg: inner };
+        D.CHARACTERS[c.id] = { meta: c, innerSvg: inner };
         for (const sid of (c.station_ids || [])) {
-          if (!stationCharMap.has(sid)) stationCharMap.set(sid, []);
-          stationCharMap.get(sid).push(CHARACTERS[c.id]);
+          if (!D.stationCharMap.has(sid)) D.stationCharMap.set(sid, []);
+          D.stationCharMap.get(sid).push(D.CHARACTERS[c.id]);
         }
       } catch(e) {
         console.warn(`[キャラ] ${c.id} 読込失敗:`, e.message);
       }
     }));
-    console.log(`[乗レコ] キャラクター ${Object.keys(CHARACTERS).length}/${chars.length}体 読込`);
+    console.log(`[乗レコ] キャラクター ${Object.keys(D.CHARACTERS).length}/${chars.length}体 読込`);
   } catch(e) {
     console.warn('[乗レコ] characters_master.json 読込失敗:', e.message);
   }
@@ -334,17 +346,17 @@ function onCarModelCustomInput() {
 }
 window.onCarModelCustomInput = onCarModelCustomInput;
 
-// キャラ表示モード (localStorage 永続化)
+// キャラ表示モード (localStorage 永続化) — state は NORIRECO.data.D.charModeOn
 const CHAR_MODE_KEY = 'norireco_char_mode';
-let charModeOn = (() => {
+D.charModeOn = (() => {
   try { return localStorage.getItem(CHAR_MODE_KEY) !== '0'; } catch(e) { return true; }
 })();
 
 function toggleCharacterMode() {
-  charModeOn = !charModeOn;
-  try { localStorage.setItem(CHAR_MODE_KEY, charModeOn ? '1' : '0'); } catch(e) {}
+  D.charModeOn = !D.charModeOn;
+  try { localStorage.setItem(CHAR_MODE_KEY, D.charModeOn ? '1' : '0'); } catch(e) {}
   const btn = document.getElementById('char-fab');
-  if (btn) btn.classList.toggle('on', charModeOn);
+  if (btn) btn.classList.toggle('on', D.charModeOn);
   // 再描画
   if (typeof redrawAllLinesAfterTripChange === 'function') {
     redrawAllLinesAfterTripChange();

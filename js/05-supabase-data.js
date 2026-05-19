@@ -506,12 +506,12 @@ function lStats(line){const t=line.stations.length,r=riddenSt[line.id]?riddenSt[
 
 // 運行系統の統計 (segments を全部辿って合計)
 function serviceStats(serviceId) {
-  const svc = RUNNING_SERVICES[serviceId];
+  const svc = NORIRECO.data.RUNNING_SERVICES[serviceId];
   if (!svc) return {t:0, r:0, pct:0};
   let t=0, r=0;
   const seen = new Set();
   for (const seg of svc.segments) {
-    const line = LINES.find(l => l.id === seg.line);
+    const line = NORIRECO.data.LINES.find(l => l.id === seg.line);
     if (!line) continue;
     const fi = line.stations.findIndex(s => NORIRECO.rideRecord.normStName(s.n) === NORIRECO.rideRecord.normStName(seg.from));
     const ti = line.stations.findIndex(s => NORIRECO.rideRecord.normStName(s.n) === NORIRECO.rideRecord.normStName(seg.to));
@@ -531,19 +531,19 @@ function serviceStats(serviceId) {
 
 // 運行系統の代表色 (最初のsegmentの物理路線色)
 function serviceColor(serviceId) {
-  const svc = RUNNING_SERVICES[serviceId];
+  const svc = NORIRECO.data.RUNNING_SERVICES[serviceId];
   if (!svc) return '#888';
   if (svc.color) return svc.color;
   for (const seg of svc.segments) {
-    const line = LINES.find(l => l.id === seg.line);
+    const line = NORIRECO.data.LINES.find(l => l.id === seg.line);
     if (line) return line.color;
   }
   return '#888';
 }
-// 全体統計: SERVICE_LINES が構築済みならそちらを優先、未構築なら N02 物理路線で代用
+// 全体統計: NORIRECO.data.SERVICE_LINES が構築済みならそちらを優先、未構築なら N02 物理路線で代用
 function gStats(){
-  if (SERVICE_LINES && SERVICE_LINES.length > 0) return NORIRECO.serviceLines.globalStats();
+  if (NORIRECO.data.SERVICE_LINES && NORIRECO.data.SERVICE_LINES.length > 0) return NORIRECO.serviceLines.globalStats();
   let ts=0,rt=0,la=0,ld=0;
-  LINES.forEach(l=>{const s=lStats(l);ts+=s.t;rt+=s.r;if(s.r>0)la++;if(s.pct===100)ld++;});
+  NORIRECO.data.LINES.forEach(l=>{const s=lStats(l);ts+=s.t;rt+=s.r;if(s.r>0)la++;if(s.pct===100)ld++;});
   return{ts,rt,la,ld,pct:ts>0?Math.round(rt/ts*100):0};
 }

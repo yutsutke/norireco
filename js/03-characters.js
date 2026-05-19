@@ -20,7 +20,7 @@ function grantCharacter(charId, opts) {
   }
   set.add(charId);
   setOwnedCharacters(set);
-  const char = CHARACTERS[charId];
+  const char = NORIRECO.data.CHARACTERS[charId];
   console.log(`[キャラ] 🎉 獲得: ${char ? char.meta.name : charId}`);
   // Supabase にも獲得履歴を記録 (非同期、失敗してもローカルは保存済み)
   const source = (opts && opts.source) || 'manual_grant';
@@ -135,7 +135,7 @@ function isCharacterAvailable(charMeta) {
 }
 // 所持判定 (default_unlocked or 獲得済み)
 function isCharacterOwned(charId) {
-  const char = CHARACTERS[charId];
+  const char = NORIRECO.data.CHARACTERS[charId];
   if (!char) return false;
   if (char.meta.default_unlocked) return true;
   return getOwnedCharacters().has(charId);
@@ -147,7 +147,7 @@ window.listOwnedCharacters = () => [...getOwnedCharacters()];
 
 // 認証済み trip の訪問駅から、該当キャラを自動獲得
 function checkAndGrantCharacters() {
-  if (!CHARACTERS || Object.keys(CHARACTERS).length === 0) return [];
+  if (!NORIRECO.data.CHARACTERS || Object.keys(NORIRECO.data.CHARACTERS).length === 0) return [];
   let trips = [];
   try { trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]'); } catch(e) { return []; }
   // verified === true の trip の駅を抽出 (駅名 → GPS データのマップ)
@@ -175,8 +175,8 @@ function checkAndGrantCharacters() {
 
   const granted = [];
   const owned = getOwnedCharacters();
-  for (const charId in CHARACTERS) {
-    const char = CHARACTERS[charId];
+  for (const charId in NORIRECO.data.CHARACTERS) {
+    const char = NORIRECO.data.CHARACTERS[charId];
     if (!char.meta || char.meta.default_unlocked) continue;
     if (owned.has(charId)) continue;
     if (!isCharacterAvailable(char.meta)) continue;
@@ -247,7 +247,7 @@ function distMeters(lat1, lon1, lat2, lon2) {
 }
 
 function tryGrantByGPS(charId, ev) {
-  const char = CHARACTERS[charId];
+  const char = NORIRECO.data.CHARACTERS[charId];
   if (!char) return;
   if (!navigator.geolocation) {
     alert('このブラウザは位置情報に非対応です');
@@ -268,7 +268,7 @@ function tryGrantByGPS(charId, ev) {
       let nearestMs = null;
       let nearestDist = Infinity;
       for (const stationName of obtainAt) {
-        const ms = MERGED_STATIONS.find(m => m.name === stationName);
+        const ms = NORIRECO.data.MERGED_STATIONS.find(m => m.name === stationName);
         if (!ms) continue;
         const d = distMeters(userLat, userLon, ms.lat, ms.lon);
         if (d < nearestDist) { nearestDist = d; nearestMs = ms; }

@@ -1820,6 +1820,118 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 49. v200 — ES Modules パイロット (案 β) stage 1: data domain state を `window.NORIRECO.data` に集約 (最大規模、2026-05-19)
+
+### 背景
+
+v195 (auth) / v196 (map) / v197 (record) / v198 (gps) / v199 (trains) に続く 6 番目のドメイン。**案 β stage 1 の最大規模** ドメイン。`data` (路線・営業系統・統合駅・キャラマスター・キャラモード等) の state は 02-data-loaders.js が中心、cross-file 参照は **15 ファイル / 146 箇所** という分量。
+
+これまでの 5 ドメインで合計 32 state を集約。v200 で追加 11 state を集約、累計 **43 state**。停泊バージョンが「v200」になるのも象徴的。
+
+### 移行した state (11 個)
+
+| 旧 | 新 | 用途 |
+|---|---|---|
+| `LINES` | `NORIRECO.data.LINES` | N02 物理路線 (606) — central master |
+| `RUNNING_SERVICES` | `NORIRECO.data.RUNNING_SERVICES` | running_services.json (後方互換) |
+| `MERGED_STATIONS` | `NORIRECO.data.MERGED_STATIONS` | 統合駅 (9017) |
+| `slMergedStationMap` | `NORIRECO.data.slMergedStationMap` | 営業系統 id → mergedStation 索引 |
+| `SERVICE_LINES_MASTER` | `NORIRECO.data.SERVICE_LINES_MASTER` | service_lines_master.json |
+| `SERVICE_LINES` | `NORIRECO.data.SERVICE_LINES` | 営業系統 (637+α) |
+| `serviceLinesLoaded` | `NORIRECO.data.serviceLinesLoaded` | マスター読込済みフラグ |
+| `serviceLinesBuilt` | `NORIRECO.data.serviceLinesBuilt` | 構築済みフラグ |
+| `CHARACTERS` | `NORIRECO.data.CHARACTERS` | キャラマスター |
+| `stationCharMap` | `NORIRECO.data.stationCharMap` | 駅名 → キャラリスト |
+| `charModeOn` | `NORIRECO.data.charModeOn` | 🎭 キャラ表示 ON/OFF |
+
+02-internal な loader 補助 state (`loadedPriorities` / `pendingLoads` / `PRIORITY_FILES`) は cross-file 参照なし → NORIRECO.data に載せず、02 内 const のまま維持。
+
+02-data-loaders.js 内は `const D = NORIRECO.data` で `D.X` 短縮。外部 14 ファイル (02b/03/04/04b/05/06/07/08/09/10/11/13-common/13a/13b) は `NORIRECO.data.X` フルパス。
+
+### 教訓: 部分文字列衝突 (substring collision) の致命性
+
+state 名同士が **部分文字列** で被ると、replace_all の順序によっては cascading corruption が起きる。今回最も問題になった衝突:
+
+| 包含関係 | 例 |
+|---|---|
+| `LINES` ⊂ `SERVICE_LINES` ⊂ `SERVICE_LINES_MASTER` | LINES を先に置換すると 3 重ネスト |
+| `CHARACTERS` ⊂ `OWNED_CHARACTERS_KEY` | CHARACTERS を置換すると localStorage キー識別子も壊れる |
+
+v195〜v199 の「property 名 vs 変数名」 collision とは別軸の問題。「**state 名の部分文字列が別の state 名 or 別の識別子の一部にもなっている**」ケース。
+
+#### 対策 (v200 で確立)
+
+**Pattern A: 短いほうを先に処理、後で復元**
+1. `LINES` → `NORIRECO.data.LINES`
+   - 副作用: `SERVICE_LINES` → `SERVICE_NORIRECO.data.LINES`
+   - 副作用: `SERVICE_LINES_MASTER` → `SERVICE_NORIRECO.data.LINES_MASTER`
+2. **クリーンアップ**: `SERVICE_NORIRECO.data.LINES` → `NORIRECO.data.SERVICE_LINES` (substring match で `_MASTER` 形も一括復元)
+
+これで 3 つの状態を 2 ステップで処理できる (`LINES` / `SERVICE_LINES` / `SERVICE_LINES_MASTER`)。3 ステップ分の Edit が 2 ステップに圧縮できる。
+
+ただしファイルによっては `SERVICE_LINES` を先に処理してしまい、2 重 / 3 重ネストが発生したケースもあった (例: 04-gps-location.js で `NORIRECO.data.NORIRECO.data.SERVICE_NORIRECO.data.LINES_MASTER` まで深くなった)。事後の cleanup pass で `NORIRECO.data.NORIRECO.data.X` を `NORIRECO.data.X` に collapse する必要があった。
+
+#### 反省点
+
+理想は **placeholder pattern** (`LINES` → `__L__`、`SERVICE_LINES` → `__SL__`、その後 placeholder → 最終形) だったが、ファイル数 × state 数で edit 数が 2 倍になるため断念。代わりに「Pattern A + cleanup pass」で実用上 OK と判断。
+
+v200 の総 edit 数: 約 100 回 (うち 30 回は失敗 = state が該当ファイルになし、ほか cleanup 10 回)。
+
+### call site 書き換え (15 ファイル、146 箇所)
+
+| ファイル | refs |
+|---|---|
+| 02-data-loaders.js | 35 (宣言 + 内部) |
+| 04b-ride-record.js | 16 |
+| 04-gps-location.js | 14 |
+| 02b-service-lines-builder.js | 14 |
+| 08-rendering.js | 12 |
+| 13a-stats.js | 21 |
+| 03-characters.js | 7 |
+| 05-supabase-data.js | 7 |
+| 06-map-leaflet.js | 4 |
+| 07-record-mode.js | 4 |
+| 09-tabs-stats.js | 3 |
+| 13-mypage-common.js | 3 |
+| 13b-trips.js | 3 |
+| 11-fraud-detection.js | 2 |
+| 10-init.js | 1 |
+
+### 影響範囲
+
+- 全 18 ファイル中 15 ファイルが影響
+- `sw.js` — `CACHE_VERSION = 'v200'`
+- `npm run check` — 18/18 OK
+- 機能リグレッション: なし (state 名前空間化のみ、ロジック無変更)
+
+### 進捗 (案 β stage 1)
+
+| ドメイン | バージョン | state 数 | 累計 |
+|---|---|---|---|
+| auth | v195 | 4 | 4 |
+| map | v196 | 3 | 7 |
+| record | v197 | 7 | 14 |
+| gps | v198 | 12 | 26 |
+| trains | v199 | 6 | 32 |
+| **data** | **v200** | **11** | **43** |
+| mypage | v201 (最終) | 3 | 46 |
+
+残りは `mypage` 1 ドメインのみ。**案 β stage 1 は v201 で完結予定**。
+
+### 案 β stage 2 (`<script type="module">` 化) への準備が整った
+
+stage 1 完了で cross-file shared state は全て `window.NORIRECO.<domain>.X` の object property になった。stage 2 では各ファイルを `type="module"` 化して `import`/`export` で繋ぐが、その間 classic script との互換は `window.NORIRECO` bridge 1 つで保てる:
+
+```js
+// 例: 02-data-loaders.js (module 化後)
+export const data = { LINES: [], SERVICE_LINES: [], ... };
+window.NORIRECO.data = data;  // bridge for remaining classic scripts
+```
+
+bridge object は **mutable で参照同じ** のため、module 側で `data.LINES.push(...)` してもclassic script 側の `NORIRECO.data.LINES.length` が同期して見える。これが v195 で意図した「2 段階移行で classic と module が共存できる」設計の証明。
+
+---
+
 ## 48. v199 — ES Modules パイロット (案 β) stage 1: trains domain state を `window.NORIRECO.trains` に集約 (2026-05-19)
 
 ### 背景

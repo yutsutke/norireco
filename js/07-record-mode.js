@@ -127,8 +127,8 @@ function clearRecSelection() {
 
 // 選択駅すべてを含む運行系統を返す (営業系統)
 function findCommonServiceLines(stations) {
-  if (!SERVICE_LINES || SERVICE_LINES.length === 0 || stations.length < 2) return [];
-  return SERVICE_LINES.filter(sl => {
+  if (!NORIRECO.data.SERVICE_LINES || NORIRECO.data.SERVICE_LINES.length === 0 || stations.length < 2) return [];
+  return NORIRECO.data.SERVICE_LINES.filter(sl => {
     const slNames = new Set(sl.stations.map(s => s.name));
     return stations.every(st => slNames.has(st.name));
   });
@@ -621,7 +621,7 @@ function endRecordAtNearest() {
   listEl.innerHTML = nearby.map((n, idx) => {
     const lineIds = n.station.lines || [];
     const lineNames = lineIds.slice(0, 3).map(lid => {
-      const sl = (SERVICE_LINES || []).find(x => x.id === lid);
+      const sl = (NORIRECO.data.SERVICE_LINES || []).find(x => x.id === lid);
       return sl ? sl.name : lid;
     }).filter(Boolean).join('・');
     const more = lineIds.length > 3 ? ` ほか${lineIds.length - 3}` : '';
@@ -979,7 +979,7 @@ function showRecordToast(msg, mode, durationMs) {
 // 乗車済み路線のバウンディングボックスにフィット
 function fitToRiddenLines(){
   const pts=[];
-  LINES.forEach(line=>{
+  NORIRECO.data.LINES.forEach(line=>{
     if(!riddenSt[line.id]||riddenSt[line.id].size===0)return;
     line.stations.forEach(s=>{
       if(riddenSt[line.id].has(s.n)) pts.push([s.lat,s.lon]);

@@ -74,8 +74,8 @@ function drawLines(){
   }
 
   // Phase 2: 営業系統ベース描画 (構築前は何も描かない)
-  if (SERVICE_LINES && SERVICE_LINES.length > 0) {
-    for (const sl of SERVICE_LINES) drawServiceLineBase(sl);
+  if (NORIRECO.data.SERVICE_LINES && NORIRECO.data.SERVICE_LINES.length > 0) {
+    for (const sl of NORIRECO.data.SERVICE_LINES) drawServiceLineBase(sl);
     drawStationsLayer();
     // ✨ 獲得可能キャラがある駅にインジケータ配置
     drawObtainableIndicators();
@@ -634,10 +634,10 @@ function drawSlRiddenWrap(sl, canvas, priority, visible) {
 // 全駅マーカー+ラベル (mergedStationsベース) — 1パスで描画
 function drawStationsLayer() {
   if (!dotLayerRef || !labelLayerRef) return;
-  if (!MERGED_STATIONS || !MERGED_STATIONS.length) return;
-  if (!SERVICE_LINES || !SERVICE_LINES.length) return;
+  if (!NORIRECO.data.MERGED_STATIONS || !NORIRECO.data.MERGED_STATIONS.length) return;
+  if (!NORIRECO.data.SERVICE_LINES || !NORIRECO.data.SERVICE_LINES.length) return;
 
-  for (const ms of MERGED_STATIONS) {
+  for (const ms of NORIRECO.data.MERGED_STATIONS) {
     const nLines = (ms.lines || []).length;
     if (nLines === 0) continue;
     const baseTier = stationTier(nLines, ms.name);
@@ -691,7 +691,7 @@ function drawStationsLayer() {
 
     // 色 (営業系統色を優先)
     const colors = ms.colors && ms.colors.length === nLines ? ms.colors : ms.lines.map(lid => {
-      const sl = SERVICE_LINES.find(x => x.id === lid);
+      const sl = NORIRECO.data.SERVICE_LINES.find(x => x.id === lid);
       return sl ? sl.color : '#888';
     });
 
@@ -760,7 +760,7 @@ function drawStationsLayer() {
 
     // tooltip
     const slLinesHtml = ms.lines.map((lid, idx) => {
-      const sl = SERVICE_LINES.find(x => x.id === lid);
+      const sl = NORIRECO.data.SERVICE_LINES.find(x => x.id === lid);
       const c = colors[idx] || (sl && sl.color) || '#888';
       const nm = sl ? sl.name : lid;
       const rs = slRiddenSt[lid];
@@ -820,7 +820,7 @@ function attachStationDotClickV2(dot, ms) {
     } else if (NORIRECO.map.memoMode) {
       // memo モード用に代表系統を pseudoLine として渡す
       const firstSlId = ms.lines && ms.lines[0];
-      const sl = firstSlId ? SERVICE_LINES.find(x => x.id === firstSlId) : null;
+      const sl = firstSlId ? NORIRECO.data.SERVICE_LINES.find(x => x.id === firstSlId) : null;
       const pseudoLine = sl
         ? {id: sl.id, name: sl.name, color: sl.color, region: sl.operator || ''}
         : {id: 'unknown', name: ms.name, color: '#888', region: ''};
@@ -865,7 +865,7 @@ function openCharModal(ms, character) {
   const levelStars = level >= 4 ? '⭐⭐⭐' : level >= 3 ? '⭐⭐' : level >= 2 ? '⭐' : level >= 1 ? '✓' : '';
   // 乗り入れ系統リスト
   const slRows = (ms.lines || []).map((lid, idx) => {
-    const sl = SERVICE_LINES.find(x => x.id === lid);
+    const sl = NORIRECO.data.SERVICE_LINES.find(x => x.id === lid);
     const color = (ms.colors && ms.colors[idx]) || (sl && sl.color) || '#888';
     const name = sl ? sl.name : lid;
     const rs = slRiddenSt[lid];
@@ -916,7 +916,7 @@ function openCharModal(ms, character) {
     ${slRows ? `<div class="char-modal-lines">乗り入れ系統 (${(ms.lines || []).length})</div>${slRows}` : ''}
     ${(() => {
       // キャラ選択セクション (所持済みのみ表示)
-      const allChars = stationCharMap.get(ms.name) || [];
+      const allChars = NORIRECO.data.stationCharMap.get(ms.name) || [];
       const ownedChars = allChars.filter(c => isCharacterOwned(c.meta.id));
       const lockedChars = allChars.filter(c => !isCharacterOwned(c.meta.id));
       let html = '';
@@ -998,8 +998,8 @@ function updateOverlays(){
   leg.innerHTML='';
 
   // 営業系統 — 乗車済みのみ、達成率降順
-  if (SERVICE_LINES && SERVICE_LINES.length > 0) {
-    const ridSls = SERVICE_LINES
+  if (NORIRECO.data.SERVICE_LINES && NORIRECO.data.SERVICE_LINES.length > 0) {
+    const ridSls = NORIRECO.data.SERVICE_LINES
       .map(sl => ({sl, stats: NORIRECO.serviceLines.stats(sl)}))
       .filter(x => x.stats.r > 0)
       .sort((a,b) => b.stats.pct - a.stats.pct);

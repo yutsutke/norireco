@@ -12,8 +12,8 @@
 //   .normStName(name)    — 駅名正規化 (「ケ」→「ヶ」+ 空白除去)。05-supabase-data.js から外部参照
 //
 // 参照グローバル:
-//   - LINES / SERVICE_LINES / SERVICE_LINES_MASTER → 02-data-loaders.js
-//   - RUNNING_SERVICES → 02-data-loaders.js
+//   - NORIRECO.data.LINES / NORIRECO.data.SERVICE_LINES / NORIRECO.data.SERVICE_LINES_MASTER → 02-data-loaders.js
+//   - NORIRECO.data.RUNNING_SERVICES → 02-data-loaders.js
 //   - RIDDEN_SEGS / riddenSt → 05-supabase-data.js (riddenSt は N02 keyed の内部用)
 //
 // ロード順: 04 → 04b → 05 (04 内で slRiddenSt を読む drawObtainableIndicators がある
@@ -87,7 +87,7 @@
     const fromN = normStName(fromName);
     const toN = normStName(toName);
     for (const candId of candidates) {
-      const line = LINES.find(l => l.id === candId);
+      const line = NORIRECO.data.LINES.find(l => l.id === candId);
       if (!line) continue;
       const fi = line.stations.findIndex(s => normStName(s.n) === fromN);
       const ti = line.stations.findIndex(s => normStName(s.n) === toN);
@@ -100,7 +100,7 @@
 
   // 運行系統(running_services.json)に基づき乗車区間を物理路線に展開
   function resolveServiceTrip(serviceId, fromName, toName) {
-    const service = RUNNING_SERVICES[serviceId];
+    const service = NORIRECO.data.RUNNING_SERVICES[serviceId];
     if (!service || !service.segments) return null;
 
     const segments = service.segments;
@@ -108,7 +108,7 @@
     const toN = normStName(toName);
 
     const segInfos = segments.map(seg => {
-      const line = LINES.find(l => l.id === seg.line);
+      const line = NORIRECO.data.LINES.find(l => l.id === seg.line);
       if (!line) return null;
       const segFromIdx = line.stations.findIndex(s => normStName(s.n) === normStName(seg.from));
       const segToIdx = line.stations.findIndex(s => normStName(s.n) === normStName(seg.to));
@@ -197,7 +197,7 @@
     const fromLines = [];
     const toLines = [];
     for (const candId of candidates) {
-      const line = LINES.find(l => l.id === candId);
+      const line = NORIRECO.data.LINES.find(l => l.id === candId);
       if (!line) continue;
       if (line.stations.some(s => normStName(s.n) === fromN)) fromLines.push(line);
       if (line.stations.some(s => normStName(s.n) === toN)) toLines.push(line);
@@ -226,10 +226,10 @@
     return null;
   }
 
-  // 営業系統(SERVICE_LINES)id から N02 路線セグメントへの解決
+  // 営業系統(NORIRECO.data.SERVICE_LINES)id から N02 路線セグメントへの解決
   function resolveByServiceLine(slId, fromName, toName) {
-    if (!SERVICE_LINES || SERVICE_LINES.length === 0) return null;
-    const sl = SERVICE_LINES.find(x => x.id === slId);
+    if (!NORIRECO.data.SERVICE_LINES || NORIRECO.data.SERVICE_LINES.length === 0) return null;
+    const sl = NORIRECO.data.SERVICE_LINES.find(x => x.id === slId);
     if (!sl || !sl.stations || sl.stations.length < 2) return null;
     const fromN = normStName(fromName), toN = normStName(toName);
     const fromIdx = sl.stations.findIndex(s => normStName(s.name) === fromN);
@@ -242,7 +242,7 @@
     for (let i = lo; i <= hi; i++) {
       const nm = normStName(sl.stations[i].name);
       for (const n02Id of candidates) {
-        const ln = LINES.find(l => l.id === n02Id);
+        const ln = NORIRECO.data.LINES.find(l => l.id === n02Id);
         if (!ln) continue;
         const idx = ln.stations.findIndex(s => normStName(s.n) === nm);
         if (idx < 0) continue;
@@ -283,7 +283,7 @@
         return;
       }
       resolvedCount++;
-      if (viaService && RUNNING_SERVICES[seg.lineId]) {
+      if (viaService && NORIRECO.data.RUNNING_SERVICES[seg.lineId]) {
         riddenServiceIds.add(seg.lineId);
       }
       for (const part of parts) {
@@ -298,8 +298,8 @@
     });
     // Phase 2: 営業系統別 ridden 状態を riddenSt から導出
     Object.keys(slRiddenSt).forEach(k => delete slRiddenSt[k]);
-    if (SERVICE_LINES && SERVICE_LINES.length > 0) {
-      for (const sl of SERVICE_LINES) {
+    if (NORIRECO.data.SERVICE_LINES && NORIRECO.data.SERVICE_LINES.length > 0) {
+      for (const sl of NORIRECO.data.SERVICE_LINES) {
         const cand = sl.candidateN02Ids || [];
         const allRidden = new Set();
         for (const n02Id of cand) {
@@ -315,16 +315,16 @@
       }
     }
 
-    // v186: 駅ごとの stop_type 集計 (営業系統 SERVICE_LINES ベース)
+    // v186: 駅ごとの stop_type 集計 (営業系統 NORIRECO.data.SERVICE_LINES ベース)
     //   - seg.from = boarded (乗車駅)
     //   - seg.to   = alighted (降車駅)
     //   - 中間駅   = passed (通過)
     // 複数 seg / 複数 trip で同じ駅が出る場合は最高優先度 (alighted > boarded > passed) を採用。
     // 乗換駅は実質「降りて乗った」ので alighted 扱いになる (どこかの seg.to に必ず該当)。
     Object.keys(slStopType).forEach(k => delete slStopType[k]);
-    if (SERVICE_LINES && SERVICE_LINES.length > 0) {
+    if (NORIRECO.data.SERVICE_LINES && NORIRECO.data.SERVICE_LINES.length > 0) {
       RIDDEN_SEGS.forEach(seg => {
-        const sl = SERVICE_LINES.find(x => x.id === seg.lineId);
+        const sl = NORIRECO.data.SERVICE_LINES.find(x => x.id === seg.lineId);
         if (!sl || !sl.stations) return;
         const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
         const toIdx = sl.stations.findIndex(s => s.name === seg.to);

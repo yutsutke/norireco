@@ -75,11 +75,11 @@ async function renderMypage() {
     </div>
   `;
 
-  // 完乗率カード placeholder (SERVICE_LINES と trips を並列取得しながらスケルトン表示)
+  // 完乗率カード placeholder (NORIRECO.data.SERVICE_LINES と trips を並列取得しながらスケルトン表示)
   const pinned = document.getElementById('mp-completion-pinned');
   if (pinned) pinned.innerHTML = `<div class="mp-loading" style="padding:14px">📊 完乗率を計算中…</div>`;
 
-  // 並列: SERVICE_LINES 構築 + Supabase から自分の trip 取得
+  // 並列: NORIRECO.data.SERVICE_LINES 構築 + Supabase から自分の trip 取得
   let trips = [];
   try {
     const [_, tripsRes] = await Promise.all([
@@ -123,7 +123,7 @@ async function renderMypage() {
   // 常時表示の完乗率カードを描画 (グローバル date filter を適用)
   if (pinned) {
     pinned.innerHTML = '';
-    if (Array.isArray(SERVICE_LINES) && SERVICE_LINES.length > 0) {
+    if (Array.isArray(NORIRECO.data.SERVICE_LINES) && NORIRECO.data.SERVICE_LINES.length > 0) {
       const tripsForCards = (typeof filterTripsByDate === 'function') ? filterTripsByDate(trips) : trips;
       pinned.appendChild(buildCompletionCards(tripsForCards));
     } else {

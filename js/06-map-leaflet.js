@@ -89,7 +89,7 @@ function initMap(){
   dotLayerRef = L.layerGroup();
   labelLayerRef = L.layerGroup();
 
-  // 初期描画（LINES空でも問題なし、JSONロード後に再描画される）
+  // 初期描画（NORIRECO.data.LINES空でも問題なし、JSONロード後に再描画される）
   drawLines();
   updateOverlays();
 
@@ -120,9 +120,9 @@ function initMap(){
     await loadLines(1);
     await loadLines(2);
     await loadLines(3);
-    console.log(`[乗レコ] 初期ロード完了: 計${LINES.length}路線`);
+    console.log(`[乗レコ] 初期ロード完了: 計${NORIRECO.data.LINES.length}路線`);
     fitToRiddenLines();
-    // 営業系統(SERVICE_LINES)を構築 → 新形式 trip(jr_xxx/auto_xxx) を再解決して再描画
+    // 営業系統(NORIRECO.data.SERVICE_LINES)を構築 → 新形式 trip(jr_xxx/auto_xxx) を再解決して再描画
     NORIRECO.serviceLines.build().then(() => {
       NORIRECO.rideRecord.rebuild();
       if (typeof redrawAllLinesAfterTripChange === 'function') redrawAllLinesAfterTripChange();
@@ -131,7 +131,7 @@ function initMap(){
       syncCharacterGrantsFromSupabase().finally(() => {
         setTimeout(() => runCharacterGrantCheck(), 800);
       });
-    }).catch(e => console.warn('[乗レコ] SERVICE_LINES 構築失敗:', e));
+    }).catch(e => console.warn('[乗レコ] NORIRECO.data.SERVICE_LINES 構築失敗:', e));
   })();
 
   // ズーム変更時にP3/P4を追加読み込み + LOD更新
@@ -165,7 +165,7 @@ function initMap(){
   M.instance.on('click',e=>{
     if(!M.memoMode && !NORIRECO.record.mode) return;
     let bLine=null,bSt=null,bD=Infinity;
-    LINES.forEach(line=>line.stations.forEach(s=>{
+    NORIRECO.data.LINES.forEach(line=>line.stations.forEach(s=>{
       const d=M.instance.distance([s.lat,s.lon],e.latlng);
       if(d<bD){bD=d;bLine=line;bSt=s;}
     }));

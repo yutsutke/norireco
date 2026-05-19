@@ -26,7 +26,7 @@ const SL_GROUP_ORDER = [
 async function renderList(){
   const c=document.getElementById('list-content');c.innerHTML='';
   await NORIRECO.serviceLines.build();
-  const grouped={};SERVICE_LINES.forEach(sl=>{const g=sl.group||'その他';if(!grouped[g])grouped[g]=[];grouped[g].push(sl);});
+  const grouped={};NORIRECO.data.SERVICE_LINES.forEach(sl=>{const g=sl.group||'その他';if(!grouped[g])grouped[g]=[];grouped[g].push(sl);});
   const groupOrder = [...SL_GROUP_ORDER, ...Object.keys(grouped).filter(g => !SL_GROUP_ORDER.includes(g))];
   groupOrder.forEach(grp => {
     const lines = grouped[grp]; if (!lines || lines.length === 0) return;
@@ -272,7 +272,7 @@ async function renderStats(){
   });
 
   // ── 系統別達成率 (乗車済みのみ) ──
-  const rLines=SERVICE_LINES.filter(l=>NORIRECO.serviceLines.stats(l).r>0).sort((a,b)=>NORIRECO.serviceLines.stats(b).pct-NORIRECO.serviceLines.stats(a).pct);
+  const rLines=NORIRECO.data.SERVICE_LINES.filter(l=>NORIRECO.serviceLines.stats(l).r>0).sort((a,b)=>NORIRECO.serviceLines.stats(b).pct-NORIRECO.serviceLines.stats(a).pct);
   if(rLines.length){
     const hdr=document.createElement('div');hdr.className='sec-lbl';hdr.textContent=`乗車系統別 達成率 (${rLines.length})`;c.appendChild(hdr);
     const ch=document.createElement('div');ch.className='bc';
@@ -287,7 +287,7 @@ async function renderStats(){
     {ic:'🔀',nm:'乗換マスター',ds:'乗換を含む旅程を記録',on:RIDDEN_SEGS.length>=2},
     {ic:'🗾',nm:'2路線制覇',ds:'2路線以上に乗車',on:gs.la>=2},
     {ic:'🚄',nm:'新幹線デビュー',ds:'新幹線に初乗車',on:!!riddenSt['tokaido-shinkansen']||!!riddenSt['tohoku']||!!riddenSt['hokuriku']},
-    {ic:'⚡',nm:'東海道新幹線完乗',ds:'東京〜博多を全駅乗車',on:lStats(LINES.find(l=>l.id==='tokaido-shinkansen')||{stations:[]}).pct===100},
+    {ic:'⚡',nm:'東海道新幹線完乗',ds:'東京〜博多を全駅乗車',on:lStats(NORIRECO.data.LINES.find(l=>l.id==='tokaido-shinkansen')||{stations:[]}).pct===100},
     {ic:'🌐',nm:'3路線制覇',ds:'3路線以上に乗車',on:gs.la>=3},
     {ic:'🏅',nm:'5路線制覇',ds:'5路線以上に乗車',on:gs.la>=5},
     {ic:'🏆',nm:'乗りつぶし50%',ds:'全路線の50%達成',on:gs.pct>=50},

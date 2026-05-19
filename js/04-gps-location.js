@@ -92,9 +92,9 @@ function stopLocationTracking() {
 // G.nearestCandidates / G.nearestPickedIdx は NORIRECO.gps に集約済み (v198)
 
 function findNearestStations(lat, lon, maxRangeM, maxCount) {
-  if (!MERGED_STATIONS || MERGED_STATIONS.length === 0) return [];
+  if (!NORIRECO.data.MERGED_STATIONS || NORIRECO.data.MERGED_STATIONS.length === 0) return [];
   const candidates = [];
-  for (const ms of MERGED_STATIONS) {
+  for (const ms of NORIRECO.data.MERGED_STATIONS) {
     const d = distMeters(lat, lon, ms.lat, ms.lon);
     if (d > maxRangeM) continue;
     candidates.push({ station: ms, distance: d });
@@ -147,7 +147,7 @@ function updateNearestStationPanel(lat, lon) {
   listEl.innerHTML = nearby.map((n, idx) => {
     const lineIds = n.station.lines || [];
     const lineNames = lineIds.slice(0, 3).map(lid => {
-      const sl = (SERVICE_LINES || []).find(x => x.id === lid);
+      const sl = (NORIRECO.data.SERVICE_LINES || []).find(x => x.id === lid);
       return sl ? sl.name : lid;
     }).filter(Boolean).join('・');
     const more = lineIds.length > 3 ? ` ほか${lineIds.length - 3}` : '';
@@ -310,10 +310,10 @@ function updateLocationButton() {
 
 // この駅で獲得可能なキャラ一覧 (locked + 期間内 + obtainable_at 一致)
 function getObtainableCharactersAt(stationName) {
-  if (!charModeOn) return [];
+  if (!NORIRECO.data.charModeOn) return [];
   const result = [];
-  for (const id in CHARACTERS) {
-    const char = CHARACTERS[id];
+  for (const id in NORIRECO.data.CHARACTERS) {
+    const char = NORIRECO.data.CHARACTERS[id];
     if (!char.meta || char.meta.default_unlocked) continue;
     if (isCharacterOwned(id)) continue;
     if (!isCharacterAvailable(char.meta)) continue;
@@ -336,12 +336,12 @@ function makeObtainableIndicator(count) {
 
 // 全駅をスキャンして、獲得可能キャラがある駅に ✨ インジケータを配置
 function drawObtainableIndicators() {
-  if (!charModeOn) return;
-  if (!MERGED_STATIONS || !MERGED_STATIONS.length) return;
+  if (!NORIRECO.data.charModeOn) return;
+  if (!NORIRECO.data.MERGED_STATIONS || !NORIRECO.data.MERGED_STATIONS.length) return;
 
   const _mapMode = window._mapDisplayMode || 'both';
   let count = 0;
-  for (const ms of MERGED_STATIONS) {
+  for (const ms of NORIRECO.data.MERGED_STATIONS) {
     const chars = getObtainableCharactersAt(ms.name);
     if (chars.length === 0) continue;
 
@@ -401,8 +401,8 @@ function setStationCharacterChoice(stationName, charId) {
 
 // 駅の代表キャラを取得 (所持済み中からユーザー選択優先)
 function getStationCharacter(stationName) {
-  if (!charModeOn) return null;
-  const list = stationCharMap.get(stationName);
+  if (!NORIRECO.data.charModeOn) return null;
+  const list = NORIRECO.data.stationCharMap.get(stationName);
   if (!list || !list.length) return null;
   // 所持済みキャラのみに絞る (default_unlocked or owned_characters)
   const ownedList = list.filter(c => isCharacterOwned(c.meta.id));
@@ -424,9 +424,9 @@ function pickStationCharacter(stationName, charId) {
   }
 }
 // ── データローダー (loadMergedStations / loadServiceLinesMaster / loadLines) は
-// v191 で 02-data-loaders.js に移管された。SERVICE_LINES_MASTER / SERVICE_LINES /
+// v191 で 02-data-loaders.js に移管された。NORIRECO.data.SERVICE_LINES_MASTER / NORIRECO.data.SERVICE_LINES /
 // serviceLinesLoaded / serviceLinesBuilt 等のグローバル状態も 02 で宣言される。
-// ── SERVICE_LINES の構築・分類・達成率 (buildServiceLines / detectServiceLineGroup /
+// ── NORIRECO.data.SERVICE_LINES の構築・分類・達成率 (buildServiceLines / detectServiceLineGroup /
 // slStats / slGlobalStats / regionOf / 内部ヘルパー) は v192 で
 // 02b-service-lines-builder.js に切り出し、NORIRECO.serviceLines.{build,stats,
 // globalStats,detectGroup,regionOf} として公開。

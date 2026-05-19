@@ -26,15 +26,15 @@ function buildCompletionCards(trips) {
   const wrap = document.createElement('div');
   wrap.className = 'mp-stats-wrap';
 
-  // 全駅マスター (ユニーク) — SERVICE_LINES から駅名 Set を作る
+  // 全駅マスター (ユニーク) — NORIRECO.data.SERVICE_LINES から駅名 Set を作る
   const allUniqueStations = new Set();
   let lineUnitTotal = 0;
-  for (const sl of SERVICE_LINES) {
+  for (const sl of NORIRECO.data.SERVICE_LINES) {
     for (const s of sl.stations) allUniqueStations.add(s.name);
     lineUnitTotal += sl.stations.length;
   }
   const totalUnique = allUniqueStations.size;
-  const totalLines = SERVICE_LINES.length;
+  const totalLines = NORIRECO.data.SERVICE_LINES.length;
 
   // ── 共通の集計 (verifiedOnly / 全記録) ────────────────────────────
   function collect(verifiedOnly) {
@@ -53,7 +53,7 @@ function buildCompletionCards(trips) {
       const tripStations = new Set();
       const tripLines = new Set();
       for (const seg of trip.segments) {
-        const sl = SERVICE_LINES.find(l => l.id === seg.lineId);
+        const sl = NORIRECO.data.SERVICE_LINES.find(l => l.id === seg.lineId);
         if (!sl) continue;
         const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
         const toIdx = sl.stations.findIndex(s => s.name === seg.to);
@@ -79,7 +79,7 @@ function buildCompletionCards(trips) {
       for (const lid of tripLines) lineRideCount[lid] = (lineRideCount[lid]||0) + 1;
     }
     let lineUnitRidden = 0, lines = 0, complete = 0;
-    for (const sl of SERVICE_LINES) {
+    for (const sl of NORIRECO.data.SERVICE_LINES) {
       const r = slSet[sl.id] ? slSet[sl.id].size : 0;
       lineUnitRidden += r;
       if (r > 0) lines++;
@@ -179,13 +179,13 @@ function buildDetailContent(pane, sv, all, trips, totalUnique, totalLines) {
   // ③ 運営会社別 完乗率 (公式ベース)
   pane.appendChild(detailCard('運営会社別 完乗率 (公式)',
     buildByOperator(sv),
-    `SERVICE_LINES の operator (運営会社) でグルーピングし、駅をユニークに集計。同じ会社の中で複数系統に属する駅は 1 駅としてカウント。`
+    `NORIRECO.data.SERVICE_LINES の operator (運営会社) でグルーピングし、駅をユニークに集計。同じ会社の中で複数系統に属する駅は 1 駅としてカウント。`
   ));
 
   // ④ 三大都市圏完乗率
   pane.appendChild(detailCard('地域別 完乗率 (公式)',
     buildByGroup(sv),
-    `SERVICE_LINES の group (地域分類: 首都圏・関西・東海・東北・北海道・九州・四国・中国・新幹線 等) でグルーピング。三大都市圏での完乗率を見やすく可視化。`
+    `NORIRECO.data.SERVICE_LINES の group (地域分類: 首都圏・関西・東海・東北・北海道・九州・四国・中国・新幹線 等) でグルーピング。三大都市圏での完乗率を見やすく可視化。`
   ));
 
   // ⑤ よく乗る路線 Top 10
@@ -288,7 +288,7 @@ function buildOperatorYearly(trips) {
     const year = (trip.date || '').slice(0, 4);
     if (!year) continue;
     for (const seg of trip.segments) {
-      const sl = SERVICE_LINES.find(l => l.id === seg.lineId);
+      const sl = NORIRECO.data.SERVICE_LINES.find(l => l.id === seg.lineId);
       if (!sl) continue;
       const op = sl.operator || '不明';
       const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
@@ -460,7 +460,7 @@ function buildUnexplored(snap) {
   // 未訪問都道府県
   const master = buildPrefectureMaster();
   const visitedByPref = {};
-  for (const sl of (SERVICE_LINES || [])) {
+  for (const sl of (NORIRECO.data.SERVICE_LINES || [])) {
     const set = snap.slSet[sl.id];
     if (!set) continue;
     for (const name of set) {
@@ -597,7 +597,7 @@ function buildStationTimeline(trips) {
   for (const trip of sorted) {
     const tripStations = new Set();  // この trip で訪問した駅 (1 trip で同じ駅を複数回カウントしない)
     for (const seg of trip.segments) {
-      const sl = SERVICE_LINES.find(l => l.id === seg.lineId);
+      const sl = NORIRECO.data.SERVICE_LINES.find(l => l.id === seg.lineId);
       if (!sl) continue;
       const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
       const toIdx = sl.stations.findIndex(s => s.name === seg.to);
@@ -658,7 +658,7 @@ function buildLineTimeline(trips) {
   for (const trip of sorted) {
     const tripLines = new Set();
     for (const seg of trip.segments) {
-      const sl = SERVICE_LINES.find(l => l.id === seg.lineId);
+      const sl = NORIRECO.data.SERVICE_LINES.find(l => l.id === seg.lineId);
       if (!sl) continue;
       tripLines.add(sl.id);
       const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
@@ -682,7 +682,7 @@ function buildLineTimeline(trips) {
   }
 
   const rows = Object.entries(lineData).map(([slId, d]) => {
-    const sl = SERVICE_LINES.find(l => l.id === slId);
+    const sl = NORIRECO.data.SERVICE_LINES.find(l => l.id === slId);
     if (!sl) return null;
     return {
       slId,
@@ -801,7 +801,7 @@ function buildPersonalRecords(trips) {
     if (!stationsByDate[t.date]) stationsByDate[t.date] = new Set();
     if (t.segments) {
       for (const seg of t.segments) {
-        const sl = SERVICE_LINES.find(l => l.id === seg.lineId);
+        const sl = NORIRECO.data.SERVICE_LINES.find(l => l.id === seg.lineId);
         if (!sl) continue;
         const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
         const toIdx = sl.stations.findIndex(s => s.name === seg.to);
@@ -829,7 +829,7 @@ function buildPersonalRecords(trips) {
     if (t.segments) {
       let km = 0;
       for (const seg of t.segments) {
-        const sl = SERVICE_LINES.find(l => l.id === seg.lineId);
+        const sl = NORIRECO.data.SERVICE_LINES.find(l => l.id === seg.lineId);
         if (!sl) continue;
         const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
         const toIdx = sl.stations.findIndex(s => s.name === seg.to);
@@ -988,7 +988,7 @@ let _prefMasterCache = null;  // { byPref: { 県: Set<駅名> }, totalByPref: { 
 function buildPrefectureMaster() {
   if (_prefMasterCache) return _prefMasterCache;
   const byPref = {};
-  for (const sl of (SERVICE_LINES || [])) {
+  for (const sl of (NORIRECO.data.SERVICE_LINES || [])) {
     for (const s of sl.stations) {
       if (s.lat == null) continue;
       const pref = prefOfStation(s.lat, s.lon);
@@ -1007,7 +1007,7 @@ function buildPrefectureChart(snap) {
   const master = buildPrefectureMaster();
   // 自分が訪問した駅 (snap.slSet) から都道府県別に集計
   const visitedByPref = {};
-  for (const sl of (SERVICE_LINES || [])) {
+  for (const sl of (NORIRECO.data.SERVICE_LINES || [])) {
     const set = snap.slSet[sl.id];
     if (!set) continue;
     for (const name of set) {
@@ -1074,7 +1074,7 @@ function buildStationProgressMonthly(trips) {
     const month = (trip.date || '').slice(0, 7);
     if (!monthly.has(month)) monthly.set(month, { newCount: 0 });
     for (const seg of trip.segments) {
-      const sl = SERVICE_LINES.find(l => l.id === seg.lineId);
+      const sl = NORIRECO.data.SERVICE_LINES.find(l => l.id === seg.lineId);
       if (!sl) continue;
       const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
       const toIdx = sl.stations.findIndex(s => s.name === seg.to);
@@ -1133,7 +1133,7 @@ function buildStationProgressYearly(trips) {
     const year = (trip.date || '').slice(0, 4);
     if (!yearly.has(year)) yearly.set(year, { newCount: 0 });
     for (const seg of trip.segments) {
-      const sl = SERVICE_LINES.find(l => l.id === seg.lineId);
+      const sl = NORIRECO.data.SERVICE_LINES.find(l => l.id === seg.lineId);
       if (!sl) continue;
       const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
       const toIdx = sl.stations.findIndex(s => s.name === seg.to);
@@ -1196,7 +1196,7 @@ NORIRECO.mypage.detailCard = detailCard;
 // 運営会社別
 function buildByOperator(snap) {
   const byOp = {};
-  for (const sl of SERVICE_LINES) {
+  for (const sl of NORIRECO.data.SERVICE_LINES) {
     const op = sl.operator || '不明';
     if (!byOp[op]) byOp[op] = { unique: new Set(), ridden: new Set() };
     for (const s of sl.stations) byOp[op].unique.add(s.name);
@@ -1223,7 +1223,7 @@ NORIRECO.mypage.buildByOperator = buildByOperator;
 // 地域別
 function buildByGroup(snap) {
   const byGroup = {};
-  for (const sl of SERVICE_LINES) {
+  for (const sl of NORIRECO.data.SERVICE_LINES) {
     const g = sl.group || 'その他';
     if (!byGroup[g]) byGroup[g] = { unique: new Set(), ridden: new Set() };
     for (const s of sl.stations) byGroup[g].unique.add(s.name);
@@ -1248,7 +1248,7 @@ NORIRECO.mypage.buildByGroup = buildByGroup;
 function buildTopLines(snap) {
   const rows = Object.entries(snap.lineRideCount)
     .map(([slId, n]) => {
-      const sl = SERVICE_LINES.find(l => l.id === slId);
+      const sl = NORIRECO.data.SERVICE_LINES.find(l => l.id === slId);
       if (!sl) return null;
       const ridden = snap.slSet[slId] ? snap.slSet[slId].size : 0;
       const pct = sl.stations.length > 0 ? Math.round(ridden / sl.stations.length * 100) : 0;

@@ -1,15 +1,15 @@
-// 営業系統 (SERVICE_LINES) の構築・分類・達成率を担うドメイン。
+// 営業系統 (NORIRECO.data.SERVICE_LINES) の構築・分類・達成率を担うドメイン。
 // v192 で 04-gps-location.js から切り出し。
 //
 // 公開 API は window.NORIRECO.serviceLines 配下:
-//   NORIRECO.serviceLines.build()        — SERVICE_LINES を構築 (idempotent、serviceLinesBuilt フラグで二重ガード)
+//   NORIRECO.serviceLines.build()        — NORIRECO.data.SERVICE_LINES を構築 (idempotent、NORIRECO.data.serviceLinesBuilt フラグで二重ガード)
 //   NORIRECO.serviceLines.stats(sl)      — 営業系統 sl の達成率 {t, r, pct}
 //   NORIRECO.serviceLines.globalStats()  — 全営業系統の集計 {ts, rt, la, ld, pct}
 //   NORIRECO.serviceLines.detectGroup(stations, name, operatorId) — 地域グループ判定
 //   NORIRECO.serviceLines.regionOf(lat, lon) — 駅座標 → 地域名
 //
 // 参照グローバル (宣言場所):
-//   - LINES / SERVICE_LINES_MASTER / SERVICE_LINES / serviceLinesLoaded / serviceLinesBuilt → 02-data-loaders.js
+//   - NORIRECO.data.LINES / NORIRECO.data.SERVICE_LINES_MASTER / NORIRECO.data.SERVICE_LINES / NORIRECO.data.serviceLinesLoaded / NORIRECO.data.serviceLinesBuilt → 02-data-loaders.js
 //   - loadServiceLinesMaster / loadLines → 02-data-loaders.js
 //   - slRiddenSt → 04b-ride-record.js (v194〜、stats が runtime に読む。02b ロード時点では未宣言だが関数呼び出しは 04b ロード後なので OK)
 //
@@ -24,7 +24,7 @@
   // キーは line.id。同 id N02 エントリ(富山地方鉄道本線の鉄道線+軌道線等)はマージ
   function buildPerLineCoordMap() {
     const m = new Map(); // line.id -> { name, stations: Map(stationName -> [lat,lon]) }
-    for (const line of LINES) {
+    for (const line of NORIRECO.data.LINES) {
       let info = m.get(line.id);
       if (!info) {
         info = { name: line.name, stations: new Map() };
@@ -86,17 +86,17 @@
     return region;
   }
 
-  // SERVICE_LINES を構築 (路線一覧・統計・🚆オーバーレイ共通)
+  // NORIRECO.data.SERVICE_LINES を構築 (路線一覧・統計・🚆オーバーレイ共通)
   async function build() {
-    if (!serviceLinesLoaded) {
+    if (!NORIRECO.data.serviceLinesLoaded) {
       await loadServiceLinesMaster();
-      serviceLinesLoaded = true;
+      NORIRECO.data.serviceLinesLoaded = true;
     }
     await Promise.all([loadLines(1), loadLines(2), loadLines(3), loadLines(4)]);
-    if (serviceLinesBuilt) return;
+    if (NORIRECO.data.serviceLinesBuilt) return;
     const perLineMap = buildPerLineCoordMap();
-    SERVICE_LINES = [];
-    for (const sl of (SERVICE_LINES_MASTER || [])) {
+    NORIRECO.data.SERVICE_LINES = [];
+    for (const sl of (NORIRECO.data.SERVICE_LINES_MASTER || [])) {
       const sourceN02Id = deriveN02IdFromAutoId(sl.id);
       const masterNames = new Set((sl.stations || []).map(s => s.name));
       const candidates = [];
@@ -120,7 +120,7 @@
       }
       if (stations.length < 2) continue;
       const group = detectServiceLineGroup(stations, sl.name, sl.operator_id);
-      SERVICE_LINES.push({
+      NORIRECO.data.SERVICE_LINES.push({
         id: sl.id,
         name: sl.name || sl.id,
         color: sl.color || '#888',
@@ -132,8 +132,8 @@
         circular: sl.is_circular || false,
       });
     }
-    serviceLinesBuilt = true;
-    console.log(`[乗レコ] SERVICE_LINES built: ${SERVICE_LINES.length} 系統`);
+    NORIRECO.data.serviceLinesBuilt = true;
+    console.log(`[乗レコ] NORIRECO.data.SERVICE_LINES built: ${NORIRECO.data.SERVICE_LINES.length} 系統`);
   }
 
   // 営業系統の達成率 (slRiddenSt は 04b-ride-record.js で宣言、runtime に参照)
@@ -147,7 +147,7 @@
   // 全営業系統の集計
   function globalStats() {
     let ts = 0, rt = 0, la = 0, ld = 0;
-    SERVICE_LINES.forEach(sl => {
+    NORIRECO.data.SERVICE_LINES.forEach(sl => {
       const s = stats(sl);
       ts += s.t; rt += s.r;
       if (s.r > 0) la++;

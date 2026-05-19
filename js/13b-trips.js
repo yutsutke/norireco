@@ -266,11 +266,11 @@ async function retroactivelyVerifyTrip(tripId) {
   const myLat = pos.coords.latitude, myLon = pos.coords.longitude, acc = pos.coords.accuracy;
 
   const findStCoord = (name) => {
-    if (Array.isArray(MERGED_STATIONS)) {
-      const m = MERGED_STATIONS.find(s => s.name === name);
+    if (Array.isArray(NORIRECO.data.MERGED_STATIONS)) {
+      const m = NORIRECO.data.MERGED_STATIONS.find(s => s.name === name);
       if (m && m.lat != null) return [m.lat, m.lon];
     }
-    for (const sl of (SERVICE_LINES || [])) {
+    for (const sl of (NORIRECO.data.SERVICE_LINES || [])) {
       const s = sl.stations.find(s => s.name === name);
       if (s && s.lat != null) return [s.lat, s.lon];
     }
