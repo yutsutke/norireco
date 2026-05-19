@@ -1820,6 +1820,60 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 71. v222 — ES Modules stage 2 リグレッション修正 (3): 05-supabase-data.js の cross-module state を bridge (2026-05-19)
+
+### 背景
+
+v221 で `dotLayerRef` chain を解消したら、loadLines → 04b.rebuild の途中で次の同種エラー:
+
+```
+P2エラー: ReferenceError: riddenSt is not defined
+  at Object.rebuild (04b-ride-record.js:265:17)
+  at loadLines (02-data-loaders.js:83:25)
+```
+
+`riddenSt` は 05-supabase-data.js:507 で `const riddenSt={};` 宣言 (module-local)。04b/07/09 から bare 参照されていた。`const` だが property 操作 (`riddenSt[k] = new Set()`, `delete riddenSt[k]`) のみで bare 再代入なし → bridge を貼るだけで解消。
+
+予防的に同一ファイルの他の cross-module state も棚卸し:
+- `SUPABASE_URL` / `SUPABASE_KEY`: 03/07/09/12/13-mypage-common/13b-trips から bare 参照 (fetch URL / 認証ヘッダ)
+- `RIDDEN_SEGS`: 04b/07/09 から bare 参照 (乗車記録配列)
+- `riddenSt`: 上記エラー元
+
+全 4 つを一括 bridge。
+
+### 変更内容 (2 ファイル)
+
+- `js/05-supabase-data.js`: 末尾に `window.SUPABASE_URL` / `SUPABASE_KEY` / `RIDDEN_SEGS` / `riddenSt` の 4 bridge 追加
+- `sw.js` CACHE_VERSION v221 → v222
+
+### 予防スキャン結果
+
+全 18 ファイルで `^const [A-Z_]+ =` 形式の top-level 定数を grep してクロスモジュール参照を全件チェック:
+
+| 既存 bridge 済 | 状況 |
+|---|---|
+| `SVG_W` / `SVG_H` (01) → 05 で使用 | 01:27-28 で window bridge 済 ✓ |
+| `_MP_SORT_COMPARATORS` (13-mypage-common) → 13b で使用 | 13-mypage-common:384 で bridge 済 ✓ |
+
+| **未 bridge → v222 で対応** | |
+|---|---|
+| `SUPABASE_URL` / `SUPABASE_KEY` (05) | 6 ファイルから bare 参照 |
+| `RIDDEN_SEGS` / `riddenSt` (05) | 3 ファイルから bare 参照 |
+
+他のファイル単独利用の定数 (`OWNED_CHARACTERS_KEY`, `STOP_TYPE_FILTER_KEY`, `CANVAS`, `LINE_PRIORITY`, `SUPER_MEGA_STATIONS`, `SL_GROUP_ORDER`, `MAJOR_TERMINALS`, `PREFECTURES`, `FRAUD_CATEGORY_SPEED_KMH` 他) は cross-module 参照なしで安全。
+
+### v220/v221 教訓の最終形
+
+「module 化時の bridge 監査」は **関数だけでなく 3 種類を全部洗う必要がある**:
+
+1. 関数 — v202-v219 で既に対応
+2. トップレベル `const` (immutable 値、cross-module 読込) — v220 / v222
+3. トップレベル `let` (mutable state、cross-module 読/書) — v221
+
+`npm run check` は syntax 検査のみで runtime ReferenceError を検知できない。リリース前に `initMap` を含む golden path の手動 DevTools 確認を 1 回挟む手順を §2.5 落とし穴に追記する。
+
+---
+
 ## 70. v221 — ES Modules stage 2 リグレッション修正 (2): `allLayers` / `dotLayerRef` / `labelLayerRef` を window 直置きへ (2026-05-19)
 
 ### 背景

@@ -552,6 +552,17 @@ function gStats(){
   return{ts,rt,la,ld,pct:ts>0?Math.round(rt/ts*100):0};
 }
 
+// v222: 05 module 化 (v215) で漏れていた cross-module 共有 state の window bridge。
+// SUPABASE_URL / SUPABASE_KEY: 03/07/09/12/13-mypage-common/13b-trips から bare 参照される
+//   fetch URL / 認証ヘッダ。immutable 文字列。
+// RIDDEN_SEGS / riddenSt: 04b/07/09 から bare 参照される乗車記録の共有 state。
+//   bare 再代入はゼロ (.push / .length=0 / [k]=Set / delete などの property 操作のみ)
+//   なので bridge だけで OK。bare 読込は module の global scope chain 経由で解決される。
+window.SUPABASE_URL = SUPABASE_URL;
+window.SUPABASE_KEY = SUPABASE_KEY;
+window.RIDDEN_SEGS = RIDDEN_SEGS;
+window.riddenSt = riddenSt;
+
 // v215 stage 2: classic / module 両方から bare 呼出される関数を window 公開
 window.filterTripsByDate = filterTripsByDate;
 window.updateDateFilterUI = updateDateFilterUI;
