@@ -1,14 +1,14 @@
 // ══════════════════════════════════════════════════════════════
 // マイページ 共通レイヤー (v190 分割)
 // - window.NORIRECO 名前空間の初期化
-// - 共通状態 (_mypageCache / mpActiveSection / mpTripFilter)
+// - 共通状態 (MP._mypageCache / MP.mpActiveSection / MP.mpTripFilter)
 // - エントリ (renderMypage) / サブタブ切替 (switchMpSection / applyMpSection)
 // - バナー (renderMpTimeMachineBanner) / トースト (showMypageToast)
 // - 3 タブ共有ヘルパー (tripCardHtml / _MP_SORT_COMPARATORS / formatDelayMin / isTimeMachineActive)
 //
 // 13a-stats.js / 13b-trips.js / 13c-lines.js は本ファイルに依存する。
 // 新規・移動分の関数は NORIRECO.mypage.xxx にも公開 (v127 const grid 二重宣言事故の構造的予防)。
-// クラシック script ロードのため、変数 (_mypageCache 等) は従来通りトップレベル let で全ファイル共有。
+// クラシック script ロードのため、変数 (MP._mypageCache 等) は従来通りトップレベル let で全ファイル共有。
 // ══════════════════════════════════════════════════════════════
 
 // ── NORIRECO 名前空間の初期化 ──────────────────────────────────
@@ -28,14 +28,19 @@ function formatDelayMin(min) {
 window.formatDelayMin = formatDelayMin;
 NORIRECO.mypage.formatDelayMin = formatDelayMin;
 
-let _mypageCache = null;            // 取得した自分の trip[]
-let mpActiveSection = 'stats';      // 'stats' | 'trips' | 'lines'
-let mpTripFilter = {
-  auth: 'all',     // all | verified | manual | suspicious
-  period: 'all',   // all | thisYear | lastYear | custom (日付フィルタは _tripDateFilter と独立)
-  category: 'all', // all | shinkansen | limited_express | ...
-  sort: 'date_desc', // v182: 旅程タブの並び替え (date_desc/asc, stations_desc, minutes_desc, recorded_desc, delay_desc)
+// v201 ES Modules パイロット (案 β) stage 1 最終 — mypage state を NORIRECO.mypage.state に集約。
+// 案 β stage 1 全 7 ドメイン完了 (auth/map/record/gps/trains/data/mypage、累計 46 state)。
+NORIRECO.mypage.state = NORIRECO.mypage.state || {
+  _mypageCache: null,            // 取得した自分の trip[]
+  mpActiveSection: 'stats',      // 'stats' | 'trips' | 'lines'
+  mpTripFilter: {
+    auth: 'all',     // all | verified | manual | suspicious
+    period: 'all',   // all | thisYear | lastYear | custom (日付フィルタは _tripDateFilter と独立)
+    category: 'all', // all | shinkansen | limited_express | ...
+    sort: 'date_desc', // v182: 旅程タブの並び替え (date_desc/asc, stations_desc, minutes_desc, recorded_desc, delay_desc)
+  },
 };
+const MP = NORIRECO.mypage.state;
 
 async function renderMypage() {
   const c = document.getElementById('mypage-content');
@@ -115,7 +120,7 @@ async function renderMypage() {
     console.warn('[マイページ] localStorage merge エラー:', e.message);
   }
 
-  _mypageCache = trips;
+  MP._mypageCache = trips;
 
   // グローバル過去モード (_tripDateFilter) が有効ならバナー表示
   renderMpTimeMachineBanner();
@@ -182,7 +187,7 @@ function showAllSubpanes(show) {
 NORIRECO.mypage.showAllSubpanes = showAllSubpanes;
 
 function switchMpSection(name) {
-  mpActiveSection = name;
+  MP.mpActiveSection = name;
   applyMpSection();
 }
 window.switchMpSection = switchMpSection;
@@ -190,15 +195,15 @@ NORIRECO.mypage.switchMpSection = switchMpSection;
 
 function applyMpSection() {
   // 旧 'timemachine' 選択を 'stats' にフォールバック (タイムマシン廃止 v174)
-  if (mpActiveSection === 'timemachine') mpActiveSection = 'stats';
+  if (MP.mpActiveSection === 'timemachine') MP.mpActiveSection = 'stats';
   // サブタブ activeクラス
   document.querySelectorAll('.mp-subtab').forEach(b => {
-    b.classList.toggle('active', b.dataset.sec === mpActiveSection);
+    b.classList.toggle('active', b.dataset.sec === MP.mpActiveSection);
   });
   // サブペイン表示切替
-  const showStats = mpActiveSection === 'stats';
-  const showTrips = mpActiveSection === 'trips';
-  const showLines = mpActiveSection === 'lines';
+  const showStats = MP.mpActiveSection === 'stats';
+  const showTrips = MP.mpActiveSection === 'trips';
+  const showLines = MP.mpActiveSection === 'lines';
   document.getElementById('mp-sub-stats').style.display       = showStats ? '' : 'none';
   document.getElementById('mp-sub-trips').style.display       = showTrips ? '' : 'none';
   document.getElementById('mp-sub-lines').style.display       = showLines ? '' : 'none';
@@ -213,7 +218,7 @@ function applyMpSection() {
 NORIRECO.mypage.applyMpSection = applyMpSection;
 
 // ── 共通: 旅程タブのソート比較関数 (統計タブ「直近の旅程」のソートとも共有想定) ──
-// v182: ソートキー (mpTripFilter.sort) ごとの比較関数
+// v182: ソートキー (MP.mpTripFilter.sort) ごとの比較関数
 const _MP_SORT_COMPARATORS = {
   date_desc: (a, b) => (b.date || '').localeCompare(a.date || ''),
   date_asc: (a, b) => (a.date || '').localeCompare(b.date || ''),

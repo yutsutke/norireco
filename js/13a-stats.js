@@ -5,7 +5,7 @@
 // - 詳細セクション ⓘ 解説トグル
 //
 // 共通レイヤー (13-mypage-common.js) の以下を使用:
-//   - _mypageCache / _tripDateFilter
+//   - NORIRECO.mypage.state._mypageCache / _tripDateFilter
 //   - tripCardHtml (直近の旅程カード)
 //   - showMypageToast / isTimeMachineActive
 // 新規・移動分の関数は NORIRECO.mypage.xxx にも公開。

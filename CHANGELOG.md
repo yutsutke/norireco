@@ -1820,6 +1820,77 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 50. v201 — ES Modules パイロット (案 β) stage 1 **完結**: mypage state を `window.NORIRECO.mypage.state` に集約 (2026-05-19)
+
+### 背景
+
+v195 (auth) → v196 (map) → v197 (record) → v198 (gps) → v199 (trains) → v200 (data) に続く **案 β stage 1 の 7 番目・最終ドメイン**。
+
+### 移行した state (3 個)
+
+| 旧 (top-level `let` in 13-mypage-common) | 新 |
+|---|---|
+| `_mypageCache` (取得した自分の trip[]) | `NORIRECO.mypage.state._mypageCache` |
+| `mpActiveSection` ('stats'/'trips'/'lines') | `NORIRECO.mypage.state.mpActiveSection` |
+| `mpTripFilter` (フィルタ object) | `NORIRECO.mypage.state.mpTripFilter` |
+
+`NORIRECO.mypage` namespace は v190 で既に確立済み (関数 namespace)。今回はその下に `.state` プロパティとして state を集約 — auth/map/record/gps/trains/data の各 `NORIRECO.<domain>` 直下 (state も関数も同階層) とは異なる構造を選択。理由: mypage は **関数が圧倒的に多い** ドメイン (renderMypage / applyMpSection / tripCardHtml / 並び替え comparator 等)、state は ~3 個しかない。state を `.state` サブ namespace に隔離した方が `NORIRECO.mypage.X` の関数群がフラットに見えて読みやすい。
+
+13-mypage-common.js 内は `const MP = NORIRECO.mypage.state` の local alias で `MP._mypageCache` 等の短縮形。13a-stats.js / 13b-trips.js は `NORIRECO.mypage.state.X` のフルパス。
+
+### call site 書き換え (3 ファイル、61 箇所)
+
+- `js/13-mypage-common.js` — 宣言部 + 13 箇所
+- `js/13b-trips.js` — 47 箇所 (旅程フィルタ・並び替え・編集の中心)
+- `js/13a-stats.js` — 1 箇所
+
+### 案 β stage 1 完了サマリ
+
+| ドメイン | バージョン | state 数 | 関係ファイル | 累計 |
+|---|---|---|---|---|
+| auth | v195 | 4 | 2 | 4 |
+| map | v196 | 3 | 6 | 7 |
+| record | v197 | 7 | 4 | 14 |
+| gps | v198 | 12 | 2 | 26 |
+| trains | v199 | 6 | 4 | 32 |
+| data | v200 | 11 | 15 | 43 |
+| **mypage** | **v201** | **3** | **3** | **46** |
+
+**累計 46 state を `window.NORIRECO.<domain>.X` に集約**。
+
+- 関係ファイル数 (累計、重複あり): 36 ファイル参照
+- call site 累計: **~450 箇所**
+- セッション間隔: 全 7 commit が同日 (2026-05-19) に完了
+- syntax check: 各 commit 後 18/18 OK
+
+### 案 β stage 2 (`<script type="module">` 化) の準備が整った
+
+stage 1 完了で **classic script 共有 lexical scope への依存はゼロ**。各ファイルは:
+1. `<script src>` でロードされる順序が変わっても OK (state は `NORIRECO.<domain>` の object property、ロード順は副次的)
+2. `<script type="module">` 化しても OK (module export の代わりに `window.NORIRECO.<domain>.X` で公開)
+3. module / classic 混在ロード可 (deferred 化された module が走るときには bridge が既に classic ロード時点で確立済み)
+
+stage 2 で各ファイルを `type="module"` 化するときの手順:
+1. 該当ファイルの `<script>` タグに `type="module"` 追加
+2. ファイル末尾に `export const <domain> = NORIRECO.<domain>;` を追加 (module consumer 用)
+3. ロード順制約があれば top-level `await import('./xxx.js')` で逐次解決
+4. SW (`sw.js`) の Network-First が `type="module"` でもキャッシュバスティング可能か実機検証
+
+stage 2 は別セッションで集中して対応。stage 1 完了で「**いつでも module 化を始められる準備**」が整った。
+
+### 教訓 (v195〜v201 通しで)
+
+1. **mutable object property パターン** が classic→module 移行で最も安全
+   - `let X` の rebinding (`X = ...`) を `obj.X = ...` の property assignment に置換するだけで意味論保存
+   - module 側で `export const obj = {...}; window.<domain> = obj` の bridge 1 行で classic 側互換
+2. **property 名と変数名の collision** は `replace_all` で宣言ブロックを壊す
+   - 対策: 「宣言ブロック先書き → use 全置換 → 宣言ブロック修復」の 3 段階手順 (v198 で確立)
+3. **state 名同士の部分文字列衝突** は cascading corruption を生む
+   - 対策: 短い名前を先に置換 → 副作用 (substring 含意) を cleanup pass で復元 (v200 で確立)
+4. **incremental commit のすばらしさ**: 7 commit に分けたので、どの段階でも `git revert` で戻せる。実際 v196 / v197 / v198 / v199 / v200 でそれぞれ replace_all 起因の局所事故があったが、commit 内 (push 前) の手動修正で吸収できた。1 commit で全部やっていたらどこで何が壊れたか追えなくなっていた。
+
+---
+
 ## 49. v200 — ES Modules パイロット (案 β) stage 1: data domain state を `window.NORIRECO.data` に集約 (最大規模、2026-05-19)
 
 ### 背景

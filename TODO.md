@@ -4,14 +4,14 @@
 詳しい仕様や経緯は `CHANGELOG.md`（更新履歴詳細）、ビジネス背景は [Notion 開発ノート](https://www.notion.so/35b71b458b63818494afe7c1ab917ca5)。
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v200 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v201 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13-..` 機能別分割（v131〜v138、`CHANGELOG.md §20, §21` 参照）
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
 **マイページ**: 3 サブタブ (統計 / 旅程 / 路線)、詳細統計 16 種、期間指定で過去状態 (地図ピル「〜月指定」)
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **保存ボタン**: 記録種別に応じて「💾 手動記録で保存する」/「💾 GPS 記録で保存する」に動的切替（v176）
-**直近の作業**: ES Modules パイロット (案 β) stage 1 — **data domain 11 state** (`LINES` / `SERVICE_LINES` / `SERVICE_LINES_MASTER` / `MERGED_STATIONS` / `slMergedStationMap` / `RUNNING_SERVICES` / `serviceLinesLoaded` / `serviceLinesBuilt` / `CHARACTERS` / `stationCharMap` / `charModeOn`) を `window.NORIRECO.data` に集約、**15 ファイル 146 箇所**（v200、最大規模）/ trains domain 6 state（v199）/ gps domain 12 state（v198）/ record (7) (v197) / map (3) (v196) / auth (4) (v195)。累計 **43 state** 移行済み、案 β stage 1 残り mypage 1 ドメインのみ
+**直近の作業**: **ES Modules パイロット (案 β) stage 1 完結** — mypage state (`_mypageCache` / `mpActiveSection` / `mpTripFilter`) を `NORIRECO.mypage.state` に集約、3 ファイル 61 箇所（v201）/ data 11 state（v200）/ trains 6（v199）/ gps 12（v198）/ record 7（v197）/ map 3（v196）/ auth 4（v195）。**累計 46 state、7 commit、~450 箇所**移行。案 β stage 2（`<script type="module">` 化）の準備完了
 
 ---
 
@@ -76,15 +76,16 @@
     - 累計移行 state 数: 26 個 (auth 4 + map 3 + record 7 + gps 12)
   - **v199 で完了済 (案 β stage 1 — trains)**:
     - ✅ trains domain state 6 個 を `window.NORIRECO.trains` に集約 (4 ファイル 39 箇所)
-  - **v200 で完了済 (案 β stage 1 — data、最大規模)**:
-    - ✅ data domain state 11 個 (`LINES` / `SERVICE_LINES` / `SERVICE_LINES_MASTER` / `MERGED_STATIONS` / `slMergedStationMap` / `RUNNING_SERVICES` / `serviceLinesLoaded` / `serviceLinesBuilt` / `CHARACTERS` / `stationCharMap` / `charModeOn`) を `window.NORIRECO.data` に集約
-    - call site: 15 ファイル 146 箇所
-    - 教訓: 部分文字列衝突 (LINES ⊂ SERVICE_LINES ⊂ SERVICE_LINES_MASTER、CHARACTERS ⊂ OWNED_CHARACTERS_KEY) で cascading corruption が起きやすい。対策: LINES を先に置換 → `SERVICE_NORIRECO.data.LINES` を `NORIRECO.data.SERVICE_LINES` に cleanup (substring match で `_MASTER` 形も一括復元)
-    - 累計移行 state 数: **43 個** (auth 4 + map 3 + record 7 + gps 12 + trains 6 + data 11)
-    - stage 2 (type=module 化) の準備が整った: cross-file shared state は全て NORIRECO.<domain>.X
-  - **次セッション v201+ 候補**:
-    1. **案 β stage 1 最終**: `mypage` (13-common の `_mypageCache` / `mpActiveSection` / `mpTripFilter`、13a/13b と共有)
-    2. **案 β stage 2 パイロット**: 12-auth を `<script type="module">` 化
+  - **v200 で完了済 (案 β stage 1 — data、最大規模)**: 11 state、15 ファイル 146 箇所
+  - **v201 で完了済 (案 β stage 1 — mypage、最終)**:
+    - ✅ mypage state 3 個 (`_mypageCache` / `mpActiveSection` / `mpTripFilter`) を `NORIRECO.mypage.state` に集約
+    - call site: 3 ファイル 61 箇所 (13-common 13 + 13b 47 + 13a 1)
+    - 構造: `NORIRECO.mypage.state.X` (v190 で確立済の関数 namespace `NORIRECO.mypage.fn` と並列の `.state` サブ namespace に隔離)
+    - 累計移行 state 数: **46 個** (auth 4 + map 3 + record 7 + gps 12 + trains 6 + data 11 + mypage 3)
+    - **案 β stage 1 完結** — classic script 共有 lexical scope への依存ゼロ達成
+  - **次セッション v202+ 候補**:
+    1. **案 β stage 2 パイロット**: 12-auth を `<script type="module">` 化。手順: `<script type="module" src>` への変更 + ファイル末尾に `export const auth = NORIRECO.auth` bridge 追加 + `initAuth()` の `DOMContentLoaded` 呼び出しタイミング調整 + SW (`sw.js`) の Network-First が `type="module"` でも維持できるか実機検証
+    2. **stage 2 を data domain に広げる**: 最大規模 (15 ファイル参照) なので深掘りすると stage 2 全体の難所を洗い出せる
     3. Notion §2.4 布石⑤ Supabase 呼び出しを `NORIRECO.api.xxx` ラッパー化
   - **安全装置**: 「動くマップが画面に出る」を毎ステップで確認、各段階を独立コミット (戻せる)。Cloudflare Pages 移行は別タスクに切り出し、今は GitHub Pages のままで完結させる
   - 詳細仕様: 2.4 コード構成（js/01〜13c）参照

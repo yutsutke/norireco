@@ -7,7 +7,7 @@
 // - 旅程削除
 //
 // 共通レイヤー (13-mypage-common.js) の以下を使用:
-//   - _mypageCache / mpTripFilter / _MP_SORT_COMPARATORS
+//   - NORIRECO.mypage.state._mypageCache / NORIRECO.mypage.state.mpTripFilter / _MP_SORT_COMPARATORS
 //   - tripCardHtml / showMypageToast / applyMpSection / renderMypage
 // 新規・移動分の関数は NORIRECO.mypage.xxx にも公開。
 // ══════════════════════════════════════════════════════════════
@@ -22,12 +22,12 @@ function renderMpTripsSection() {
   sec.appendChild(buildTripFilterBar());
 
   // フィルタ適用
-  const filtered = applyTripFilters(_mypageCache || []);
+  const filtered = applyTripFilters(NORIRECO.mypage.state._mypageCache || []);
 
   // 件数表示
   const head = document.createElement('div');
   head.className = 'sec-lbl';
-  head.innerHTML = `自分の旅程 (${filtered.length} / ${(_mypageCache||[]).length} 件)`;
+  head.innerHTML = `自分の旅程 (${filtered.length} / ${(NORIRECO.mypage.state._mypageCache||[]).length} 件)`;
   sec.appendChild(head);
 
   if (filtered.length === 0) {
@@ -51,46 +51,46 @@ function buildTripFilterBar() {
     <div class="mp-filter-row">
       <label class="mp-filter-lbl">📅 期間</label>
       <select class="mp-filter-sel" id="mp-fil-period" onchange="updateMpFilter('period',this.value)">
-        <option value="all" ${mpTripFilter.period==='all'?'selected':''}>全期間</option>
-        <option value="thisYear" ${mpTripFilter.period==='thisYear'?'selected':''}>今年</option>
-        <option value="lastYear" ${mpTripFilter.period==='lastYear'?'selected':''}>去年</option>
-        <option value="thisMonth" ${mpTripFilter.period==='thisMonth'?'selected':''}>今月</option>
-        <option value="last7" ${mpTripFilter.period==='last7'?'selected':''}>直近7日</option>
+        <option value="all" ${NORIRECO.mypage.state.mpTripFilter.period==='all'?'selected':''}>全期間</option>
+        <option value="thisYear" ${NORIRECO.mypage.state.mpTripFilter.period==='thisYear'?'selected':''}>今年</option>
+        <option value="lastYear" ${NORIRECO.mypage.state.mpTripFilter.period==='lastYear'?'selected':''}>去年</option>
+        <option value="thisMonth" ${NORIRECO.mypage.state.mpTripFilter.period==='thisMonth'?'selected':''}>今月</option>
+        <option value="last7" ${NORIRECO.mypage.state.mpTripFilter.period==='last7'?'selected':''}>直近7日</option>
       </select>
     </div>
     <div class="mp-filter-row">
       <label class="mp-filter-lbl">🛡 認証</label>
       <select class="mp-filter-sel" id="mp-fil-auth" onchange="updateMpFilter('auth',this.value)">
-        <option value="all" ${mpTripFilter.auth==='all'?'selected':''}>すべて</option>
-        <option value="verified" ${mpTripFilter.auth==='verified'?'selected':''}>🟢 GPS 記録</option>
-        <option value="manual" ${mpTripFilter.auth==='manual'?'selected':''}>⚪ 手動記録</option>
-        <option value="suspicious" ${mpTripFilter.auth==='suspicious'?'selected':''}>🟡 要確認 (降格)</option>
+        <option value="all" ${NORIRECO.mypage.state.mpTripFilter.auth==='all'?'selected':''}>すべて</option>
+        <option value="verified" ${NORIRECO.mypage.state.mpTripFilter.auth==='verified'?'selected':''}>🟢 GPS 記録</option>
+        <option value="manual" ${NORIRECO.mypage.state.mpTripFilter.auth==='manual'?'selected':''}>⚪ 手動記録</option>
+        <option value="suspicious" ${NORIRECO.mypage.state.mpTripFilter.auth==='suspicious'?'selected':''}>🟡 要確認 (降格)</option>
       </select>
     </div>
     <div class="mp-filter-row">
       <label class="mp-filter-lbl">🚆 種別</label>
       <select class="mp-filter-sel" id="mp-fil-cat" onchange="updateMpFilter('category',this.value)">
-        <option value="all" ${mpTripFilter.category==='all'?'selected':''}>すべて</option>
-        <option value="shinkansen" ${mpTripFilter.category==='shinkansen'?'selected':''}>新幹線</option>
-        <option value="limited_express" ${mpTripFilter.category==='limited_express'?'selected':''}>特急</option>
-        <option value="express" ${mpTripFilter.category==='express'?'selected':''}>急行</option>
-        <option value="rapid" ${mpTripFilter.category==='rapid'?'selected':''}>快速</option>
-        <option value="sleeper" ${mpTripFilter.category==='sleeper'?'selected':''}>寝台</option>
-        <option value="cruise_train" ${mpTripFilter.category==='cruise_train'?'selected':''}>クルーズ</option>
-        <option value="joyful_train" ${mpTripFilter.category==='joyful_train'?'selected':''}>観光列車</option>
-        <option value="steam" ${mpTripFilter.category==='steam'?'selected':''}>SL</option>
-        <option value="none" ${mpTripFilter.category==='none'?'selected':''}>列車指定なし</option>
+        <option value="all" ${NORIRECO.mypage.state.mpTripFilter.category==='all'?'selected':''}>すべて</option>
+        <option value="shinkansen" ${NORIRECO.mypage.state.mpTripFilter.category==='shinkansen'?'selected':''}>新幹線</option>
+        <option value="limited_express" ${NORIRECO.mypage.state.mpTripFilter.category==='limited_express'?'selected':''}>特急</option>
+        <option value="express" ${NORIRECO.mypage.state.mpTripFilter.category==='express'?'selected':''}>急行</option>
+        <option value="rapid" ${NORIRECO.mypage.state.mpTripFilter.category==='rapid'?'selected':''}>快速</option>
+        <option value="sleeper" ${NORIRECO.mypage.state.mpTripFilter.category==='sleeper'?'selected':''}>寝台</option>
+        <option value="cruise_train" ${NORIRECO.mypage.state.mpTripFilter.category==='cruise_train'?'selected':''}>クルーズ</option>
+        <option value="joyful_train" ${NORIRECO.mypage.state.mpTripFilter.category==='joyful_train'?'selected':''}>観光列車</option>
+        <option value="steam" ${NORIRECO.mypage.state.mpTripFilter.category==='steam'?'selected':''}>SL</option>
+        <option value="none" ${NORIRECO.mypage.state.mpTripFilter.category==='none'?'selected':''}>列車指定なし</option>
       </select>
     </div>
     <div class="mp-filter-row">
       <label class="mp-filter-lbl">⇅ 並び替え</label>
       <select class="mp-filter-sel" id="mp-fil-sort" onchange="updateMpFilter('sort',this.value)">
-        <option value="date_desc" ${mpTripFilter.sort==='date_desc'?'selected':''}>📅 乗車日 (新しい順)</option>
-        <option value="date_asc" ${mpTripFilter.sort==='date_asc'?'selected':''}>📅 乗車日 (古い順)</option>
-        <option value="stations_desc" ${mpTripFilter.sort==='stations_desc'?'selected':''}>🚉 訪問駅数 (多い順)</option>
-        <option value="minutes_desc" ${mpTripFilter.sort==='minutes_desc'?'selected':''}>⏱ 乗車時間 (長い順)</option>
-        <option value="recorded_desc" ${mpTripFilter.sort==='recorded_desc'?'selected':''}>📌 記録日 (新しい順)</option>
-        <option value="delay_desc" ${mpTripFilter.sort==='delay_desc'?'selected':''}>🐢 遅延 (多い順)</option>
+        <option value="date_desc" ${NORIRECO.mypage.state.mpTripFilter.sort==='date_desc'?'selected':''}>📅 乗車日 (新しい順)</option>
+        <option value="date_asc" ${NORIRECO.mypage.state.mpTripFilter.sort==='date_asc'?'selected':''}>📅 乗車日 (古い順)</option>
+        <option value="stations_desc" ${NORIRECO.mypage.state.mpTripFilter.sort==='stations_desc'?'selected':''}>🚉 訪問駅数 (多い順)</option>
+        <option value="minutes_desc" ${NORIRECO.mypage.state.mpTripFilter.sort==='minutes_desc'?'selected':''}>⏱ 乗車時間 (長い順)</option>
+        <option value="recorded_desc" ${NORIRECO.mypage.state.mpTripFilter.sort==='recorded_desc'?'selected':''}>📌 記録日 (新しい順)</option>
+        <option value="delay_desc" ${NORIRECO.mypage.state.mpTripFilter.sort==='delay_desc'?'selected':''}>🐢 遅延 (多い順)</option>
       </select>
     </div>
     <button class="mp-filter-reset" onclick="resetMpFilter()" title="フィルタをリセット">↺</button>
@@ -100,14 +100,14 @@ function buildTripFilterBar() {
 NORIRECO.mypage.buildTripFilterBar = buildTripFilterBar;
 
 function updateMpFilter(key, value) {
-  mpTripFilter[key] = value;
+  NORIRECO.mypage.state.mpTripFilter[key] = value;
   renderMpTripsSection();
 }
 window.updateMpFilter = updateMpFilter;
 NORIRECO.mypage.updateMpFilter = updateMpFilter;
 
 function resetMpFilter() {
-  mpTripFilter = { auth: 'all', period: 'all', category: 'all', sort: 'date_desc' };
+  NORIRECO.mypage.state.mpTripFilter = { auth: 'all', period: 'all', category: 'all', sort: 'date_desc' };
   renderMpTripsSection();
 }
 window.resetMpFilter = resetMpFilter;
@@ -120,50 +120,50 @@ function applyTripFilters(trips) {
   }
   const filtered = trips.filter(t => {
     // 認証
-    if (mpTripFilter.auth === 'verified' && !t.verified) return false;
-    if (mpTripFilter.auth === 'manual' && (t.verified || (t.source === 'gps_button' && !t.verified))) return false;
-    if (mpTripFilter.auth === 'suspicious') {
+    if (NORIRECO.mypage.state.mpTripFilter.auth === 'verified' && !t.verified) return false;
+    if (NORIRECO.mypage.state.mpTripFilter.auth === 'manual' && (t.verified || (t.source === 'gps_button' && !t.verified))) return false;
+    if (NORIRECO.mypage.state.mpTripFilter.auth === 'suspicious') {
       const downgraded = (typeof fraudIsDowngraded === 'function') ? fraudIsDowngraded(t) : (t.source === 'gps_button' && !t.verified);
       if (!downgraded) return false;
     }
     // 期間
     const d = t.date || '';
-    if (mpTripFilter.period !== 'all' && d) {
+    if (NORIRECO.mypage.state.mpTripFilter.period !== 'all' && d) {
       const today = new Date();
       const ty = today.getFullYear();
-      if (mpTripFilter.period === 'thisYear' && !d.startsWith(String(ty))) return false;
-      if (mpTripFilter.period === 'lastYear' && !d.startsWith(String(ty-1))) return false;
-      if (mpTripFilter.period === 'thisMonth') {
+      if (NORIRECO.mypage.state.mpTripFilter.period === 'thisYear' && !d.startsWith(String(ty))) return false;
+      if (NORIRECO.mypage.state.mpTripFilter.period === 'lastYear' && !d.startsWith(String(ty-1))) return false;
+      if (NORIRECO.mypage.state.mpTripFilter.period === 'thisMonth') {
         const ym = `${ty}-${String(today.getMonth()+1).padStart(2,'0')}`;
         if (!d.startsWith(ym)) return false;
       }
-      if (mpTripFilter.period === 'last7') {
+      if (NORIRECO.mypage.state.mpTripFilter.period === 'last7') {
         const cutoff = new Date(today.getTime() - 7*24*3600*1000);
         const tripDate = new Date(d);
         if (tripDate < cutoff) return false;
       }
     }
     // カテゴリ
-    if (mpTripFilter.category !== 'all') {
-      if (mpTripFilter.category === 'none') {
+    if (NORIRECO.mypage.state.mpTripFilter.category !== 'all') {
+      if (NORIRECO.mypage.state.mpTripFilter.category === 'none') {
         if (t.train_category) return false;
       } else {
-        if (t.train_category !== mpTripFilter.category) return false;
+        if (t.train_category !== NORIRECO.mypage.state.mpTripFilter.category) return false;
       }
     }
     return true;
   });
   // v182: ソート (デフォルト date_desc)
-  const cmp = _MP_SORT_COMPARATORS[mpTripFilter.sort] || _MP_SORT_COMPARATORS.date_desc;
+  const cmp = _MP_SORT_COMPARATORS[NORIRECO.mypage.state.mpTripFilter.sort] || _MP_SORT_COMPARATORS.date_desc;
   return [...filtered].sort(cmp);
 }
 NORIRECO.mypage.applyTripFilters = applyTripFilters;
 
 // v184: 旅程カードからメモ・遅延を後追い編集 ────────────────────
-// Supabase スキーマ未拡張のため、編集結果は localStorage と _mypageCache に書き戻すのみ。
+// Supabase スキーマ未拡張のため、編集結果は localStorage と NORIRECO.mypage.state._mypageCache に書き戻すのみ。
 // 旅程タブ・統計タブ「直近の旅程」を即時再描画して反映する。
 function openTripEditModal(tripId) {
-  const trip = (_mypageCache || []).find(t => t.id === tripId);
+  const trip = (NORIRECO.mypage.state._mypageCache || []).find(t => t.id === tripId);
   if (!trip) { alert('旅程が見つかりません'); return; }
   const idInp = document.getElementById('trip-edit-id');
   const delayHInp = document.getElementById('trip-edit-delay-h');
@@ -194,7 +194,7 @@ NORIRECO.mypage.closeTripEditModal = closeTripEditModal;
 function saveTripEdit() {
   const tripId = document.getElementById('trip-edit-id')?.value;
   if (!tripId) { closeTripEditModal(); return; }
-  const trip = (_mypageCache || []).find(t => t.id === tripId);
+  const trip = (NORIRECO.mypage.state._mypageCache || []).find(t => t.id === tripId);
   if (!trip) { alert('旅程が見つかりません'); closeTripEditModal(); return; }
 
   // v185: 時間+分 から delay_minutes (分) を算出
@@ -211,7 +211,7 @@ function saveTripEdit() {
   const newDelay = (dTotal > 0) ? Math.min(5999, dTotal) : null;
   const newNotes = (notesRaw || '').trim() || null;
 
-  // _mypageCache 内の trip を直接更新
+  // NORIRECO.mypage.state._mypageCache 内の trip を直接更新
   trip.delay_minutes = newDelay;
   trip.notes = newNotes;
 
@@ -249,7 +249,7 @@ NORIRECO.mypage.buildTripList = buildTripList;
 
 // ── GPS 後追い認証 ─────────────────────────────────────────────
 async function retroactivelyVerifyTrip(tripId) {
-  const trip = (_mypageCache || []).find(t => t.id === tripId);
+  const trip = (NORIRECO.mypage.state._mypageCache || []).find(t => t.id === tripId);
   if (!trip) { alert('旅程が見つかりません'); return; }
   if (!navigator.geolocation) { alert('このブラウザは GPS 非対応です'); return; }
 
