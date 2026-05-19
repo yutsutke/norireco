@@ -1820,6 +1820,119 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 51. v202 — ES Modules パイロット (案 β) **stage 2 着手**: 12-auth.js を `<script type="module">` 化 (2026-05-19)
+
+### 背景
+
+v195〜v201 で stage 1 (window 化) を完了し、cross-file shared state は全て `window.NORIRECO.<domain>.X` の object property になった。stage 2 は **各ファイルを `<script type="module">` に変換** する段階。v202 はその **最初のパイロット**: 最も影響範囲の小さい 12-auth.js を選定。
+
+### 12-auth を最初に選んだ理由
+
+| 観点 | 12-auth の特徴 |
+|---|---|
+| state 数 | 4 個 (最小) |
+| cross-file 参照 | 1 ファイル (13-mypage-common.js のみ) |
+| 関数 API consumer | 限定的 (HTML onclick 4 + classic script 3) |
+| render hot path | 外 (user interaction でのみ実行) |
+| 失敗時の影響 | ログインフローのみ、地図描画には無影響 |
+
+### 変更内容 (3 ファイル)
+
+#### 1. `noritetsu-map.html`
+
+```diff
+-<script src="js/12-auth.js"></script>
++<script type="module" src="js/12-auth.js"></script>
+```
+
+`type="module"` の効果:
+- **暗黙 strict mode** — `'use strict';` を明示せずとも strict mode
+- **暗黙 defer** — 全 classic script の評価完了後、`DOMContentLoaded` 直前に評価
+- **モジュールスコープ** — top-level `function` / `const` / `let` は globalThis に乗らない
+- **`import.meta` / `import()` 利用可** — 将来 stage 3 でモジュール間 import に使う
+
+#### 2. `js/12-auth.js` 末尾に追加した window 公開
+
+stage 1 で既に 4 関数を window に出していた:
+- `openAuthModal` / `closeAuthModal` / `handleAuthMagicLinkSubmit` / `handleAuthGoogleClick` (HTML onclick 用)
+
+stage 2 で新たに必要になった 4 関数:
+- `initAuth` — 10-init.js (classic) から `typeof initAuth === 'function' && initAuth()` で呼ばれる
+- `currentUserId` — 13-mypage-common.js / 13b-trips.js (classic) の `currentUserId()` 呼び出し用
+- `signOutUser` — 13-mypage-common.js の HTML onclick `"...if(confirm(...))signOutUser()"` 用
+- `authBearerToken` — 将来 05-supabase-data.js 等の認証ヘッダ用 (defensive 公開)
+
+#### 3. `sw.js` CACHE_VERSION v201 → v202
+
+### 評価順序 (重要)
+
+`type="module"` は暗黙 defer のため、HTML 上の `<script src>` の位置に関係なく、**全 classic script の後** に評価される。新しい順序:
+
+```
+1-11. 01-constants ... 11-fraud-detection (classic, 順次同期実行)
+12-17. 13-mypage-common, 13a-stats, 13b-trips, 13c-lines, 09-tabs-stats, 10-init (classic)
+        ↑ この時点で 10-init は `window.addEventListener('load', () => initAuth())` を登録
+        ↑ load event 自体はまだ発火していない
+18. 12-auth (module) — DOMContentLoaded 直前に評価、`window.initAuth = initAuth` 等の bridge 確立
+19. DOMContentLoaded
+20. load event 発火 → `initAuth()` が globalThis 経由で呼ばれて auth 起動
+```
+
+つまり、stage 1 で全 state を `NORIRECO.<domain>` に出しておいた**おかげで**、評価順がずれても破綻しない:
+- 13-mypage-common (classic, step 12) が評価される時点で、12-auth はまだ未評価。だが `NORIRECO.auth` への参照は `renderMypage()` 関数本体内 (event-driven) なので、実際にアクセスされるのは load 後 = module 評価後 → OK
+- `function renderMypage()` のような関数本体は **クロージャ作成時には未評価**、呼び出し時に初めて評価される。これが lazy evaluation のおかげで stage 2 が無傷で済む理由
+
+stage 1 が正しく完了していれば、stage 2 は **script tag 1 行の変更** で済む — これが案 β の最大の利点。
+
+### classic ↔ module 識別子可視性の確認
+
+stage 2 で破綻し得るパターンを事前に検証:
+
+| 参照元 | 識別子 | 参照先 | 可視性 |
+|---|---|---|---|
+| 12-auth (module) | `SUPABASE_URL` / `SUPABASE_KEY` | 05-supabase-data (classic, `const`) | ✅ Global Lexical Environment 経由で bare 参照可 (classic `const` は globalThis property ではないが Global Lexical Env には住む) |
+| 12-auth (module) | `renderMypage` | 13-mypage-common (classic, `function`) | ✅ `function` 宣言は globalThis property になるので bare 参照可 |
+| 12-auth (module) | `supabase` (Supabase JS SDK) | CDN global | ✅ window property |
+| classic | `initAuth` | 12-auth (module, function 宣言) | ❌→✅ デフォルトでは見えない。`window.initAuth = initAuth` 明示で解決 |
+
+### 注意: `npm run check` の制約
+
+`scripts/syntax-check.js` は `new Function(src)` でパースする = classic script context。今回 12-auth.js は **module syntax (`export` / `import`) を一切使っていない** ため、`new Function` でもパースが通る (18/18 OK)。
+
+将来 `export const auth = NORIRECO.auth;` を追加すると syntax-check が落ちる。その時は syntax-check.js を `node --check --input-type=module` ベースに切り替える必要がある (v202 では未着手、`export` 不要なため)。
+
+### 機能リグレッション検証
+
+実機検証ポイント:
+- [ ] ログインボタンをクリック → モーダル表示 (`openAuthModal` HTML onclick)
+- [ ] Magic Link 送信 (`handleAuthMagicLinkSubmit`)
+- [ ] Google OAuth (`handleAuthGoogleClick`)
+- [ ] アバター表示 → ログアウト confirm → 実行 (`signOutUser` inline onclick)
+- [ ] マイページ表示時に `currentUser.email` 取得 (13-mypage-common.js `NORIRECO.auth.currentUser`)
+- [ ] OAuth リダイレクト後の PKCE code 交換 (`initAuth` 内、URL に `code=` パラメータがある時)
+
+### Stage 2 の今後 (v203+)
+
+次のモジュール化対象は **影響範囲の小さい順** に進める:
+
+| 候補 | state 数 | cross-file 参照 | 注意点 |
+|---|---|---|---|
+| 11-fraud-detection | 0 (定数のみ) | 1 (07 が `fraudAssessTrip` 呼出) | 関数 export だけ |
+| 13c-lines | 0 | 0 (09 の renderList を呼ぶだけ) | 最小 |
+| 03-characters | 1 (`OWNED_CHARACTERS_KEY`) | 多数 (キャラ獲得は全体に絡む) | 中規模 |
+| 06-map-leaflet | 3 (`NORIRECO.map.X`) | 全体 (Leaflet インスタンス) | 大規模、最後 |
+| 02-data-loaders | 11 (`NORIRECO.data.X`) | 全体 (LINES 等) | 最大、最後 |
+
+`type="module"` 化したファイルが増えても、**未変換ファイル間で `NORIRECO.<domain>` の bridge を介してアクセス**できるので、incremental に進められる。
+
+### 教訓
+
+- **stage 1 が正しく完了していれば、stage 2 は script tag 1 行の変更で済む** — windowization の投資はこの瞬間に回収される
+- module-local 関数の **window 明示公開** を忘れると、HTML onclick / classic script からの呼び出しが silent fail (undefined function) する。事前に「外から呼ばれる関数リスト」を grep で洗い出すのが重要
+- `npm run check` は module syntax を**まだ通せない**。`export` 追加は v203+ で syntax-check 拡張と同時に
+
+---
+
 ## 50. v201 — ES Modules パイロット (案 β) stage 1 **完結**: mypage state を `window.NORIRECO.mypage.state` に集約 (2026-05-19)
 
 ### 背景

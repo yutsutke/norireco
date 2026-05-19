@@ -4,10 +4,18 @@
 // 初回ログイン時に user_id=NULL の既存レコードを自分の uid に backfill
 // ══════════════════════════════════════════════════════════════
 
-// v195 ES Modules パイロット (案 β) — 状態を window.NORIRECO.auth に集約。
-// stage 2 (type=module 化) では `export const auth` に置き換え、この
-// `window.NORIRECO.auth = auth` ブリッジで classic script consumer
-// (13-mypage-common.js 他) との互換を保つ。
+// v195 ES Modules パイロット (案 β) stage 1: 状態を window.NORIRECO.auth に集約。
+// v202 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化 (noritetsu-map.html)。
+//
+// stage 2 の影響:
+// - 暗黙 strict mode (use strict 明示と同じ)
+// - 暗黙 defer (全 classic script の後に評価)
+// - top-level `function` は **module-local**、window には乗らない
+//   → HTML onclick / classic script 呼び出し用に末尾で `window.X = X` を明示
+//
+// state は v195 から既に NORIRECO.auth bridge にあるので、classic script consumer
+// (13-mypage-common.js 他) は無変更で動く。SUPABASE_URL / SUPABASE_KEY (classic の
+// top-level const) は Global Lexical Environment 経由でモジュールから bare 参照可。
 window.NORIRECO = window.NORIRECO || {};
 window.NORIRECO.auth = window.NORIRECO.auth || {
   supabaseAuthClient: null,    // Supabase JS SDK client (auth 専用)
@@ -246,7 +254,17 @@ function setAuthMsg(kind, text) {
   msg.className = `auth-msg auth-msg-${kind}`;
 }
 
+// HTML onclick / classic script consumer 用に window へ公開。
+// module-scoped function は globalThis に自動登録されないため、ここで明示的に bridge する。
 window.openAuthModal = openAuthModal;
 window.closeAuthModal = closeAuthModal;
 window.handleAuthMagicLinkSubmit = handleAuthMagicLinkSubmit;
 window.handleAuthGoogleClick = handleAuthGoogleClick;
+// v202: stage 2 (type=module 化) で新たに必要になった window 公開。
+// initAuth は 10-init.js (classic) から `typeof initAuth === 'function' && initAuth()` で呼ばれる
+// currentUserId は 13-mypage-common.js / 13b-trips.js (classic) から、signOutUser は 13-mypage-common
+// の HTML onclick から呼ばれる。
+window.initAuth = initAuth;
+window.currentUserId = currentUserId;
+window.signOutUser = signOutUser;
+window.authBearerToken = authBearerToken;  // 将来 05-supabase-data.js 等の認証ヘッダ用

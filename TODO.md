@@ -4,14 +4,14 @@
 詳しい仕様や経緯は `CHANGELOG.md`（更新履歴詳細）、ビジネス背景は [Notion 開発ノート](https://www.notion.so/35b71b458b63818494afe7c1ab917ca5)。
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v201 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v202 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13-..` 機能別分割（v131〜v138、`CHANGELOG.md §20, §21` 参照）
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
 **マイページ**: 3 サブタブ (統計 / 旅程 / 路線)、詳細統計 16 種、期間指定で過去状態 (地図ピル「〜月指定」)
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **保存ボタン**: 記録種別に応じて「💾 手動記録で保存する」/「💾 GPS 記録で保存する」に動的切替（v176）
-**直近の作業**: **ES Modules パイロット (案 β) stage 1 完結** — mypage state (`_mypageCache` / `mpActiveSection` / `mpTripFilter`) を `NORIRECO.mypage.state` に集約、3 ファイル 61 箇所（v201）/ data 11 state（v200）/ trains 6（v199）/ gps 12（v198）/ record 7（v197）/ map 3（v196）/ auth 4（v195）。**累計 46 state、7 commit、~450 箇所**移行。案 β stage 2（`<script type="module">` 化）の準備完了
+**直近の作業**: **ES Modules パイロット (案 β) stage 2 着手** — 12-auth.js を `<script type="module">` 化、`initAuth` / `currentUserId` / `signOutUser` / `authBearerToken` の window 公開を追加（v202）/ stage 1 完結 mypage state（v201）/ data 11 state（v200）他 stage 1 全 7 ドメイン (v195〜v201、累計 46 state)
 
 ---
 
@@ -83,10 +83,17 @@
     - 構造: `NORIRECO.mypage.state.X` (v190 で確立済の関数 namespace `NORIRECO.mypage.fn` と並列の `.state` サブ namespace に隔離)
     - 累計移行 state 数: **46 個** (auth 4 + map 3 + record 7 + gps 12 + trains 6 + data 11 + mypage 3)
     - **案 β stage 1 完結** — classic script 共有 lexical scope への依存ゼロ達成
-  - **次セッション v202+ 候補**:
-    1. **案 β stage 2 パイロット**: 12-auth を `<script type="module">` 化。手順: `<script type="module" src>` への変更 + ファイル末尾に `export const auth = NORIRECO.auth` bridge 追加 + `initAuth()` の `DOMContentLoaded` 呼び出しタイミング調整 + SW (`sw.js`) の Network-First が `type="module"` でも維持できるか実機検証
-    2. **stage 2 を data domain に広げる**: 最大規模 (15 ファイル参照) なので深掘りすると stage 2 全体の難所を洗い出せる
-    3. Notion §2.4 布石⑤ Supabase 呼び出しを `NORIRECO.api.xxx` ラッパー化
+  - **v202 で完了済 (案 β stage 2 パイロット — 12-auth を type=module 化)**:
+    - ✅ `<script src="js/12-auth.js">` → `<script type="module" src="js/12-auth.js">` (noritetsu-map.html)
+    - ✅ window 公開を追加: `initAuth` / `currentUserId` / `signOutUser` / `authBearerToken` (module-local function は globalThis に乗らないため明示 bridge)
+    - ✅ stage 1 で確立した `window.NORIRECO.auth` bridge は無変更で動く (renderMypage 内の `NORIRECO.auth.currentUser` は event-driven なので評価順ズレに耐性)
+    - ⚠️ `export` は **追加せず** — `npm run check` の `new Function(src)` パースが module syntax を通せないため、stage 3 で syntax-check 拡張と同時に追加予定
+    - 教訓: stage 1 が正しく完了していれば stage 2 は script tag 1 行の変更で済む。windowization の投資の回収瞬間
+  - **次セッション v203+ 候補 (案 β stage 2 拡大)**:
+    1. **影響範囲の小さい順に module 化**: 11-fraud-detection (state 0) → 13c-lines (関数 1 個だけ) → 03-characters (state 1) → 各 NORIRECO.<domain> 担当ファイル (06/02/...)
+    2. `scripts/syntax-check.js` を `node --check --input-type=module` ベースに拡張 (module syntax 対応) → `export const auth = NORIRECO.auth` を 12-auth に追加可能に
+    3. **実機検証**: ログインフロー (Magic Link / Google OAuth / signOut / 後追い認証) を実機 (PC / iPhone PWA) で確認
+    4. Notion §2.4 布石⑤ Supabase 呼び出しを `NORIRECO.api.xxx` ラッパー化
   - **安全装置**: 「動くマップが画面に出る」を毎ステップで確認、各段階を独立コミット (戻せる)。Cloudflare Pages 移行は別タスクに切り出し、今は GitHub Pages のままで完結させる
   - 詳細仕様: 2.4 コード構成（js/01〜13c）参照
 
