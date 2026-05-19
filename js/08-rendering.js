@@ -207,17 +207,15 @@ const SUPER_MEGA_STATIONS = new Set([
 // bonus=-4 → tier -2 〜 -3 となり自然に高ズーム遅出しになる)。
 
 // 駅の重要度ティア
-// tier 6: 三大都市中心 (東京・名古屋・新大阪)
-// tier 5: 7+路線(新宿・渋谷・池袋・横浜・大宮等の超ターミナル)
-// tier 4: 4-6路線(主要ターミナル)
-// tier 3: 3路線(中規模junction)
-// tier 2: 2路線(小junction)
+// v231: 都内の中間ターミナル多発によるクラッタを抑えるため、
+// 7+/4-6/3 系統の tier を圧縮。SUPER_MEGA とそれ以外の多系統駅で 2 段階差を確保。
+// tier 6: 三大都市中心 (東京・名古屋・新大阪) + 政令市中心 (札幌・仙台・博多・広島)
+// tier 4: 7+路線(新宿・渋谷・池袋・横浜・大宮等の超ターミナル)
+// tier 2: 2-6路線 (中規模 junction / 小 junction を統合)
 // tier 1: 1路線(通常駅)
 function stationTier(nLines, name) {
   if (name && SUPER_MEGA_STATIONS.has(name)) return 6;
-  if (nLines >= 7) return 5;
-  if (nLines >= 4) return 4;
-  if (nLines >= 3) return 3;
+  if (nLines >= 7) return 4;
   if (nLines >= 2) return 2;
   return 1;
 }
