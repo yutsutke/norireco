@@ -18,11 +18,14 @@
 // top-level const) は Global Lexical Environment 経由でモジュールから bare 参照可。
 //
 // v224 ES Modules stage 3: 3 関数を `export` 公開へ移行。
+// v225: 13-mypage-common.renderMypage を import 化。
 //   - initAuth (10-init から呼出)
 //   - currentUserId (03/07/09/13-mypage-common から)
 //   - authBearerToken (09/13-mypage-common/13b から)
 // 以下は window bridge 維持 (HTML onclick または HTML 文字列生成内 onclick から呼出):
 //   - openAuthModal / closeAuthModal / handleAuthMagicLinkSubmit / handleAuthGoogleClick / signOutUser
+import { renderMypage } from './13-mypage-common.js';
+
 window.NORIRECO = window.NORIRECO || {};
 window.NORIRECO.auth = window.NORIRECO.auth || {
   supabaseAuthClient: null,    // Supabase JS SDK client (auth 専用)
@@ -111,7 +114,7 @@ function handleAuthChange(event, session) {
   }
   // マイページが開いていれば再描画
   const mypage = document.getElementById('pane-mypage');
-  if (mypage && mypage.classList.contains('active') && typeof renderMypage === 'function') {
+  if (mypage && mypage.classList.contains('active')) {
     setTimeout(() => renderMypage(), 100);
   }
 }

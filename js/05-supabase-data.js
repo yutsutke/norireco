@@ -6,8 +6,12 @@
 // closeAllMapCtrl) に加え、stage 2 で必要になった bridge を末尾に集約。
 //
 // v223 ES Modules stage 3: 03-characters.runCharacterGrantCheck を import 化。
+// v225: 08-rendering の drawLines / updateOverlays を import 化。
+// v225: 13-mypage-common.renderMypage を import 化。
 // ══════════════════════════════════════════════
 import { runCharacterGrantCheck } from './03-characters.js';
+import { drawLines, updateOverlays } from './08-rendering.js';
+import { renderMypage } from './13-mypage-common.js';
 
 // 静的フォールバック（localStorageが空の端末用）
 const RIDDEN_SEGS_STATIC=[
@@ -117,8 +121,8 @@ function toggleStopTypeFilter(stype) {
     allLayers.length = 0;
     dotLayerRef.clearLayers();
     if (typeof labelLayerRef !== 'undefined' && labelLayerRef) labelLayerRef.clearLayers();
-    if (typeof drawLines === 'function') drawLines();
-    if (typeof updateOverlays === 'function') updateOverlays();
+    drawLines();
+    updateOverlays();
   }
 }
 window.toggleStopTypeFilter = toggleStopTypeFilter;
@@ -208,7 +212,7 @@ function _lastDayOfMonth(yyyymm) {
   return `${m[1]}-${m[2]}-${String(last).padStart(2,'0')}`;
 }
 
-function filterTripsByDate(trips) {
+export function filterTripsByDate(trips) {
   const f = window._tripDateFilter || { mode: 'all' };
   if (!f || f.mode === 'all') return trips;
   const y = new Date().getFullYear();
@@ -230,7 +234,7 @@ function filterTripsByDate(trips) {
   });
 }
 
-function updateDateFilterUI() {
+export function updateDateFilterUI() {
   const f = window._tripDateFilter || { mode: 'all' };
   document.querySelectorAll('.dfilter-chip').forEach(b => {
     b.classList.toggle('active', b.dataset.mode === f.mode);
@@ -276,19 +280,19 @@ function applyDateFilter() {
     allLayers.length = 0;
     dotLayerRef.clearLayers();
     if (typeof labelLayerRef !== 'undefined' && labelLayerRef) labelLayerRef.clearLayers();
-    if (typeof drawLines === 'function') drawLines();
-    if (typeof updateOverlays === 'function') updateOverlays();
+    drawLines();
+    updateOverlays();
   }
 }
 
-function setDateFilter(mode, opts = {}) {
+export function setDateFilter(mode, opts = {}) {
   window._tripDateFilter = Object.assign({ mode }, opts);
   saveDateFilter(window._tripDateFilter);
   updateDateFilterUI();
   applyDateFilter();
   // マイページが開いていれば再描画 (期間フィルタを全タブに反映)
   const mp = document.getElementById('pane-mypage');
-  if (mp && mp.classList.contains('active') && typeof renderMypage === 'function') {
+  if (mp && mp.classList.contains('active')) {
     renderMypage();
   }
 }
@@ -385,7 +389,7 @@ function applyUntilMonthFilter() {
 }
 
 // Supabaseから全旅程を取得して地図を更新
-async function syncFromSupabase() {
+export async function syncFromSupabase() {
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/norireco_trips?select=*&order=created_at.asc`,
@@ -440,14 +444,14 @@ function loadRiddenSegsFromStorage() {
 // RIDDEN_SEGS = localStorage優先、なければ静的データ（可変配列）
 const RIDDEN_SEGS = loadRiddenSegsFromStorage() || [...RIDDEN_SEGS_STATIC];
 
-function getStorageStats() {
+export function getStorageStats() {
   try {
     const trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
     return { count: trips.length, source: trips.length > 0 ? 'local' : 'static' };
   } catch(e) { return { count: 0, source: 'static' }; }
 }
 
-function updateStorageUI(count, source) {
+export function updateStorageUI(count, source) {
   const lbl = document.getElementById('storage-lbl');
   const cnt = document.getElementById('storage-count');
   if (!lbl || !cnt) return;
@@ -509,7 +513,7 @@ function toSvg(lat,lon){
 // 乗車済み駅セット（rebuildRiddenStations()で構築される）
 const riddenSt={};
 
-function lStats(line){const t=line.stations.length,r=riddenSt[line.id]?riddenSt[line.id].size:0;return{t,r,pct:t>0?Math.round(r/t*100):0};}
+export function lStats(line){const t=line.stations.length,r=riddenSt[line.id]?riddenSt[line.id].size:0;return{t,r,pct:t>0?Math.round(r/t*100):0};}
 
 // 運行系統の統計 (segments を全部辿って合計)
 function serviceStats(serviceId) {
@@ -548,7 +552,7 @@ function serviceColor(serviceId) {
   return '#888';
 }
 // 全体統計: NORIRECO.data.SERVICE_LINES が構築済みならそちらを優先、未構築なら N02 物理路線で代用
-function gStats(){
+export function gStats(){
   if (NORIRECO.data.SERVICE_LINES && NORIRECO.data.SERVICE_LINES.length > 0) return NORIRECO.serviceLines.globalStats();
   let ts=0,rt=0,la=0,ld=0;
   NORIRECO.data.LINES.forEach(l=>{const s=lStats(l);ts+=s.t;rt+=s.r;if(s.r>0)la++;if(s.pct===100)ld++;});
@@ -567,8 +571,10 @@ window.RIDDEN_SEGS = RIDDEN_SEGS;
 window.riddenSt = riddenSt;
 
 // v215 stage 2: classic / module 両方から bare 呼出される関数を window 公開
-window.filterTripsByDate = filterTripsByDate;
-window.updateDateFilterUI = updateDateFilterUI;
+// v225 stage 3: filterTripsByDate / updateDateFilterUI / syncFromSupabase /
+// getStorageStats / updateStorageUI / lStats / gStats は `export` 経由に移行。
+// setDateFilter は HTML onclick (noritetsu-map.html dfilter-chip) と 13-mypage-common HTML 文字列で
+// 使われるため window 維持 + export 両建て。toggleCustomDateFilter 等は HTML onclick のため window 維持。
 window.setDateFilter = setDateFilter;
 window.toggleCustomDateFilter = toggleCustomDateFilter;
 window.closeCustomDateFilter = closeCustomDateFilter;
@@ -576,8 +582,3 @@ window.applyCustomDateFilter = applyCustomDateFilter;
 window.toggleUntilMonthFilter = toggleUntilMonthFilter;
 window.closeUntilMonthFilter = closeUntilMonthFilter;
 window.applyUntilMonthFilter = applyUntilMonthFilter;
-window.syncFromSupabase = syncFromSupabase;
-window.getStorageStats = getStorageStats;
-window.updateStorageUI = updateStorageUI;
-window.lStats = lStats;
-window.gStats = gStats;

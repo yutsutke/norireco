@@ -19,6 +19,8 @@
 // ══════════════════════════════════════════════════════════════
 import { fraudIsDowngraded } from './11-fraud-detection.js';
 import { distMeters } from './03-characters.js';
+import { renderStats } from './09-tabs-stats.js';
+import { tripCardHtml } from './13-mypage-common.js';
 
 // ── 📊 統計セクション ──────────────────────────────────────────
 function renderMpStatsSection() {
@@ -27,7 +29,7 @@ function renderMpStatsSection() {
   const statsDiv = document.getElementById('stats-content');
   if (!statsDiv) return;
   statsDiv.innerHTML = '';
-  try { if (typeof renderStats === 'function') renderStats(); } catch(e) { console.warn('[マイページ] renderStats:', e); }
+  try { renderStats(); } catch(e) { console.warn('[マイページ] renderStats:', e); }
 }
 NORIRECO.mypage.renderMpStatsSection = renderMpStatsSection;
 

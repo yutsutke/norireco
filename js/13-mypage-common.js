@@ -19,6 +19,8 @@
 // ══════════════════════════════════════════════════════════════
 import { fraudIsDowngraded } from './11-fraud-detection.js';
 import { currentUserId, authBearerToken } from './12-auth.js';
+import { renderList } from './09-tabs-stats.js';
+import { filterTripsByDate } from './05-supabase-data.js';
 
 // ── NORIRECO 名前空間の初期化 ──────────────────────────────────
 window.NORIRECO = window.NORIRECO || {};
@@ -51,7 +53,7 @@ NORIRECO.mypage.state = NORIRECO.mypage.state || {
 };
 const MP = NORIRECO.mypage.state;
 
-async function renderMypage() {
+export async function renderMypage() {
   const c = document.getElementById('mypage-content');
   if (!c) return;
   c.innerHTML = '';
@@ -138,7 +140,7 @@ async function renderMypage() {
   if (pinned) {
     pinned.innerHTML = '';
     if (Array.isArray(NORIRECO.data.SERVICE_LINES) && NORIRECO.data.SERVICE_LINES.length > 0) {
-      const tripsForCards = (typeof filterTripsByDate === 'function') ? filterTripsByDate(trips) : trips;
+      const tripsForCards = filterTripsByDate(trips);
       pinned.appendChild(NORIRECO.mypage.buildCompletionCards(tripsForCards));
     } else {
       pinned.innerHTML = `<div class="mp-empty-s" style="padding:14px">⚠ 営業系統マスターの読込に失敗しました</div>`;
@@ -147,7 +149,7 @@ async function renderMypage() {
 
   applyMpSection();
 }
-window.renderMypage = renderMypage;
+// v225 stage 3: renderMypage は `export` 経由に移行。NORIRECO 名前空間登録は互換のため残置。
 NORIRECO.mypage.renderMypage = renderMypage;
 
 // 期間フィルタが有効ならバナー表示 (今年/去年/〜月指定/カスタム)
@@ -181,7 +183,7 @@ function renderMpTimeMachineBanner() {
   banner.className = cls;
   banner.innerHTML = `
     ${label}
-    <button class="mp-tm-banner-clear" onclick="if(typeof setDateFilter==='function')setDateFilter('all')">↺ 全期間に戻す</button>
+    <button class="mp-tm-banner-clear" onclick="setDateFilter('all')">↺ 全期間に戻す</button>
   `;
   // サブタブ nav の直前に挿入
   const subNav = c.querySelector('.mp-subtab-nav');
@@ -202,7 +204,7 @@ function switchMpSection(name) {
 window.switchMpSection = switchMpSection;
 NORIRECO.mypage.switchMpSection = switchMpSection;
 
-function applyMpSection() {
+export function applyMpSection() {
   // 旧 'timemachine' 選択を 'stats' にフォールバック (タイムマシン廃止 v174)
   if (MP.mpActiveSection === 'timemachine') MP.mpActiveSection = 'stats';
   // サブタブ activeクラス
@@ -221,14 +223,14 @@ function applyMpSection() {
   setTimeout(() => {
     if (showStats) { NORIRECO.mypage.renderMpStatsSection(); }
     if (showTrips) NORIRECO.mypage.renderMpTripsSection();
-    if (showLines) { try { if (typeof renderList === 'function') renderList(); } catch(e) {} }
+    if (showLines) { try { renderList(); } catch(e) {} }
   }, 30);
 }
 NORIRECO.mypage.applyMpSection = applyMpSection;
 
 // ── 共通: 旅程タブのソート比較関数 (統計タブ「直近の旅程」のソートとも共有想定) ──
 // v182: ソートキー (MP.mpTripFilter.sort) ごとの比較関数
-const _MP_SORT_COMPARATORS = {
+export const _MP_SORT_COMPARATORS = {
   date_desc: (a, b) => (b.date || '').localeCompare(a.date || ''),
   date_asc: (a, b) => (a.date || '').localeCompare(b.date || ''),
   stations_desc: (a, b) => (b.total_stations || 0) - (a.total_stations || 0),
@@ -241,7 +243,7 @@ NORIRECO.mypage._MP_SORT_COMPARATORS = _MP_SORT_COMPARATORS;
 
 // 単一 trip カードの HTML を生成 (旅程タブ・統計タブ「直近の旅程」両方で使用)
 // v182: 「直近の旅程」表示のため buildTripList のループ本体をここに抽出
-function tripCardHtml(trip) {
+export function tripCardHtml(trip) {
   let badge = '<span class="mp-badge manual" title="手動記録 (自己申告)">⚪ 手動記録</span>';
   if (trip.verified) {
     badge = '<span class="mp-badge verified" title="GPS 記録 (認証済)">🟢 GPS 記録</span>';
@@ -340,7 +342,7 @@ function tripCardHtml(trip) {
 NORIRECO.mypage.tripCardHtml = tripCardHtml;
 
 // ── トースト ──────────────────────────────────────────────────
-function showMypageToast(text, kind) {
+export function showMypageToast(text, kind) {
   let el = document.getElementById('mp-toast');
   if (!el) {
     el = document.createElement('div');
@@ -382,8 +384,5 @@ NORIRECO.mypage.isTimeMachineActive = isTimeMachineActive;
 // v207 stage 2 (type=module 化) で必要になった window bridge。
 // 13a-stats / 13b-trips (module) や 05-supabase / 09-tabs-stats (classic) からの
 // bare 参照を支えるため明示公開。
-window.applyMpSection = applyMpSection;
-window.showMypageToast = showMypageToast;
-window.tripCardHtml = tripCardHtml;
-window.isTimeMachineActive = isTimeMachineActive;
-window._MP_SORT_COMPARATORS = _MP_SORT_COMPARATORS;
+// v225 stage 3: applyMpSection / showMypageToast / tripCardHtml / _MP_SORT_COMPARATORS は
+// `export` 経由に移行。isTimeMachineActive は 13-common 内のみで使われるため bridge 撤去。

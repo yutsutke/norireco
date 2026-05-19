@@ -6,8 +6,19 @@
 // 末尾で 10 個の window bridge を追加 (07/08/04b など module/classic 双方からの bare 呼出に対応)。
 //
 // v223 ES Modules stage 3: 03-characters の 3 関数を import 化。
+// v225: 10 関数を `export` 公開へ移行 (window bridge 撤去)。HTML onclick 用 5 関数
+//   (cycleLocationMode / selectNearestCand / cancelRecord / startRecordFromNearest /
+//   pickStationCharacter) は window bridge 維持。consumer (07/08) は import で取り込む。
+// v225: 07-record-mode の 4 関数を import 化。
 // ══════════════════════════════════════════════
 import { distMeters, isCharacterOwned, isCharacterAvailable } from './03-characters.js';
+import {
+  toggleRecordMode,
+  onRecordStationClick,
+  showRecordToast,
+  redrawAllLinesAfterTripChange,
+} from './07-record-mode.js';
+import { openCharModal, closeCharModal } from './08-rendering.js';
 
 // v198 ES Modules パイロット (案 β) — 状態を window.NORIRECO.gps に集約。
 // 外部 (07) からは NORIRECO.gps.X のフルパス、内部は G.X の短縮形。
@@ -28,7 +39,7 @@ NORIRECO.gps = NORIRECO.gps || {
 };
 const G = NORIRECO.gps;
 
-function cycleLocationMode() {
+export function cycleLocationMode() {
   G.locationMode = (G.locationMode + 1) % 3;
   if (G.locationMode === 0) {
     stopLocationTracking();
@@ -83,7 +94,7 @@ function startLocationTracking() {
   );
 }
 
-function stopLocationTracking() {
+export function stopLocationTracking() {
   if (G.locationWatchId) {
     navigator.geolocation.clearWatch(G.locationWatchId);
     G.locationWatchId = null;
@@ -97,7 +108,7 @@ function stopLocationTracking() {
 // 最寄駅パネル (Phase 2) — 候補リスト
 // G.nearestCandidates / G.nearestPickedIdx は NORIRECO.gps に集約済み (v198)
 
-function findNearestStations(lat, lon, maxRangeM, maxCount) {
+export function findNearestStations(lat, lon, maxRangeM, maxCount) {
   if (!NORIRECO.data.MERGED_STATIONS || NORIRECO.data.MERGED_STATIONS.length === 0) return [];
   const candidates = [];
   for (const ms of NORIRECO.data.MERGED_STATIONS) {
@@ -109,11 +120,11 @@ function findNearestStations(lat, lon, maxRangeM, maxCount) {
   return candidates.slice(0, maxCount);
 }
 
-function formatDist(meters) {
+export function formatDist(meters) {
   return meters < 1000 ? `${Math.round(meters)} m` : `${(meters/1000).toFixed(1)} km`;
 }
 
-function updateNearestStationPanel(lat, lon) {
+export function updateNearestStationPanel(lat, lon) {
   const panel = document.getElementById('nearest-station-panel');
   if (!panel) return;
   const selectModeEl = document.getElementById('ns-mode-select');
@@ -191,7 +202,7 @@ function hideNearestStationPanel() {
 }
 
 // 記録中サマリの描画 (最寄駅パネルの記録中モード内)
-function renderRecordingSummary() {
+export function renderRecordingSummary() {
   const el = document.getElementById('ns-recording-summary');
   if (!el) return;
   if (!NORIRECO.record.selection || NORIRECO.record.selection.length === 0) {
@@ -299,7 +310,7 @@ function removeUserLocationMarker() {
   }
 }
 
-function updateLocationButton() {
+export function updateLocationButton() {
   const btn = document.getElementById('location-fab');
   if (!btn) return;
   btn.classList.remove('on', 'follow');
@@ -315,7 +326,7 @@ function updateLocationButton() {
 }
 
 // この駅で獲得可能なキャラ一覧 (locked + 期間内 + obtainable_at 一致)
-function getObtainableCharactersAt(stationName) {
+export function getObtainableCharactersAt(stationName) {
   if (!NORIRECO.data.charModeOn) return [];
   const result = [];
   for (const id in NORIRECO.data.CHARACTERS) {
@@ -341,7 +352,7 @@ function makeObtainableIndicator(count) {
 }
 
 // 全駅をスキャンして、獲得可能キャラがある駅に ✨ インジケータを配置
-function drawObtainableIndicators() {
+export function drawObtainableIndicators() {
   if (!NORIRECO.data.charModeOn) return;
   if (!NORIRECO.data.MERGED_STATIONS || !NORIRECO.data.MERGED_STATIONS.length) return;
 
@@ -391,7 +402,7 @@ function drawObtainableIndicators() {
 
 // 駅ごとのキャラ選択 (localStorage 永続化)
 const STATION_CHAR_PICK_KEY = 'norireco_station_char_pick';
-function getStationCharacterChoice(stationName) {
+export function getStationCharacterChoice(stationName) {
   try {
     const data = JSON.parse(localStorage.getItem(STATION_CHAR_PICK_KEY) || '{}');
     return data[stationName] || null;
@@ -406,7 +417,7 @@ function setStationCharacterChoice(stationName, charId) {
 }
 
 // 駅の代表キャラを取得 (所持済み中からユーザー選択優先)
-function getStationCharacter(stationName) {
+export function getStationCharacter(stationName) {
   if (!NORIRECO.data.charModeOn) return null;
   const list = NORIRECO.data.stationCharMap.get(stationName);
   if (!list || !list.length) return null;
@@ -425,9 +436,7 @@ function getStationCharacter(stationName) {
 function pickStationCharacter(stationName, charId) {
   setStationCharacterChoice(stationName, charId);
   closeCharModal();
-  if (typeof redrawAllLinesAfterTripChange === 'function') {
-    redrawAllLinesAfterTripChange();
-  }
+  redrawAllLinesAfterTripChange();
 }
 // ── データローダー (loadMergedStations / loadServiceLinesMaster / loadLines) は
 // v191 で 02-data-loaders.js に移管された。NORIRECO.data.SERVICE_LINES_MASTER / NORIRECO.data.SERVICE_LINES /
@@ -443,15 +452,7 @@ function pickStationCharacter(stationName, charId) {
 // として公開。dead code だった resolveLineId はこのとき削除。
 
 // v216 stage 2: 07 (classic) / 08 (module) / 04b (module) から bare 呼出される関数の window 公開
-window.stopLocationTracking = stopLocationTracking;
-window.findNearestStations = findNearestStations;
-window.formatDist = formatDist;
-window.updateNearestStationPanel = updateNearestStationPanel;
-window.renderRecordingSummary = renderRecordingSummary;
-window.updateLocationButton = updateLocationButton;
-window.getObtainableCharactersAt = getObtainableCharactersAt;
-window.drawObtainableIndicators = drawObtainableIndicators;
-window.getStationCharacterChoice = getStationCharacterChoice;
-window.getStationCharacter = getStationCharacter;
+// v225 stage 3: 10 関数を `export` 経由に移行。pickStationCharacter (HTML 文字列内 onclick)
+// は window bridge 維持。
 window.pickStationCharacter = pickStationCharacter;
 

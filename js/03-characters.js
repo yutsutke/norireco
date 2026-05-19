@@ -9,8 +9,12 @@
 // HTML onclick から呼ばれる関数は window bridge 維持:
 //   - tryGrantByGPS (08-rendering が生成する `<button onclick="tryGrantByGPS(...)">` から)
 //   - grantCharacter / revokeCharacter / listOwnedCharacters (テスト用に console から叩ける)
+// v225: 07-record-mode.redrawAllLinesAfterTripChange を import 化。
+//   03 ←→ 07 の循環 import になるが、両側とも function export なので ES Modules の hoisting で解決される。
 // ══════════════════════════════════════════════
 import { currentUserId } from './12-auth.js';
+import { redrawAllLinesAfterTripChange } from './07-record-mode.js';
+import { closeCharModal } from './08-rendering.js';
 const OWNED_CHARACTERS_KEY = 'norireco_owned_characters';
 function getOwnedCharacters() {
   try {
@@ -38,9 +42,7 @@ function grantCharacter(charId, opts) {
   const gpsData = (opts && opts.gps) || null;
   saveCharacterGrantToSupabase(charId, stationName, source, gpsData);
   // 地図再描画
-  if (typeof redrawAllLinesAfterTripChange === 'function') {
-    redrawAllLinesAfterTripChange();
-  }
+  redrawAllLinesAfterTripChange();
   return true;
 }
 
@@ -120,7 +122,7 @@ export async function syncCharacterGrantsFromSupabase() {
 
     if (pulled === 0 && localOnly.length === 0) {
       console.log(`[乗レコ] キャラ獲得同期: 完全一致 (${supabaseCharIds.size}体)`);
-    } else if (pulled > 0 && typeof redrawAllLinesAfterTripChange === 'function') {
+    } else if (pulled > 0) {
       redrawAllLinesAfterTripChange();
     }
   } catch(e) {
@@ -131,9 +133,7 @@ function revokeCharacter(charId) {
   const set = getOwnedCharacters();
   set.delete(charId);
   setOwnedCharacters(set);
-  if (typeof redrawAllLinesAfterTripChange === 'function') {
-    redrawAllLinesAfterTripChange();
-  }
+  redrawAllLinesAfterTripChange();
 }
 // 期間内 (available_from ≤ 今日 ≤ available_until) かチェック
 export function isCharacterAvailable(charMeta) {
@@ -239,7 +239,7 @@ export function runCharacterGrantCheck() {
   const granted = checkAndGrantCharacters();
   if (granted.length === 0) return;
   // 地図再描画 (新キャラが表示されるように)
-  if (typeof redrawAllLinesAfterTripChange === 'function') redrawAllLinesAfterTripChange();
+  redrawAllLinesAfterTripChange();
   // 連続トースト (順次表示)
   granted.forEach((char, idx) => {
     setTimeout(() => showCharacterGrantToast(char), idx * 600);

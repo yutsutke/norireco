@@ -11,9 +11,21 @@
 
 // v223 ES Modules stage 3: 11-fraud-detection と 03-characters を import 化。
 // v224: 12-auth.currentUserId を import 化。
+// v225: 04-gps-location の 6 関数を import 化。
 import { fraudAssessTrip } from './11-fraud-detection.js';
 import { runCharacterGrantCheck } from './03-characters.js';
 import { currentUserId } from './12-auth.js';
+import {
+  cycleLocationMode,
+  stopLocationTracking,
+  findNearestStations,
+  formatDist,
+  updateNearestStationPanel,
+  renderRecordingSummary,
+  updateLocationButton,
+} from './04-gps-location.js';
+import { drawLines, updateOverlays, toggleMemoMode } from './08-rendering.js';
+import { resetTrainSelector } from './02-data-loaders.js';
 
 // v197 ES Modules パイロット (案 β) — 状態を window.NORIRECO.record に集約。
 // 外部 (04 / 06 / 08) からは NORIRECO.record.mode 等のフルパス、内部は R.X の短縮形。
@@ -29,7 +41,7 @@ NORIRECO.record = NORIRECO.record || {
 };
 const R = NORIRECO.record;
 
-function toggleRecordMode() {
+export function toggleRecordMode() {
   R.mode = !R.mode;
   const btn = document.getElementById('rec-btn');
   const panel = document.getElementById('rec-panel');
@@ -45,9 +57,9 @@ function toggleRecordMode() {
     if (NORIRECO.gps.recordStartedViaGPS) {
       // GPS 記録: ミニマルな最寄駅パネル (記録中) を表示、rec-panel は隠す
       panel.style.display = 'none';
-      if (NORIRECO.gps.lastUserGps && typeof updateNearestStationPanel === 'function') {
+      if (NORIRECO.gps.lastUserGps) {
         updateNearestStationPanel(NORIRECO.gps.lastUserGps.lat, NORIRECO.gps.lastUserGps.lon);
-      } else if (typeof renderRecordingSummary === 'function') {
+      } else {
         const np = document.getElementById('nearest-station-panel');
         const selectModeEl = document.getElementById('ns-mode-select');
         const recModeEl = document.getElementById('ns-mode-recording');
@@ -94,7 +106,7 @@ function sameStation(a, b) {
   return a.name === b.name && Math.abs(a.lat - b.lat) < 1e-4 && Math.abs(a.lon - b.lon) < 1e-4;
 }
 
-function onRecordStationClick(station) {
+export function onRecordStationClick(station) {
   const idx = R.selection.findIndex(s => sameStation(s, station));
   if (idx >= 0) {
     R.selection.splice(idx, 1);
@@ -224,7 +236,7 @@ function changeSegmentLine(segIdx, newLineId) {
 
 function refreshRecPanel() {
   // 記録中の最寄駅パネル サマリも更新 (rec-panel は v105 で非表示化したが、内部状態は維持)
-  if (R.mode && typeof renderRecordingSummary === 'function') {
+  if (R.mode) {
     renderRecordingSummary();
   }
   const chipsDiv = document.getElementById('rec-chips');
@@ -953,7 +965,7 @@ async function saveMultiSegmentTrip() {
 
 // 地図全体のポリライン/駅ドット/ラベルを再描画 (riddenSt 更新後に呼ぶ)
 // 既存の Supabase 同期後の再描画と同じパターンを使う
-function redrawAllLinesAfterTripChange() {
+export function redrawAllLinesAfterTripChange() {
   if (!NORIRECO.map.instance || !dotLayerRef) return;
   // 既存ポリラインを削除
   allLayers.forEach(l => { try { NORIRECO.map.instance.removeLayer(l); } catch(e){} });
@@ -966,7 +978,7 @@ function redrawAllLinesAfterTripChange() {
   drawLines();
 }
 
-function showRecordToast(msg, mode, durationMs) {
+export function showRecordToast(msg, mode, durationMs) {
   const toast = document.createElement('div');
   const bg = mode === 'warn' ? 'rgba(232,53,42,.96)' : 'rgba(0,178,229,.96)';
   const maxW = mode === 'warn' ? '88vw' : '420px';
@@ -988,7 +1000,7 @@ function showRecordToast(msg, mode, durationMs) {
 // ローディングインジケーターは廃止（P1がHTMLに埋め込まれているため不要）
 
 // 乗車済み路線のバウンディングボックスにフィット
-function fitToRiddenLines(){
+export function fitToRiddenLines(){
   const pts=[];
   NORIRECO.data.LINES.forEach(line=>{
     if(!riddenSt[line.id]||riddenSt[line.id].size===0)return;
@@ -1002,9 +1014,7 @@ function fitToRiddenLines(){
 }
 
 // v217 stage 2: 04/06/08 (module) / 02 (classic) などから bare 呼出される関数の window 公開
-window.toggleRecordMode = toggleRecordMode;
+// v225 stage 3: toggleRecordMode / redrawAllLinesAfterTripChange / showRecordToast /
+// fitToRiddenLines は `export` 経由に移行 (window bridge 撤去)。
+// onRecordStationClick は 07 内の HTML 文字列 onclick (line 252) で呼ばれるため window 維持。
 window.onRecordStationClick = onRecordStationClick;
-window.saveMultiSegmentTrip = saveMultiSegmentTrip;
-window.redrawAllLinesAfterTripChange = redrawAllLinesAfterTripChange;
-window.showRecordToast = showRecordToast;
-window.fitToRiddenLines = fitToRiddenLines;

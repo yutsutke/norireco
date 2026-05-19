@@ -1820,6 +1820,150 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 74. v225 — ES Modules stage 3 拡大: 残り 14 ファイルの関数 export 化 (2026-05-19)
+
+### 背景
+
+v223 でパイロット 3 ファイル (11/13c/03)、v224 で 12-auth を `import`/`export` 化したのを受けて、残り全ファイルを一気に処理して stage 3 を実質完了させる。順序は影響範囲の小さい順 (TODO.md v203+ 候補): **04 → 06 → 07 → 08 → 09 → 10 → 13系 → 02/02b/05**。01-constants と 04b-ride-record は本リリースでは触らず (後者は IIFE で既に `NORIRECO.rideRecord.X` 経由公開、前者は globalThis 経由 bare 参照で十分動作中)。
+
+### 変更内容
+
+#### 04-gps-location.js — 10 関数 export
+
+`stopLocationTracking` / `findNearestStations` / `formatDist` / `updateNearestStationPanel` / `renderRecordingSummary` / `updateLocationButton` / `getObtainableCharactersAt` / `drawObtainableIndicators` / `getStationCharacterChoice` / `getStationCharacter` / `cycleLocationMode` を `export`、window bridge 撤去。
+
+window bridge 維持 (HTML onclick / HTML 文字列内 onclick):
+- `selectNearestCand` / `cancelRecord` / `startRecordFromNearest` / `pickStationCharacter`
+- `cycleLocationMode` のみ HTML onclick + JS module 両方で使うため `export` + `window` 両建て
+
+#### 06-map-leaflet.js — `initMap` export
+
+10-init.js の load handler から bare 呼出されていた `initMap` を `export` に。
+
+#### 07-record-mode.js — 5 関数 export
+
+`toggleRecordMode` / `onRecordStationClick` / `redrawAllLinesAfterTripChange` / `showRecordToast` / `fitToRiddenLines` を `export`。`onRecordStationClick` は 07 内 HTML 文字列 onclick からも呼ばれるため `export` + `window` 両建て。
+
+#### 08-rendering.js — 5 関数 export + 2 関数両建て
+
+- export のみ: `drawLines` / `updateLOD` / `updateOverlays` / `openMemo` / `openCharModal`
+- export + window 両建て: `closeCharModal` / `toggleMemoMode` (HTML onclick + JS module 両方)
+- window のみ (HTML onclick): `closeMemo` / `selChip` / `togTag` / `genMemo`
+- `drawServiceLineBase` の window bridge は撤去 (08 内のみ使用)
+
+#### 09-tabs-stats.js — 2 関数 export
+
+`renderList` / `renderStats` を `export`。`switchTab` は HTML onclick のため window 維持。
+
+#### 10-init.js — import 統合
+
+`initAuth` / `initMap` / `updateDateFilterUI` を import。
+
+#### 13-mypage-common.js — 5 関数 / 1 定数 export
+
+`renderMypage` / `applyMpSection` / `tripCardHtml` / `showMypageToast` / `_MP_SORT_COMPARATORS` を `export`。`switchMpSection` は HTML 文字列内 onclick (line 88-90) のため window 維持。`isTimeMachineActive` は 13-common 内のみ使用、bridge 撤去。
+
+#### 13a-stats.js / 13b-trips.js / 13c-lines.js — import 追加
+
+13a: `renderStats` / `tripCardHtml` を import。
+13b: `tripCardHtml` / `showMypageToast` / `applyMpSection` / `_MP_SORT_COMPARATORS` / `filterTripsByDate` / `runCharacterGrantCheck` を import。
+13c: `renderList` を import。
+
+#### 02-data-loaders.js — 8 関数 export
+
+`loadLines` / `loadLinesForZoom` / `loadRunningServices` / `loadMergedStations` / `loadServiceLinesMaster` / `loadCharacters` / `loadTrains` / `resetTrainSelector` を `export`、window bridge 撤去。`toggleCharacterMode` は HTML onclick (char-fab) のため window 維持。`redrawAllLinesAfterTripChange` を 07 から import (loadLines 後のリトリガー用)。
+
+#### 02b-service-lines-builder.js — IIFE 内で import 利用
+
+`loadServiceLinesMaster` / `loadLines` を 02 から import (IIFE 外の module top-level に置く)。IIFE 内から bare 識別子で参照される。
+
+#### 05-supabase-data.js — 8 関数 export
+
+`filterTripsByDate` / `updateDateFilterUI` / `syncFromSupabase` / `getStorageStats` / `updateStorageUI` / `lStats` / `gStats` を `export`、window bridge 撤去。`setDateFilter` は HTML onclick (dfilter-chip + 13-mypage-common HTML 文字列) で使われるため `export` + `window` 両建て。`toggleCustomDateFilter` 等のモーダル系は window 維持。
+
+#### consumer の import 追加
+
+- 03: `closeCharModal` from 08, `redrawAllLinesAfterTripChange` from 07
+- 04: `openCharModal` / `closeCharModal` from 08, 07 関数 4 個
+- 05: `drawLines` / `updateOverlays` from 08, `renderMypage` from 13-common
+- 06: 08 関数 4 個, 07 関数 3 個, 02 関数 6 個, 05 関数 3 個
+- 07: 08 関数 3 個, 02 `resetTrainSelector`
+- 08: `onRecordStationClick` from 07, `gStats` from 05
+- 09: `renderMypage` from 13-common, `filterTripsByDate` / `lStats` from 05
+- 10: `updateDateFilterUI` from 05
+- 12: `renderMypage` from 13-common
+- 13-common: `renderList` from 09, `filterTripsByDate` from 05
+
+#### typeof ガード撤去
+
+`typeof X === 'function'` のディフェンシブガードを 15+ 箇所撤去 (静的 import で常に解決される)。
+
+### 循環 import の処理
+
+stage 3 拡大で複数の循環 import が発生:
+- 03 ↔ 07 (`runCharacterGrantCheck` ⇔ `redrawAllLinesAfterTripChange`)
+- 04 ↔ 07 (`distMeters/...` ⇔ `onRecordStationClick/...`)
+- 04 ↔ 08 (gps 系 ⇔ 描画系)
+- 05 ↔ 08 (`gStats` ⇔ `drawLines`)
+- 05 ↔ 13-common (`filterTripsByDate` ⇔ `renderMypage`)
+- 02 ↔ 07 (loaders ⇔ `redrawAllLinesAfterTripChange`)
+
+いずれも **function 宣言の export** なので ES Modules の **function hoisting + module loader の binding** で正しく解決される。`const` の export を循環参照すると TDZ 事故になりうるが、今回は全て function なので問題なし。
+
+### コミット粒度
+
+stage 3 拡大は本来 8 batches (v225〜v232) の意図で進めたが、`npm run check` が常に 18/18 OK で通っていたため最終的に **1 commit (CACHE_VERSION = 'v225')** に集約。コード内コメントは「v225 stage 3」で統一。
+
+### 影響ファイル
+
+- `js/02-data-loaders.js` — 8 関数 export + import 追加
+- `js/02b-service-lines-builder.js` — import 追加 (IIFE 外)
+- `js/03-characters.js` — import 追加
+- `js/04-gps-location.js` — 11 関数 export + import 追加
+- `js/05-supabase-data.js` — 8 関数 export + import 追加
+- `js/06-map-leaflet.js` — initMap export + import 追加
+- `js/07-record-mode.js` — 5 関数 export + import 追加
+- `js/08-rendering.js` — 7 関数 export + import 追加
+- `js/09-tabs-stats.js` — 2 関数 export + import 追加
+- `js/10-init.js` — import 追加, typeof ガード撤去
+- `js/12-auth.js` — import 追加 (renderMypage), typeof ガード撤去
+- `js/13-mypage-common.js` — 5 関数 + 1 定数 export, HTML 文字列内 `if(typeof X==='function')` 撤去
+- `js/13a-stats.js` — import 追加
+- `js/13b-trips.js` — import 追加
+- `js/13c-lines.js` — import 追加
+- `sw.js` — `CACHE_VERSION = 'v225'`
+
+### Phase 3.8 ステータス更新
+
+- ✅ Stage 3 拡大完了: 全 18 ファイルのうち 16 ファイル (01 / 04b を除く) で関数 export 化達成
+- 残作業 (次セッション以降):
+  - 01-constants: `localDateStr` 等 3 関数を export 化 (現状は window 経由で全モジュールから bare 参照可能、優先度低)
+  - 04b-ride-record: IIFE で `NORIRECO.rideRecord.{rebuild, normStName}` 経由公開済、構造的に export 化は次フェーズ
+  - State 共有 (`NORIRECO.<domain>.X`): HTML onclick から呼ばれる関数の window namespace を撤去する見通しがない限り stage 1 のまま据置
+  - 実機検証: ログインフロー (Magic Link / Google OAuth / signOut / 後追い認証 / 地図描画 / マイページ) を PC / iPhone PWA で確認
+
+---
+
+## 73. v224 — ES Modules stage 3: 12-auth.{initAuth, currentUserId, authBearerToken} を export 化 (2026-05-19)
+
+### 変更内容
+
+- `12-auth.js`: `initAuth` / `currentUserId` / `authBearerToken` を `export`、対応 window bridge 撤去
+- HTML onclick 用 (`openAuthModal` / `closeAuthModal` / `handleAuthMagicLinkSubmit` / `handleAuthGoogleClick` / `signOutUser`) は window bridge 維持
+- consumer (03 / 07 / 09 / 10-init / 13-mypage-common / 13b) に import 追加 + `typeof X === 'function'` ガード 6 箇所撤去
+- CACHE_VERSION v223 → v224、`npm run check` 18/18 OK
+
+### 使い分け方針
+
+12-auth で確立した「export / window 両建ての必要性」基準:
+- JS module からのみ呼ばれる関数 → export
+- HTML onclick (生 HTML or HTML 文字列内 onclick) から呼ばれる関数 → window 維持
+- console テスト用に手動呼出できるようにしたいもの → window 維持
+
+`currentUserId` は console から `currentUserId()` で叩けると便利だが、テスト用途は console 内で `(await import('./js/12-auth.js')).currentUserId()` でも可、と判断して window から外した。
+
+---
+
 ## 72. v223 — ES Modules stage 3 パイロット: `scripts/syntax-check.js` を module 対応 + 11/13c/03 を `import`/`export` 化 (2026-05-19)
 
 ### 背景

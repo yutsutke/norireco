@@ -19,6 +19,11 @@
 // v213 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
 // 既に IIFE で関数を window.NORIRECO.serviceLines に公開する構造のため、stage 2 は
 // script tag 変更のみで完結。外部呼出は全て NORIRECO.serviceLines.X 経由なので bridge 不要。
+//
+// v225 ES Modules stage 3: 02-data-loaders.{loadServiceLinesMaster, loadLines} を import 化。
+// import は module 直下にしか書けないため IIFE の外側に置く。
+import { loadServiceLinesMaster, loadLines } from './02-data-loaders.js';
+
 (function () {
   'use strict';
   window.NORIRECO = window.NORIRECO || {};

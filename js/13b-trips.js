@@ -23,6 +23,13 @@
 import { fraudIsDowngraded } from './11-fraud-detection.js';
 import { distMeters, runCharacterGrantCheck } from './03-characters.js';
 import { authBearerToken } from './12-auth.js';
+import {
+  tripCardHtml,
+  showMypageToast,
+  applyMpSection,
+  _MP_SORT_COMPARATORS,
+} from './13-mypage-common.js';
+import { filterTripsByDate } from './05-supabase-data.js';
 
 // ── 🚃 旅程セクション ──────────────────────────────────────────
 function renderMpTripsSection() {
@@ -127,7 +134,7 @@ NORIRECO.mypage.resetMpFilter = resetMpFilter;
 
 function applyTripFilters(trips) {
   // グローバル過去モード (_tripDateFilter) を先に適用
-  if (typeof filterTripsByDate === 'function') {
+  {
     trips = filterTripsByDate(trips);
   }
   const filtered = trips.filter(t => {
@@ -246,7 +253,7 @@ function saveTripEdit() {
   // 旅程タブ・統計タブ「直近の旅程」を再描画
   if (typeof renderMpTripsSection === 'function') renderMpTripsSection();
   applyMpSection();
-  if (typeof showMypageToast === 'function') showMypageToast('✏️ メモ・遅延を保存しました');
+  showMypageToast('✏️ メモ・遅延を保存しました');
 }
 window.saveTripEdit = saveTripEdit;
 NORIRECO.mypage.saveTripEdit = saveTripEdit;

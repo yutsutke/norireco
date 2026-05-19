@@ -18,12 +18,12 @@
 // v223 ES Modules stage 3: `export` 公開へ移行。現状 caller ゼロ (プレースホルダ) なので
 // import の追加先なし。将来呼出が必要になった時点で consumer 側に import を足す。
 // 既存の `NORIRECO.mypage.renderMpLinesSection` 登録は互換維持のため残置。
+// v225: 09-tabs-stats.renderList を import 化。
 // ══════════════════════════════════════════════════════════════
+import { renderList } from './09-tabs-stats.js';
 
 // 路線サブタブのエントリラッパー (将来の拡張ポイント)
 export function renderMpLinesSection() {
-  if (typeof renderList === 'function') {
-    try { renderList(); } catch (e) { console.warn('[マイページ路線] renderList:', e); }
-  }
+  try { renderList(); } catch (e) { console.warn('[マイページ路線] renderList:', e); }
 }
 NORIRECO.mypage.renderMpLinesSection = renderMpLinesSection;

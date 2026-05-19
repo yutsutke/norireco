@@ -7,8 +7,11 @@
 // 確実なタイミングで登録される。HTML onclick の `checkAppVersion(true)` のため window 公開。
 //
 // v224 ES Modules stage 3: 12-auth.initAuth を import 化。
+// v225: 06-map-leaflet.initMap を import 化。
 // ══════════════════════════════════════
 import { initAuth } from './12-auth.js';
+import { initMap } from './06-map-leaflet.js';
+import { updateDateFilterUI } from './05-supabase-data.js';
 // ══════════════════════════════════════════════
 // アプリ・バージョンバッジ
 // 動作中SWの CACHE_VERSION と GitHub Pages 上の最新 sw.js を比較
@@ -80,7 +83,7 @@ async function checkAppVersion(forceReload) {
 window.addEventListener('load',()=>{
   initMap();
   initAuth();
-  if (typeof updateDateFilterUI === 'function') updateDateFilterUI();
+  updateDateFilterUI();
   if (typeof updateStopTypeFilterUI === 'function') updateStopTypeFilterUI();
   // キャラ表示ボタンの初期状態を localStorage に合わせる
   const charBtn = document.getElementById('char-fab');

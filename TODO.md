@@ -6,14 +6,14 @@
 ---
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v223 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v225 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13-..` 機能別分割（v131〜v138、`CHANGELOG.md §20, §21` 参照）
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
 **マイページ**: 3 サブタブ (統計 / 旅程 / 路線)、詳細統計 16 種、期間指定で過去状態 (地図ピル「〜月指定」)
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **保存ボタン**: 記録種別に応じて「💾 手動記録で保存する」/「💾 GPS 記録で保存する」に動的切替（v176）
-**直近の作業**: **ES Modules stage 3 パイロット着手 (v223)** — `scripts/syntax-check.js` を `node --check --input-type=module` ベースに切替 (v202 で予告した前提作業)、影響範囲の小さい 3 ファイル (11-fraud-detection / 13c-lines / 03-characters) を `import`/`export` 化。撤去 window bridge 7 個 (`fraudAssessTrip` / `fraudIsDowngraded` / `distMeters` / `isCharacterAvailable` / `isCharacterOwned` / `runCharacterGrantCheck` / `syncCharacterGrantsFromSupabase`)、consumer 8 ファイル (04/05/06/07/08/09/11/13-mypage-common/13a/13b) に import 追加 + `typeof X === 'function'` ガード 7 箇所撤去。`tryGrantByGPS` / `grantCharacter` 等 HTML onclick・console 用関数は window bridge 維持。残り 15 ファイルの export 化は次セッション以降。
+**直近の作業**: **ES Modules stage 3 拡大完了 (v223〜v225)** — 全 18 ファイルの関数 export 化完了。v223 パイロット (11/13c/03) → v224 (12-auth) → v225 (04/06/07/08/09/10/13系/02/02b/05) の 3 リリース。約 60 関数を `export` 経由に切替、HTML onclick / HTML 文字列内 onclick / console テスト用 / state 共有 (NORIRECO.<domain>) のみ window bridge を意図的に残置。`typeof X === 'function'` ディフェンシブガードはほぼ全て撤去。残作業: 01-constants / 04b-ride-record の export 化 (小規模、`localDateStr` 等は globalThis 経由で十分動作中)、Notion §2.4 布石⑤ Supabase 呼び出しを `NORIRECO.api.xxx` ラッパー化、実機ログインフロー検証。
 
 ---
 
@@ -379,7 +379,7 @@
 ## メモ
 
 - **main 直 push 運用**（個人開発、PR・専用ブランチ不要、自動承認設定済み）
-- 編集後は **`sw.js` の `CACHE_VERSION` を上げる**こと（現在 v223）
+- 編集後は **`sw.js` の `CACHE_VERSION` を上げる**こと（現在 v225）
 - HTML 編集後は `</script></body></html>` が末尾に残っているか必ず確認
 - **JS 編集後は必ずシンタックスチェック** — `npm run check` で 17/17 OK を確認 (v193〜、Notion §2.4 布石② 完了)
 - 新規 trip の `lineId` は `service_lines_master.json` の id を使う（旧 N02 id も `LEGACY_LINE_ID_ALIAS` で透過解決）

@@ -9,6 +9,10 @@
 //
 // v219 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化、**全 18 ファイル module 化完結**。
 // loadX 系 / 列車セレクタ系の関数を末尾で window 公開。
+//
+// v225 ES Modules stage 3: 07-record-mode.redrawAllLinesAfterTripChange を import 化。
+import { redrawAllLinesAfterTripChange } from './07-record-mode.js';
+
 window.NORIRECO = window.NORIRECO || {};
 NORIRECO.data = NORIRECO.data || {
   LINES: [],                       // N02 物理路線 (606) — central master
@@ -47,7 +51,7 @@ function getPriorityThreshold(zoom) {
 }
 
 // 路線データを非同期で読み込む
-async function loadLines(priority) {
+export async function loadLines(priority) {
   if (loadedPriorities.has(priority)) return;
   if (pendingLoads.has(priority)) {
     // 既に読み込み中なら完了を待つ
@@ -95,7 +99,7 @@ async function loadLines(priority) {
 // Supabase の norireco_lines / norireco_stations テーブルも未使用
 
 // ズームに応じて必要な優先度を読み込む
-async function loadLinesForZoom(zoom) {
+export async function loadLinesForZoom(zoom) {
   const maxP = getPriorityThreshold(zoom);
   for (let p = 1; p <= maxP; p++) {
     if (!loadedPriorities.has(p)) {
@@ -105,7 +109,7 @@ async function loadLinesForZoom(zoom) {
 }
 
 // 運行系統定義 (running_services.json から読み込み) — state は NORIRECO.data.D.RUNNING_SERVICES
-async function loadRunningServices() {
+export async function loadRunningServices() {
   try {
     const res = await fetch('running_services.json');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -121,7 +125,7 @@ async function loadRunningServices() {
 // state は NORIRECO.data.D.MERGED_STATIONS / .D.slMergedStationMap
 
 // 統合駅マスターを読み込む (v191 で 04-gps-location.js から移管)
-async function loadMergedStations() {
+export async function loadMergedStations() {
   try {
     const res = await fetch('merged_stations.json');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -145,7 +149,7 @@ async function loadMergedStations() {
 // 路線一覧・統計タブの達成率計算もこちらをベースにする
 // state は NORIRECO.data.{D.SERVICE_LINES_MASTER, D.SERVICE_LINES, D.serviceLinesLoaded, D.serviceLinesBuilt}
 
-async function loadServiceLinesMaster() {
+export async function loadServiceLinesMaster() {
   if (D.SERVICE_LINES_MASTER) return D.SERVICE_LINES_MASTER;
   try {
     const res = await fetch('service_lines_master.json');
@@ -167,7 +171,7 @@ async function loadServiceLinesMaster() {
 // state は NORIRECO.data.D.CHARACTERS / .D.stationCharMap
 // ══════════════════════════════════════════════
 
-async function loadCharacters() {
+export async function loadCharacters() {
   try {
     const res = await fetch('characters_master.json');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -210,7 +214,7 @@ NORIRECO.trains = NORIRECO.trains || {
 };
 const T = NORIRECO.trains;
 
-async function loadTrains() {
+export async function loadTrains() {
   try {
     const res = await fetch('trains_master.json');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -224,7 +228,7 @@ async function loadTrains() {
 }
 
 // 列車セレクタ初期化 — 確認モーダルを開く時に呼ぶ
-function resetTrainSelector() {
+export function resetTrainSelector() {
   T.selectedTrainId = null;
   T.selectedTrainName = null;
   T.selectedTrainCategory = null;
@@ -361,18 +365,10 @@ function toggleCharacterMode() {
   const btn = document.getElementById('char-fab');
   if (btn) btn.classList.toggle('on', D.charModeOn);
   // 再描画
-  if (typeof redrawAllLinesAfterTripChange === 'function') {
-    redrawAllLinesAfterTripChange();
-  }
+  redrawAllLinesAfterTripChange();
 }
 
 // v219 stage 2: 外部 (02b/04/06/07 module + HTML) から bare 呼出される関数を window 公開
-window.loadLines = loadLines;
-window.loadLinesForZoom = loadLinesForZoom;
-window.loadRunningServices = loadRunningServices;
-window.loadMergedStations = loadMergedStations;
-window.loadServiceLinesMaster = loadServiceLinesMaster;
-window.loadCharacters = loadCharacters;
-window.loadTrains = loadTrains;
-window.resetTrainSelector = resetTrainSelector;
+// v225 stage 3: loadX / resetTrainSelector は `export` 経由に移行。
+// toggleCharacterMode は HTML onclick (char-fab) のため window 維持。
 window.toggleCharacterMode = toggleCharacterMode;

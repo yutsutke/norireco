@@ -8,9 +8,12 @@
 //
 // v223 ES Modules stage 3: 11-fraud-detection を import 化。
 // v224: 12-auth から currentUserId / authBearerToken を import 化。
+// v225: 13-mypage-common.renderMypage を import 化。
 // ══════════════════════════════════════
 import { fraudAssessTrip, fraudIsDowngraded } from './11-fraud-detection.js';
 import { currentUserId, authBearerToken } from './12-auth.js';
+import { renderMypage } from './13-mypage-common.js';
+import { filterTripsByDate, lStats } from './05-supabase-data.js';
 
 function switchTab(n){
   // 旧 'list' / 'stats' は 'mypage' にリダイレクト (タブ集約のため)
@@ -21,7 +24,7 @@ function switchTab(n){
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
   document.getElementById(`pane-${n}`)?.classList.add('active');
   if(n==='map'&&NORIRECO.map.instance)setTimeout(()=>NORIRECO.map.instance.invalidateSize(),50);
-  if(n==='mypage'&&typeof renderMypage==='function')renderMypage();
+  if(n==='mypage')renderMypage();
 }
 
 // ══════════════════════════════════════
@@ -34,7 +37,7 @@ const SL_GROUP_ORDER = [
   'その他'
 ];
 
-async function renderList(){
+export async function renderList(){
   const c=document.getElementById('list-content');c.innerHTML='';
   await NORIRECO.serviceLines.build();
   const grouped={};NORIRECO.data.SERVICE_LINES.forEach(sl=>{const g=sl.group||'その他';if(!grouped[g])grouped[g]=[];grouped[g].push(sl);});
@@ -56,7 +59,7 @@ async function renderList(){
 // ══════════════════════════════════════
 // STATS
 // ══════════════════════════════════════
-async function renderStats(){
+export async function renderStats(){
   const c=document.getElementById('stats-content');c.innerHTML='';
   await NORIRECO.serviceLines.build();
 
@@ -79,7 +82,7 @@ async function renderStats(){
     headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${authBearerToken()}` }
   }).then(r => r.json()).then(rawTrips => {
     // グローバル過去モード (_tripDateFilter) が有効なら絞る
-    const trips = (typeof filterTripsByDate === 'function') ? filterTripsByDate(rawTrips) : rawTrips;
+    const trips = filterTripsByDate(rawTrips);
     const totalTrips = trips.length;
     const totalStations = trips.reduce((s,t) => s + (t.total_stations||0), 0);
     const totalTransfers = trips.reduce((s,t) => s + (t.transfers||0), 0);
@@ -308,7 +311,6 @@ async function renderStats(){
 }
 
 // v208 stage 2 (type=module 化) で必要になった window bridge。
-// switchTab: HTML onclick / renderList: 13-mypage-common, 13c から / renderStats: 13a から
+// v225 stage 3: renderList / renderStats を `export` 経由に移行。
+// switchTab は HTML onclick のため window 維持。
 window.switchTab = switchTab;
-window.renderList = renderList;
-window.renderStats = renderStats;

@@ -5,8 +5,29 @@
 // initMap は 10-init.js (module) の load handler から bare 呼出されるため末尾で window 公開。
 //
 // v223 ES Modules stage 3: 03-characters の 2 関数を import 化。
+// v225: initMap を `export` 公開へ移行 (10-init は import で取り込む)。
+// v225: 07-record-mode の 3 関数を import 化。
 // ══════════════════════════════════════
 import { runCharacterGrantCheck, syncCharacterGrantsFromSupabase } from './03-characters.js';
+import {
+  onRecordStationClick,
+  redrawAllLinesAfterTripChange,
+  fitToRiddenLines,
+} from './07-record-mode.js';
+import { drawLines, updateLOD, updateOverlays, openMemo } from './08-rendering.js';
+import {
+  loadLines,
+  loadLinesForZoom,
+  loadRunningServices,
+  loadMergedStations,
+  loadCharacters,
+  loadTrains,
+} from './02-data-loaders.js';
+import {
+  getStorageStats,
+  updateStorageUI,
+  syncFromSupabase,
+} from './05-supabase-data.js';
 
 // v196 ES Modules パイロット (案 β) — 状態を window.NORIRECO.map に集約。
 // stage 2 (type=module 化) で `export const map = NORIRECO.map` ブリッジに置換予定。
@@ -18,7 +39,7 @@ NORIRECO.map = NORIRECO.map || {
 };
 const M = NORIRECO.map;
 
-function initMap(){
+export function initMap(){
   M.instance=L.map('leaflet-map',{
     center:[36.5,138.0], zoom:5,
     zoomControl:false,
@@ -133,7 +154,7 @@ function initMap(){
     // 営業系統(NORIRECO.data.SERVICE_LINES)を構築 → 新形式 trip(jr_xxx/auto_xxx) を再解決して再描画
     NORIRECO.serviceLines.build().then(() => {
       NORIRECO.rideRecord.rebuild();
-      if (typeof redrawAllLinesAfterTripChange === 'function') redrawAllLinesAfterTripChange();
+      redrawAllLinesAfterTripChange();
       updateOverlays();
       // Supabase からキャラ獲得履歴を同期 → その後 trip 由来の自動獲得チェック
       syncCharacterGrantsFromSupabase().finally(() => {
@@ -187,5 +208,4 @@ function initMap(){
   });
 }
 
-// v214 stage 2: initMap は 10-init module の load handler から bare 呼出されるため window 公開。
-window.initMap = initMap;
+// v225 stage 3: initMap は `export` 経由に移行。10-init.js が import で取り込む。

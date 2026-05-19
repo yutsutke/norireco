@@ -3,8 +3,18 @@
 //
 // v223 ES Modules stage 3: 03-characters の 2 関数を import 化。
 // tryGrantByGPS は HTML onclick で呼ばれるため window 経由のまま (import 不要)。
+// v225: 04-gps-location の 4 関数を import 化。
+// v225: 07-record-mode.onRecordStationClick を import 化。
 // ══════════════════════════════════════
 import { isCharacterOwned, isCharacterAvailable } from './03-characters.js';
+import {
+  drawObtainableIndicators,
+  getObtainableCharactersAt,
+  getStationCharacter,
+  getStationCharacterChoice,
+} from './04-gps-location.js';
+import { onRecordStationClick } from './07-record-mode.js';
+import { gStats } from './05-supabase-data.js';
 
 const CANVAS = L.canvas({ padding: 0.5 });
 
@@ -71,7 +81,7 @@ window.labelLayerRef = null;
 // 描画済み統合駅追跡 (重複マーカー抑制)
 const drawnMergedStations = new Map();
 
-function drawLines(){
+export function drawLines(){
   // ラベルマスターリストもリセット (新規ロード時)
   window._allLabels = [];
 
@@ -99,7 +109,7 @@ function drawLines(){
 }
 
 // ── LOD：ズームに応じて路線・ドット・ラベルを表示/非表示 ──
-function updateLOD() {
+export function updateLOD() {
   if (!NORIRECO.map.instance) return;
   const z = NORIRECO.map.instance.getZoom();
   const maxP = getVisiblePriority(z);
@@ -869,7 +879,7 @@ function renderRarityBadge(meta) {
 }
 
 // キャラ詳細モーダル
-function openCharModal(ms, character) {
+export function openCharModal(ms, character) {
   const modal = document.getElementById('char-modal');
   const body = document.getElementById('char-modal-body');
   if (!body || !modal) return;
@@ -988,7 +998,7 @@ function openCharModal(ms, character) {
   `;
   modal.classList.add('open');
 }
-function closeCharModal() {
+export function closeCharModal() {
   document.getElementById('char-modal')?.classList.remove('open');
 }
 // ESC で閉じる
@@ -999,7 +1009,7 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-function updateOverlays(){
+export function updateOverlays(){
   const gs=gStats();
   document.getElementById('h-pct').textContent=gs.pct+'%';
   document.getElementById('h-ln').textContent=gs.la;
@@ -1033,14 +1043,14 @@ function updateOverlays(){
 }
 
 // Memo mode
-function toggleMemoMode(){
+export function toggleMemoMode(){
   NORIRECO.map.memoMode=!NORIRECO.map.memoMode;
   const btn=document.getElementById('memo-btn');
   btn.classList.toggle('on',NORIRECO.map.memoMode);
   if(NORIRECO.map.instance)NORIRECO.map.instance.getContainer().style.cursor=NORIRECO.map.memoMode?'crosshair':'';
 }
 
-function openMemo(){
+export function openMemo(){
   const ci = NORIRECO.map.clickInfo;
   document.getElementById('m-title').textContent=`📸 ${ci.station?.n||''} のメモ`;
   document.getElementById('m-sub').textContent=`${ci.line?.name||''}  ·  ${ci.lat}, ${ci.lon}`;
@@ -1074,18 +1084,16 @@ function genMemo(){
 }
 
 // v218 stage 2: classic / module 双方から bare 呼出される関数の window 公開
-window.drawLines = drawLines;
-window.updateLOD = updateLOD;
-window.updateOverlays = updateOverlays;
+// v225 stage 3: drawLines / updateLOD / updateOverlays / openMemo / openCharModal を
+// `export` 経由に移行。closeCharModal / toggleMemoMode は HTML onclick + JS module 両方から
+// 呼ばれるので window と export の両建て。closeMemo / selChip / togTag / genMemo は HTML
+// onclick のみのため window 維持。drawServiceLineBase は 08 内のみ使用、bridge 撤去。
 window.toggleMemoMode = toggleMemoMode;
-window.openMemo = openMemo;
 window.closeMemo = closeMemo;
 window.selChip = selChip;
 window.togTag = togTag;
 window.genMemo = genMemo;
-window.openCharModal = openCharModal;
 window.closeCharModal = closeCharModal;
-window.drawServiceLineBase = drawServiceLineBase;
 // v220: v218 で 08 を module 化した際に bridge を貼り忘れた定数を追加公開。
 // IS_TOUCH は 06-map-leaflet.js initMap が bare 参照しており、未公開だと ReferenceError で
 // initMap が中断 → loadLines / drawLines chain が走らず LINES 描画停止のリグレッションが発生していた。
