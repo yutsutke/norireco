@@ -1820,6 +1820,36 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 59. v210 — ES Modules パイロット (案 β) stage 2 拡張: 03-characters.js を `<script type="module">` 化 (2026-05-19)
+
+### 背景
+
+stage 2 の 9 番目。03-characters はキャラ獲得 + 距離計算 util (`distMeters`) を持ち、後者は全体から widely 参照される。
+
+### 追加した window bridge (5 個)
+
+```js
+window.isCharacterAvailable = isCharacterAvailable;       // 04 / 08 (classic) から bare 呼出
+window.isCharacterOwned = isCharacterOwned;               // 04 / 08 から bare 呼出
+window.runCharacterGrantCheck = runCharacterGrantCheck;   // 05 / 06 / 07 (classic) / 13b (module) から
+window.distMeters = distMeters;                           // 04 (classic) + 11/13a/13b (module) から bare 呼出
+window.syncCharacterGrantsFromSupabase = syncCharacterGrantsFromSupabase;  // 06 から
+```
+
+`distMeters` は haversine 距離計算で、不正検知 (11) / 統計集計 (13a) / GPS 後追い認証 (13b) など多数の module から bare 呼出されるため必須。
+
+### 変更内容 (3 ファイル)
+
+- HTML: `<script type="module" src=...>`
+- 03-characters.js: 末尾に window bridge 5 個 + コメント
+- sw.js v209 → v210
+
+### 累積 stage 2 進捗
+
+**9/18 ファイル module 化済み** (mypage 4 + auth + fraud + tabs + init + characters)。残り 9: 04 / 04b / 05 / 06 / 07 / 08 / 01 / 02 / 02b。
+
+---
+
 ## 58. v209 — ES Modules パイロット (案 β) stage 2 拡張: 10-init.js を `<script type="module">` 化 (2026-05-19)
 
 ### 背景

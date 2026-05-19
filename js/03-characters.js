@@ -1,5 +1,12 @@
 // ══════════════════════════════════════════════
 // 段階1: キャラ獲得・期間限定システム
+//
+// v210 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
+// 既存 window 公開 (grantCharacter / revokeCharacter / listOwnedCharacters / tryGrantByGPS)
+// に加え、stage 2 で必要になった 5 関数 (isCharacterAvailable / isCharacterOwned /
+// runCharacterGrantCheck / distMeters / syncCharacterGrantsFromSupabase) を末尾で window
+// 公開。distMeters は 11/13a/13b (既に module) と 04 (classic) から bare 呼出される
+// ユーティリティ。
 // ══════════════════════════════════════════════
 const OWNED_CHARACTERS_KEY = 'norireco_owned_characters';
 function getOwnedCharacters() {
@@ -304,3 +311,14 @@ function tryGrantByGPS(charId, ev) {
   );
 }
 window.tryGrantByGPS = tryGrantByGPS;
+
+// v210 stage 2 (type=module 化) で必要になった window bridge。
+// isCharacterAvailable / isCharacterOwned: 04 / 08 から bare 呼出
+// runCharacterGrantCheck: 05 / 06 / 07 / 13b (module) から bare 呼出
+// distMeters: 04 (classic) + 11 / 13a / 13b (module) から bare 呼出される距離計算 util
+// syncCharacterGrantsFromSupabase: 06 から bare 呼出
+window.isCharacterAvailable = isCharacterAvailable;
+window.isCharacterOwned = isCharacterOwned;
+window.runCharacterGrantCheck = runCharacterGrantCheck;
+window.distMeters = distMeters;
+window.syncCharacterGrantsFromSupabase = syncCharacterGrantsFromSupabase;
