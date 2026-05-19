@@ -1,5 +1,10 @@
 // ══════════════════════════════════════
 // INIT
+//
+// v209 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
+// `window.addEventListener('load', ...)` の load handler は module 評価時に登録される。
+// 暗黙 defer のため、全 classic script の後・全 module 評価後・load 発火直前という
+// 確実なタイミングで登録される。HTML onclick の `checkAppVersion(true)` のため window 公開。
 // ══════════════════════════════════════
 // ══════════════════════════════════════════════
 // アプリ・バージョンバッジ
@@ -89,3 +94,6 @@ window.addEventListener('load',()=>{
   // 5分ごとに自動再チェック
   setInterval(checkAppVersion, 5 * 60 * 1000);
 });
+
+// v209 stage 2: HTML onclick `checkAppVersion(true)` 用 window bridge
+window.checkAppVersion = checkAppVersion;

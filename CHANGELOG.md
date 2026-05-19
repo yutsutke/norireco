@@ -1820,6 +1820,30 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 58. v209 — ES Modules パイロット (案 β) stage 2 拡張: 10-init.js を `<script type="module">` 化 (2026-05-19)
+
+### 背景
+
+stage 2 の 8 番目。10-init.js は init エントリで、`window.addEventListener('load', ...)` をトップレベルで登録し、HTML 上の `<span onclick="checkAppVersion(true)">` バージョンバッジから呼ばれる関数を持つ。
+
+### 変更内容
+
+- HTML: `<script type="module" src=...>`
+- 10-init.js: `window.checkAppVersion = checkAppVersion` を追加
+- sw.js v208 → v209
+
+### 重要: load event のタイミング
+
+`window.addEventListener('load', handler)` を module top-level で登録する場合、module は暗黙 defer なので評価タイミングは **DOMContentLoaded 直前**。`load` event はその直後 (全リソース読み込み完了時) に発火するため、handler は確実に呼ばれる。
+
+`load` handler 内の `initMap()` / `initAuth()` / `updateDateFilterUI()` / `updateStopTypeFilterUI()` は全て classic 関数で globalThis property、または既に window 公開済 (`initAuth`)。module 内 bare 参照で正しく解決される。
+
+### 累積 stage 2 進捗
+
+**8/18 ファイル module 化済み**。残り 10: 03 / 04 / 04b / 05 / 06 / 07 / 08 / 01 / 02 / 02b。
+
+---
+
 ## 57. v208 — ES Modules パイロット (案 β) stage 2 拡張: 09-tabs-stats.js を `<script type="module">` 化 (2026-05-19)
 
 ### 背景
