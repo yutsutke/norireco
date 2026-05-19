@@ -1,5 +1,8 @@
 // ══════════════════════════════════════
 // LEAFLET MAP（国土地理院タイル）
+//
+// v214 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
+// initMap は 10-init.js (module) の load handler から bare 呼出されるため末尾で window 公開。
 // ══════════════════════════════════════
 
 // v196 ES Modules パイロット (案 β) — 状態を window.NORIRECO.map に集約。
@@ -178,3 +181,6 @@ function initMap(){
     }
   });
 }
+
+// v214 stage 2: initMap は 10-init module の load handler から bare 呼出されるため window 公開。
+window.initMap = initMap;
