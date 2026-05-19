@@ -1820,6 +1820,26 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 69. v220 — ES Modules stage 2 リグレッション修正: `IS_TOUCH` / `IS_MOBILE` window bridge 補完 (2026-05-19)
+
+### 背景
+
+v218 で 08-rendering.js を `<script type="module">` 化した際、12 個の関数 bridge は追加したものの、トップレベル `const` で宣言された 2 つの定数 `IS_TOUCH` / `IS_MOBILE` を `window` に公開し忘れた。`06-map-leaflet.js initMap()` (line 84) が bare で `IS_TOUCH` を参照しており、module 化後はスコープに無いため `Uncaught ReferenceError: IS_TOUCH is not defined` で initMap が中断。その先の `loadLines()` / `drawLines()` chain も走らず、地図ベース tile は出るが LINES polyline が一切描画されない & 達成率 0% のリグレッションが発生していた (v219 直後にユーザー実機確認で発覚)。
+
+`npm run check` は syntax のみなので runtime ReferenceError は検知できず、stage 2 完結時点ではすり抜けていた。
+
+### 変更内容 (2 ファイル)
+
+- `js/08-rendering.js` 末尾: `window.IS_TOUCH = IS_TOUCH; window.IS_MOBILE = IS_MOBILE;` の 2 行追加 (`IS_MOBILE` は現状 08 内部利用のみだが将来同種事故防止のため一緒に bridge)
+- `sw.js` CACHE_VERSION v219 → v220
+
+### 教訓
+
+- module 化時の bridge 漏れは **関数だけでなくトップレベル `const` も対象**。grep で `function NAME` を洗うだけでは捕まらない。次に module 化するファイルがあれば、移行前に `^const ` / `^let ` も棚卸しする。
+- `npm run check` は parse 通過しか見ない。stage 2 で「syntax OK だから安全」と判断したのは過信。最低限 `initMap` を含む golden path の手動確認をリリース前に挟むべきだった (Notion §2.5 落とし穴に追記予定)。
+
+---
+
 ## 68. v219 — ES Modules パイロット (案 β) **stage 2 完結**: 全 18 ファイル `<script type="module">` 化達成 (2026-05-19)
 
 ### 背景

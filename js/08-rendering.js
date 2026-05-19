@@ -1078,3 +1078,8 @@ window.genMemo = genMemo;
 window.openCharModal = openCharModal;
 window.closeCharModal = closeCharModal;
 window.drawServiceLineBase = drawServiceLineBase;
+// v220: v218 で 08 を module 化した際に bridge を貼り忘れた定数を追加公開。
+// IS_TOUCH は 06-map-leaflet.js initMap が bare 参照しており、未公開だと ReferenceError で
+// initMap が中断 → loadLines / drawLines chain が走らず LINES 描画停止のリグレッションが発生していた。
+window.IS_TOUCH = IS_TOUCH;
+window.IS_MOBILE = IS_MOBILE;

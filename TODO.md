@@ -5,38 +5,15 @@
 
 ---
 
-## 🚨 未解決リグレッション (次セッション最優先)
-
-**v219 (2026-05-19) ES Modules stage 2 完結後、LINES polyline 描画が出ないバグ未解決**。
-
-- 症状: ベース tile は出るが LINES 描画なし / 達成率 0% / 乗車路線 0
-- 発生 commit: v219 (`b6346fe`) — stage 2 (全 18 ファイル type=module 化) の最終 commit
-- `npm run check` は 18/18 OK のまま (syntax ではなく runtime issue)
-
-**取る選択肢 (どちらでも OK)**:
-
-1. **原因究明**: DevTools console の最初の赤エラーを読む → 該当 module に `window.X = X` bridge を追加 → 再 push
-   - 詳細手順とヒントは `memory/project_v219_regression.md`
-2. **緊急 revert**: stage 2 だけ巻き戻して本番動作を取り戻す。stage 1 (windowization) は保持。
-   ```bash
-   git revert b6346fe..0c14c7c
-   git push origin main
-   ```
-   → v201 (stage 1 完結) 状態に戻る。原因究明はその後でも可。
-
-詳細経緯: `CHANGELOG.md` §51-68 (v202-v219) / Notion §2.5 落とし穴 / `memory/project_v219_regression.md`。
-
----
-
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v219 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v220 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13-..` 機能別分割（v131〜v138、`CHANGELOG.md §20, §21` 参照）
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
 **マイページ**: 3 サブタブ (統計 / 旅程 / 路線)、詳細統計 16 種、期間指定で過去状態 (地図ピル「〜月指定」)
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **保存ボタン**: 記録種別に応じて「💾 手動記録で保存する」/「💾 GPS 記録で保存する」に動的切替（v176）
-**直近の作業**: **ES Modules パイロット (案 β) 完全完結 — 全 18 ファイル module 化達成** — 02-data-loaders を最後に module 化（v219）。stage 1 (v195-v201、7 commit、46 state を NORIRECO.<domain>.X に集約) + stage 2 (v202-v219、18 commit、~84 個の window bridge 追加で全ファイル `<script type="module">` 化) 計 **25 commit**。各 commit が独立 revert 可能、機能リグレッション無し (npm run check 18/18 OK)。次は実機検証 → stage 3 (`import`/`export` 化) or 別のロードマップ着手
+**直近の作業**: **ES Modules パイロット (案 β) 完全完結 — 全 18 ファイル module 化達成** — 02-data-loaders を最後に module 化（v219）。stage 1 (v195-v201、7 commit、46 state を NORIRECO.<domain>.X に集約) + stage 2 (v202-v219、18 commit、~84 個の window bridge 追加で全ファイル `<script type="module">` 化) 計 **25 commit**。**v220 で stage 2 リグレッション (IS_TOUCH bridge 漏れ → LINES 描画停止) 修正済**。次は stage 3 (`import`/`export` 化) or 別のロードマップ着手
 
 ---
 
