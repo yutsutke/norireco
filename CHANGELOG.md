@@ -1820,6 +1820,60 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 48. v199 — ES Modules パイロット (案 β) stage 1: trains domain state を `window.NORIRECO.trains` に集約 (2026-05-19)
+
+### 背景
+
+v198 (gps) に続く 5 番目のドメイン。`trains` (列車マスター + 列車セレクタ UI 状態) の state は 02-data-loaders.js が中心、cross-file 参照は 07 / 09 / 13a。
+
+state 6 個。`TRAINS` / `TRAIN_CATEGORIES` (列車マスター本体) と `selectedTrain*` (UI セレクタ状態) が同じドメインに同居する形だが、両方とも列車関連なので 1 ドメインに集約。
+
+### 移行した state (6 個)
+
+| 旧 | 新 |
+|---|---|
+| `TRAINS` | `NORIRECO.trains.TRAINS` |
+| `TRAIN_CATEGORIES` | `NORIRECO.trains.TRAIN_CATEGORIES` |
+| `selectedTrainId` | `NORIRECO.trains.selectedTrainId` |
+| `selectedTrainName` | `NORIRECO.trains.selectedTrainName` |
+| `selectedTrainCategory` | `NORIRECO.trains.selectedTrainCategory` |
+| `selectedCarModel` | `NORIRECO.trains.selectedCarModel` |
+
+02-data-loaders.js 内は `const T = NORIRECO.trains` で `T.X` 短縮。外部 (07 / 09 / 13a) は `NORIRECO.trains.X` フルパス。
+
+### call site 書き換え (4 ファイル、39 箇所)
+
+- `js/02-data-loaders.js` — 宣言部 + 30 箇所 (列車セレクタ UI イベントハンドラ群)
+- `js/07-record-mode.js` — 4 箇所 (記録モーダルの列車選択統合)
+- `js/09-tabs-stats.js` — 3 箇所 (統計タブ「🚆 列車制覇」セクションで TRAINS / TRAIN_CATEGORIES を参照)
+- `js/13a-stats.js` — 2 箇所 (車両形式集計で TRAINS を参照)
+
+v198 で確立した 3 段階手順 (宣言 → replace_all → 宣言を 1 回まとめて修正) で機械的に処理。
+
+### 影響範囲
+
+- `js/02-data-loaders.js` — 宣言部 + 30 箇所書き換え (機能無変更)
+- `js/07-record-mode.js` / `09-tabs-stats.js` / `13a-stats.js` — call site のみ
+- `sw.js` — `CACHE_VERSION = 'v199'`
+- `npm run check` — 18/18 OK
+- 機能リグレッション: なし
+
+### 進捗 (案 β stage 1)
+
+| ドメイン | バージョン | state 数 | 累計 |
+|---|---|---|---|
+| auth | v195 | 4 | 4 |
+| map | v196 | 3 | 7 |
+| record | v197 | 7 | 14 |
+| gps | v198 | 12 | 26 |
+| **trains** | **v199** | **6** | **32** |
+| data | v200 (次・最大規模) | ~10 (LINES/SERVICE_LINES/MERGED_STATIONS/CHARACTERS) | ~42 |
+| mypage | v201 | 3 | ~45 |
+
+残りは `data` (最大規模) と `mypage` の 2 ドメイン。
+
+---
+
 ## 47. v198 — ES Modules パイロット (案 β) stage 1: gps domain state を `window.NORIRECO.gps` に集約 (2026-05-19)
 
 ### 背景

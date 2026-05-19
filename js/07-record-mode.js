@@ -843,10 +843,10 @@ async function saveMultiSegmentTrip() {
     date_precision: datePrecision,
     // 列車種別 (任意、確認モーダルで選択 or 手入力)
     // train_id IS NULL かつ train_name IS NOT NULL = マニア手入力 (後でマスター調査・追加用)
-    train_id: selectedTrainId,
-    train_name: selectedTrainName,
-    train_category: selectedTrainCategory,
-    car_model: selectedCarModel,
+    train_id: NORIRECO.trains.selectedTrainId,
+    train_name: NORIRECO.trains.selectedTrainName,
+    train_category: NORIRECO.trains.selectedTrainCategory,
+    car_model: NORIRECO.trains.selectedCarModel,
     // 後追い記録モード拡張 (v181): メモ・遅延 — Supabase スキーマ追加待ちのため
     // tripForSupabase() で送信時に除外。localStorage には保存される
     notes: tripNotes,

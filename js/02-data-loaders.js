@@ -182,21 +182,27 @@ async function loadCharacters() {
 }
 
 // ── 列車マスター (trains_master.json) ──
-let TRAINS = [];                       // [{id, name, category, operator, ...}]
-const TRAIN_CATEGORIES = {};            // id → {label, icon, default_rarity}
-let selectedTrainId = null;             // マスター選択時の id (手入力なら null)
-let selectedTrainName = null;           // 表示名 — マスター選択時=その name、手入力時=ユーザー入力文字列
-let selectedTrainCategory = null;       // 選んだカテゴリ (手入力時もここに入る)
-let selectedCarModel = null;            // 車両形式 (マスター選択 or 手入力)
+// v199 ES Modules パイロット (案 β) — 列車関連 state を window.NORIRECO.trains に集約。
+// 外部 (07 / 09 / 13a) から参照あり。
+window.NORIRECO = window.NORIRECO || {};
+NORIRECO.trains = NORIRECO.trains || {
+  TRAINS: [],                  // [{id, name, category, operator, ...}]
+  TRAIN_CATEGORIES: {},        // id → {label, icon, default_rarity}
+  selectedTrainId: null,       // マスター選択時の id (手入力なら null)
+  selectedTrainName: null,     // 表示名 — マスター選択時=その name、手入力時=ユーザー入力文字列
+  selectedTrainCategory: null, // 選んだカテゴリ (手入力時もここに入る)
+  selectedCarModel: null,      // 車両形式 (マスター選択 or 手入力)
+};
+const T = NORIRECO.trains;
 
 async function loadTrains() {
   try {
     const res = await fetch('trains_master.json');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const master = await res.json();
-    TRAINS = master.trains || [];
-    Object.assign(TRAIN_CATEGORIES, master.categories || {});
-    console.log(`[乗レコ] 列車マスター読込: ${TRAINS.length}種`);
+    T.TRAINS = master.trains || [];
+    Object.assign(T.TRAIN_CATEGORIES, master.categories || {});
+    console.log(`[乗レコ] 列車マスター読込: ${T.TRAINS.length}種`);
   } catch (e) {
     console.warn('[乗レコ] trains_master.json 読込失敗:', e.message);
   }
@@ -204,10 +210,10 @@ async function loadTrains() {
 
 // 列車セレクタ初期化 — 確認モーダルを開く時に呼ぶ
 function resetTrainSelector() {
-  selectedTrainId = null;
-  selectedTrainName = null;
-  selectedTrainCategory = null;
-  selectedCarModel = null;
+  T.selectedTrainId = null;
+  T.selectedTrainName = null;
+  T.selectedTrainCategory = null;
+  T.selectedCarModel = null;
   const catSel       = document.getElementById('rec-train-category');
   const trainSel     = document.getElementById('rec-train-id');
   const trainCustom  = document.getElementById('rec-train-custom');
@@ -215,7 +221,7 @@ function resetTrainSelector() {
   const carCustom    = document.getElementById('rec-car-model-custom');
   if (!catSel) return;
   let catHtml = '<option value="">指定しない</option>';
-  for (const [k, v] of Object.entries(TRAIN_CATEGORIES)) {
+  for (const [k, v] of Object.entries(T.TRAIN_CATEGORIES)) {
     catHtml += `<option value="${k}">${v.icon || ''} ${v.label}</option>`;
   }
   catSel.innerHTML = catHtml;
@@ -232,10 +238,10 @@ function onTrainCategoryChange() {
   const trainCustom = document.getElementById('rec-train-custom');
   const carSel      = document.getElementById('rec-car-model');
   const carCustom   = document.getElementById('rec-car-model-custom');
-  selectedTrainId = null;
-  selectedTrainName = null;
-  selectedTrainCategory = cat || null;
-  selectedCarModel = null;
+  T.selectedTrainId = null;
+  T.selectedTrainName = null;
+  T.selectedTrainCategory = cat || null;
+  T.selectedCarModel = null;
   if (trainCustom) { trainCustom.value = ''; trainCustom.style.display = 'none'; }
   if (carSel)      { carSel.style.display = 'none'; }
   if (carCustom)   { carCustom.value = ''; carCustom.style.display = 'none'; }
@@ -243,7 +249,7 @@ function onTrainCategoryChange() {
     if (trainSel) trainSel.style.display = 'none';
     return;
   }
-  const trains = TRAINS.filter(t => t.category === cat)
+  const trains = T.TRAINS.filter(t => t.category === cat)
     .sort((a, b) => {
       // 廃止は末尾、その後は名前順
       if (!!a.discontinued !== !!b.discontinued) return a.discontinued ? 1 : -1;
@@ -267,9 +273,9 @@ function onTrainChange() {
   const trainCustom = document.getElementById('rec-train-custom');
   const carSel      = document.getElementById('rec-car-model');
   const carCustom   = document.getElementById('rec-car-model-custom');
-  selectedTrainId = null;
-  selectedTrainName = null;
-  selectedCarModel = null;
+  T.selectedTrainId = null;
+  T.selectedTrainName = null;
+  T.selectedCarModel = null;
   if (carSel)    carSel.style.display = 'none';
   if (carCustom) { carCustom.value = ''; carCustom.style.display = 'none'; }
   // 手入力モード
@@ -285,10 +291,10 @@ function onTrainChange() {
   if (trainCustom) { trainCustom.value = ''; trainCustom.style.display = 'none'; }
   if (!tid) return;
   // マスターから選んだ
-  const t = TRAINS.find(x => x.id === tid);
+  const t = T.TRAINS.find(x => x.id === tid);
   if (!t) return;
-  selectedTrainId = tid;
-  selectedTrainName = t.name;
+  T.selectedTrainId = tid;
+  T.selectedTrainName = t.name;
   if (t.car_models && t.car_models.length > 0) {
     let html = '<option value="">車両形式を選ぶ (任意)...</option>';
     for (const m of t.car_models) html += `<option value="${m}">${m}</option>`;
@@ -304,8 +310,8 @@ window.onTrainChange = onTrainChange;
 
 function onTrainCustomInput() {
   const v = document.getElementById('rec-train-custom').value.trim();
-  selectedTrainName = v || null;
-  selectedTrainId = null; // 手入力は id 持たない (後で調査して埋める)
+  T.selectedTrainName = v || null;
+  T.selectedTrainId = null; // 手入力は id 持たない (後で調査して埋める)
 }
 window.onTrainCustomInput = onTrainCustomInput;
 
@@ -313,18 +319,18 @@ function onCarModelChange() {
   const v = document.getElementById('rec-car-model').value;
   const carCustom = document.getElementById('rec-car-model-custom');
   if (v === '__custom__') {
-    selectedCarModel = null;
+    T.selectedCarModel = null;
     if (carCustom) { carCustom.style.display = 'block'; carCustom.focus(); }
     return;
   }
   if (carCustom) { carCustom.value = ''; carCustom.style.display = 'none'; }
-  selectedCarModel = v || null;
+  T.selectedCarModel = v || null;
 }
 window.onCarModelChange = onCarModelChange;
 
 function onCarModelCustomInput() {
   const v = document.getElementById('rec-car-model-custom').value.trim();
-  selectedCarModel = v || null;
+  T.selectedCarModel = v || null;
 }
 window.onCarModelCustomInput = onCarModelCustomInput;
 

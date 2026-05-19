@@ -175,7 +175,7 @@ async function renderStats(){
     });
 
     const byCategory = {};
-    (TRAINS || []).forEach(t => {
+    (NORIRECO.trains.TRAINS || []).forEach(t => {
       const cat = t.category || 'other';
       if (!byCategory[cat]) byCategory[cat] = { total: 0, ridden: 0, ridden_trains: [] };
       byCategory[cat].total++;
@@ -191,7 +191,7 @@ async function renderStats(){
     trainGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px;margin-bottom:10px';
     mainCats.forEach(cat => {
       const c = byCategory[cat];
-      const meta = (TRAIN_CATEGORIES || {})[cat];
+      const meta = (NORIRECO.trains.TRAIN_CATEGORIES || {})[cat];
       if (!c || !meta || c.total === 0) return;
       const pct = c.total ? Math.round(c.ridden / c.total * 100) : 0;
       const card = document.createElement('div');
@@ -208,7 +208,7 @@ async function renderStats(){
     // カテゴリ別 乗った列車リスト (常時展開)
     mainCats.forEach(cat => {
       const c = byCategory[cat];
-      const meta = (TRAIN_CATEGORIES || {})[cat];
+      const meta = (NORIRECO.trains.TRAIN_CATEGORIES || {})[cat];
       if (!c || !meta || c.ridden_trains.length === 0) return;
       const block = document.createElement('div');
       block.style.cssText = 'margin-top:6px';

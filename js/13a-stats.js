@@ -372,12 +372,12 @@ function buildCarModelStats(trips) {
 
   if (rows.length === 0) return '<div class="mp-empty-s">車両形式が記録された旅程がありません<br>記録時に確認モーダルで形式を選ぶと集計されます</div>';
 
-  // TRAINS マスターから rarity を取得 (関連 train の最高レアリティ)
+  // NORIRECO.trains.TRAINS マスターから rarity を取得 (関連 train の最高レアリティ)
   const rarityRank = { legendary: 4, rare: 3, uncommon: 2, common: 1 };
   function highestRarity(trainIds) {
     let best = null, bestRank = 0;
     for (const id of trainIds) {
-      const tr = (TRAINS || []).find(t => t.id === id);
+      const tr = (NORIRECO.trains.TRAINS || []).find(t => t.id === id);
       if (tr && tr.rarity) {
         const r = rarityRank[tr.rarity] || 0;
         if (r > bestRank) { bestRank = r; best = tr.rarity; }
