@@ -6,14 +6,14 @@
 ---
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v225 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v226 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13-..` 機能別分割（v131〜v138、`CHANGELOG.md §20, §21` 参照）
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
 **マイページ**: 3 サブタブ (統計 / 旅程 / 路線)、詳細統計 16 種、期間指定で過去状態 (地図ピル「〜月指定」)
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **保存ボタン**: 記録種別に応じて「💾 手動記録で保存する」/「💾 GPS 記録で保存する」に動的切替（v176）
-**直近の作業**: **ES Modules stage 3 拡大完了 (v223〜v225)** — 全 18 ファイルの関数 export 化完了。v223 パイロット (11/13c/03) → v224 (12-auth) → v225 (04/06/07/08/09/10/13系/02/02b/05) の 3 リリース。約 60 関数を `export` 経由に切替、HTML onclick / HTML 文字列内 onclick / console テスト用 / state 共有 (NORIRECO.<domain>) のみ window bridge を意図的に残置。`typeof X === 'function'` ディフェンシブガードはほぼ全て撤去。残作業: 01-constants / 04b-ride-record の export 化 (小規模、`localDateStr` 等は globalThis 経由で十分動作中)、Notion §2.4 布石⑤ Supabase 呼び出しを `NORIRECO.api.xxx` ラッパー化、実機ログインフロー検証。
+**直近の作業**: **v226 — 旅程カード「✏️ 編集」を区間・乗車時刻・列車種別まで拡張**。trip-edit-modal を 5 セクション化 (📍 区間 read-only / 🕒 乗車時刻 / 🚆 列車種別 / ⏱ 遅延 / 📝 メモ)。手動記録は時刻 (date/depart/arrive) を minute precision で後追い編集可、列車種別は category + train_name + car_model を簡易編集可。GPS 記録は時刻をロックして verified を守る。Supabase に同期 (notes/delay_minutes は schema 未拡張のまま localStorage のみ)。**直前 (v223〜v225)**: ES Modules stage 3 で全 18 ファイルの関数 export 化完了。残作業: 01-constants / 04b-ride-record の export 化 (小規模)、Notion §2.4 布石⑤ Supabase 呼び出しを `NORIRECO.api.xxx` ラッパー化、実機ログインフロー検証、📍 区間のフル編集。
 
 ---
 
@@ -150,6 +150,14 @@
       その後、`js/07-record-mode.js` の `tripForSupabase()` 呼び出しを `JSON.stringify(trip)` に戻す
   - 残り:
     - **駅の設備メモ**（トイレあり、混雑度、改札位置 等） — `trip.station_notes` (jsonb) を駅ごとに保存。構造設計大きいため別タスク
+
+- [ ] **手動記録の旅程カードからの「区間」フル編集（v226 で時刻・列車種別は完了）**
+  - **v226 で完了**: 🕒 乗車時刻 (date/depart/arrive、minute precision) と 🚆 列車種別 (category/train_name/car_model) を旅程カード「✏️ 編集」モーダルから後から書き換え可能 ([js/13b-trips.js:184-371](js/13b-trips.js:184))。手動記録のみ時刻編集可、GPS 記録 (verified) は時刻をロックして認証性を守る。Supabase にも同期 (CHANGELOG §75)
+  - **残り (📍 区間のフル編集)**: `segments[]` の追加・削除・経路変更
+    - 現状の「✏️ 編集」モーダルでは区間は **read-only 表示**、修正したい場合は 🗑 削除→記録モードで再作成のガイドのみ
+    - 連鎖計算が必要: `segments[]` を変えると `from_station` / `to_station` / `line_list` / `total_stations` / `transfers` / `RIDDEN_SEGS` / 地図描画まで再計算
+    - 設計案: 「区間を編集」ボタン → 現 trip の segments を記録モードに pre-load → ユーザーが追加/削除 → 保存で既存 trip を update (DELETE → INSERT or PATCH)
+  - 関連: 🟡「ノリレコログを地図画面のタブとして統合」で「過去の旅程をまとめて編集」と被るので、UI 設計はそちらと統合検討
 
 - [ ] **`stop_type` 編集 UI (記録モード Step b)** — 自動派生で扱えないケース対応
   - v186 で `slStopType` の自動派生（seg.from=boarded / seg.to=alighted / 中間=passed、最高優先度採用）と駅UI個人化（●大/◎中/○小）+ 表示/非表示フィルタは完成
@@ -379,7 +387,7 @@
 ## メモ
 
 - **main 直 push 運用**（個人開発、PR・専用ブランチ不要、自動承認設定済み）
-- 編集後は **`sw.js` の `CACHE_VERSION` を上げる**こと（現在 v225）
+- 編集後は **`sw.js` の `CACHE_VERSION` を上げる**こと（現在 v226）
 - HTML 編集後は `</script></body></html>` が末尾に残っているか必ず確認
 - **JS 編集後は必ずシンタックスチェック** — `npm run check` で 17/17 OK を確認 (v193〜、Notion §2.4 布石② 完了)
 - 新規 trip の `lineId` は `service_lines_master.json` の id を使う（旧 N02 id も `LEGACY_LINE_ID_ALIAS` で透過解決）

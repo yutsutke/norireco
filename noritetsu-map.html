@@ -1277,26 +1277,84 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
   </div>
 </div>
 
-<!-- v184: 旅程の📝メモ・⏱遅延 後追い編集モーダル (マイページ旅程カードから開く) -->
+<!-- v184: 旅程の後追い編集モーダル (マイページ旅程カードから開く)
+     v184: メモ・遅延 / v226: 区間 (read-only) ・乗車時刻 (date/depart/arrive) ・列車種別 を追加 -->
 <div class="memo-modal" id="trip-edit-modal" onclick="if(event.target===this)closeTripEditModal()">
   <div class="memo-sheet">
     <div class="sh"></div>
-    <div class="modal-title">✏️ メモ・遅延を編集</div>
-    <div class="modal-sub" style="color:var(--silver);font-size:11px;margin-bottom:14px" id="trip-edit-subtitle">旅程の📝 自由メモ と ⏱ 遅延分 を後から追加・編集できます。</div>
+    <div class="modal-title">✏️ 旅程を編集</div>
+    <div class="modal-sub" style="color:var(--silver);font-size:11px;margin-bottom:14px" id="trip-edit-subtitle">旅程の各項目を後から編集できます。</div>
     <input type="hidden" id="trip-edit-id" value="">
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
-      <label style="font-size:10px;color:var(--silver);min-width:50px">⏱ 遅延</label>
-      <input type="number" id="trip-edit-delay-h" min="0" max="99" step="1" placeholder="0"
-             style="width:64px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
-      <span style="font-size:10px;color:var(--silver)">時間</span>
-      <input type="number" id="trip-edit-delay-m" min="0" max="59" step="1" placeholder="0"
-             style="width:64px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
-      <span style="font-size:10px;color:var(--silver)">分遅れ</span>
+
+    <!-- 📍 区間 (read-only 表示) -->
+    <div style="margin-bottom:12px;border-top:1px solid var(--track);padding-top:10px">
+      <div style="font-size:11px;color:var(--gold);margin-bottom:6px">📍 区間</div>
+      <div id="trip-edit-segments" style="font-size:12px;color:var(--white);background:rgba(20,32,46,.6);border:1px solid var(--track);border-radius:6px;padding:8px;line-height:1.6;word-break:break-all"></div>
+      <div style="font-size:9px;color:var(--silver);opacity:.7;line-height:1.5;margin-top:6px">
+        ※ 区間そのものの修正 (経由駅の追加・削除) は現状未対応です。修正したい場合は 🗑 削除して記録モードで作り直してください。
+      </div>
     </div>
-    <textarea id="trip-edit-notes" rows="4" placeholder="自由メモ (車内エピソード・運休情報など)"
-              style="width:100%;box-sizing:border-box;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:8px;font-size:12px;resize:vertical;min-height:80px;font-family:inherit;margin-bottom:10px"></textarea>
+
+    <!-- 🕒 乗車時刻 (手動記録のみ編集可) -->
+    <div id="trip-edit-time-section" style="margin-bottom:12px;border-top:1px solid var(--track);padding-top:10px">
+      <div style="font-size:11px;color:var(--gold);margin-bottom:6px">🕒 乗車時刻</div>
+      <div id="trip-edit-time-lock" style="display:none;font-size:11px;color:var(--silver);background:rgba(95,181,255,.08);border-left:3px solid #5fb5ff;border-radius:0 6px 6px 0;padding:8px 10px;line-height:1.5;margin-bottom:6px">
+        🟢 GPS 記録は時刻を編集できません (verified を守るため)。
+      </div>
+      <div id="trip-edit-time-inputs">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+          <label style="font-size:10px;color:var(--silver);min-width:40px">📅 乗車日</label>
+          <input type="date" id="trip-edit-date" style="flex:1;min-width:140px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+          <label style="font-size:10px;color:var(--silver);min-width:40px">🕐 出発</label>
+          <input type="time" id="trip-edit-depart" style="flex:1;min-width:110px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
+          <label style="font-size:10px;color:var(--silver);min-width:40px">🕑 到着</label>
+          <input type="time" id="trip-edit-arrive" style="flex:1;min-width:110px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
+        </div>
+        <div style="font-size:9px;color:var(--silver);opacity:.7;line-height:1.5">
+          ※ 日付のみ入力で「日付精度」、出発+到着両方で「正確な時刻」として保存されます。精度を月/年/不明に下げる場合は新規記録で作り直してください。
+        </div>
+      </div>
+    </div>
+
+    <!-- 🚆 列車種別 -->
+    <div style="margin-bottom:12px;border-top:1px solid var(--track);padding-top:10px">
+      <div style="font-size:11px;color:var(--gold);margin-bottom:6px">🚆 列車種別 (任意)</div>
+      <select id="trip-edit-train-category" style="width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;margin-bottom:6px">
+        <option value="">指定しない</option>
+      </select>
+      <input id="trip-edit-train-name" type="text" placeholder="列車名 (例: あずさ9号、富士回遊3号)"
+             style="width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;margin-bottom:6px;box-sizing:border-box">
+      <input id="trip-edit-car-model" type="text" placeholder="車両形式 (例: E353系、209系2000番台)"
+             style="width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;box-sizing:border-box">
+      <div style="font-size:9px;color:var(--silver);opacity:.7;line-height:1.5;margin-top:4px">
+        ※ 簡易入力です。マスター列車の cascading 選択は新規記録の確認モーダルでのみ可能。
+      </div>
+    </div>
+
+    <!-- ⏱ 遅延 -->
+    <div style="margin-bottom:8px;border-top:1px solid var(--track);padding-top:10px">
+      <div style="font-size:11px;color:var(--gold);margin-bottom:6px">⏱ 遅延</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="number" id="trip-edit-delay-h" min="0" max="99" step="1" placeholder="0"
+               style="width:64px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
+        <span style="font-size:10px;color:var(--silver)">時間</span>
+        <input type="number" id="trip-edit-delay-m" min="0" max="59" step="1" placeholder="0"
+               style="width:64px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
+        <span style="font-size:10px;color:var(--silver)">分遅れ</span>
+      </div>
+    </div>
+
+    <!-- 📝 メモ -->
+    <div style="margin-bottom:10px;border-top:1px solid var(--track);padding-top:10px">
+      <div style="font-size:11px;color:var(--gold);margin-bottom:6px">📝 自由メモ</div>
+      <textarea id="trip-edit-notes" rows="3" placeholder="自由メモ (車内エピソード・運休情報など)"
+                style="width:100%;box-sizing:border-box;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:8px;font-size:12px;resize:vertical;min-height:64px;font-family:inherit"></textarea>
+    </div>
+
     <div style="font-size:9px;color:var(--silver);opacity:.7;line-height:1.5;margin-bottom:12px">
-      ※ メモと遅延は現在この端末の localStorage のみに保存されます。Supabase スキーマ拡張後に同期されます。
+      ※ メモと遅延は端末の localStorage のみ。乗車時刻・列車種別・区間は Supabase にも同期されます。
     </div>
     <button class="btn-gen" onclick="saveTripEdit()">💾 保存する</button>
     <button class="btn-cls" onclick="closeTripEditModal()">キャンセル</button>

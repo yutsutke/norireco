@@ -178,9 +178,10 @@ function applyTripFilters(trips) {
 }
 NORIRECO.mypage.applyTripFilters = applyTripFilters;
 
-// v184: 旅程カードからメモ・遅延を後追い編集 ────────────────────
-// Supabase スキーマ未拡張のため、編集結果は localStorage と NORIRECO.mypage.state._mypageCache に書き戻すのみ。
-// 旅程タブ・統計タブ「直近の旅程」を即時再描画して反映する。
+// v184/v226: 旅程カードからメモ・遅延・時刻・列車種別を後追い編集 ────
+// v184 はメモ・遅延のみ。v226 で 🕒 乗車時刻 (date/depart/arrive) ・🚆 列車種別 (category/name/car_model)
+// を編集可。📍 区間 は read-only 表示。GPS 記録 (verified=true) は時刻を編集不可にロックして
+// 認証性を守る。Supabase 列は全て既存なので localStorage と Supabase の双方に書き戻す。
 function openTripEditModal(tripId) {
   const trip = (NORIRECO.mypage.state._mypageCache || []).find(t => t.id === tripId);
   if (!trip) { alert('旅程が見つかりません'); return; }
@@ -197,8 +198,54 @@ function openTripEditModal(tripId) {
   if (notesInp) notesInp.value = trip.notes || '';
   if (subTitle) {
     const label = trip.name || tripId;
-    subTitle.textContent = `${label} の 📝 自由メモ と ⏱ 遅延 を編集します。`;
+    subTitle.textContent = `${label} を編集します。`;
   }
+
+  // v226: 📍 区間 (read-only 表示)
+  const segEl = document.getElementById('trip-edit-segments');
+  if (segEl) {
+    const segs = Array.isArray(trip.segments) ? trip.segments : [];
+    if (segs.length === 0) {
+      segEl.innerHTML = `<span style="color:var(--silver)">${trip.from_station || '?'} → ${trip.to_station || '?'}</span>`;
+    } else {
+      segEl.innerHTML = segs.map((s, i) => {
+        const lineLabel = s.lineName || s.lineId || '?';
+        return `<div style="margin-bottom:${i < segs.length - 1 ? '4px' : '0'}"><span style="color:var(--gold);font-size:10px">${i+1}.</span> ${s.from || '?'} → ${s.to || '?'} <span style="color:var(--silver);font-size:10px">[${lineLabel}]</span></div>`;
+      }).join('');
+    }
+  }
+
+  // v226: 🕒 乗車時刻 — GPS 記録 (verified=true && source==='gps_button') はロック
+  const isVerifiedGps = !!trip.verified && trip.source === 'gps_button';
+  const timeLockEl = document.getElementById('trip-edit-time-lock');
+  const timeInputsEl = document.getElementById('trip-edit-time-inputs');
+  if (timeLockEl) timeLockEl.style.display = isVerifiedGps ? 'block' : 'none';
+  if (timeInputsEl) timeInputsEl.style.display = isVerifiedGps ? 'none' : 'block';
+  const dateInp = document.getElementById('trip-edit-date');
+  const depInp = document.getElementById('trip-edit-depart');
+  const arrInp = document.getElementById('trip-edit-arrive');
+  if (dateInp) dateInp.value = (trip.date && trip.date_precision !== 'unknown') ? trip.date : '';
+  // depart_time / arrive_time は HH:MM:SS 形式。input[type=time] は HH:MM を期待
+  const toHm = (v) => (typeof v === 'string' && v.length >= 5) ? v.slice(0, 5) : '';
+  if (depInp) depInp.value = toHm(trip.depart_time);
+  if (arrInp) arrInp.value = toHm(trip.arrive_time);
+
+  // v226: 🚆 列車種別 — TRAIN_CATEGORIES から category dropdown 構築
+  const catSel = document.getElementById('trip-edit-train-category');
+  if (catSel) {
+    let catHtml = '<option value="">指定しない</option>';
+    const cats = (NORIRECO.trains && NORIRECO.trains.TRAIN_CATEGORIES) || {};
+    for (const [k, v] of Object.entries(cats)) {
+      catHtml += `<option value="${k}">${v.icon || ''} ${v.label || k}</option>`;
+    }
+    catSel.innerHTML = catHtml;
+    catSel.value = trip.train_category || '';
+  }
+  const trainNameInp = document.getElementById('trip-edit-train-name');
+  const carModelInp = document.getElementById('trip-edit-car-model');
+  if (trainNameInp) trainNameInp.value = trip.train_name || '';
+  if (carModelInp) carModelInp.value = trip.car_model || '';
+
   document.getElementById('trip-edit-modal')?.classList.add('open');
 }
 window.openTripEditModal = openTripEditModal;
@@ -210,7 +257,7 @@ function closeTripEditModal() {
 window.closeTripEditModal = closeTripEditModal;
 NORIRECO.mypage.closeTripEditModal = closeTripEditModal;
 
-function saveTripEdit() {
+async function saveTripEdit() {
   const tripId = document.getElementById('trip-edit-id')?.value;
   if (!tripId) { closeTripEditModal(); return; }
   const trip = (NORIRECO.mypage.state._mypageCache || []).find(t => t.id === tripId);
@@ -230,7 +277,55 @@ function saveTripEdit() {
   const newDelay = (dTotal > 0) ? Math.min(5999, dTotal) : null;
   const newNotes = (notesRaw || '').trim() || null;
 
+  // v226: 🕒 乗車時刻 — GPS 記録は編集ロック、手動記録のみ反映
+  const isVerifiedGps = !!trip.verified && trip.source === 'gps_button';
+  const tripPatch = {};
+  if (!isVerifiedGps) {
+    const dateRaw = document.getElementById('trip-edit-date')?.value || '';
+    const depRaw = document.getElementById('trip-edit-depart')?.value || '';
+    const arrRaw = document.getElementById('trip-edit-arrive')?.value || '';
+    if (dateRaw) {
+      tripPatch.date = dateRaw;
+      // 精度判定: depart/arrive どちらか入力されていれば 'minute'、なければ 'day'
+      if (depRaw || arrRaw) {
+        tripPatch.date_precision = 'minute';
+        tripPatch.depart_time = depRaw ? `${depRaw}:00` : '';
+        tripPatch.arrive_time = arrRaw ? `${arrRaw}:00` : '';
+        // 両方入力で total_minutes 再計算 (日跨ぎ補正)
+        if (depRaw && arrRaw) {
+          const [dhh, dmm] = depRaw.split(':').map(Number);
+          const [ahh, amm] = arrRaw.split(':').map(Number);
+          let diff = (ahh * 60 + amm) - (dhh * 60 + dmm);
+          if (diff < 0) diff += 24 * 60;
+          tripPatch.total_minutes = diff;
+        }
+      } else {
+        // 日付のみ → 既存の精度が minute なら day に下げる。それ以外 (day/month/year/unknown) は据置
+        if (trip.date_precision === 'minute') {
+          tripPatch.date_precision = 'day';
+          tripPatch.depart_time = '';
+          tripPatch.arrive_time = '';
+          tripPatch.total_minutes = 0;
+        }
+      }
+    }
+  }
+
+  // v226: 🚆 列車種別 — category / train_name / car_model (任意)
+  const catRaw = document.getElementById('trip-edit-train-category')?.value || '';
+  const tnameRaw = (document.getElementById('trip-edit-train-name')?.value || '').trim();
+  const carRaw = (document.getElementById('trip-edit-car-model')?.value || '').trim();
+  tripPatch.train_category = catRaw || null;
+  tripPatch.train_name = tnameRaw || null;
+  tripPatch.car_model = carRaw || null;
+  // 手動編集では train_id を解決しないため null に倒す (mypage 表示の 📝 マーク = マニア手入力扱い)
+  // 既存のマスター選択を維持したい場合は train_name を変えなければ trip.train_id 据置
+  if (tnameRaw && tnameRaw !== (trip.train_name || '')) {
+    tripPatch.train_id = null;
+  }
+
   // NORIRECO.mypage.state._mypageCache 内の trip を直接更新
+  Object.assign(trip, tripPatch);
   trip.delay_minutes = newDelay;
   trip.notes = newNotes;
 
@@ -239,9 +334,8 @@ function saveTripEdit() {
     const local = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
     const idx = local.findIndex(t => t.id === tripId);
     if (idx >= 0) {
-      local[idx] = { ...local[idx], delay_minutes: newDelay, notes: newNotes };
+      local[idx] = { ...local[idx], ...tripPatch, delay_minutes: newDelay, notes: newNotes };
     } else {
-      // Supabase からのみ取得した旧 trip を初めて localStorage に置く場合
       local.push({ ...trip });
     }
     localStorage.setItem('norireco_trips', JSON.stringify(local));
@@ -249,11 +343,34 @@ function saveTripEdit() {
     console.warn('[マイページ] localStorage 更新失敗:', e.message);
   }
 
+  // v226: Supabase 側も同期 (date/depart_time/arrive_time/total_minutes/date_precision/train_* は既存列)
+  // notes / delay_minutes は schema 未拡張のため送信ペイロードから除外
+  let supabaseOk = true;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_trips?id=eq.${tripId}`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${authBearerToken()}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify(tripPatch),
+    });
+    if (!res.ok) {
+      supabaseOk = false;
+      const err = await res.text();
+      console.warn('[マイページ] Supabase 更新失敗:', err.slice(0, 200));
+    }
+  } catch (e) {
+    supabaseOk = false;
+    console.warn('[マイページ] Supabase 通信エラー:', e.message);
+  }
+
   closeTripEditModal();
-  // 旅程タブ・統計タブ「直近の旅程」を再描画
   if (typeof renderMpTripsSection === 'function') renderMpTripsSection();
   applyMpSection();
-  showMypageToast('✏️ メモ・遅延を保存しました');
+  showMypageToast(supabaseOk ? '✏️ 旅程を保存しました' : '⚠️ ローカルのみ保存 (Supabase 失敗)');
 }
 window.saveTripEdit = saveTripEdit;
 NORIRECO.mypage.saveTripEdit = saveTripEdit;
