@@ -1820,6 +1820,39 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 70. v221 — ES Modules stage 2 リグレッション修正 (2): `allLayers` / `dotLayerRef` / `labelLayerRef` を window 直置きへ (2026-05-19)
+
+### 背景
+
+v220 で `IS_TOUCH` bridge を補完したら、initMap の次の行で別の同種エラーが surfacing:
+
+```
+Uncaught ReferenceError: dotLayerRef is not defined at initMap (06-map-leaflet.js:92:15)
+```
+
+`dotLayerRef` / `labelLayerRef` / `allLayers` は 08-rendering.js で `let` 宣言された module-local 変数だが、04/05/06/07 から bare で参照・代入されていた。classic script 時代は最初の `let` 宣言を取り合う共有 lexical scope で動いていたが、stage 2 で全ファイルが module 化された結果:
+
+- module-local `let` は外部 module から不可視
+- 06 line 92-93 の `dotLayerRef = L.layerGroup()` (宣言なし bare 代入) は module strict mode で ReferenceError
+- 結果として initMap が中断 → LINES 描画停止 (v220 修正後も同じ症状で残った)
+
+### 変更内容 (3 ファイル)
+
+- `js/08-rendering.js`: 末尾の `let allLayers=[]; let dotLayerRef=null; let labelLayerRef=null;` を `window.X = ...` に置換 (3 行)。`drawLines()` 内の bare 再代入 2 行も `window.X = ...` 化
+- `js/06-map-leaflet.js`: `initMap()` 内の bare 再代入 2 行を `window.X = ...` 化
+- `sw.js` CACHE_VERSION v220 → v221
+
+### v220 教訓の続編
+
+v220 教訓 (「module 化時の bridge 漏れは関数だけでなくトップレベル `const` も対象」) に、もう一段:
+
+- **module-local `let` で宣言されたミュータブル状態を別 module から書き換える pattern も module 化で破綻する**。classic 時代は宣言の先取り(hoisting + 暗黙 global) で偶然動いていただけ。
+- 対処: そういう state は `window.X` か `NORIRECO.<domain>.X` に置く。`let` は単一 module 内で完結する場合のみ使う。
+
+予防的に top-level `let` を 18 ファイル grep した結果、cross-module 共有は今回潰した 3 つだけだった (`13a-stats.js` の `_prefMasterCache` は同一ファイル内のみ使用)。`const` 側は `IS_TOUCH` 系で v220 が打ち止めた想定。
+
+---
+
 ## 69. v220 — ES Modules stage 2 リグレッション修正: `IS_TOUCH` / `IS_MOBILE` window bridge 補完 (2026-05-19)
 
 ### 背景

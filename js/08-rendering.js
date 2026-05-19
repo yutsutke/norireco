@@ -56,9 +56,12 @@ function getVisiblePriority(zoom){
 }
 
 // 全Leafletレイヤーを管理
-let allLayers=[];
-let dotLayerRef=null;
-let labelLayerRef=null;
+// v221: 04/05/06/07 から bare 参照 + 06 が再代入するため module-local `let` ではなく window 直置き。
+// module strict mode では宣言なし bare 代入が ReferenceError になるため、書込側 (06/08) は
+// `window.X = ...` で揃え、読込側 (04/05/07) は bare のまま global scope chain 経由で解決させる。
+window.allLayers = [];
+window.dotLayerRef = null;
+window.labelLayerRef = null;
 
 // 描画済み統合駅追跡 (重複マーカー抑制)
 const drawnMergedStations = new Map();
@@ -70,8 +73,8 @@ function drawLines(){
   drawnMergedStations.clear();
   // レイヤーグループ初期化（まだなければ）
   if (!dotLayerRef) {
-    dotLayerRef = L.layerGroup();
-    labelLayerRef = L.layerGroup();
+    window.dotLayerRef = L.layerGroup();
+    window.labelLayerRef = L.layerGroup();
   } else {
     // 既存のレイヤーをクリア (再描画時のDOM残留防止)
     labelLayerRef.clearLayers();

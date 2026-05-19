@@ -89,8 +89,10 @@ function initMap(){
   }
 
   // レイヤーグループを先に作成
-  dotLayerRef = L.layerGroup();
-  labelLayerRef = L.layerGroup();
+  // v221: 08 module-local `let` から window 直置きへ移行 (08 と 06 が両方書込側で
+  // module strict mode の bare 代入禁止に抵触していた)
+  window.dotLayerRef = L.layerGroup();
+  window.labelLayerRef = L.layerGroup();
 
   // 初期描画（NORIRECO.data.LINES空でも問題なし、JSONロード後に再描画される）
   drawLines();
