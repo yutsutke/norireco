@@ -124,26 +124,19 @@ export function updateLOD() {
     }
   });
 
-  // ドット/パイ: 重要度ティアによる段階表示 (地域別閾値)
+  // ドット/パイ: 重要度ティアによる段階表示。
+  // v230: 旧 isMetro bbox 分岐を撤去 — tier (baseTier + isolationBonus) が密集度を内包。
   // パイチャート (_station_use_pie_threshold=true) は getPieMinTier で別管理
   // → 低ズームでは多系統駅も単色ドットで表示、ズームが上がるとパイに昇格
   if (dotLayerRef) {
-    const dotMinMetro = getDotMinTier(z, true);
-    const dotMinRural = getDotMinTier(z, false);
-    const pieMinMetro = getPieMinTier(z, true);
-    const pieMinRural = getPieMinTier(z, false);
-    const minOfAll = Math.min(dotMinMetro, dotMinRural, pieMinMetro, pieMinRural);
-    if (minOfAll <= 6) {
+    const dotMin = getDotMinTier(z);
+    const pieMin = getPieMinTier(z);
+    const minOfBoth = Math.min(dotMin, pieMin);
+    if (minOfBoth <= 6) {
       if (!NORIRECO.map.instance.hasLayer(dotLayerRef)) NORIRECO.map.instance.addLayer(dotLayerRef);
       dotLayerRef.eachLayer(d => {
         const t = d._station_tier || 1;
-        const m = d._station_isMetro;
-        let minTier;
-        if (d._station_use_pie_threshold) {
-          minTier = m ? pieMinMetro : pieMinRural;
-        } else {
-          minTier = m ? dotMinMetro : dotMinRural;
-        }
+        const minTier = d._station_use_pie_threshold ? pieMin : dotMin;
         setStationVisible(d, t >= minTier);
       });
     } else {
@@ -153,19 +146,15 @@ export function updateLOD() {
 
   // ラベル: addLayer/removeLayer でDOM要素自体を出し入れ (ズーム/パン高速化)
   if (labelLayerRef) {
-    const labelMinMetro = getLabelMinTier(z, true);
-    const labelMinRural = getLabelMinTier(z, false);
-    const minOfBoth = Math.min(labelMinMetro, labelMinRural);
-    if (minOfBoth <= 6) {
+    const labelMin = getLabelMinTier(z);
+    if (labelMin <= 6) {
       if (!NORIRECO.map.instance.hasLayer(labelLayerRef)) NORIRECO.map.instance.addLayer(labelLayerRef);
       // ★最重要最適化: ビューポート内のラベルだけDOMに追加
       // 画面外の駅名は読み込まない → 巨大エリアでも軽量
       const _bounds = NORIRECO.map.instance.getBounds().pad(0.15);  // 少しゆとり持つ
       (window._allLabels || []).forEach(l => {
         const t = l._station_tier || 1;
-        const m = l._station_isMetro;
-        const minTier = m ? labelMinMetro : labelMinRural;
-        const passesT = t >= minTier;
+        const passesT = t >= labelMin;
         const passesView = passesT && _bounds.contains(l.getLatLng());
         const inLayer = labelLayerRef.hasLayer(l);
         if (passesView && !inLayer) {
@@ -212,17 +201,10 @@ const SUPER_MEGA_STATIONS = new Set([
   '札幌', '仙台', '博多', '広島',
 ]);
 
-// 三大都市圏の判定 (lat/lon境界ボックス)
-// 都心の超密集エリアのみ (山手線~周辺の半径10km程度)
-function isMetroArea(lat, lon) {
-  // 首都圏 (山手線+周辺): 約25km × 25km
-  if (lat >= 35.60 && lat <= 35.78 && lon >= 139.60 && lon <= 139.85) return true;
-  // 大阪都心 (大阪・京都・神戸の中心部のみ): 約20km × 20km
-  if (lat >= 34.65 && lat <= 34.78 && lon >= 135.40 && lon <= 135.60) return true;
-  // 名古屋都心 (名古屋駅周辺のみ): 約15km × 15km
-  if (lat >= 35.13 && lat <= 35.22 && lon >= 136.85 && lon <= 136.97) return true;
-  return false;
-}
+// v230: 旧 isMetroArea(lat, lon) (首都圏・大阪・名古屋の bbox 判定) は撤去。
+// 駅ランク (baseTier + isolationBonus from nearest_km) が密集度を自動で
+// 扱うため、bbox による地域分岐は不要 (山手線駅は nearest_km < 0.5km で
+// bonus=-4 → tier -2 〜 -3 となり自然に高ズーム遅出しになる)。
 
 // 駅の重要度ティア
 // tier 6: 三大都市中心 (東京・名古屋・新大阪)
@@ -242,119 +224,41 @@ function stationTier(nLines, name) {
 // ズームレベルで表示するべき最小ティア (ドット用 = 小さい単色マーカー)
 // 各ズーム = 1 tier。負の値は「超密集駅は更にズームしないと出ない」用
 // effectiveTier の取りうる範囲: -4 (<0.5km, baseTier 1) 〜 6 (兆ターミナル)
-function getDotMinTier(z, isMetro) {
-  if (IS_MOBILE && isMetro) z -= 1;
-  if (IS_MOBILE && !isMetro) z += 2;
-  if (IS_MOBILE) {
-    if (isMetro) {
-      if (z >= 17) return -4;
-      if (z >= 16) return -3;
-      if (z >= 15) return -2;
-      if (z >= 14) return -1;
-      if (z >= 13) return 0;
-      if (z >= 12) return 1;
-      if (z >= 11) return 2;
-      if (z >= 10) return 3;
-      if (z >= 9)  return 4;
-      if (z >= 8)  return 5;
-      if (z >= 5)  return 6;
-      return 99;
-    } else {
-      if (z >= 15) return -4;
-      if (z >= 14) return -3;
-      if (z >= 13) return -2;
-      if (z >= 12) return -1;
-      if (z >= 11) return 0;
-      if (z >= 10) return 1;
-      if (z >= 9)  return 2;
-      if (z >= 8)  return 3;
-      if (z >= 7)  return 4;
-      if (z >= 6)  return 5;
-      if (z >= 5)  return 6;
-      return 99;
-    }
-  } else {
-    // PC/iPad
-    if (isMetro) {
-      if (z >= 16) return -4;
-      if (z >= 15) return -3;
-      if (z >= 14) return -2;
-      if (z >= 13) return -1;
-      if (z >= 12) return 0;
-      if (z >= 11) return 1;
-      if (z >= 10) return 2;
-      if (z >= 9)  return 3;
-      if (z >= 8)  return 4;
-      if (z >= 7)  return 5;
-      if (z >= 5)  return 6;
-      return 99;
-    } else {
-      if (z >= 14) return -4;
-      if (z >= 13) return -3;
-      if (z >= 12) return -2;
-      if (z >= 11) return -1;
-      if (z >= 10) return 0;
-      if (z >= 9)  return 1;
-      if (z >= 8)  return 2;
-      if (z >= 7)  return 3;
-      if (z >= 6)  return 4;
-      if (z >= 5)  return 5;
-      return 99;
-    }
-  }
+// v230: 旧 isMetro 分岐 (4 テーブル) を 1 本に統合。密集度は tier 計算に
+// 既に織り込まれている (nearest_km < 0.5km → bonus -4) ため地域分岐は不要。
+// 旧 metro 側のテーブルをベース採用 (厳しめ) — 田舎駅は isolation bonus で
+// tier 自体が早出しされるため、閾値表は密集対応の保守的値に揃える。
+function getDotMinTier(z) {
+  if (IS_MOBILE) z -= 1;
+  if (z >= 16) return -4;
+  if (z >= 15) return -3;
+  if (z >= 14) return -2;
+  if (z >= 13) return -1;
+  if (z >= 12) return 0;
+  if (z >= 11) return 1;
+  if (z >= 10) return 2;
+  if (z >= 9)  return 3;
+  if (z >= 8)  return 4;
+  if (z >= 7)  return 5;
+  if (z >= 5)  return 6;
+  return 99;
 }
 
 // ズームレベルで「パイチャート」を表示する最小ティア (ドットより厳しめ)
 // 多系統駅は低ズームでは単色ドットで、ズーム上がるとパイに昇格
-function getPieMinTier(z, isMetro) {
-  if (IS_MOBILE && isMetro) z -= 1;
-  if (IS_MOBILE) {
-    if (isMetro) {
-      if (z >= 14) return 2;
-      if (z >= 13) return 3;
-      if (z >= 12) return 4;
-      if (z >= 11) return 5;
-      if (z >= 9)  return 6;
-      return 99;
-    } else {
-      if (z >= 13) return 2;
-      if (z >= 12) return 3;
-      if (z >= 11) return 4;
-      if (z >= 10) return 5;
-      if (z >= 8)  return 6;
-      return 99;
-    }
-  } else {
-    if (isMetro) {
-      if (z >= 13) return 2;  // 全多系統駅をパイで
-      if (z >= 12) return 3;
-      if (z >= 11) return 4;  // Image 5 = z=11 で tier 4+
-      if (z >= 10) return 5;  // 超ターミナルのみ
-      if (z >= 9)  return 6;
-      return 99;
-    } else {
-      if (z >= 12) return 2;
-      if (z >= 11) return 3;
-      if (z >= 10) return 4;
-      if (z >= 9)  return 5;
-      if (z >= 8)  return 6;
-      return 99;
-    }
-  }
+function getPieMinTier(z) {
+  if (IS_MOBILE) z -= 1;
+  if (z >= 13) return 2;  // 全多系統駅をパイで
+  if (z >= 12) return 3;
+  if (z >= 11) return 4;
+  if (z >= 10) return 5;  // 超ターミナルのみ
+  if (z >= 9)  return 6;
+  return 99;
 }
-// ラベル用 (さらに厳しめ)
-function getLabelMinTier(z, isMetro) {
-  // 一貫して「駅マーカーが先、駅名は後」
-  //   首都圏:        ドットから1ズーム後に駅名
-  //   PC/iPad+地方:  ドットから1ズーム後に駅名
-  //   スマホ+地方:   ドットから2ズーム後に駅名
-  let offset;
-  if (isMetro) {
-    offset = -1;  // 首都圏: ドット +1ズームで駅名
-  } else {
-    offset = IS_MOBILE ? -2 : -1;  // 地方: PC+1ズーム / スマホ+2ズームで駅名
-  }
-  return getDotMinTier(z + offset, isMetro);
+// ラベル用 (さらに厳しめ): ドットから 1 ズーム遅らせて駅名を出す。
+// 「駅マーカーが先、駅名は後」の原則。
+function getLabelMinTier(z) {
+  return getDotMinTier(z - 1);
 }
 // マーカー(circleMarker or divIcon)の表示/非表示切り替え
 function setStationVisible(m, visible) {
@@ -680,7 +584,6 @@ function drawStationsLayer() {
       else                isolationBonus = -4;
     }
     const tier = Math.min(6, baseTier + isolationBonus);
-    const isMetro = isMetroArea(ms.lat, ms.lon);
     const mScale = nLines === 1 ? 1.0 : Math.min(2.5, 1.0 + Math.log2(nLines) * 0.5);
 
     // 乗車判定: ms.lines のどれかでこの駅が ridden か
@@ -808,7 +711,6 @@ function drawStationsLayer() {
     dot.bindTooltip(tooltipHtml, {className:'norireco-tooltip', offset:[8,0]});
 
     dot._station_tier = tier;
-    dot._station_isMetro = isMetro;
     attachStationDotClickV2(dot, ms);
     dotLayerRef.addLayer(dot);
 
@@ -816,7 +718,6 @@ function drawStationsLayer() {
     if (extraDot) {
       extraDot.bindTooltip(tooltipHtml, {className:'norireco-tooltip', offset:[8,0]});
       extraDot._station_tier = tier;
-      extraDot._station_isMetro = isMetro;
       attachStationDotClickV2(extraDot, ms);
       dotLayerRef.addLayer(extraDot);
     }
@@ -830,7 +731,6 @@ function drawStationsLayer() {
       interactive: false,
     });
     label._station_tier = tier;
-    label._station_isMetro = isMetro;
     (window._allLabels = window._allLabels || []).push(label);
   }
 }

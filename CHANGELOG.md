@@ -1820,6 +1820,81 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 79. v230 — 地図 LOD から首都圏 bbox 分岐を撤去、駅ランク 1 本化 (2026-05-19)
+
+### 背景
+
+地図描画の LOD (level of detail) は (1) 駅ランク `tier` (baseTier from 系統数 + isolationBonus from `nearest_km`) と (2) 緯度経度 bbox による `isMetro` 判定の **二重メカニズム** で密集度を扱っていた。`isMetro` は首都圏 (山手線周辺) / 大阪都心 / 名古屋都心の bbox にヒットすると `getDotMinTier(z, true)` / `getDotMinTier(z, false)` の別テーブルを引く設計。
+
+しかし `isolationBonus` (`nearest_km < 0.5km` → `-4`, `>= 10km` → `+2`) が既に密集度の連続値として最終 tier に織り込まれているため、bbox は同じ仕事を粗い離散分類で重複していた。京葉線・葛西臨海公園のように「首都圏 bbox の外だが実質都市駅」のようなエッジケースで bbox が機能しないのに対し、isolation は座標非依存で正しく機能する。
+
+### 変更内容 ([js/08-rendering.js](js/08-rendering.js))
+
+#### 1. `isMetroArea(lat, lon)` 関数を削除
+
+3 領域 (首都圏 / 大阪 / 名古屋) の bbox 判定ロジック (旧 [js/08-rendering.js:215-225](js/08-rendering.js)) を撤去。
+
+#### 2. `getDotMinTier` / `getPieMinTier` / `getLabelMinTier` を 1 本化
+
+4 テーブル (PC+metro / PC+rural / Mobile+metro / Mobile+rural) を **旧 metro 側ベースに統合**。引数 `isMetro` を削除。
+
+- `getDotMinTier(z)`: PC で `z>=16→-4 ... z>=5→6`。Mobile では z を 1 下げて同テーブル参照 (旧 mobile metro 相当)
+- `getPieMinTier(z)`: 多系統駅をパイチャート昇格させる閾値。`z>=13→2 ... z>=9→6`
+- `getLabelMinTier(z)`: `getDotMinTier(z-1)` でドットから 1 ズーム遅延
+
+旧 rural 側のテーブル (PC で 2 ズーム緩く / Mobile で 3 ズーム緩く) は捨てた。tier+isolation で田舎駅は bonus +1/+2 が乗って tier が早出しされるので、閾値表は厳しめ寄りでも結果バランスする。
+
+#### 3. `updateLOD` の分岐簡素化 ([js/08-rendering.js:127-156](js/08-rendering.js:127))
+
+```js
+// 旧: const dotMinMetro = ...; const dotMinRural = ...; (×4)
+//     const m = d._station_isMetro;
+//     minTier = m ? dotMinMetro : dotMinRural;
+// 新: const dotMin = getDotMinTier(z);
+//     const minTier = d._station_use_pie_threshold ? pieMin : dotMin;
+```
+
+各マーカーの `_station_isMetro` プロパティ参照も削除。
+
+#### 4. 駅描画ループから `isMetro` 計算と `_station_isMetro` 代入を削除
+
+[js/08-rendering.js:683 周辺](js/08-rendering.js:683)。`dot` / `extraDot` / `label` の 3 箇所。
+
+### 駅ランク (tier) の計算式 (参考)
+
+`tier = min(6, baseTier + isolationBonus)` で **-4 〜 6** の整数。
+
+| 要素 | 値 |
+|---|---|
+| baseTier 6 | `SUPER_MEGA_STATIONS` (東京/名古屋/新大阪/札幌/仙台/博多/広島) |
+| baseTier 5 | 7 系統以上 (新宿/渋谷/池袋/横浜/大宮 等) |
+| baseTier 4 | 4-6 系統 |
+| baseTier 3 | 3 系統 |
+| baseTier 2 | 2 系統 |
+| baseTier 1 | 1 系統 |
+| isolationBonus +2 | `nearest_km >= 10km` (北海道ローカル駅等) |
+| isolationBonus +1 | `nearest_km >= 5km` |
+| isolationBonus 0 | `nearest_km >= 2km` |
+| isolationBonus -1 | `nearest_km >= 1.2km` |
+| isolationBonus -2 | `nearest_km >= 0.8km` |
+| isolationBonus -3 | `nearest_km >= 0.5km` |
+| isolationBonus -4 | `nearest_km < 0.5km` (山手線内側等) |
+
+例:
+- 東京駅: baseTier=6 → tier=6 (cap)
+- 神田 (山手線): baseTier=2, bonus=-4 → tier=-2 (高ズームでのみ出現)
+- 北海道・布部: baseTier=1, bonus=+2 → tier=3
+
+### 影響範囲
+
+LOD のみ。記録モード・統計・キャラ獲得など他機能には触れていない。bbox 撤去で「葛西臨海公園」のような bbox 外の首都圏駅も合理的に扱えるようになる副作用がある。
+
+### 落とし穴メモ
+
+`SUPER_MEGA_STATIONS` (東京/名古屋/新大阪/札幌/仙台/博多/広島) は `stationTier()` の最上位判定なので残置。これは bbox ではなく駅名ベースのリストなので tier 計算と整合。
+
+---
+
 ## 78. v229 — v228 続報: 達成率/系統数バッジと mypage キャッシュも purge (2026-05-19)
 
 ### 背景
