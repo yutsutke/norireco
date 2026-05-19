@@ -1820,6 +1820,48 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 81. v232 — 駅ドットとパイチャートの出現タイミングを統一 (2026-05-19)
+
+### 背景
+
+旧設計では `getDotMinTier(z)` (ドット用閾値) と `getPieMinTier(z)` (パイ用閾値、ドットより厳しめ) の 2 本立てで、多系統駅は **「低ズームでは単色ドットだけ表示 → 1〜2 ズーム上げるとパイチャートに昇格」** という段階表示を狙っていた。
+
+しかし v230/v231 の tier 圧縮後、ドットとパイで出現タイミングがズレるとマップ上で「単色丸」と「パイ」が混在する違和感が出ていた。多系統駅は最初からパイで出した方が情報密度として自然。
+
+### 変更内容 ([js/08-rendering.js](js/08-rendering.js))
+
+#### 1. `getPieMinTier(z)` 関数を削除
+
+旧 [js/08-rendering.js:244-252](js/08-rendering.js) の関数定義を撤去。
+
+#### 2. `_station_use_pie_threshold = true` 代入を削除 (2 箇所)
+
+- 装飾 divIcon (Lv2+/キャラ付き多系統駅) の `dot._station_use_pie_threshold = true`
+- 平常多系統駅の `extraDot._station_use_pie_threshold = true`
+
+両方ともパイマーカーだが、ドットと同じ `getDotMinTier` 閾値で出るように `_station_use_pie_threshold` フラグごと撤廃。
+
+#### 3. `updateLOD` を簡素化 ([js/08-rendering.js:131-141](js/08-rendering.js:131))
+
+```js
+// 旧:
+const dotMin = getDotMinTier(z);
+const pieMin = getPieMinTier(z);
+const minTier = d._station_use_pie_threshold ? pieMin : dotMin;
+
+// 新:
+const dotMin = getDotMinTier(z);
+const minTier = dotMin; // 全マーカー共通
+```
+
+### 視覚的影響
+
+- 多系統駅 (平常) は今後、出現と同時に **単色ドット + パイマーカー** が重なって表示される (パイがドットを視覚的に覆う)。単色ドットの上にパイが描画されるレイヤー順は据え置き
+- 装飾 divIcon (Lv2+/キャラ付き) は元から 1 マーカーだったので、出現タイミングが旧 dotMin に合わせて早くなる (旧 pieMin より早く出る)
+- ラベル (`getLabelMinTier`) は `getDotMinTier(z-1)` で 1 ズーム遅延の関係を維持
+
+---
+
 ## 80. v231 — 駅ランク tier テーブルを圧縮 (都内クラッタ抑制) (2026-05-19)
 
 ### 背景

@@ -126,18 +126,15 @@ export function updateLOD() {
 
   // ドット/パイ: 重要度ティアによる段階表示。
   // v230: 旧 isMetro bbox 分岐を撤去 — tier (baseTier + isolationBonus) が密集度を内包。
-  // パイチャート (_station_use_pie_threshold=true) は getPieMinTier で別管理
-  // → 低ズームでは多系統駅も単色ドットで表示、ズームが上がるとパイに昇格
+  // v232: パイチャート専用閾値 (getPieMinTier) を撤去 — ドットとパイの出現タイミングを揃え、
+  //       多系統駅では単色ドットの上にパイが同タイミングで重なる (パイが視覚的にドットを覆う)。
   if (dotLayerRef) {
     const dotMin = getDotMinTier(z);
-    const pieMin = getPieMinTier(z);
-    const minOfBoth = Math.min(dotMin, pieMin);
-    if (minOfBoth <= 6) {
+    if (dotMin <= 6) {
       if (!NORIRECO.map.instance.hasLayer(dotLayerRef)) NORIRECO.map.instance.addLayer(dotLayerRef);
       dotLayerRef.eachLayer(d => {
         const t = d._station_tier || 1;
-        const minTier = d._station_use_pie_threshold ? pieMin : dotMin;
-        setStationVisible(d, t >= minTier);
+        setStationVisible(d, t >= dotMin);
       });
     } else {
       if (NORIRECO.map.instance.hasLayer(dotLayerRef)) NORIRECO.map.instance.removeLayer(dotLayerRef);
@@ -242,17 +239,9 @@ function getDotMinTier(z) {
   return 99;
 }
 
-// ズームレベルで「パイチャート」を表示する最小ティア (ドットより厳しめ)
-// 多系統駅は低ズームでは単色ドットで、ズーム上がるとパイに昇格
-function getPieMinTier(z) {
-  if (IS_MOBILE) z -= 1;
-  if (z >= 13) return 2;  // 全多系統駅をパイで
-  if (z >= 12) return 3;
-  if (z >= 11) return 4;
-  if (z >= 10) return 5;  // 超ターミナルのみ
-  if (z >= 9)  return 6;
-  return 99;
-}
+// v232: getPieMinTier 撤去 — ドットとパイの出現タイミングを揃えるため、
+// 多系統駅のパイマーカーも getDotMinTier を共有する。
+
 // ラベル用 (さらに厳しめ): ドットから 1 ズーム遅らせて駅名を出す。
 // 「駅マーカーが先、駅名は後」の原則。
 function getLabelMinTier(z) {
@@ -628,7 +617,7 @@ function drawStationsLayer() {
     let extraDot = null;  // 多系統駅にだけ作る「低ズーム用の単色ドット」
     if (nLines > 1) {
       if (level >= 2 || character) {
-        // 装飾 divIcon (Lv2+/キャラ付き) — これだけパイ閾値で出す
+        // 装飾 divIcon (Lv2+/キャラ付き)
         const baseSize = ridden ? 14 : 11;
         const levelBonus = level >= 4 ? 4 : level >= 3 ? 2 : level >= 2 ? 1 : 0;
         const size = Math.round((baseSize + levelBonus) * mScale * stypeMul);
@@ -637,9 +626,8 @@ function drawStationsLayer() {
           opacity: ridden ? 1.0 : 0.7,
           interactive: true
         });
-        dot._station_use_pie_threshold = true;
       } else {
-        // 平常多系統駅: ベースの単色ドット (常に出る) + パイ (パイ閾値で遅出し)
+        // 平常多系統駅: ベースの単色ドット + パイマーカーを重ねる (v232 で出現タイミング統一)
         const c = colors[0] || '#888';
         const radius = (ridden ? 5.5 : 4) * Math.min(1.4, mScale) * stypeMul;
         dot = L.circleMarker([ms.lat, ms.lon], {
@@ -650,7 +638,7 @@ function drawStationsLayer() {
           fillOpacity: ridden ? 1.0 : 0.85,
           renderer: CANVAS,
         });
-        // パイマーカー (上に重ねる、パイ閾値で出す)
+        // パイマーカー (上に重ねる、ドットと同タイミングで出現)
         const baseSize = ridden ? 14 : 11;
         const size = Math.round(baseSize * mScale * stypeMul);
         extraDot = L.marker([ms.lat, ms.lon], {
@@ -658,7 +646,6 @@ function drawStationsLayer() {
           opacity: ridden ? 1.0 : 0.7,
           interactive: true
         });
-        extraDot._station_use_pie_threshold = true;
       }
     } else if (level >= 2 || character) {
       const baseSize = ridden ? 12 : 9;
