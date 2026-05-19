@@ -4,14 +4,14 @@
 詳しい仕様や経緯は `CHANGELOG.md`（更新履歴詳細）、ビジネス背景は [Notion 開発ノート](https://www.notion.so/35b71b458b63818494afe7c1ab917ca5)。
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v197 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v198 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13-..` 機能別分割（v131〜v138、`CHANGELOG.md §20, §21` 参照）
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
 **マイページ**: 3 サブタブ (統計 / 旅程 / 路線)、詳細統計 16 種、期間指定で過去状態 (地図ピル「〜月指定」)
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **保存ボタン**: 記録種別に応じて「💾 手動記録で保存する」/「💾 GPS 記録で保存する」に動的切替（v176）
-**直近の作業**: ES Modules パイロット (案 β) stage 1 — record domain state (`recordMode` / `recordSelection` / `recordHighlights` / `pairLineChoices` / `currentSegments` / `endStation*`) を `window.NORIRECO.record` に集約、4 ファイル約 80 箇所の call site 書き換え（v197）/ map domain (`map` / `memoMode` / `clickInfo`) を `window.NORIRECO.map` に集約（v196）/ 認証 state を `window.NORIRECO.auth` に集約（v195）
+**直近の作業**: ES Modules パイロット (案 β) stage 1 — gps domain state 12 個 (`locationMode` / `lastUserGps` / `recordStarted*` / `recordEndTime` / `nearest*` 他) を `window.NORIRECO.gps` に集約、2 ファイル約 60 箇所の call site 書き換え（v198）/ record domain (~7 state) を `window.NORIRECO.record` に集約（v197）/ map domain を `window.NORIRECO.map` に集約（v196）/ 認証 state を `window.NORIRECO.auth` に集約（v195）
 
 ---
 
@@ -68,12 +68,15 @@
     - ✅ map domain state (`map` Leaflet インスタンス / `memoMode` / `clickInfo`) を `window.NORIRECO.map` に集約
     - call site: 6 ファイル約 50 箇所、`Array.prototype.map(...)` との曖昧性は `map.` (literal) と `addTo(map)` / `if(map)` のパターン分離で対処
   - **v197 で完了済 (案 β stage 1 — record)**:
-    - ✅ record domain state (`recordMode` / `recordSelection` / `recordHighlights` / `pairLineChoices` / `currentSegments` / `endStationCandidates` / `endStationPickedIdx`) を `window.NORIRECO.record` に集約
-    - call site: 4 ファイル約 80 箇所 (07 内 ~75 + 04/06/08 計 9)
-    - 教訓: state object の property 名と外部識別子が同名だと replace_all で宣言ブロックも壊れる。今回は手動修正で対応、v200 以降は property 名を camelCase に明示的にずらして衝突回避予定
-  - **次セッション v198+ 候補**:
-    1. **案 β stage 1 残ドメイン** (推奨進行): `gps` (04 の locationMode/lastUserGps/recordStart*/recordEndTime 等 ~10 個) → `trains` (02 の selectedTrain* + TRAINS/TRAIN_CATEGORIES) → `data` (02 の LINES/SERVICE_LINES/MERGED_STATIONS/CHARACTERS — 最大規模) → `mypage` (13-common の _mypageCache/mpActiveSection/mpTripFilter)
-    2. **案 β stage 2 パイロット**: 12-auth を `<script type="module">` 化。deferred 化で初期化順が崩れる可能性があるので、`initAuth()` の呼び出しタイミングを `DOMContentLoaded` 後に揃える + bridge `export const auth = window.NORIRECO.auth` を追加
+    - ✅ record domain state 7 個を `window.NORIRECO.record` に集約 (4 ファイル約 80 箇所)
+  - **v198 で完了済 (案 β stage 1 — gps、12 state で最多)**:
+    - ✅ gps domain state 12 個 (`locationMode` / `locationWatchId` / `userLocationMarker` / `userLocationCircle` / `didInitialCenter` / `lastUserGps` / `recordStartedViaGPS` / `recordStartGPS` / `recordStartedAt` / `recordEndTime` / `nearestCandidates` / `nearestPickedIdx`) を `window.NORIRECO.gps` に集約
+    - call site: 2 ファイル (04 ~50 + 07 ~30) = 約 60 箇所
+    - 教訓を手順化: 宣言ブロック → state ごと replace_all → 宣言ブロックを 1 回まとめて修正、の 3 段階。property 数が増えても線形にしか手間が増えない
+    - 累計移行 state 数: 26 個 (auth 4 + map 3 + record 7 + gps 12)
+  - **次セッション v199+ 候補**:
+    1. **案 β stage 1 残ドメイン** (推奨進行): `trains` (02 の selectedTrain* + TRAINS/TRAIN_CATEGORIES) → `data` (02 の LINES/SERVICE_LINES/MERGED_STATIONS/CHARACTERS — 最大規模) → `mypage` (13-common の _mypageCache/mpActiveSection/mpTripFilter)
+    2. **案 β stage 2 パイロット**: 12-auth を `<script type="module">` 化
     3. Notion §2.4 布石⑤ Supabase 呼び出しを `NORIRECO.api.xxx` ラッパー化
   - **安全装置**: 「動くマップが画面に出る」を毎ステップで確認、各段階を独立コミット (戻せる)。Cloudflare Pages 移行は別タスクに切り出し、今は GitHub Pages のままで完結させる
   - 詳細仕様: 2.4 コード構成（js/01〜13c）参照

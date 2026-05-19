@@ -1820,6 +1820,75 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 47. v198 — ES Modules パイロット (案 β) stage 1: gps domain state を `window.NORIRECO.gps` に集約 (2026-05-19)
+
+### 背景
+
+v195 (auth) / v196 (map) / v197 (record) に続く 4 番目のドメイン。`gps` (現在地表示 + GPS 認証 trip) の state は 04-gps-location.js が中心、cross-file 参照は 07-record-mode.js のみ。
+
+state 数は **12 個** で最多 (auth=4 / map=3 / record=7 / **gps=12**)。現在地マーカー / 追従モード / GPS 認証 trip 始点・終点・タイムスタンプ / 最寄駅候補リストなど、Phase 1〜3.6 (v89〜v131) で段階的に増えた 12 個の state がフラットに置かれていた。
+
+### 移行した state (12 個)
+
+| 旧 (top-level `let`) | 新 (NORIRECO.gps プロパティ) | 用途 |
+|---|---|---|
+| `locationMode` | `NORIRECO.gps.locationMode` | 0:off / 1:on / 2:follow |
+| `locationWatchId` | `NORIRECO.gps.locationWatchId` | watchPosition の id |
+| `userLocationMarker` | `NORIRECO.gps.userLocationMarker` | 青ドット |
+| `userLocationCircle` | `NORIRECO.gps.userLocationCircle` | 精度円 |
+| `didInitialCenter` | `NORIRECO.gps.didInitialCenter` | mode=1 の初回中心化フラグ |
+| `lastUserGps` | `NORIRECO.gps.lastUserGps` | 直近の {lat, lon, accuracy} |
+| `recordStartedViaGPS` | `NORIRECO.gps.recordStartedViaGPS` | GPS 経由記録か否か |
+| `recordStartGPS` | `NORIRECO.gps.recordStartGPS` | 発進時 GPS スナップショット |
+| `recordStartedAt` | `NORIRECO.gps.recordStartedAt` | 記録モード突入時刻 ISO |
+| `recordEndTime` | `NORIRECO.gps.recordEndTime` | 「ここで終了」押下時刻 ISO |
+| `nearestCandidates` | `NORIRECO.gps.nearestCandidates` | 最寄駅候補リスト |
+| `nearestPickedIdx` | `NORIRECO.gps.nearestPickedIdx` | 選択 index |
+
+04-gps-location.js 内は `const G = NORIRECO.gps` の local alias で `G.X` に短縮。外部 (07) は `NORIRECO.gps.X` のフルパス。
+
+### v197 教訓の適用 — 「宣言ブロック汚染」事故
+
+v197 で発覚した「state object の property 名 (`pairLineChoices`) と外部識別子が同名のとき replace_all で宣言まで壊れる」事故が、v198 でも **同じ手順を踏んで再発**。今回 12 個の property すべてが該当 (property 名 = 変数名)。
+
+対処手順 (v198 で確立):
+1. 宣言ブロックを **先に** 書く (`NORIRECO.gps = { locationMode: 0, ... }`)
+2. **その後** state 名ごとに replace_all (`locationMode` → `G.locationMode` 等) を実行 — 宣言ブロックも `G.locationMode: 0,` の syntax error 形に汚染される
+3. **最後に** declaration block を **手動で 1 回まとめて** plain property 名 (`locationMode: 0,`) に戻す
+
+宣言 → use 書き換え → 宣言を戻す、の 3 段階。declaration を 1 回まとめて修正できるので、property 数が増えても手間は線形にしか増えない (v198 12 個 = 1 回の Edit で 13 行修正)。
+
+v200 (data domain) の事前準備として、property 名と変数名を明示的にずらす案 (`LINES` → `NORIRECO.data.lines`) も検討したが、cross-file 識別子の **意味の保存** (`lines` と `LINES` が同じものを指すと一目で分かる) を優先し、3 段階手順を踏襲する方針。
+
+### call site 書き換え (2 ファイル、約 60 箇所)
+
+- `js/04-gps-location.js` — 宣言部 (12 行) + 約 50 箇所 (12 state × 平均 4 ref)
+- `js/07-record-mode.js` — 約 30 箇所 (`NORIRECO.gps.lastUserGps` / `recordStartedViaGPS` / `recordStartGPS` / `recordStartedAt` / `recordEndTime` / `locationMode` の 6 種類が記録パネル状態判定で使われる)
+
+### 影響範囲
+
+- `js/04-gps-location.js` — 宣言部 + 約 50 箇所書き換え (機能無変更)
+- `js/07-record-mode.js` — 約 30 箇所 (記録モードの GPS 認証パス全般)
+- `sw.js` — `CACHE_VERSION = 'v198'`
+- `npm run check` — 18/18 OK
+- 機能リグレッション: なし
+
+### 進捗 (案 β stage 1)
+
+| ドメイン | バージョン | state 数 | 関係ファイル | 累計 state |
+|---|---|---|---|---|
+| auth | v195 | 4 | 2 | 4 |
+| map | v196 | 3 | 6 | 7 |
+| record | v197 | 7 | 4 | 14 |
+| **gps** | **v198** | **12** | **2** | **26** |
+| trains | v199 (次) | 4 | 2-3 | 30 |
+| data | v200 | ~10 (最大規模、cross-file 参照も最大) | 全体 | ~40 |
+| mypage | v201 | 3 | 13-common/a/b | ~43 |
+
+ここまでで 26 state を NORIRECO.<domain>.X に集約済み。残りは `data` (LINES/SERVICE_LINES 系) が最大規模だが、ロジックは ES Modules 化を見越して整理済み (v191 ローダー集約 + v192 builder 切り出し)。
+
+---
+
 ## 46. v197 — ES Modules パイロット (案 β) stage 1: record domain state を `window.NORIRECO.record` に集約 (2026-05-19)
 
 ### 背景

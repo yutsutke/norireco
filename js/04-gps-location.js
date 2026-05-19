@@ -2,27 +2,36 @@
 // 現在地表示 (Phase 1)
 // 3状態トグル: off → on (中心化) → follow (追従) → off
 // ══════════════════════════════════════════════
-let locationMode = 0; // 0:off, 1:on (一度中心化), 2:follow (毎回中心化)
-let locationWatchId = null;
-let userLocationMarker = null;
-let userLocationCircle = null;
-let didInitialCenter = false;
-let lastUserGps = null;                // 直近の {lat, lon, accuracy}
-let recordStartedViaGPS = false;       // 「ここから記録開始」で発進した記録か
-let recordStartGPS = null;             // 発進時の GPS スナップショット {lat, lon, accuracy, timestamp}
-let recordStartedAt = null;            // 記録モード突入時刻 ISO (GPS 無くても depart_time に使う)
-let recordEndTime = null;              // 「ここで終了」or「終了して確認」押下時刻 ISO
+
+// v198 ES Modules パイロット (案 β) — 状態を window.NORIRECO.gps に集約。
+// 外部 (07) からは NORIRECO.gps.X のフルパス、内部は G.X の短縮形。
+window.NORIRECO = window.NORIRECO || {};
+NORIRECO.gps = NORIRECO.gps || {
+  locationMode: 0,           // 0:off, 1:on (一度中心化), 2:follow (毎回中心化)
+  locationWatchId: null,
+  userLocationMarker: null,
+  userLocationCircle: null,
+  didInitialCenter: false,
+  lastUserGps: null,         // 直近の {lat, lon, accuracy}
+  recordStartedViaGPS: false,// 「ここから記録開始」で発進した記録か
+  recordStartGPS: null,      // 発進時の GPS スナップショット {lat, lon, accuracy, timestamp}
+  recordStartedAt: null,     // 記録モード突入時刻 ISO (GPS 無くても depart_time に使う)
+  recordEndTime: null,       // 「ここで終了」or「終了して確認」押下時刻 ISO
+  nearestCandidates: [],     // [{station, distance}, ...] 最寄駅パネル候補
+  nearestPickedIdx: 0,       // ユーザーが選んだインデックス
+};
+const G = NORIRECO.gps;
 
 function cycleLocationMode() {
-  locationMode = (locationMode + 1) % 3;
-  if (locationMode === 0) {
+  G.locationMode = (G.locationMode + 1) % 3;
+  if (G.locationMode === 0) {
     stopLocationTracking();
   } else {
-    didInitialCenter = false; // 状態遷移で再度センター
+    G.didInitialCenter = false; // 状態遷移で再度センター
     startLocationTracking();
     // フォロー突入時は最後の位置で即座にセンター
-    if (locationMode === 2 && userLocationMarker) {
-      const ll = userLocationMarker.getLatLng();
+    if (G.locationMode === 2 && G.userLocationMarker) {
+      const ll = G.userLocationMarker.getLatLng();
       NORIRECO.map.instance.setView(ll, Math.max(NORIRECO.map.instance.getZoom(), 15), { animate: true });
     }
   }
@@ -33,24 +42,24 @@ window.cycleLocationMode = cycleLocationMode;
 function startLocationTracking() {
   if (!navigator.geolocation) {
     alert('このブラウザは位置情報に非対応です');
-    locationMode = 0;
+    G.locationMode = 0;
     updateLocationButton();
     return;
   }
-  if (locationWatchId) return; // 既に動作中
-  locationWatchId = navigator.geolocation.watchPosition(
+  if (G.locationWatchId) return; // 既に動作中
+  G.locationWatchId = navigator.geolocation.watchPosition(
     pos => {
       const lat = pos.coords.latitude;
       const lon = pos.coords.longitude;
       const acc = pos.coords.accuracy;
-      lastUserGps = { lat, lon, accuracy: acc };
+      G.lastUserGps = { lat, lon, accuracy: acc };
       updateUserLocationMarker(lat, lon, acc);
       updateNearestStationPanel(lat, lon);
-      if (locationMode === 1 && !didInitialCenter) {
+      if (G.locationMode === 1 && !G.didInitialCenter) {
         // 初回のみ中心化、その後はマーカーだけ更新
         NORIRECO.map.instance.setView([lat, lon], Math.max(NORIRECO.map.instance.getZoom(), 15), { animate: true });
-        didInitialCenter = true;
-      } else if (locationMode === 2) {
+        G.didInitialCenter = true;
+      } else if (G.locationMode === 2) {
         // 追従モード: 毎回中心化 (ズームは維持)
         NORIRECO.map.instance.setView([lat, lon], NORIRECO.map.instance.getZoom(), { animate: true });
       }
@@ -59,7 +68,7 @@ function startLocationTracking() {
       console.warn('[乗レコ] 位置情報エラー:', err.code, err.message);
       if (err.code === 1) {
         alert('位置情報のアクセスが拒否されています。\nブラウザ設定でこのサイトの位置情報を許可してください。');
-        locationMode = 0;
+        G.locationMode = 0;
         updateLocationButton();
         stopLocationTracking();
       }
@@ -69,19 +78,18 @@ function startLocationTracking() {
 }
 
 function stopLocationTracking() {
-  if (locationWatchId) {
-    navigator.geolocation.clearWatch(locationWatchId);
-    locationWatchId = null;
+  if (G.locationWatchId) {
+    navigator.geolocation.clearWatch(G.locationWatchId);
+    G.locationWatchId = null;
   }
   removeUserLocationMarker();
   hideNearestStationPanel();
-  lastUserGps = null;
-  didInitialCenter = false;
+  G.lastUserGps = null;
+  G.didInitialCenter = false;
 }
 
 // 最寄駅パネル (Phase 2) — 候補リスト
-let nearestCandidates = [];   // [{station, distance}, ...]
-let nearestPickedIdx = 0;     // ユーザーが選んだインデックス
+// G.nearestCandidates / G.nearestPickedIdx は NORIRECO.gps に集約済み (v198)
 
 function findNearestStations(lat, lon, maxRangeM, maxCount) {
   if (!MERGED_STATIONS || MERGED_STATIONS.length === 0) return [];
@@ -108,7 +116,7 @@ function updateNearestStationPanel(lat, lon) {
   // 記録モード中: GPS 記録のみ「記録中」ミニマル UI を表示
   // 手動記録 (📝 ボタン経由) では rec-panel が UI を担当するので最寄駅パネルは隠す
   if (NORIRECO.record.mode) {
-    if (recordStartedViaGPS) {
+    if (G.recordStartedViaGPS) {
       if (selectModeEl) selectModeEl.style.display = 'none';
       if (recModeEl) recModeEl.style.display = 'block';
       renderRecordingSummary();
@@ -128,11 +136,11 @@ function updateNearestStationPanel(lat, lon) {
 
   // 候補が変わったらインデックスをリセット (駅名のシグネチャで比較)
   const newSig = nearby.map(n => n.station.name).join('|');
-  const oldSig = nearestCandidates.map(n => n.station.name).join('|');
+  const oldSig = G.nearestCandidates.map(n => n.station.name).join('|');
   if (newSig !== oldSig) {
-    nearestPickedIdx = 0;
+    G.nearestPickedIdx = 0;
   }
-  nearestCandidates = nearby;
+  G.nearestCandidates = nearby;
 
   const listEl = document.getElementById('ns-list');
   if (!listEl) return;
@@ -143,8 +151,8 @@ function updateNearestStationPanel(lat, lon) {
       return sl ? sl.name : lid;
     }).filter(Boolean).join('・');
     const more = lineIds.length > 3 ? ` ほか${lineIds.length - 3}` : '';
-    const checked = idx === nearestPickedIdx ? 'checked' : '';
-    const selClass = idx === nearestPickedIdx ? ' selected' : '';
+    const checked = idx === G.nearestPickedIdx ? 'checked' : '';
+    const selClass = idx === G.nearestPickedIdx ? ' selected' : '';
     return `
       <label class="ns-cand${selClass}" onclick="selectNearestCand(${idx})">
         <input type="radio" name="ns-pick" ${checked}>
@@ -162,7 +170,7 @@ function updateNearestStationPanel(lat, lon) {
 }
 
 function selectNearestCand(idx) {
-  nearestPickedIdx = idx;
+  G.nearestPickedIdx = idx;
   document.querySelectorAll('.ns-cand').forEach((el, i) => {
     el.classList.toggle('selected', i === idx);
     const radio = el.querySelector('input[type=radio]');
@@ -205,9 +213,9 @@ function renderRecordingSummary() {
 // 記録キャンセル (破棄)
 function cancelRecord() {
   if (NORIRECO.record.selection.length > 0 && !confirm('記録中の経路を破棄しますか？')) return;
-  recordStartedViaGPS = false;
-  recordStartGPS = null;
-  recordEndTime = null;
+  G.recordStartedViaGPS = false;
+  G.recordStartGPS = null;
+  G.recordEndTime = null;
   if (NORIRECO.record.mode) toggleRecordMode();
   showRecordToast('🗑 記録を破棄しました', 'warn', 2500);
 }
@@ -215,19 +223,19 @@ window.cancelRecord = cancelRecord;
 
 // 「ここから記録開始」: 選んだ候補駅で記録モードに入る + GPS 認証フラグ
 function startRecordFromNearest() {
-  if (!lastUserGps) {
+  if (!G.lastUserGps) {
     alert('現在地を取得できていません。📍 ボタンで位置情報を有効にしてください。');
     return;
   }
-  if (!nearestCandidates || nearestCandidates.length === 0) {
+  if (!G.nearestCandidates || G.nearestCandidates.length === 0) {
     alert('近くに駅が見つかりません');
     return;
   }
-  const picked = nearestCandidates[nearestPickedIdx] || nearestCandidates[0];
+  const picked = G.nearestCandidates[G.nearestPickedIdx] || G.nearestCandidates[0];
   // GPS 認証情報を記録 (saveMultiSegmentTrip でこのフラグを見て verified=true にする)
-  recordStartedViaGPS = true;
-  recordStartGPS = { ...lastUserGps, timestamp: new Date().toISOString() };
-  recordEndTime = null;
+  G.recordStartedViaGPS = true;
+  G.recordStartGPS = { ...G.lastUserGps, timestamp: new Date().toISOString() };
+  G.recordEndTime = null;
   // 記録モードへ
   if (!NORIRECO.record.mode) toggleRecordMode();
   // 選択された駅をプリセレクト
@@ -237,15 +245,15 @@ function startRecordFromNearest() {
     lon: picked.station.lon,
   });
   hideNearestStationPanel();
-  console.log(`[乗レコ] 🔖 GPS 発進記録: ${picked.station.name} (距離 ${Math.round(picked.distance)}m, 精度±${Math.round(lastUserGps.accuracy)}m)`);
+  console.log(`[乗レコ] 🔖 GPS 発進記録: ${picked.station.name} (距離 ${Math.round(picked.distance)}m, 精度±${Math.round(G.lastUserGps.accuracy)}m)`);
 }
 window.startRecordFromNearest = startRecordFromNearest;
 
 function updateUserLocationMarker(lat, lon, accuracy) {
   if (!NORIRECO.map.instance) return;
-  if (!userLocationMarker) {
+  if (!G.userLocationMarker) {
     // 青ドット (Google Maps風)
-    userLocationMarker = L.marker([lat, lon], {
+    G.userLocationMarker = L.marker([lat, lon], {
       icon: L.divIcon({
         className: 'user-location-marker',
         html: '<div class="user-loc-dot"></div>',
@@ -256,7 +264,7 @@ function updateUserLocationMarker(lat, lon, accuracy) {
       zIndexOffset: 2000,
     }).addTo(NORIRECO.map.instance);
     // 精度円
-    userLocationCircle = L.circle([lat, lon], {
+    G.userLocationCircle = L.circle([lat, lon], {
       radius: accuracy,
       color: '#1A6FE5',
       fillColor: '#1A6FE5',
@@ -266,22 +274,22 @@ function updateUserLocationMarker(lat, lon, accuracy) {
       interactive: false,
     }).addTo(NORIRECO.map.instance);
   } else {
-    userLocationMarker.setLatLng([lat, lon]);
-    if (userLocationCircle) {
-      userLocationCircle.setLatLng([lat, lon]);
-      userLocationCircle.setRadius(accuracy);
+    G.userLocationMarker.setLatLng([lat, lon]);
+    if (G.userLocationCircle) {
+      G.userLocationCircle.setLatLng([lat, lon]);
+      G.userLocationCircle.setRadius(accuracy);
     }
   }
 }
 
 function removeUserLocationMarker() {
-  if (userLocationMarker) {
-    try { NORIRECO.map.instance.removeLayer(userLocationMarker); } catch(e) {}
-    userLocationMarker = null;
+  if (G.userLocationMarker) {
+    try { NORIRECO.map.instance.removeLayer(G.userLocationMarker); } catch(e) {}
+    G.userLocationMarker = null;
   }
-  if (userLocationCircle) {
-    try { NORIRECO.map.instance.removeLayer(userLocationCircle); } catch(e) {}
-    userLocationCircle = null;
+  if (G.userLocationCircle) {
+    try { NORIRECO.map.instance.removeLayer(G.userLocationCircle); } catch(e) {}
+    G.userLocationCircle = null;
   }
 }
 
@@ -289,10 +297,10 @@ function updateLocationButton() {
   const btn = document.getElementById('location-fab');
   if (!btn) return;
   btn.classList.remove('on', 'follow');
-  if (locationMode === 1) {
+  if (G.locationMode === 1) {
     btn.classList.add('on');
     btn.title = '現在地を表示中（タップで追従モード）';
-  } else if (locationMode === 2) {
+  } else if (G.locationMode === 2) {
     btn.classList.add('follow');
     btn.title = '追従モード（タップで OFF）';
   } else {

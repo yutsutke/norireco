@@ -26,16 +26,16 @@ function toggleRecordMode() {
   panel.classList.toggle('on', R.mode);
   if (R.mode) {
     // 記録モード突入時刻を必ずセット (GPS 経由でなくても depart_time 計算に使う)
-    recordStartedAt = new Date().toISOString();
+    NORIRECO.gps.recordStartedAt = new Date().toISOString();
     // メモモードと排他
     if (NORIRECO.map.memoMode) toggleMemoMode();
     refreshRecPanel();
     if(NORIRECO.map.instance) NORIRECO.map.instance.getContainer().style.cursor='crosshair';
-    if (recordStartedViaGPS) {
+    if (NORIRECO.gps.recordStartedViaGPS) {
       // GPS 記録: ミニマルな最寄駅パネル (記録中) を表示、rec-panel は隠す
       panel.style.display = 'none';
-      if (lastUserGps && typeof updateNearestStationPanel === 'function') {
-        updateNearestStationPanel(lastUserGps.lat, lastUserGps.lon);
+      if (NORIRECO.gps.lastUserGps && typeof updateNearestStationPanel === 'function') {
+        updateNearestStationPanel(NORIRECO.gps.lastUserGps.lat, NORIRECO.gps.lastUserGps.lon);
       } else if (typeof renderRecordingSummary === 'function') {
         const np = document.getElementById('nearest-station-panel');
         const selectModeEl = document.getElementById('ns-mode-select');
@@ -57,21 +57,21 @@ function toggleRecordMode() {
     clearRecSelection();
     if(NORIRECO.map.instance) NORIRECO.map.instance.getContainer().style.cursor='';
     // 記録モード終了時に GPS 認証フラグと時刻もリセット
-    recordStartedViaGPS = false;
-    recordStartGPS = null;
-    recordStartedAt = null;
-    recordEndTime = null;
+    NORIRECO.gps.recordStartedViaGPS = false;
+    NORIRECO.gps.recordStartGPS = null;
+    NORIRECO.gps.recordStartedAt = null;
+    NORIRECO.gps.recordEndTime = null;
     // rec-panel の inline display をリセット (手動記録で '' にしていたぶん)
     panel.style.display = '';
-    // 最寄駅パネルの mode DOM を必ず切替 (lastUserGps の有無に関わらず)
+    // 最寄駅パネルの mode DOM を必ず切替 (NORIRECO.gps.lastUserGps の有無に関わらず)
     const _np = document.getElementById('nearest-station-panel');
     const _selM = document.getElementById('ns-mode-select');
     const _recM = document.getElementById('ns-mode-recording');
     if (_selM) _selM.style.display = 'block';
     if (_recM) _recM.style.display = 'none';
-    if (lastUserGps && locationMode > 0) {
+    if (NORIRECO.gps.lastUserGps && NORIRECO.gps.locationMode > 0) {
       // GPS が生きていれば候補リストも更新 (show 状態維持)
-      updateNearestStationPanel(lastUserGps.lat, lastUserGps.lon);
+      updateNearestStationPanel(NORIRECO.gps.lastUserGps.lat, NORIRECO.gps.lastUserGps.lon);
     } else if (_np) {
       // GPS なしならパネル自体を隠す
       _np.classList.remove('show');
@@ -301,7 +301,7 @@ function openRecConfirm() {
     return;
   }
   // 終了時刻をキャプチャ (まだ設定されていなければ)
-  if (!recordEndTime) recordEndTime = new Date().toISOString();
+  if (!NORIRECO.gps.recordEndTime) NORIRECO.gps.recordEndTime = new Date().toISOString();
   const isVisitOnly = R.selection.length === 1 && (!R.segments || R.segments.length === 0);
   if (!isVisitOnly && R.segments && R.segments.some(s => s.error)) {
     alert('未解決の区間があります');
@@ -309,13 +309,13 @@ function openRecConfirm() {
   }
   const body = document.getElementById('rec-confirm-body');
   if (!body) return;
-  const verifiedBadge = recordStartedViaGPS
+  const verifiedBadge = NORIRECO.gps.recordStartedViaGPS
     ? '<span class="rec-confirm-verified-badge">🟢 GPS 記録</span>'
     : '<span class="rec-confirm-verified-badge" style="background:rgba(140,160,179,.15);color:var(--silver);border-color:var(--track)">⚪ 手動記録</span>';
 
   // 時刻情報行 (depart_time / arrive_time / total_minutes プレビュー)
-  // GPS 経由なら recordStartGPS.timestamp、それ以外は手動入力の精度に応じて更新される
-  const startTs = (recordStartGPS && recordStartGPS.timestamp) || recordStartedAt;
+  // GPS 経由なら NORIRECO.gps.recordStartGPS.timestamp、それ以外は手動入力の精度に応じて更新される
+  const startTs = (NORIRECO.gps.recordStartGPS && NORIRECO.gps.recordStartGPS.timestamp) || NORIRECO.gps.recordStartedAt;
   // プレースホルダのみ作成 (中身は updateRecConfirmTimeRow が埋める)
   // openRecConfirm の末尾で精度に応じて中身が動的に書き換わる
   const timeRowHtml = `<div class="rec-confirm-stat-row" id="rec-confirm-time-row" style="display:none">
@@ -384,14 +384,14 @@ function openRecConfirm() {
   // 保存ボタンのラベルを記録種別に応じて切替
   const saveBtn = document.getElementById('rec-confirm-save-btn');
   if (saveBtn) {
-    saveBtn.textContent = recordStartedViaGPS
+    saveBtn.textContent = NORIRECO.gps.recordStartedViaGPS
       ? '💾 GPS 記録で保存する'
       : '💾 手動記録で保存する';
   }
   // 時刻編集セクション: 手動記録のときだけ表示、初期値は記録モード突入時刻
   const timeSec = document.getElementById('rec-time-edit-section');
   if (timeSec) {
-    if (recordStartedViaGPS) {
+    if (NORIRECO.gps.recordStartedViaGPS) {
       timeSec.style.display = 'none';
     } else {
       timeSec.style.display = '';
@@ -414,7 +414,7 @@ function openRecConfirm() {
         if (depInp) depInp.value = '';
       }
       if (arrInp) {
-        const endTs = recordEndTime || new Date().toISOString();
+        const endTs = NORIRECO.gps.recordEndTime || new Date().toISOString();
         const ed = new Date(endTs);
         arrInp.value = ed.toTimeString().slice(0,5);
       }
@@ -451,9 +451,9 @@ function discardRecord() {
   // 「破棄」: 確認 + 全部リセット
   if (!confirm('記録中の経路を破棄します。よろしいですか？')) return;
   document.getElementById('rec-confirm-modal')?.classList.remove('open');
-  recordStartedViaGPS = false;
-  recordStartGPS = null;
-  recordEndTime = null;
+  NORIRECO.gps.recordStartedViaGPS = false;
+  NORIRECO.gps.recordStartGPS = null;
+  NORIRECO.gps.recordEndTime = null;
   if (R.mode) toggleRecordMode(); // off に
   showRecordToast('🗑 記録を破棄しました', 'warn', 2500);
 }
@@ -490,11 +490,11 @@ function updateRecConfirmTimeRow() {
   if (!row || !lbl || !val) return;
 
   // GPS 記録: 実 GPS 時刻を表示
-  if (recordStartedViaGPS) {
-    const startTs = (recordStartGPS && recordStartGPS.timestamp) || recordStartedAt;
+  if (NORIRECO.gps.recordStartedViaGPS) {
+    const startTs = (NORIRECO.gps.recordStartGPS && NORIRECO.gps.recordStartGPS.timestamp) || NORIRECO.gps.recordStartedAt;
     if (!startTs) { row.style.display = 'none'; return; }
     const sd = new Date(startTs);
-    const ed = recordEndTime ? new Date(recordEndTime) : new Date();
+    const ed = NORIRECO.gps.recordEndTime ? new Date(NORIRECO.gps.recordEndTime) : new Date();
     const mins = Math.max(0, Math.round((ed - sd) / 60000));
     lbl.textContent = '🕒 乗車時刻';
     val.textContent = `${sd.toTimeString().slice(0,5)} → ${ed.toTimeString().slice(0,5)} (${mins}分)`;
@@ -593,8 +593,8 @@ function _populateRecEditYearMonth() {
 
 function endRecordAtNearest() {
   if (!R.mode) { alert('記録モード中ではありません'); return; }
-  if (!lastUserGps) {
-    if (locationMode === 0) {
+  if (!NORIRECO.gps.lastUserGps) {
+    if (NORIRECO.gps.locationMode === 0) {
       // 位置情報 OFF だったらまず ON にする
       cycleLocationMode();
       alert('📍 位置情報を取得しています。GPS が取れたらもう一度「ここで終了」を押してください。');
@@ -603,7 +603,7 @@ function endRecordAtNearest() {
     alert('現在地を取得中です。少し待ってからもう一度お試しください。');
     return;
   }
-  const nearby = findNearestStations(lastUserGps.lat, lastUserGps.lon, 1500, 6);
+  const nearby = findNearestStations(NORIRECO.gps.lastUserGps.lat, NORIRECO.gps.lastUserGps.lon, 1500, 6);
   if (nearby.length === 0) {
     alert('1.5km 以内に駅が見つかりません');
     return;
@@ -662,7 +662,7 @@ function confirmEndStation() {
   if (!R.endStationCandidates || R.endStationCandidates.length === 0) return;
   const picked = R.endStationCandidates[R.endStationPickedIdx] || R.endStationCandidates[0];
   // 「ここで終了」押下時刻をキャプチャ (実際の到着時刻)
-  recordEndTime = new Date().toISOString();
+  NORIRECO.gps.recordEndTime = new Date().toISOString();
   // 末尾区間がエラー (= 前回の終点が解決不能) なら末尾駅を外してから選び直す
   // これで「終点を選び直す」UX が成立する
   if (R.selection.length >= 2 && R.segments && R.segments.length > 0
@@ -732,10 +732,10 @@ async function saveMultiSegmentTrip() {
         : `${lineList} ${fromStation}→${toStation}`);
 
   // 時刻計算 (GPS 発進時に start, 「ここで終了」押下時に end をキャプチャ)
-  // GPS 経由でなくても記録モード突入時刻 (recordStartedAt) を depart_time に使う
+  // GPS 経由でなくても記録モード突入時刻 (NORIRECO.gps.recordStartedAt) を depart_time に使う
   const today = localDateStr();  // 端末ローカル日付 (JST) — UTC だと早朝記録が前日になるため
-  const startTs = (recordStartGPS && recordStartGPS.timestamp) || recordStartedAt;
-  const endTs = recordEndTime || new Date().toISOString();
+  const startTs = (NORIRECO.gps.recordStartGPS && NORIRECO.gps.recordStartGPS.timestamp) || NORIRECO.gps.recordStartedAt;
+  const endTs = NORIRECO.gps.recordEndTime || new Date().toISOString();
   let departTime = '';
   let arriveTime = '';
   let totalMinutes = 0;
@@ -759,7 +759,7 @@ async function saveMultiSegmentTrip() {
   // 手動記録: 精度セレクタで選んだ粒度に応じて trip フィールドを構築
   // (GPS 記録は実時刻が正確なので上書きしない)
   let datePrecision = 'day';
-  if (!recordStartedViaGPS) {
+  if (!NORIRECO.gps.recordStartedViaGPS) {
     const prec = document.getElementById('rec-edit-precision')?.value || 'minute';
     if (prec === 'minute') {
       const editDate = document.getElementById('rec-edit-date')?.value;
@@ -834,11 +834,11 @@ async function saveMultiSegmentTrip() {
     segments: tripSegments,
     // 認証グラデーション (Notion §記録モード設計)
     // GPS 発進 (「ここから記録開始」経由) なら verified=true、それ以外は manual
-    source: recordStartedViaGPS ? 'gps_button' : 'manual',
-    verified: !!recordStartedViaGPS,
-    gps_lat: recordStartGPS ? recordStartGPS.lat : null,
-    gps_lon: recordStartGPS ? recordStartGPS.lon : null,
-    gps_accuracy: recordStartGPS ? recordStartGPS.accuracy : null,
+    source: NORIRECO.gps.recordStartedViaGPS ? 'gps_button' : 'manual',
+    verified: !!NORIRECO.gps.recordStartedViaGPS,
+    gps_lat: NORIRECO.gps.recordStartGPS ? NORIRECO.gps.recordStartGPS.lat : null,
+    gps_lon: NORIRECO.gps.recordStartGPS ? NORIRECO.gps.recordStartGPS.lon : null,
+    gps_accuracy: NORIRECO.gps.recordStartGPS ? NORIRECO.gps.recordStartGPS.accuracy : null,
     recorded_at: new Date().toISOString(),
     date_precision: datePrecision,
     // 列車種別 (任意、確認モーダルで選択 or 手入力)
@@ -920,9 +920,9 @@ async function saveMultiSegmentTrip() {
     showRecordToast(`⚠️ ローカル保存のみ (Supabase 失敗)\n${errInfo}`, 'warn', 9000);
   }
   // 保存後に GPS 認証フラグと時刻をリセット
-  recordStartedViaGPS = false;
-  recordStartGPS = null;
-  recordEndTime = null;
+  NORIRECO.gps.recordStartedViaGPS = false;
+  NORIRECO.gps.recordStartGPS = null;
+  NORIRECO.gps.recordEndTime = null;
   // verified=true の trip なら自動獲得チェックが発動する
   setTimeout(() => runCharacterGrantCheck(), 800);
   // 記録モードを終了 (R.mode=true → false に切替、最寄駅パネルが「開始駅選択」に戻る)
@@ -933,8 +933,8 @@ async function saveMultiSegmentTrip() {
     clearRecSelection();
   }
   // 保存後は 📍 を OFF にする (次回の記録に向けてリセット)
-  if (locationMode > 0) {
-    locationMode = 0;
+  if (NORIRECO.gps.locationMode > 0) {
+    NORIRECO.gps.locationMode = 0;
     stopLocationTracking();
     updateLocationButton();
   }
