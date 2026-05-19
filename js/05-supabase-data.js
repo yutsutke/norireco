@@ -4,7 +4,10 @@
 // v215 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
 // 既存 window 公開 (toggleStopTypeFilter / updateStopTypeFilterUI / toggleMapCtrl /
 // closeAllMapCtrl) に加え、stage 2 で必要になった bridge を末尾に集約。
+//
+// v223 ES Modules stage 3: 03-characters.runCharacterGrantCheck を import 化。
 // ══════════════════════════════════════════════
+import { runCharacterGrantCheck } from './03-characters.js';
 
 // 静的フォールバック（localStorageが空の端末用）
 const RIDDEN_SEGS_STATIC=[

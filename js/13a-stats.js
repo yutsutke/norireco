@@ -14,7 +14,11 @@
 // 全 24 関数は既に末尾で `NORIRECO.mypage.X = X` 登録済 (一部 `window.X` 両建て)。
 // 13-mypage-common.js (classic) からの bare 参照 (buildCompletionCards /
 // renderMpStatsSection) は同 commit で `NORIRECO.mypage.X` 経由に書き換え (2 箇所)。
+//
+// v223 ES Modules stage 3: 11-fraud-detection と 03-characters.distMeters を import 化。
 // ══════════════════════════════════════════════════════════════
+import { fraudIsDowngraded } from './11-fraud-detection.js';
+import { distMeters } from './03-characters.js';
 
 // ── 📊 統計セクション ──────────────────────────────────────────
 function renderMpStatsSection() {
@@ -1294,7 +1298,7 @@ function buildAuthBreakdown(trips) {
   let verified = 0, manual = 0, suspicious = 0;
   for (const t of trips) {
     if (t.verified) verified++;
-    else if (typeof fraudIsDowngraded === 'function' && fraudIsDowngraded(t)) suspicious++;
+    else if (fraudIsDowngraded(t)) suspicious++;
     else manual++;
   }
   const total = trips.length;

@@ -14,10 +14,14 @@
 // v204 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
 // 最小ファイル (21 行 → 関数 1 個のみ)、NORIRECO.mypage namespace は 13-mypage-common
 // (classic) が先に評価して確立済なので、module 評価時には存在保証あり。
+//
+// v223 ES Modules stage 3: `export` 公開へ移行。現状 caller ゼロ (プレースホルダ) なので
+// import の追加先なし。将来呼出が必要になった時点で consumer 側に import を足す。
+// 既存の `NORIRECO.mypage.renderMpLinesSection` 登録は互換維持のため残置。
 // ══════════════════════════════════════════════════════════════
 
 // 路線サブタブのエントリラッパー (将来の拡張ポイント)
-function renderMpLinesSection() {
+export function renderMpLinesSection() {
   if (typeof renderList === 'function') {
     try { renderList(); } catch (e) { console.warn('[マイページ路線] renderList:', e); }
   }

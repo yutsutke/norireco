@@ -5,7 +5,11 @@
 // 末尾で switchTab / renderList / renderStats を window に明示公開。
 // switchTab は HTML onclick から、renderList / renderStats は 13-mypage-common / 13a / 13c
 // (module) から bare 識別子で呼ばれる。
+//
+// v223 ES Modules stage 3: 11-fraud-detection を import 化。
 // ══════════════════════════════════════
+import { fraudAssessTrip, fraudIsDowngraded } from './11-fraud-detection.js';
+
 function switchTab(n){
   // 旧 'list' / 'stats' は 'mypage' にリダイレクト (タブ集約のため)
   if(n==='list'||n==='stats')n='mypage';
@@ -122,11 +126,9 @@ async function renderStats(){
         let verifiedBadge = '';
         if (t.verified) {
           verifiedBadge = '<span style="color:#48d597;font-size:10px;margin-left:4px" title="GPS 記録 (認証済)">🟢</span>';
-        } else if (typeof fraudIsDowngraded === 'function' && fraudIsDowngraded(t)) {
+        } else if (fraudIsDowngraded(t)) {
           let reasonTip = '不正検知で降格';
-          if (typeof fraudAssessTrip === 'function') {
-            try { const f = fraudAssessTrip(t); if (f.reason) reasonTip = f.reason; } catch(e) {}
-          }
+          try { const f = fraudAssessTrip(t); if (f.reason) reasonTip = f.reason; } catch(e) {}
           verifiedBadge = `<span style="color:#f2a900;font-size:10px;margin-left:4px" title="${reasonTip.replace(/"/g,'&quot;')}">🟡</span>`;
         }
         const timeStr = (t.depart_time && t.arrive_time)

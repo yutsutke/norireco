@@ -14,10 +14,14 @@
 // - 理由テキストは UI 描画時に fraudAssessTrip() で再計算
 //
 // v203 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
+// v223 ES Modules stage 3 パイロット: window bridge を撤去し `export` 公開へ移行。
 // state ゼロ (定数のみ) で外部 API は fraudAssessTrip / fraudIsDowngraded の 2 関数のみ。
-// module-local function を classic script consumer (07/09/13-common/13a/13b) から
-// 呼べるよう、末尾で window.X = X の bridge を明示。
+// 両関数とも HTML onclick からは呼ばれないので window bridge は完全撤去可能。
+// consumer (07/09/13-mypage-common/13a/13b) は `import { ... } from './11-fraud-detection.js'`
+// で取り込む。
+// 自身も 03-characters.distMeters を import。
 // ══════════════════════════════════════════════════════════════
+import { distMeters } from './03-characters.js';
 
 // カテゴリ別の標準運転速度 (停車込みの実効速度 km/h)
 const FRAUD_CATEGORY_SPEED_KMH = {
@@ -104,7 +108,7 @@ function fraudExpectedMinutes(trip) {
 //
 // 注: total_minutes は四捨五入 (0-29 秒 → 0 分)。「ほぼ瞬時」=最も怪しいケースなので
 //     0 でも検査対象。秒精度が必要なら trip._elapsed_sec (save 時に渡せる) を優先する。
-function fraudAssessTrip(trip) {
+export function fraudAssessTrip(trip) {
   if (!trip || trip.source !== 'gps_button') return { suspicious: false, reason: null };
   if (!trip.segments || trip.segments.length === 0) return { suspicious: false, reason: null };
   // 経過時間を分単位で取得 (秒精度の _elapsed_sec があれば優先、なければ total_minutes)
@@ -149,10 +153,6 @@ function parseHmsToSec(hms) {
 
 // UI 用: trip が「降格された suspicious」か (永続データから判別)
 // 不変条件: source='gps_button' は記録時 verified=true → 後で false なら降格された
-function fraudIsDowngraded(trip) {
+export function fraudIsDowngraded(trip) {
   return !!trip && trip.source === 'gps_button' && trip.verified === false;
 }
-
-// v203: classic script consumer (07/09/13-common/13a/13b) からの呼出用 window bridge。
-window.fraudAssessTrip = fraudAssessTrip;
-window.fraudIsDowngraded = fraudIsDowngraded;

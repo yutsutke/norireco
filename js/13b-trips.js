@@ -16,7 +16,11 @@
 // stage 2 追加 bridge ゼロ。外部参照 (tripCardHtml / showMypageToast / filterTripsByDate /
 // _MP_SORT_COMPARATORS) は classic function 宣言 + Global Lexical Env 経由で module から
 // bare 識別子として読める。
+//
+// v223 ES Modules stage 3: 11-fraud-detection と 03-characters を import 化。
 // ══════════════════════════════════════════════════════════════
+import { fraudIsDowngraded } from './11-fraud-detection.js';
+import { distMeters, runCharacterGrantCheck } from './03-characters.js';
 
 // ── 🚃 旅程セクション ──────────────────────────────────────────
 function renderMpTripsSection() {
@@ -129,7 +133,7 @@ function applyTripFilters(trips) {
     if (NORIRECO.mypage.state.mpTripFilter.auth === 'verified' && !t.verified) return false;
     if (NORIRECO.mypage.state.mpTripFilter.auth === 'manual' && (t.verified || (t.source === 'gps_button' && !t.verified))) return false;
     if (NORIRECO.mypage.state.mpTripFilter.auth === 'suspicious') {
-      const downgraded = (typeof fraudIsDowngraded === 'function') ? fraudIsDowngraded(t) : (t.source === 'gps_button' && !t.verified);
+      const downgraded = fraudIsDowngraded(t);
       if (!downgraded) return false;
     }
     // 期間
@@ -325,7 +329,7 @@ async function retroactivelyVerifyTrip(tripId) {
   }
 
   showMypageToast(`✅ "${nearStation}" で認証完了!`, 'success');
-  if (typeof runCharacterGrantCheck === 'function') setTimeout(() => runCharacterGrantCheck(), 600);
+  setTimeout(() => runCharacterGrantCheck(), 600);
   setTimeout(() => renderMypage(), 800);
 }
 window.retroactivelyVerifyTrip = retroactivelyVerifyTrip;

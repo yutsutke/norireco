@@ -1820,6 +1820,131 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 72. v223 — ES Modules stage 3 パイロット: `scripts/syntax-check.js` を module 対応 + 11/13c/03 を `import`/`export` 化 (2026-05-19)
+
+### 背景
+
+v195〜v222 で案 β stage 1 (window.NORIRECO ドメイン名前空間) + stage 2 (全 18 ファイル `<script type="module">` 化) を完結させたが、cross-module の関数共有は依然 `window.X = X` の bridge を経由していた:
+
+- ES Modules の本旨は **import/export による静的依存解析** にあるが、現状は「module 化しただけで実際の依存グラフは window 経由のまま」だった
+- Stage 2 完結時 (v219) → v220-v222 で発生した bridge 漏れ事故 (`IS_TOUCH` / `allLayers` / `riddenSt` 等の 3 連発) も、ある意味「window bridge への依存が静的解析できない」ことの帰結
+
+Stage 3 のゴールは **window bridge 経由の関数共有を `import`/`export` に置換し、依存グラフを静的に解析可能にする** こと。state 共有 (window.NORIRECO.X) は将来別タスクで段階的に検討。
+
+### v202 で予告した前提作業: シンタックスチェッカの module 対応
+
+v202 で `<script type="module">` 化したとき、CHANGELOG にこう書いていた:
+
+> ⚠️ `export` は **追加せず** — `npm run check` の `new Function(src)` パースが module syntax を通せないため、stage 3 で syntax-check 拡張と同時に追加予定
+
+これを今回まず解消。
+
+#### 変更内容
+
+- `scripts/syntax-check.js`:
+  - `new Function(src)` 方式 → `spawnSync(node, ['--check', '--input-type=module', '-'], { input: src })` 方式に切替
+  - 各ファイルを node プロセスに stdin 渡しでパース、`import`/`export` 構文を通せるように
+  - エラー表示: stderr から `[stdin]:LINE` 行と `SyntaxError: MSG` 行を抜き出して要約
+  - 同名トップレベル関数の重複検出: 正規表現を `^(?:export\s+)?(?:async\s+)?function\s+NAME` に拡張 (`export function X` も拾う)
+  - module 化後は各ファイルが独立スコープになり同名関数衝突は runtime エラーにならないが、コピペミスの発見用に警告は残す
+- 動作確認:
+  - `npm run check` → 18/18 OK
+  - 故意に SyntaxError を入れた stdin → `[stdin]:LINE` + `SyntaxError: ...` を正しく検出
+
+### Stage 3 パイロット: 3 ファイルを import/export 化
+
+影響範囲の小さい順に 3 ファイル選定 (TODO.md v203+ 候補に従う):
+
+#### 1. `11-fraud-detection.js` (state 0、関数 2 個)
+
+- export: `fraudAssessTrip` / `fraudIsDowngraded`
+- 撤去 window bridge: `window.fraudAssessTrip` / `window.fraudIsDowngraded`
+- 自身 import: `distMeters` from `./03-characters.js` (内部で使用)
+- consumer (5 ファイル) で import 追加 + `typeof X === 'function'` ガード撤去:
+  - `07-record-mode.js`: `fraudAssessTrip`
+  - `09-tabs-stats.js`: `fraudAssessTrip` / `fraudIsDowngraded`
+  - `13-mypage-common.js`: `fraudIsDowngraded`
+  - `13a-stats.js`: `fraudIsDowngraded`
+  - `13b-trips.js`: `fraudIsDowngraded`
+- consumer 側のディフェンシブガード (`typeof X === 'function' && X(...)`) は静的 import で常に解決されるため不要 → 削除
+
+#### 2. `13c-lines.js` (関数 1 個、プレースホルダ)
+
+- export: `renderMpLinesSection`
+- caller ゼロ (実装は将来の拡張点としての空ラッパ) のため import 追加先なし
+- 既存 `NORIRECO.mypage.renderMpLinesSection` 登録は互換維持のため残置
+
+#### 3. `03-characters.js` (state 1、関数 11 個)
+
+最大規模のパイロット。HTML onclick から呼ばれるかどうかで分類:
+
+- **export 化** (JS module 間共有のみ):
+  - `distMeters` / `isCharacterAvailable` / `isCharacterOwned` / `runCharacterGrantCheck` / `syncCharacterGrantsFromSupabase`
+- **window bridge 維持** (HTML onclick / console テスト用):
+  - `tryGrantByGPS`: 08-rendering が生成する `<button onclick="tryGrantByGPS(...)">` から
+  - `grantCharacter` / `revokeCharacter` / `listOwnedCharacters`: console から叩けるテスト用
+
+撤去した 5 個の window bridge → consumer (7 ファイル) で import 追加:
+
+- `04-gps-location.js`: `distMeters` / `isCharacterOwned` / `isCharacterAvailable`
+- `05-supabase-data.js`: `runCharacterGrantCheck`
+- `06-map-leaflet.js`: `runCharacterGrantCheck` / `syncCharacterGrantsFromSupabase`
+- `07-record-mode.js`: `runCharacterGrantCheck` (追加、`fraudAssessTrip` と同行 import)
+- `08-rendering.js`: `isCharacterOwned` / `isCharacterAvailable`
+- `11-fraud-detection.js`: `distMeters`
+- `13a-stats.js`: `distMeters`
+- `13b-trips.js`: `distMeters` / `runCharacterGrantCheck` + `typeof runCharacterGrantCheck === 'function'` ガード撤去
+
+### Stage 2 (window bridge) vs Stage 3 (import) の使い分け方針 (今回確立)
+
+| consumer | 共有手段 | 例 |
+|---|---|---|
+| 同じく `<script type="module">` の JS から呼ばれる関数 | `export` / `import` | `fraudAssessTrip` / `distMeters` |
+| HTML `onclick=` から呼ばれる関数 | `window.X = X` 維持 | `tryGrantByGPS` / `switchTab` |
+| console から手動で叩くテスト用 | `window.X = X` 維持 | `grantCharacter` / `listOwnedCharacters` |
+| cross-module state (mutable object) | `window.NORIRECO.<domain>.X` (stage 1 のまま) | `NORIRECO.gps.locationMode` 等、stage 1 で 46 個集約済 |
+
+state も export に統一する案 (`export const auth = NORIRECO.auth`) は、mutable object でも参照は固定なので技術的には可能だが、HTML onclick 用に window namespace を一切撤去する見通しがないため、当面 stage 1 のまま据え置く。
+
+### v220-v222 教訓を踏まえた予防策
+
+bridge 漏れ事故の再発防止として:
+
+- import/export 化されたファイルでは、import に書かれていない bare 識別子は **直ちに ReferenceError** で落ちる → 起動時に即検出
+- `npm run check` は構文しか見ないが、ブラウザでロード時のエラーで漏れは可視化される
+
+将来追加の import 化対象でも、(1) export 追加 → (2) consumer の import 追加 → (3) `npm run check` 通過 → (4) ブラウザで動作確認、の 4 段階を毎回踏む。
+
+### コミット粒度
+
+1 セッション 4 コミット程度を想定 (本セッションは syntax-check + 3 ファイル分パイロットで 1 リリース v223 として束ねる):
+
+- v223 = syntax-check.js module 対応 + 11/13c/03 の import/export 化
+
+### 影響ファイル
+
+- `scripts/syntax-check.js` (rewrite — spawnSync ベース)
+- `js/03-characters.js` — 5 関数 `export` 化 + 5 window bridge 撤去
+- `js/04-gps-location.js` — `import { distMeters, isCharacterOwned, isCharacterAvailable }` 追加
+- `js/05-supabase-data.js` — `import { runCharacterGrantCheck }` 追加
+- `js/06-map-leaflet.js` — `import { runCharacterGrantCheck, syncCharacterGrantsFromSupabase }` 追加
+- `js/07-record-mode.js` — `import { fraudAssessTrip }` + `import { runCharacterGrantCheck }` 追加 + typeof ガード 1 箇所撤去
+- `js/08-rendering.js` — `import { isCharacterOwned, isCharacterAvailable }` 追加
+- `js/09-tabs-stats.js` — `import { fraudAssessTrip, fraudIsDowngraded }` 追加 + typeof ガード 2 箇所撤去
+- `js/11-fraud-detection.js` — 2 関数 `export` 化 + 2 window bridge 撤去 + `import { distMeters }` 追加
+- `js/13-mypage-common.js` — `import { fraudIsDowngraded }` 追加 + typeof ガード 1 箇所撤去
+- `js/13a-stats.js` — `import { fraudIsDowngraded, distMeters }` 追加 + typeof ガード 1 箇所撤去
+- `js/13b-trips.js` — `import { fraudIsDowngraded, distMeters, runCharacterGrantCheck }` 追加 + typeof ガード 2 箇所撤去
+- `js/13c-lines.js` — `export function renderMpLinesSection`
+- `sw.js` — `CACHE_VERSION = 'v223'`
+
+### Phase 3.8 ステータス更新
+
+- ✅ Stage 3 パイロット完了: import/export 化 (11 / 13c / 03 の 3 ファイル) + syntax-check.js module 対応
+- 残りの 15 ファイル (01/02/02b/04/04b/05/06/07/08/09/10/12/13-mypage-common/13a/13b) の `export` 化は次セッション以降に段階的に実施
+
+---
+
 ## 71. v222 — ES Modules stage 2 リグレッション修正 (3): 05-supabase-data.js の cross-module state を bridge (2026-05-19)
 
 ### 背景

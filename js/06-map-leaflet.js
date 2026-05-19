@@ -3,7 +3,10 @@
 //
 // v214 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
 // initMap は 10-init.js (module) の load handler から bare 呼出されるため末尾で window 公開。
+//
+// v223 ES Modules stage 3: 03-characters の 2 関数を import 化。
 // ══════════════════════════════════════
+import { runCharacterGrantCheck, syncCharacterGrantsFromSupabase } from './03-characters.js';
 
 // v196 ES Modules パイロット (案 β) — 状態を window.NORIRECO.map に集約。
 // stage 2 (type=module 化) で `export const map = NORIRECO.map` ブリッジに置換予定。

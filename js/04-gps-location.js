@@ -4,7 +4,10 @@
 //
 // v216 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
 // 末尾で 10 個の window bridge を追加 (07/08/04b など module/classic 双方からの bare 呼出に対応)。
+//
+// v223 ES Modules stage 3: 03-characters の 3 関数を import 化。
 // ══════════════════════════════════════════════
+import { distMeters, isCharacterOwned, isCharacterAvailable } from './03-characters.js';
 
 // v198 ES Modules パイロット (案 β) — 状態を window.NORIRECO.gps に集約。
 // 外部 (07) からは NORIRECO.gps.X のフルパス、内部は G.X の短縮形。

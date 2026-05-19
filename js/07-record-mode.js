@@ -9,6 +9,10 @@
 // showRecordToast / fitToRiddenLines)。
 // ════════════════════════════════════════════
 
+// v223 ES Modules stage 3: 11-fraud-detection と 03-characters を import 化。
+import { fraudAssessTrip } from './11-fraud-detection.js';
+import { runCharacterGrantCheck } from './03-characters.js';
+
 // v197 ES Modules パイロット (案 β) — 状態を window.NORIRECO.record に集約。
 // 外部 (04 / 06 / 08) からは NORIRECO.record.mode 等のフルパス、内部は R.X の短縮形。
 window.NORIRECO = window.NORIRECO || {};
@@ -864,7 +868,7 @@ async function saveMultiSegmentTrip() {
   // (Supabase 列追加なし: source='gps_button' && verified===false が降格マーカー)
   // 秒精度の経過時間を一時フィールドで渡す (Supabase には送らない)
   let fraud = { suspicious: false, reason: null };
-  if (trip.source === 'gps_button' && typeof fraudAssessTrip === 'function') {
+  if (trip.source === 'gps_button') {
     try { fraud = fraudAssessTrip({ ...trip, _elapsed_sec: elapsedSec }); } catch (e) { console.warn('[乗レコ] 不正検知エラー:', e); }
     if (fraud.suspicious) {
       trip.verified = false;

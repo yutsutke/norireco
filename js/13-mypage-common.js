@@ -13,7 +13,10 @@
 // 全 4 ファイル module 化。13a/13b/13c (既に module) と 05/09 (classic) からの bare
 // 参照を支えるため、末尾で applyMpSection / showMypageToast / tripCardHtml /
 // isTimeMachineActive / _MP_SORT_COMPARATORS の window bridge を明示追加。
+//
+// v223 ES Modules stage 3: 11-fraud-detection を import 化。
 // ══════════════════════════════════════════════════════════════
+import { fraudIsDowngraded } from './11-fraud-detection.js';
 
 // ── NORIRECO 名前空間の初期化 ──────────────────────────────────
 window.NORIRECO = window.NORIRECO || {};
@@ -240,7 +243,7 @@ function tripCardHtml(trip) {
   let badge = '<span class="mp-badge manual" title="手動記録 (自己申告)">⚪ 手動記録</span>';
   if (trip.verified) {
     badge = '<span class="mp-badge verified" title="GPS 記録 (認証済)">🟢 GPS 記録</span>';
-  } else if (typeof fraudIsDowngraded === 'function' && fraudIsDowngraded(trip)) {
+  } else if (fraudIsDowngraded(trip)) {
     badge = '<span class="mp-badge suspicious" title="不正検知で降格">🟡 要確認</span>';
   }
 

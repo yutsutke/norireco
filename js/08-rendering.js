@@ -1,6 +1,11 @@
 // ══════════════════════════════════════
 // Canvas renderer（原則1：DOM排除）
+//
+// v223 ES Modules stage 3: 03-characters の 2 関数を import 化。
+// tryGrantByGPS は HTML onclick で呼ばれるため window 経由のまま (import 不要)。
 // ══════════════════════════════════════
+import { isCharacterOwned, isCharacterAvailable } from './03-characters.js';
+
 const CANVAS = L.canvas({ padding: 0.5 });
 
 // 路線の優先度（LOD用）

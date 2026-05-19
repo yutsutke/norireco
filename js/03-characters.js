@@ -2,11 +2,12 @@
 // 段階1: キャラ獲得・期間限定システム
 //
 // v210 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
-// 既存 window 公開 (grantCharacter / revokeCharacter / listOwnedCharacters / tryGrantByGPS)
-// に加え、stage 2 で必要になった 5 関数 (isCharacterAvailable / isCharacterOwned /
-// runCharacterGrantCheck / distMeters / syncCharacterGrantsFromSupabase) を末尾で window
-// 公開。distMeters は 11/13a/13b (既に module) と 04 (classic) から bare 呼出される
-// ユーティリティ。
+// v223 ES Modules stage 3: 5 関数を `export` 公開へ移行 (window bridge 撤去)。
+//   - distMeters / isCharacterAvailable / isCharacterOwned / runCharacterGrantCheck /
+//     syncCharacterGrantsFromSupabase → consumer (04/05/06/07/08/11/13a/13b) が import
+// HTML onclick から呼ばれる関数は window bridge 維持:
+//   - tryGrantByGPS (08-rendering が生成する `<button onclick="tryGrantByGPS(...)">` から)
+//   - grantCharacter / revokeCharacter / listOwnedCharacters (テスト用に console から叩ける)
 // ══════════════════════════════════════════════
 const OWNED_CHARACTERS_KEY = 'norireco_owned_characters';
 function getOwnedCharacters() {
@@ -78,7 +79,7 @@ async function saveCharacterGrantToSupabase(charId, stationName, source, gpsData
 }
 
 // Supabase ↔ localStorage の双方向同期
-async function syncCharacterGrantsFromSupabase() {
+export async function syncCharacterGrantsFromSupabase() {
   if (typeof SUPABASE_URL === 'undefined' || typeof SUPABASE_KEY === 'undefined') return;
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_character_grants?select=character_id`, {
@@ -133,7 +134,7 @@ function revokeCharacter(charId) {
   }
 }
 // 期間内 (available_from ≤ 今日 ≤ available_until) かチェック
-function isCharacterAvailable(charMeta) {
+export function isCharacterAvailable(charMeta) {
   if (!charMeta) return false;
   const today = localDateStr();
   if (charMeta.available_from && today < charMeta.available_from) return false;
@@ -141,7 +142,7 @@ function isCharacterAvailable(charMeta) {
   return true;
 }
 // 所持判定 (default_unlocked or 獲得済み)
-function isCharacterOwned(charId) {
+export function isCharacterOwned(charId) {
   const char = NORIRECO.data.CHARACTERS[charId];
   if (!char) return false;
   if (char.meta.default_unlocked) return true;
@@ -232,7 +233,7 @@ function showCharacterGrantToast(character) {
 }
 
 // 認証済み trip から自動獲得を実行 + トースト表示 (画面初期化後 or trip 保存後に呼ぶ)
-function runCharacterGrantCheck() {
+export function runCharacterGrantCheck() {
   const granted = checkAndGrantCharacters();
   if (granted.length === 0) return;
   // 地図再描画 (新キャラが表示されるように)
@@ -244,7 +245,7 @@ function runCharacterGrantCheck() {
 }
 
 // ── ポケモンGO 式: 現在地が駅 GPS 圏内なら 1タップでキャラ獲得 ──
-function distMeters(lat1, lon1, lat2, lon2) {
+export function distMeters(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const toRad = d => d * Math.PI / 180;
   const dLat = toRad(lat2 - lat1);
@@ -312,13 +313,5 @@ function tryGrantByGPS(charId, ev) {
 }
 window.tryGrantByGPS = tryGrantByGPS;
 
-// v210 stage 2 (type=module 化) で必要になった window bridge。
-// isCharacterAvailable / isCharacterOwned: 04 / 08 から bare 呼出
-// runCharacterGrantCheck: 05 / 06 / 07 / 13b (module) から bare 呼出
-// distMeters: 04 (classic) + 11 / 13a / 13b (module) から bare 呼出される距離計算 util
-// syncCharacterGrantsFromSupabase: 06 から bare 呼出
-window.isCharacterAvailable = isCharacterAvailable;
-window.isCharacterOwned = isCharacterOwned;
-window.runCharacterGrantCheck = runCharacterGrantCheck;
-window.distMeters = distMeters;
-window.syncCharacterGrantsFromSupabase = syncCharacterGrantsFromSupabase;
+// v223 stage 3: window bridge 撤去。consumer 側 (04/05/06/07/08/11/13a/13b) は
+// `import { distMeters, isCharacterOwned, ... } from './03-characters.js'` で取り込む。

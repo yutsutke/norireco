@@ -6,14 +6,14 @@
 ---
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v222 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v223 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13-..` 機能別分割（v131〜v138、`CHANGELOG.md §20, §21` 参照）
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
 **マイページ**: 3 サブタブ (統計 / 旅程 / 路線)、詳細統計 16 種、期間指定で過去状態 (地図ピル「〜月指定」)
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **保存ボタン**: 記録種別に応じて「💾 手動記録で保存する」/「💾 GPS 記録で保存する」に動的切替（v176）
-**直近の作業**: **ES Modules パイロット (案 β) 完全完結 — 全 18 ファイル module 化達成** — 02-data-loaders を最後に module 化（v219）。stage 1 (v195-v201、7 commit、46 state を NORIRECO.<domain>.X に集約) + stage 2 (v202-v219、18 commit、~84 個の window bridge 追加で全ファイル `<script type="module">` 化) 計 **25 commit**。**v220 で stage 2 リグレッション (IS_TOUCH bridge 漏れ → LINES 描画停止) 修正済**。次は stage 3 (`import`/`export` 化) or 別のロードマップ着手
+**直近の作業**: **ES Modules stage 3 パイロット着手 (v223)** — `scripts/syntax-check.js` を `node --check --input-type=module` ベースに切替 (v202 で予告した前提作業)、影響範囲の小さい 3 ファイル (11-fraud-detection / 13c-lines / 03-characters) を `import`/`export` 化。撤去 window bridge 7 個 (`fraudAssessTrip` / `fraudIsDowngraded` / `distMeters` / `isCharacterAvailable` / `isCharacterOwned` / `runCharacterGrantCheck` / `syncCharacterGrantsFromSupabase`)、consumer 8 ファイル (04/05/06/07/08/09/11/13-mypage-common/13a/13b) に import 追加 + `typeof X === 'function'` ガード 7 箇所撤去。`tryGrantByGPS` / `grantCharacter` 等 HTML onclick・console 用関数は window bridge 維持。残り 15 ファイルの export 化は次セッション以降。
 
 ---
 
@@ -91,9 +91,20 @@
     - ✅ stage 1 で確立した `window.NORIRECO.auth` bridge は無変更で動く (renderMypage 内の `NORIRECO.auth.currentUser` は event-driven なので評価順ズレに耐性)
     - ⚠️ `export` は **追加せず** — `npm run check` の `new Function(src)` パースが module syntax を通せないため、stage 3 で syntax-check 拡張と同時に追加予定
     - 教訓: stage 1 が正しく完了していれば stage 2 は script tag 1 行の変更で済む。windowization の投資の回収瞬間
-  - **次セッション v203+ 候補 (案 β stage 2 拡大)**:
-    1. **影響範囲の小さい順に module 化**: 11-fraud-detection (state 0) → 13c-lines (関数 1 個だけ) → 03-characters (state 1) → 各 NORIRECO.<domain> 担当ファイル (06/02/...)
-    2. `scripts/syntax-check.js` を `node --check --input-type=module` ベースに拡張 (module syntax 対応) → `export const auth = NORIRECO.auth` を 12-auth に追加可能に
+  - **v223 で完了済 (案 β stage 3 パイロット)**:
+    - ✅ `scripts/syntax-check.js` を `spawnSync(node, ['--check', '--input-type=module', '-'])` 方式に書き換え、`import`/`export` 構文を通せるように (v202 で予告した前提作業)
+    - ✅ 11-fraud-detection.js: `fraudAssessTrip` / `fraudIsDowngraded` を `export`、window bridge 撤去 (consumer 5 ファイル: 07/09/13-mypage-common/13a/13b に import 追加)
+    - ✅ 13c-lines.js: `renderMpLinesSection` を `export` (caller ゼロのプレースホルダ、互換のため NORIRECO 登録は残置)
+    - ✅ 03-characters.js: `distMeters` / `isCharacterAvailable` / `isCharacterOwned` / `runCharacterGrantCheck` / `syncCharacterGrantsFromSupabase` を `export`、window bridge 撤去 (consumer 7 ファイル: 04/05/06/07/08/11/13a/13b に import 追加)。`tryGrantByGPS` (HTML onclick) / `grantCharacter` / `revokeCharacter` / `listOwnedCharacters` (console テスト用) は window bridge 維持
+    - ✅ `typeof X === 'function'` ディフェンシブガード 7 箇所撤去 (静的 import で常に解決される)
+  - **次セッション v224+ 候補 (案 β stage 3 残り 15 ファイル)**:
+    1. **State 共有 (NORIRECO.<domain>) は stage 1 のまま据え置き**: HTML onclick から呼ばれる関数の window bridge を撤去しない限り、state も window namespace のままが整合性高い
+    2. **関数共有のみ順次 export 化** (影響範囲の小さい順):
+       - 12-auth: `initAuth` / `currentUserId` / `signOutUser` / `authBearerToken` (state は NORIRECO.auth 据置)
+       - 02b-service-lines-builder (IIFE 内、外部 API は `NORIRECO.serviceLines.X` 経由のみ — export 化の優先度低)
+       - 04b-ride-record (IIFE 内、外部 API は `NORIRECO.rideRecord.X` 経由のみ)
+       - 04-gps-location / 06-map-leaflet / 07-record-mode / 08-rendering / 09-tabs-stats / 10-init / 13-mypage-common / 13a-stats / 13b-trips
+       - 01-constants / 02-data-loaders / 05-supabase-data (NORIRECO.data.X 経由が中心、関数は HTML onclick から呼ばれるものが多い)
     3. **実機検証**: ログインフロー (Magic Link / Google OAuth / signOut / 後追い認証) を実機 (PC / iPhone PWA) で確認
     4. Notion §2.4 布石⑤ Supabase 呼び出しを `NORIRECO.api.xxx` ラッパー化
   - **安全装置**: 「動くマップが画面に出る」を毎ステップで確認、各段階を独立コミット (戻せる)。Cloudflare Pages 移行は別タスクに切り出し、今は GitHub Pages のままで完結させる
@@ -368,7 +379,7 @@
 ## メモ
 
 - **main 直 push 運用**（個人開発、PR・専用ブランチ不要、自動承認設定済み）
-- 編集後は **`sw.js` の `CACHE_VERSION` を上げる**こと（現在 v194）
+- 編集後は **`sw.js` の `CACHE_VERSION` を上げる**こと（現在 v223）
 - HTML 編集後は `</script></body></html>` が末尾に残っているか必ず確認
 - **JS 編集後は必ずシンタックスチェック** — `npm run check` で 17/17 OK を確認 (v193〜、Notion §2.4 布石② 完了)
 - 新規 trip の `lineId` は `service_lines_master.json` の id を使う（旧 N02 id も `LEGACY_LINE_ID_ALIAS` で透過解決）
