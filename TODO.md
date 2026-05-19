@@ -6,115 +6,30 @@
 ---
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v227 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v235 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
-**コード構成**: `js/01-..〜13-..` 機能別分割（v131〜v138、`CHANGELOG.md §20, §21` 参照）
+**コード構成**: `js/01-..〜13c-..` ES Modules (v195〜v225 で全 18 ファイル `<script type="module">` + `import`/`export` 化完了)
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
 **マイページ**: 3 サブタブ (統計 / 旅程 / 路線)、詳細統計 16 種、期間指定で過去状態 (地図ピル「〜月指定」)
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
-**保存ボタン**: 記録種別に応じて「💾 手動記録で保存する」/「💾 GPS 記録で保存する」に動的切替（v176）
-**直近の作業**: **v226 — 旅程カード「✏️ 編集」を区間・乗車時刻・列車種別まで拡張**。trip-edit-modal を 5 セクション化 (📍 区間 read-only / 🕒 乗車時刻 / 🚆 列車種別 / ⏱ 遅延 / 📝 メモ)。手動記録は時刻 (date/depart/arrive) を minute precision で後追い編集可、列車種別は category + train_name + car_model を簡易編集可。GPS 記録は時刻をロックして verified を守る。Supabase に同期 (notes/delay_minutes は schema 未拡張のまま localStorage のみ)。**直前 (v223〜v225)**: ES Modules stage 3 で全 18 ファイルの関数 export 化完了。残作業: 01-constants / 04b-ride-record の export 化 (小規模)、Notion §2.4 布石⑤ Supabase 呼び出しを `NORIRECO.api.xxx` ラッパー化、実機ログインフロー検証、📍 区間のフル編集。
+**完乗率**: ユニーク駅単位に統一 (v235) — ヘッダ「完乗率 X%」と マイページ「全記録完乗率」が一致、「公式完乗率」は GPS 認証のみ
 
----
-
-## 🔧 ドキュメント整合性（最優先で潰す）
-
-- [x] **Notion 子ページの中抜けバージョン補完（v132〜v189）— 完了 (2026-05-18)**
-  - 全子ページのバージョン履歴を v189 まで同期完了:
-    - ✅ **1.3 📝 記録モード**: v133/v134/v135-137/v144/v175/v176/v178/v179/v180/v186 を追記
-    - ✅ **1.4 👤 マイページ**: v174/v175/v178/v179 を追記
-    - ✅ **1.2 🗾 地図画面**: v173 / v174 / v177 を追記
-    - ✅ **2.1 🗂 データアーキテクチャ**: v157 / v174 / v178-180 / v181 / v186 を追記
-    - ✅ **2.2 🗄 Supabase**: v178-180 / v181/v185 を追記（schema 未拡張 workaround 含む）
-    - ✅ **2.6 🔀 データの流れ**: フロー D を「期間フィルタ」に改名（v174 タイムマシン吸収）
-    - ✅ **2.3 ⚡ SW/PWA**: CACHE_VERSION を v157 → v189 に更新
-    - ✅ **2.4 📁 コード構成**: v158-189 の各ファイル変更を反映
-    - ✅ **1.4.1 📊 統計サブタブ**: v179 精度除外 / v182「📌 直近の旅程」追記
-    - ✅ **1.4.2 🚃 旅程サブタブ**: v174/v175/v178/v179/v181-185/v182 並び替え追記
-    - ✅ **1.4.3 📋 路線サブタブ**: v157/v173/v174 追記
-    - ✅ **1.4.4 🕰️ タイムマシンサブタブ**: v174 廃止を冒頭マーク + バージョン履歴に記録
-  - 1.3 配下の「不正検知 / 現在地・GPS / 列車・車両形式 / 駅キャラ」サブサブページは独立ページとして存在せず（テキスト参照のみ）、スコープ外と判定
-  - セッション末ルール（§0 に明記）で今後同じ漏れが起きないようにしてある
+**直近の作業 (v228〜v235、2026-05-19 セッション)**:
+- v228〜v229: ログアウト時に地図・統計・mypage キャッシュをローカル purge (Supabase は据置、再ログインで復元)
+- v230〜v232: 地図 LOD から首都圏 bbox 分岐を撤去 (駅ランク 1 本化)、stationTier を `6/4/2/2/2/1` に圧縮、ドットとパイチャートの出現タイミングを統一
+- v233: 未ログイン時の `syncFromSupabase` / `syncCharacterGrantsFromSupabase` で他人 trip / キャラが漏れていたのを修正 (user_id=eq.uid フィルタ + skip)
+- v234: 静的デモ `RIDDEN_SEGS_STATIC` (21 trips) を撤去、ストレージラベル「静的データ」→「データなし」に
+- v235: 完乗率の集計方式を「ユニーク駅単位」に統一 — ヘッダ「達成率」→「完乗率」、`globalStats().pct` を Set ベースに、ラベル「路線」→「系統」
 
 ---
 
 ## 🔥 最優先（プロダクトとして欠けている）
 
-- [ ] **ES Modules 化 (本番、13-mypage 分割は v190 で完了済)**
-  - **理由**: 今 N=1 (ユーザー自分だけ) のうちが破壊的リファクタの唯一の安全窓。シェア機能でユーザーが増える前にやる
-  - **現状の課題**: クラシック `<script>` ロードで全 16 ファイルが同じグローバル Script 環境を共有 → v127 で `const grid` 重複宣言で全滅した教訓
-  - **v190 で完了済 (Notion §2.4 布石①③④)**:
-    - ✅ `window.NORIRECO` 名前空間を導入 (新規・移動分は `NORIRECO.mypage.xxx` に登録、既存はそのまま)
-    - ✅ `js/13-mypage.js` (1947行) を 4 ファイル分割: `13-mypage-common.js` (366) / `13a-stats.js` (1308) / `13b-trips.js` (354) / `13c-lines.js` (21)
-    - ✅ HTML `<script src>` リスト・`sw.js` STATIC_ASSETS・CACHE_VERSION 連動更新（v189→v190）
-  - **v191 で完了済**:
-    - ✅ `04-gps-location.js` のデータローダー (`loadMergedStations` / `loadServiceLinesMaster` / `loadLines` / `loadLinesForZoom` / `PRIORITY_FILES` / `getPriorityThreshold`) と関連状態 (`SERVICE_LINES_MASTER` / `SERVICE_LINES` / `serviceLinesLoaded` / `serviceLinesBuilt`) を `02-data-loaders.js` に移管 (04: 1037→927 / 02: 227→346)。Notion §2.5 落とし穴「04 にローダーがいる」を解消
-  - **v192 で完了済 (案 D 採用: ES Modules の最終形に近いドメイン分割)**:
-    - ✅ SERVICE_LINES 構築・分類・達成率ロジック (`buildServiceLines` / `buildPerLineCoordMap` / `deriveN02IdFromAutoId` / `regionOf` / `detectServiceLineGroup` / `_JR_OP_IDS` 他 / `slStats` / `slGlobalStats`) を `js/02b-service-lines-builder.js` (166 行、IIFE) に切り出し
-    - ✅ `NORIRECO.serviceLines = { build, stats, globalStats, detectGroup, regionOf }` ドメイン名前空間で公開
-    - ✅ call site (06/08/09/05/13-common 計 12 箇所) を `NORIRECO.serviceLines.xxx` に書き換え
-    - ✅ `deriveN02IdFromAutoId` の 04 内自己重複を解消 (v191 の積み残し)
-    - 04: 927→788 行 / HTML `<script>` リスト・sw.js STATIC_ASSETS 更新・CACHE_VERSION v191→v192
-  - **v193 で完了済**:
-    - ✅ シンタックスチェック自動化 (`npm run check` / `scripts/syntax-check.js`)。`new Function` パース + 同名トップレベル `function` 重複警告。Notion §2.4 布石② 完了
-  - **v194 で完了済**:
-    - ✅ trip 解決 + 乗車状態集計を `04b-ride-record.js` に切り出し (`NORIRECO.rideRecord.{rebuild, normStName}`)
-    - ✅ 04-gps-location.js を 788 → 430 行に縮小、ファイル名と中身を一致させる
-    - ✅ dead code `resolveLineId` 削除
-  - **v195 で完了済 (案 β stage 1 パイロット — auth)**:
-    - ✅ 認証 state (`supabaseAuthClient` / `currentUser` / `currentSession` / `authBackfillRan`) を `window.NORIRECO.auth` mutable object に集約
-    - ✅ 12-auth.js 内は `const auth = NORIRECO.auth` の local alias で短縮、外部 (13-mypage-common.js) は `NORIRECO.auth.currentUser` のフルパス
-    - ✅ `currentUserId()` / `authBearerToken()` 等の関数 API は維持 (内部実装のみ書き換え)
-    - call site: 12-auth.js (21) + 13-mypage-common.js (1) = 22 箇所
-  - **v196 で完了済 (案 β stage 1 — map)**:
-    - ✅ map domain state (`map` Leaflet インスタンス / `memoMode` / `clickInfo`) を `window.NORIRECO.map` に集約
-    - call site: 6 ファイル約 50 箇所、`Array.prototype.map(...)` との曖昧性は `map.` (literal) と `addTo(map)` / `if(map)` のパターン分離で対処
-  - **v197 で完了済 (案 β stage 1 — record)**:
-    - ✅ record domain state 7 個を `window.NORIRECO.record` に集約 (4 ファイル約 80 箇所)
-  - **v198 で完了済 (案 β stage 1 — gps、12 state で最多)**:
-    - ✅ gps domain state 12 個 (`locationMode` / `locationWatchId` / `userLocationMarker` / `userLocationCircle` / `didInitialCenter` / `lastUserGps` / `recordStartedViaGPS` / `recordStartGPS` / `recordStartedAt` / `recordEndTime` / `nearestCandidates` / `nearestPickedIdx`) を `window.NORIRECO.gps` に集約
-    - call site: 2 ファイル (04 ~50 + 07 ~30) = 約 60 箇所
-    - 教訓を手順化: 宣言ブロック → state ごと replace_all → 宣言ブロックを 1 回まとめて修正、の 3 段階。property 数が増えても線形にしか手間が増えない
-    - 累計移行 state 数: 26 個 (auth 4 + map 3 + record 7 + gps 12)
-  - **v199 で完了済 (案 β stage 1 — trains)**:
-    - ✅ trains domain state 6 個 を `window.NORIRECO.trains` に集約 (4 ファイル 39 箇所)
-  - **v200 で完了済 (案 β stage 1 — data、最大規模)**: 11 state、15 ファイル 146 箇所
-  - **v201 で完了済 (案 β stage 1 — mypage、最終)**:
-    - ✅ mypage state 3 個 (`_mypageCache` / `mpActiveSection` / `mpTripFilter`) を `NORIRECO.mypage.state` に集約
-    - call site: 3 ファイル 61 箇所 (13-common 13 + 13b 47 + 13a 1)
-    - 構造: `NORIRECO.mypage.state.X` (v190 で確立済の関数 namespace `NORIRECO.mypage.fn` と並列の `.state` サブ namespace に隔離)
-    - 累計移行 state 数: **46 個** (auth 4 + map 3 + record 7 + gps 12 + trains 6 + data 11 + mypage 3)
-    - **案 β stage 1 完結** — classic script 共有 lexical scope への依存ゼロ達成
-  - **v202 で完了済 (案 β stage 2 パイロット — 12-auth を type=module 化)**:
-    - ✅ `<script src="js/12-auth.js">` → `<script type="module" src="js/12-auth.js">` (noritetsu-map.html)
-    - ✅ window 公開を追加: `initAuth` / `currentUserId` / `signOutUser` / `authBearerToken` (module-local function は globalThis に乗らないため明示 bridge)
-    - ✅ stage 1 で確立した `window.NORIRECO.auth` bridge は無変更で動く (renderMypage 内の `NORIRECO.auth.currentUser` は event-driven なので評価順ズレに耐性)
-    - ⚠️ `export` は **追加せず** — `npm run check` の `new Function(src)` パースが module syntax を通せないため、stage 3 で syntax-check 拡張と同時に追加予定
-    - 教訓: stage 1 が正しく完了していれば stage 2 は script tag 1 行の変更で済む。windowization の投資の回収瞬間
-  - **v223 で完了済 (案 β stage 3 パイロット)**:
-    - ✅ `scripts/syntax-check.js` を `spawnSync(node, ['--check', '--input-type=module', '-'])` 方式に書き換え、`import`/`export` 構文を通せるように (v202 で予告した前提作業)
-    - ✅ 11-fraud-detection.js: `fraudAssessTrip` / `fraudIsDowngraded` を `export`、window bridge 撤去 (consumer 5 ファイル: 07/09/13-mypage-common/13a/13b に import 追加)
-    - ✅ 13c-lines.js: `renderMpLinesSection` を `export` (caller ゼロのプレースホルダ、互換のため NORIRECO 登録は残置)
-    - ✅ 03-characters.js: `distMeters` / `isCharacterAvailable` / `isCharacterOwned` / `runCharacterGrantCheck` / `syncCharacterGrantsFromSupabase` を `export`、window bridge 撤去 (consumer 7 ファイル: 04/05/06/07/08/11/13a/13b に import 追加)。`tryGrantByGPS` (HTML onclick) / `grantCharacter` / `revokeCharacter` / `listOwnedCharacters` (console テスト用) は window bridge 維持
-    - ✅ `typeof X === 'function'` ディフェンシブガード 7 箇所撤去 (静的 import で常に解決される)
-  - **次セッション v224+ 候補 (案 β stage 3 残り 15 ファイル)**:
-    1. **State 共有 (NORIRECO.<domain>) は stage 1 のまま据え置き**: HTML onclick から呼ばれる関数の window bridge を撤去しない限り、state も window namespace のままが整合性高い
-    2. **関数共有のみ順次 export 化** (影響範囲の小さい順):
-       - 12-auth: `initAuth` / `currentUserId` / `signOutUser` / `authBearerToken` (state は NORIRECO.auth 据置)
-       - 02b-service-lines-builder (IIFE 内、外部 API は `NORIRECO.serviceLines.X` 経由のみ — export 化の優先度低)
-       - 04b-ride-record (IIFE 内、外部 API は `NORIRECO.rideRecord.X` 経由のみ)
-       - 04-gps-location / 06-map-leaflet / 07-record-mode / 08-rendering / 09-tabs-stats / 10-init / 13-mypage-common / 13a-stats / 13b-trips
-       - 01-constants / 02-data-loaders / 05-supabase-data (NORIRECO.data.X 経由が中心、関数は HTML onclick から呼ばれるものが多い)
-    3. **実機検証**: ログインフロー (Magic Link / Google OAuth / signOut / 後追い認証) を実機 (PC / iPhone PWA) で確認
-    4. Notion §2.4 布石⑤ Supabase 呼び出しを `NORIRECO.api.xxx` ラッパー化
-  - **安全装置**: 「動くマップが画面に出る」を毎ステップで確認、各段階を独立コミット (戻せる)。Cloudflare Pages 移行は別タスクに切り出し、今は GitHub Pages のままで完結させる
-  - 詳細仕様: 2.4 コード構成（js/01〜13c）参照
-
 - [ ] **シェア機能（OGP 画像生成）**
   - 自分の達成地図のスクショ → Twitter/X で拡散
   - 主要ターミナル何駅制覇など要約も載せる
   - **認証済みのみ**シェア可（Notion 方針 - コア化への自然誘導）
-  - 着手は ES Modules 化完了後、クリーンな基盤の上で
+  - ES Modules 化は完了済 (v195〜v225)、クリーンな基盤の上で着手可
 
 - [ ] **垢BAN（不正利用ペナルティ）対応**
   - 共有・シェア機能のみ停止、個人記録は通常通り使える設計
@@ -122,6 +37,12 @@
   - 段階: warn（注意）→ share_banned（シェア不可）→ full_banned（極端な場合のみ）
   - `users.share_status` を Supabase に追加。マイページにバッジ表示
   - 不正検知 (`fraudAssessTrip`) で繰り返し suspicious 判定された場合などに自動付与
+
+- [ ] **Supabase RLS 強化 (v233 の残課題)**
+  - 現状: anon key で REST API 直叩きで他人の生 trip / character_grants を取得可能
+  - v233 で UI 側では他人データを表示しないよう防御済だが、本格対策は RLS policy で `user_id = auth.uid()` 必須にする
+  - 影響テーブル: `norireco_trips` / `norireco_character_grants` / `norireco_memos`
+  - 注意: backfill (user_id=NULL → 自分の uid に PATCH) は access_token ベースなので RLS 強化後も動作する
 
 ## 🟡 体験向上（コア層の継続率を上げる）
 
@@ -151,10 +72,10 @@
   - 残り:
     - **駅の設備メモ**（トイレあり、混雑度、改札位置 等） — `trip.station_notes` (jsonb) を駅ごとに保存。構造設計大きいため別タスク
 
-- [ ] **手動記録の旅程カードからの「区間」フル編集（v226 で時刻・列車種別は完了）**
-  - **v226 で完了**: 🕒 乗車時刻 (date/depart/arrive、minute precision) と 🚆 列車種別 (category/train_name/car_model) を旅程カード「✏️ 編集」モーダルから後から書き換え可能 ([js/13b-trips.js:184-371](js/13b-trips.js:184))。手動記録のみ時刻編集可、GPS 記録 (verified) は時刻をロックして認証性を守る。Supabase にも同期 (CHANGELOG §75)
-  - **残り (📍 区間のフル編集)**: `segments[]` の追加・削除・経路変更
-    - 現状の「✏️ 編集」モーダルでは区間は **read-only 表示**、修正したい場合は 🗑 削除→記録モードで再作成のガイドのみ
+- [ ] **手動記録の旅程カードからの「📍 区間」フル編集**
+  - v226 で時刻 (date/depart/arrive、minute precision) と 🚆 列車種別 (category/train_name/car_model) は完了
+  - **残り**: `segments[]` の追加・削除・経路変更
+    - 現状の「✏️ 編集」モーダルでは区間は read-only 表示、修正したい場合は 🗑 削除→記録モードで再作成のガイドのみ
     - 連鎖計算が必要: `segments[]` を変えると `from_station` / `to_station` / `line_list` / `total_stations` / `transfers` / `RIDDEN_SEGS` / 地図描画まで再計算
     - 設計案: 「区間を編集」ボタン → 現 trip の segments を記録モードに pre-load → ユーザーが追加/削除 → 保存で既存 trip を update (DELETE → INSERT or PATCH)
   - 関連: 🟡「ノリレコログを地図画面のタブとして統合」で「過去の旅程をまとめて編集」と被るので、UI 設計はそちらと統合検討
@@ -243,6 +164,11 @@
   - 現在テスト用に長め期間設定中
 
 ## 🔧 パフォーマンス・UI
+
+- [ ] **ES Modules 化 残作業 (v195〜v225 でほぼ完了、小規模残し)**
+  - 01-constants / 04b-ride-record の export 化 (globalThis 経由 bare 参照で十分動作中のため据置中)
+  - Notion §2.4 布石⑤ Supabase 呼び出しを `NORIRECO.api.xxx` ラッパー化 (RLS 強化と同時着手が効率的)
+  - 実機検証: ログインフロー (Magic Link / Google OAuth / signOut / 後追い認証) を実機 (PC / iPhone PWA) で確認
 
 - [ ] **路線一覧タブの絞り込み UI**
   - 637 系統あるとスクロール大変
@@ -366,7 +292,7 @@
 - [ ] **グローバル展開（5〜10 年スパン）**
   - Phase 1（1-2年）: 日本市場で完成度を高める
   - Phase 2（3-5年）: 韓国・台湾・中国・香港
-  - Phase 3（5-10年）: 欧州（ドイツ・イギリス・スイス）
+  - Phase 3（5-10年）: 欧州(ドイツ・イギリス・スイス)
   - Phase 4（10年〜）: 米国・インド
 
 - [ ] **道路版乗レコ（自動運転時代）**
@@ -387,9 +313,9 @@
 ## メモ
 
 - **main 直 push 運用**（個人開発、PR・専用ブランチ不要、自動承認設定済み）
-- 編集後は **`sw.js` の `CACHE_VERSION` を上げる**こと（現在 v227）
+- 編集後は **`sw.js` の `CACHE_VERSION` を上げる**こと（現在 v235）
 - HTML 編集後は `</script></body></html>` が末尾に残っているか必ず確認
-- **JS 編集後は必ずシンタックスチェック** — `npm run check` で 17/17 OK を確認 (v193〜、Notion §2.4 布石② 完了)
+- **JS 編集後は必ずシンタックスチェック** — `npm run check` で 18/18 OK を確認 (v193〜)
 - 新規 trip の `lineId` は `service_lines_master.json` の id を使う（旧 N02 id も `LEGACY_LINE_ID_ALIAS` で透過解決）
 - キャラ追加: `characters/<id>.svg` 配置 → `characters_master.json` に entry 追加 → `sw.js` STATIC_ASSETS に追加 → CACHE_VERSION 上げ
 - 列車追加: `trains_master.json` の trains 配列に entry 追加（id/name/category/operator/description/stations_typical、必要なら car_models と rarity と discontinued）
