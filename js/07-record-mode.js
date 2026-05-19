@@ -10,8 +10,10 @@
 // ════════════════════════════════════════════
 
 // v223 ES Modules stage 3: 11-fraud-detection と 03-characters を import 化。
+// v224: 12-auth.currentUserId を import 化。
 import { fraudAssessTrip } from './11-fraud-detection.js';
 import { runCharacterGrantCheck } from './03-characters.js';
+import { currentUserId } from './12-auth.js';
 
 // v197 ES Modules パイロット (案 β) — 状態を window.NORIRECO.record に集約。
 // 外部 (04 / 06 / 08) からは NORIRECO.record.mode 等のフルパス、内部は R.X の短縮形。
@@ -861,7 +863,7 @@ async function saveMultiSegmentTrip() {
     notes: tripNotes,
     delay_minutes: delayMinutes,
     // 所有者 (ログイン中なら uid、未ログインなら null → 初回ログイン時 backfill 対象)
-    user_id: (typeof currentUserId === 'function') ? currentUserId() : null,
+    user_id: currentUserId(),
   };
 
   // 不正検知: GPS 認証 trip の所要時間が想定の半分未満なら verified=false に降格

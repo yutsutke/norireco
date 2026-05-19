@@ -15,8 +15,10 @@
 // isTimeMachineActive / _MP_SORT_COMPARATORS の window bridge を明示追加。
 //
 // v223 ES Modules stage 3: 11-fraud-detection を import 化。
+// v224: 12-auth から currentUserId / authBearerToken を import 化。
 // ══════════════════════════════════════════════════════════════
 import { fraudIsDowngraded } from './11-fraud-detection.js';
+import { currentUserId, authBearerToken } from './12-auth.js';
 
 // ── NORIRECO 名前空間の初期化 ──────────────────────────────────
 window.NORIRECO = window.NORIRECO || {};
@@ -54,7 +56,7 @@ async function renderMypage() {
   if (!c) return;
   c.innerHTML = '';
 
-  const uid = (typeof currentUserId === 'function') ? currentUserId() : null;
+  const uid = currentUserId();
   if (!uid) {
     showAllSubpanes(false);
     c.innerHTML = `
@@ -97,7 +99,7 @@ async function renderMypage() {
     const [_, tripsRes] = await Promise.all([
       ((window.NORIRECO && NORIRECO.serviceLines) ? NORIRECO.serviceLines.build() : Promise.resolve()),
       fetch(`${SUPABASE_URL}/rest/v1/norireco_trips?user_id=eq.${uid}&select=*&order=recorded_at.desc`, {
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${typeof authBearerToken==='function'?authBearerToken():SUPABASE_KEY}` }
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${authBearerToken()}` }
       }),
     ]);
     if (tripsRes.ok) trips = await tripsRes.json();

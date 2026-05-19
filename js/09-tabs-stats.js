@@ -7,8 +7,10 @@
 // (module) から bare 識別子で呼ばれる。
 //
 // v223 ES Modules stage 3: 11-fraud-detection を import 化。
+// v224: 12-auth から currentUserId / authBearerToken を import 化。
 // ══════════════════════════════════════
 import { fraudAssessTrip, fraudIsDowngraded } from './11-fraud-detection.js';
+import { currentUserId, authBearerToken } from './12-auth.js';
 
 function switchTab(n){
   // 旧 'list' / 'stats' は 'mypage' にリダイレクト (タブ集約のため)
@@ -69,12 +71,12 @@ async function renderStats(){
   c.appendChild(tripSection);
 
   // Supabaseから統計を非同期取得 — ログイン中なら自分のデータのみ
-  const _uid = (typeof currentUserId === 'function') ? currentUserId() : null;
+  const _uid = currentUserId();
   const _statsUrl = _uid
     ? `${SUPABASE_URL}/rest/v1/norireco_trips?select=*&user_id=eq.${_uid}`
     : `${SUPABASE_URL}/rest/v1/norireco_trips?select=*`;
   fetch(_statsUrl, {
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${typeof authBearerToken==='function'?authBearerToken():SUPABASE_KEY}` }
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${authBearerToken()}` }
   }).then(r => r.json()).then(rawTrips => {
     // グローバル過去モード (_tripDateFilter) が有効なら絞る
     const trips = (typeof filterTripsByDate === 'function') ? filterTripsByDate(rawTrips) : rawTrips;

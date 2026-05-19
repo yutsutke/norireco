@@ -3,12 +3,14 @@
 //
 // v210 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
 // v223 ES Modules stage 3: 5 関数を `export` 公開へ移行 (window bridge 撤去)。
+// v224: 12-auth.currentUserId を import 化。
 //   - distMeters / isCharacterAvailable / isCharacterOwned / runCharacterGrantCheck /
 //     syncCharacterGrantsFromSupabase → consumer (04/05/06/07/08/11/13a/13b) が import
 // HTML onclick から呼ばれる関数は window bridge 維持:
 //   - tryGrantByGPS (08-rendering が生成する `<button onclick="tryGrantByGPS(...)">` から)
 //   - grantCharacter / revokeCharacter / listOwnedCharacters (テスト用に console から叩ける)
 // ══════════════════════════════════════════════
+import { currentUserId } from './12-auth.js';
 const OWNED_CHARACTERS_KEY = 'norireco_owned_characters';
 function getOwnedCharacters() {
   try {
@@ -54,7 +56,7 @@ async function saveCharacterGrantToSupabase(charId, stationName, source, gpsData
     gps_lat: gpsData ? gpsData.lat : null,
     gps_lon: gpsData ? gpsData.lon : null,
     gps_accuracy: gpsData ? gpsData.accuracy : null,
-    user_id: (typeof currentUserId === 'function') ? currentUserId() : null,
+    user_id: currentUserId(),
   };
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_character_grants`, {

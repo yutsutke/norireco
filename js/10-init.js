@@ -5,7 +5,10 @@
 // `window.addEventListener('load', ...)` の load handler は module 評価時に登録される。
 // 暗黙 defer のため、全 classic script の後・全 module 評価後・load 発火直前という
 // 確実なタイミングで登録される。HTML onclick の `checkAppVersion(true)` のため window 公開。
+//
+// v224 ES Modules stage 3: 12-auth.initAuth を import 化。
 // ══════════════════════════════════════
+import { initAuth } from './12-auth.js';
 // ══════════════════════════════════════════════
 // アプリ・バージョンバッジ
 // 動作中SWの CACHE_VERSION と GitHub Pages 上の最新 sw.js を比較
@@ -76,7 +79,7 @@ async function checkAppVersion(forceReload) {
 
 window.addEventListener('load',()=>{
   initMap();
-  if (typeof initAuth === 'function') initAuth();
+  initAuth();
   if (typeof updateDateFilterUI === 'function') updateDateFilterUI();
   if (typeof updateStopTypeFilterUI === 'function') updateStopTypeFilterUI();
   // キャラ表示ボタンの初期状態を localStorage に合わせる

@@ -18,9 +18,11 @@
 // bare 識別子として読める。
 //
 // v223 ES Modules stage 3: 11-fraud-detection と 03-characters を import 化。
+// v224: 12-auth.authBearerToken を import 化。
 // ══════════════════════════════════════════════════════════════
 import { fraudIsDowngraded } from './11-fraud-detection.js';
 import { distMeters, runCharacterGrantCheck } from './03-characters.js';
+import { authBearerToken } from './12-auth.js';
 
 // ── 🚃 旅程セクション ──────────────────────────────────────────
 function renderMpTripsSection() {
@@ -312,7 +314,7 @@ async function retroactivelyVerifyTrip(tripId) {
       method: 'PATCH',
       headers: {
         'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${typeof authBearerToken==='function'?authBearerToken():SUPABASE_KEY}`,
+        'Authorization': `Bearer ${authBearerToken()}`,
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal',
       },
@@ -341,7 +343,7 @@ async function deleteTripFromMypage(tripId) {
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_trips?id=eq.${tripId}`, {
       method: 'DELETE',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${typeof authBearerToken==='function'?authBearerToken():SUPABASE_KEY}` },
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${authBearerToken()}` },
     });
     if (!res.ok) {
       const err = await res.text();

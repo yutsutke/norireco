@@ -16,6 +16,13 @@
 // state は v195 から既に NORIRECO.auth bridge にあるので、classic script consumer
 // (13-mypage-common.js 他) は無変更で動く。SUPABASE_URL / SUPABASE_KEY (classic の
 // top-level const) は Global Lexical Environment 経由でモジュールから bare 参照可。
+//
+// v224 ES Modules stage 3: 3 関数を `export` 公開へ移行。
+//   - initAuth (10-init から呼出)
+//   - currentUserId (03/07/09/13-mypage-common から)
+//   - authBearerToken (09/13-mypage-common/13b から)
+// 以下は window bridge 維持 (HTML onclick または HTML 文字列生成内 onclick から呼出):
+//   - openAuthModal / closeAuthModal / handleAuthMagicLinkSubmit / handleAuthGoogleClick / signOutUser
 window.NORIRECO = window.NORIRECO || {};
 window.NORIRECO.auth = window.NORIRECO.auth || {
   supabaseAuthClient: null,    // Supabase JS SDK client (auth 専用)
@@ -26,7 +33,7 @@ window.NORIRECO.auth = window.NORIRECO.auth || {
 const auth = window.NORIRECO.auth;
 
 // SDK 初期化 (CDN 経由で読み込まれた supabase グローバルを使う)
-async function initAuth() {
+export async function initAuth() {
   console.log('[Auth] initAuth 開始');
   if (typeof supabase === 'undefined' || !supabase.createClient) {
     console.warn('[Auth] Supabase JS SDK が未ロード');
@@ -143,12 +150,12 @@ async function signOutUser() {
 
 // 認証ヘッダ (Authorization Bearer) を access_token があれば返す
 // 既存の anon key fetch を漸進的に切り替えるためのヘルパー
-function authBearerToken() {
+export function authBearerToken() {
   return auth.currentSession?.access_token || SUPABASE_KEY;
 }
 
 // 現在ログインしている user_id を返す (未ログイン時は null)
-function currentUserId() {
+export function currentUserId() {
   return auth.currentUser?.id || null;
 }
 
@@ -260,11 +267,7 @@ window.openAuthModal = openAuthModal;
 window.closeAuthModal = closeAuthModal;
 window.handleAuthMagicLinkSubmit = handleAuthMagicLinkSubmit;
 window.handleAuthGoogleClick = handleAuthGoogleClick;
-// v202: stage 2 (type=module 化) で新たに必要になった window 公開。
-// initAuth は 10-init.js (classic) から `typeof initAuth === 'function' && initAuth()` で呼ばれる
-// currentUserId は 13-mypage-common.js / 13b-trips.js (classic) から、signOutUser は 13-mypage-common
-// の HTML onclick から呼ばれる。
-window.initAuth = initAuth;
-window.currentUserId = currentUserId;
+// signOutUser は 13-mypage-common.js が生成する HTML 文字列内 onclick から呼ばれる。
 window.signOutUser = signOutUser;
-window.authBearerToken = authBearerToken;  // 将来 05-supabase-data.js 等の認証ヘッダ用
+// v224 stage 3: initAuth / currentUserId / authBearerToken は `export` 経由に移行。
+// consumer (10-init / 03 / 07 / 09 / 13-mypage-common / 13b) は import で取り込む。
