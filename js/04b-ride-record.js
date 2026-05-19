@@ -361,8 +361,16 @@
 
 // 派生状態は top-level const (IIFE の外側) として置き、外部スクリプト
 // (04, 02b, 08 等) から lexical scope 経由でそのまま読めるようにする。
-// v195+ の ES Modules 化で `export const` に置換予定。
+//
+// v211 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
+// module スコープ化で classic 04/08 と module 02b からの bare 参照が壊れるため、
+// 末尾で window.X 公開を追加。state は **mutable オブジェクト参照** なので
+// window.slRiddenSt.foo = bar のような書き込みも共有される。
 const riddenServiceIds = new Set();
 const slRiddenSt = {};
 const slVisitCount = {};
 const slStopType = {};
+window.riddenServiceIds = riddenServiceIds;
+window.slRiddenSt = slRiddenSt;
+window.slVisitCount = slVisitCount;
+window.slStopType = slStopType;

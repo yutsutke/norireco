@@ -1820,6 +1820,31 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 60. v211 — ES Modules パイロット (案 β) stage 2 拡張: 04b-ride-record.js を `<script type="module">` 化 (2026-05-19)
+
+### 背景
+
+stage 2 の 10 番目。04b は IIFE で関数を NORIRECO.rideRecord に登録し、外側に 4 つの state オブジェクト (`riddenServiceIds` / `slRiddenSt` / `slVisitCount` / `slStopType`) を `const` 公開している。これらが classic 04/08 と module 02b から bare 参照されるため window 公開を追加。
+
+### 追加した window bridge (4 個、state オブジェクト)
+
+```js
+window.riddenServiceIds = riddenServiceIds;  // 04 (classic) から
+window.slRiddenSt = slRiddenSt;              // 02b (module) / 04 / 08 (classic) から
+window.slVisitCount = slVisitCount;          // 04 / 08 (classic) から
+window.slStopType = slStopType;              // 04 / 08 (classic) から
+```
+
+mutable オブジェクト参照なので、`window.slRiddenSt.foo = bar` のような書き込みも共有される。
+
+### 累積 stage 2 進捗
+
+**10/18 ファイル module 化済み**。残り 8: 04 / 05 / 06 / 07 / 08 / 01 / 02 / 02b。
+
+過半数を超えた。残りは中央ハブ系 (02 / 02b / 06) と data accessor 系 (04 / 05 / 07 / 08)。01-constants は超小型。
+
+---
+
 ## 59. v210 — ES Modules パイロット (案 β) stage 2 拡張: 03-characters.js を `<script type="module">` 化 (2026-05-19)
 
 ### 背景
