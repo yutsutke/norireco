@@ -314,8 +314,8 @@ export function tripCardHtml(trip) {
     ? `<button class="mp-act-btn verify" onclick="retroactivelyVerifyTrip('${trip.id}')">📍 GPSで認証</button>`
     : '';
 
-  // v184: 既存旅程にもメモ・遅延を後追い編集できるボタン
-  const editBtn = `<button class="mp-act-btn edit-memo" onclick="openTripEditModal('${trip.id}')">✏️ メモ編集</button>`;
+  // v184/v226: 既存旅程の編集ボタン (v226 で時刻・列車種別まで編集対象拡大)
+  const editBtn = `<button class="mp-act-btn edit-memo" onclick="openTripEditModal('${trip.id}')">✏️ 編集</button>`;
 
   return `
     <div class="mp-tcard" data-trip-id="${trip.id}">
