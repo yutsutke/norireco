@@ -1820,6 +1820,54 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 53. v204 — ES Modules パイロット (案 β) stage 2 拡張: 13c-lines.js を `<script type="module">` 化 (2026-05-19)
+
+### 背景
+
+v202 (12-auth) / v203 (11-fraud) に続く stage 2 の 3 番目。**最小ファイル (21 行)** を選び、stage 2 が「コメント追加 + HTML script type 変更 + CACHE_VERSION bump」の **3 ファイル 4 行差分**で済むことを実証。
+
+### 13c-lines を選んだ理由
+
+| 観点 | 13c-lines の特徴 |
+|---|---|
+| ファイルサイズ | 21 行 (最小) |
+| state 数 | 0 |
+| 外部公開関数 | 1 (`NORIRECO.mypage.renderMpLinesSection`、既に namespace 経由公開) |
+| classic 依存 | `renderList` (09-tabs-stats.js, function 宣言 → globalThis property) |
+| dead code 寄り | 現状 applyMpSection は `typeof renderList` を直接呼んでいるため未参照 |
+
+### 変更内容 (3 ファイル)
+
+- `noritetsu-map.html`: `<script src="js/13c-lines.js">` → `<script type="module" src=...>`
+- `js/13c-lines.js`: コメントに stage 2 移行ノート追記 (機能変更なし、window bridge も不要 — 既に `NORIRECO.mypage.renderMpLinesSection` の namespace 経由公開のみ)
+- `sw.js` CACHE_VERSION v203 → v204
+
+### 教訓: 「stage 1 完了後の stage 2 は本当にライト」の更なる証拠
+
+| ファイル | 変更量 (window bridge 行数 + script tag) |
+|---|---|
+| 12-auth (v202) | 4 行 (window 公開 4 関数) + script tag |
+| 11-fraud (v203) | 2 行 (window 公開 2 関数) + script tag |
+| **13c-lines (v204)** | **0 行** (既存の `NORIRECO.mypage.X` namespace で足りる) + script tag |
+
+`NORIRECO.<domain>` namespace 経由で関数を公開していたファイル (13c の `NORIRECO.mypage.renderMpLinesSection` 等) は **追加の window bridge すら不要**。stage 1 の windowization (関数 namespace 化を v190 で既に終えていた分) の恩恵がここでも効いている。
+
+### 進捗 (案 β stage 2)
+
+| ファイル | バージョン | LOC | 完了 |
+|---|---|---|---|
+| 12-auth | v202 | 261 | ✅ |
+| 11-fraud | v203 | 156 | ✅ |
+| **13c-lines** | **v204** | **22** | **✅** |
+| 13b-trips (次) | v205 | 354 | 🔜 |
+| 13a-stats | v206 | 1308 | 🔜 |
+| 13-mypage-common | v207 | 366 | 🔜 |
+| ... | ... | ... | ... |
+
+stage 2 で **3/18 ファイル module 化済み**。13 サブ族 (13a/13b/13c/13-common) を続けて処理すれば mypage 系全体が module 化完了。
+
+---
+
 ## 52. v203 — ES Modules パイロット (案 β) stage 2 拡張: 11-fraud-detection.js を `<script type="module">` 化 (2026-05-19)
 
 ### 背景
