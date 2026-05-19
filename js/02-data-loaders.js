@@ -58,7 +58,7 @@ async function loadLines(priority) {
 
     console.log(`[乗レコ] P${priority}完了: +${added.length}路線（計${LINES.length}路線）`);
 
-    rebuildRiddenStations();
+    NORIRECO.rideRecord.rebuild();
     // Phase 2: 描画は SERVICE_LINES 構築後の drawLines() に一任。
     // ここで個別 N02 line を描画する必要はない。
   } catch(e) {

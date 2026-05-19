@@ -11,7 +11,7 @@
 // 参照グローバル (宣言場所):
 //   - LINES / SERVICE_LINES_MASTER / SERVICE_LINES / serviceLinesLoaded / serviceLinesBuilt → 02-data-loaders.js
 //   - loadServiceLinesMaster / loadLines → 02-data-loaders.js
-//   - slRiddenSt → 04-gps-location.js (stats が runtime に読む。02b ロード時点では未宣言だが関数呼び出しは 04 ロード後なので OK)
+//   - slRiddenSt → 04b-ride-record.js (v194〜、stats が runtime に読む。02b ロード時点では未宣言だが関数呼び出しは 04b ロード後なので OK)
 //
 // 将来 ES Modules 化のときは IIFE を外して `export { build, stats, ... }` に置換、
 // call site の NORIRECO.serviceLines.build → import { build } に機械的に書き換え可能。
@@ -136,7 +136,7 @@
     console.log(`[乗レコ] SERVICE_LINES built: ${SERVICE_LINES.length} 系統`);
   }
 
-  // 営業系統の達成率 (slRiddenSt は 04-gps-location.js で宣言、runtime に参照)
+  // 営業系統の達成率 (slRiddenSt は 04b-ride-record.js で宣言、runtime に参照)
   function stats(sl) {
     const t = sl.stations.length;
     const rs = slRiddenSt[sl.id];

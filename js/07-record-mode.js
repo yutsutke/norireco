@@ -892,7 +892,7 @@ async function saveMultiSegmentTrip() {
   } catch (e) { console.warn('[乗レコ] localStorage 保存失敗:', e); }
 
   for (const seg of tripSegments) RIDDEN_SEGS.push(seg);
-  rebuildRiddenStations();
+  NORIRECO.rideRecord.rebuild();
   redrawAllLinesAfterTripChange();
   updateOverlays();
 

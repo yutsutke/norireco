@@ -115,7 +115,7 @@ function initMap(){
     fitToRiddenLines();
     // 営業系統(SERVICE_LINES)を構築 → 新形式 trip(jr_xxx/auto_xxx) を再解決して再描画
     NORIRECO.serviceLines.build().then(() => {
-      rebuildRiddenStations();
+      NORIRECO.rideRecord.rebuild();
       if (typeof redrawAllLinesAfterTripChange === 'function') redrawAllLinesAfterTripChange();
       updateOverlays();
       // Supabase からキャラ獲得履歴を同期 → その後 trip 由来の自動獲得チェック

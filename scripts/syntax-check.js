@@ -28,6 +28,7 @@ const FILES = [
   '02b-service-lines-builder',
   '03-characters',
   '04-gps-location',
+  '04b-ride-record',
   '05-supabase-data',
   '06-map-leaflet',
   '07-record-mode',

@@ -262,7 +262,7 @@ function applyDateFilter() {
   }
   RIDDEN_SEGS.length = 0;
   segs.forEach(s => RIDDEN_SEGS.push(s));
-  rebuildRiddenStations();
+  NORIRECO.rideRecord.rebuild();
   // 地図再描画
   if (typeof map !== 'undefined' && map && typeof dotLayerRef !== 'undefined' && dotLayerRef) {
     allLayers.forEach(l => { try { map.removeLayer(l); } catch(e){} });
@@ -396,7 +396,7 @@ async function syncFromSupabase() {
     const newSegs = tripsToSegs(filteredTrips);
     RIDDEN_SEGS.length = 0;
     newSegs.forEach(s => RIDDEN_SEGS.push(s));
-    rebuildRiddenStations();
+    NORIRECO.rideRecord.rebuild();
 
     // 地図を再描画
     if (map && dotLayerRef) {
@@ -513,8 +513,8 @@ function serviceStats(serviceId) {
   for (const seg of svc.segments) {
     const line = LINES.find(l => l.id === seg.line);
     if (!line) continue;
-    const fi = line.stations.findIndex(s => normStName(s.n) === normStName(seg.from));
-    const ti = line.stations.findIndex(s => normStName(s.n) === normStName(seg.to));
+    const fi = line.stations.findIndex(s => NORIRECO.rideRecord.normStName(s.n) === NORIRECO.rideRecord.normStName(seg.from));
+    const ti = line.stations.findIndex(s => NORIRECO.rideRecord.normStName(s.n) === NORIRECO.rideRecord.normStName(seg.to));
     if (fi < 0 || ti < 0) continue;
     const lo = Math.min(fi, ti), hi = Math.max(fi, ti);
     const lr = riddenSt[line.id] || new Set();

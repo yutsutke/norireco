@@ -1820,6 +1820,67 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 43. v194 — trip 解決 + 乗車状態集計を `04` → `04b-ride-record.js` に切り出し + `NORIRECO.rideRecord` ドメイン (2026-05-19)
+
+### 背景
+
+v192 (SERVICE_LINES 構築の 02b 切り出し) と同じ案 D パターンで、04-gps-location.js の残るドメイン外コード ("trip → segments 解決" + "乗車状態集計") を `04b-ride-record.js` に切り出し。04 を本来の「現在地表示 + 最寄駅 + 記録パネル + キャラ獲得」のみのファイルに純化。
+
+これで 04-gps-location.js は 1037 行 (v190) → 927 (v191、ローダー移管) → 788 (v192、SERVICE_LINES 構築移管) → 430 (v194、trip 解決 + 乗車集計移管) と **本来の責務サイズ (430 行) まで縮小**。「ファイル名と中身が一致する」状態に到達。
+
+### 切り出した内容 (04 → 04b)
+
+| カテゴリ | 名前 | v194 後の場所 |
+|---|---|---|
+| データ辞書 | `LEGACY_ID_MAP` (旧ID → N02-25 マッピング) | IIFE 内部 (非公開) |
+| ヘルパー | `normStName(name)` 駅名正規化 | `NORIRECO.rideRecord.normStName` (05 から外部参照) |
+| trip 解決 | `resolveLineWithStations` / `resolveServiceTrip` / `resolveSegments` / `resolveByServiceLine` | IIFE 内部 (非公開) |
+| 派生状態 | `slRiddenSt` / `slStopType` / `slVisitCount` / `riddenServiceIds` | 04b top-level `const` (classic script lexical scope 共有のまま、他ファイルから名前で参照可) |
+| 集計関数 | `rebuildRiddenStations` | `NORIRECO.rideRecord.rebuild` |
+| dead code | `resolveLineId` (定義のみ、呼び出し 0) | **削除** |
+
+state 変数を IIFE 外の top-level `const` に置く設計は v192 と同じ。これで外部スクリプト (04, 02b, 08 等) は `slRiddenSt[sl.id]` のような直接参照を変更せずに済み、関数呼び出し (`rebuildRiddenStations()` → `NORIRECO.rideRecord.rebuild()`) だけが書き換わる。
+
+### call site 書き換え (7 箇所、5 ファイル)
+
+- `rebuildRiddenStations()` → `NORIRECO.rideRecord.rebuild()`
+  - `js/02-data-loaders.js:61`
+  - `js/05-supabase-data.js:265, 399`
+  - `js/06-map-leaflet.js:118`
+  - `js/07-record-mode.js:895`
+- `normStName(...)` → `NORIRECO.rideRecord.normStName(...)`
+  - `js/05-supabase-data.js:516, 517` (05 内 lStats / 駅検索ループ)
+
+04 自身の `slRiddenSt` 参照 (drawObtainableIndicators 内) は引き続き名前で読む (top-level const として lexical scope 経由)。
+
+### ロード順
+
+`04 → 04b → 05`。04b は内部で `riddenSt` (05 で `const riddenSt={}`) を読み書きするが、これは `rebuild()` 関数本体の runtime 参照なので、parse 時点の前後関係は無関係 (`rebuild()` の最初の呼び出しは `load` イベント以降)。
+
+### 影響範囲
+
+- `js/04-gps-location.js` — 788 → 430 行 (-358)
+- 新規 `js/04b-ride-record.js` — 約 370 行 (IIFE + JSDoc + top-level state const)
+- `js/02-data-loaders.js` / `05-supabase-data.js` / `06-map-leaflet.js` / `07-record-mode.js` — call site 書き換えのみ
+- `js/02b-service-lines-builder.js` — JSDoc コメントの slRiddenSt 参照先を「04 → 04b」に更新 (機能無変更)
+- `noritetsu-map.html` — `<script src="js/04b-ride-record.js">` を 04 と 05 の間に追加
+- `sw.js` — STATIC_ASSETS に 04b 追加 + `CACHE_VERSION = 'v194'`
+- `scripts/syntax-check.js` — FILES 配列に '04b-ride-record' 追加 (17 → 18)
+- `npm run check` 18/18 OK + 同名関数重複なし
+
+### dead code 除去
+
+`resolveLineId(legacyId)` (旧 04 line 642) は **定義のみで呼び出し 0** だったため切り出し時に削除。grep で全 *.js / *.html を確認済み。
+
+### Phase 3.8 ステータス更新
+
+- ✅ trip 解決 + 乗車状態集計を `04b-ride-record.js` に切り出し、`NORIRECO.rideRecord.{rebuild, normStName}` で公開 (v194)
+- ✅ 04-gps-location.js を本来の責務 (現在地・GPS・記録パネル) のみ 430 行に縮小
+- ✅ dead code `resolveLineId` 削除
+- 🔜 v195+ で ES Modules パイロット (要設計セッション: `let X` を `window.X` / `NORIRECO.store.X` 経由に出すか、全 18 ファイル一気にモジュール化するかの方針議論が必要)
+
+---
+
 ## 42. v193 — シンタックスチェック自動化 (`npm run check`) + 同名トップレベル関数の重複検出 (2026-05-19)
 
 ### 背景
