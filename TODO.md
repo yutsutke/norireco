@@ -3,6 +3,31 @@
 新セッションでは、まず本ファイルを読んで次の着手項目を選ぶ。
 詳しい仕様や経緯は `CHANGELOG.md`（更新履歴詳細）、ビジネス背景は [Notion 開発ノート](https://www.notion.so/35b71b458b63818494afe7c1ab917ca5)。
 
+---
+
+## 🚨 未解決リグレッション (次セッション最優先)
+
+**v219 (2026-05-19) ES Modules stage 2 完結後、LINES polyline 描画が出ないバグ未解決**。
+
+- 症状: ベース tile は出るが LINES 描画なし / 達成率 0% / 乗車路線 0
+- 発生 commit: v219 (`b6346fe`) — stage 2 (全 18 ファイル type=module 化) の最終 commit
+- `npm run check` は 18/18 OK のまま (syntax ではなく runtime issue)
+
+**取る選択肢 (どちらでも OK)**:
+
+1. **原因究明**: DevTools console の最初の赤エラーを読む → 該当 module に `window.X = X` bridge を追加 → 再 push
+   - 詳細手順とヒントは `memory/project_v219_regression.md`
+2. **緊急 revert**: stage 2 だけ巻き戻して本番動作を取り戻す。stage 1 (windowization) は保持。
+   ```bash
+   git revert b6346fe..0c14c7c
+   git push origin main
+   ```
+   → v201 (stage 1 完結) 状態に戻る。原因究明はその後でも可。
+
+詳細経緯: `CHANGELOG.md` §51-68 (v202-v219) / Notion §2.5 落とし穴 / `memory/project_v219_regression.md`。
+
+---
+
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
 **現在の SW**: v219 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
