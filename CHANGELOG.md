@@ -1820,6 +1820,16 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 62. v213 — ES Modules パイロット (案 β) stage 2 拡張: 02b-service-lines-builder.js を `<script type="module">` 化 (2026-05-19)
+
+stage 2 の 12 番目。02b は既に IIFE で `window.NORIRECO.serviceLines` に公開する構造のため、stage 2 は **script tag 変更のみ完結**。bridge 追加ゼロ。
+
+### 累積 stage 2 進捗
+
+**12/18 ファイル module 化済み**。残り 6: 04 / 05 / 06 / 07 / 08 / 02。
+
+---
+
 ## 61. v212 — ES Modules パイロット (案 β) stage 2 拡張: 01-constants.js を `<script type="module">` 化 (2026-05-19)
 
 ### 背景

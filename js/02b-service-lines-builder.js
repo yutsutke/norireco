@@ -16,6 +16,9 @@
 // 将来 ES Modules 化のときは IIFE を外して `export { build, stats, ... }` に置換、
 // call site の NORIRECO.serviceLines.build → import { build } に機械的に書き換え可能。
 
+// v213 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
+// 既に IIFE で関数を window.NORIRECO.serviceLines に公開する構造のため、stage 2 は
+// script tag 変更のみで完結。外部呼出は全て NORIRECO.serviceLines.X 経由なので bridge 不要。
 (function () {
   'use strict';
   window.NORIRECO = window.NORIRECO || {};
