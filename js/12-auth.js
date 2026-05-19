@@ -24,7 +24,13 @@
 //   - authBearerToken (09/13-mypage-common/13b から)
 // 以下は window bridge 維持 (HTML onclick または HTML 文字列生成内 onclick から呼出):
 //   - openAuthModal / closeAuthModal / handleAuthMagicLinkSubmit / handleAuthGoogleClick / signOutUser
+//
+// v228: SIGNED_OUT 時のローカル乗車データ purge のため 07/05 を import。
+//   12 ↔ 07 は循環 import (07 が currentUserId を import) だが両側 function export
+//   なので ES Modules の hoisting で解決される (03 ↔ 07 と同じ前例)。
 import { renderMypage } from './13-mypage-common.js';
+import { redrawAllLinesAfterTripChange } from './07-record-mode.js';
+import { updateStorageUI } from './05-supabase-data.js';
 
 window.NORIRECO = window.NORIRECO || {};
 window.NORIRECO.auth = window.NORIRECO.auth || {
@@ -112,11 +118,35 @@ function handleAuthChange(event, session) {
     auth.authBackfillRan = true;
     backfillUserIdForLegacyData(auth.currentUser.id);
   }
+  // v228: ログアウト時はローカルに残った前ユーザーの乗車データ・キャラ獲得を purge し、
+  // 地図を空状態で再描画する (Supabase のデータは破壊しない)。
+  if (event === 'SIGNED_OUT') {
+    clearLocalUserDataAfterSignOut();
+  }
   // マイページが開いていれば再描画
   const mypage = document.getElementById('pane-mypage');
   if (mypage && mypage.classList.contains('active')) {
     setTimeout(() => renderMypage(), 100);
   }
+}
+
+// SIGNED_OUT 時に呼ぶ: 前ユーザーの localStorage / in-memory 乗車状態を消し、地図を更新。
+// Supabase 側のデータには触らない (再ログインで復元できる前提)。
+function clearLocalUserDataAfterSignOut() {
+  try { localStorage.removeItem('norireco_trips'); } catch(e) {}
+  try { localStorage.removeItem('norireco_owned_characters'); } catch(e) {}
+  try { localStorage.removeItem('norireco_station_char_pick'); } catch(e) {}
+  // in-memory RIDDEN_SEGS を空に (window bridge 経由 — 05 が export 済の共有配列)
+  if (Array.isArray(window.RIDDEN_SEGS)) {
+    window.RIDDEN_SEGS.length = 0;
+  }
+  // 派生状態 (slRiddenSt / slStopType / slVisitCount / riddenServiceIds) を再構築 → 空になる
+  try { window.NORIRECO?.rideRecord?.rebuild(); } catch(e) {}
+  // 地図再描画
+  try { redrawAllLinesAfterTripChange(); } catch(e) {}
+  // ストレージ表示ラベルを「📄 静的データ」相当に
+  try { updateStorageUI(0, 'static'); } catch(e) {}
+  console.log('[Auth] ローカル乗車データを purge しました (ログアウト)');
 }
 
 // ── 認証アクション ──────────────────────────────────────────────
