@@ -1,0 +1,8 @@
+{
+  "name": "norireco",
+  "private": true,
+  "description": "乗レコ - 電車旅 (PWA, classic <script> 配信)。本 package.json は開発ツール (シンタックスチェック等) のためだけにあり、ランタイムには使われない。",
+  "scripts": {
+    "check": "node scripts/syntax-check.js"
+  }
+}

@@ -1820,6 +1820,63 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 42. v193 — シンタックスチェック自動化 (`npm run check`) + 同名トップレベル関数の重複検出 (2026-05-19)
+
+### 背景
+
+Notion §2.4 布石② の積み残し消化。v131 以降「`node -e "..."` ワンライナーを手動実行」運用で、忘れたら v127 (`const grid` 二重宣言事故) 型のデプロイ事故が起きる致命工程なのに、人間の記憶だけに依存していた。新規ファイル追加時 (v132/v135/v138/v190/v192) のたびにワンライナーのファイルリスト更新を忘れる落とし穴も同時に解消。
+
+v192 (ES Modules 化の地ならし) → v195+ (本番モジュール化) に向けて、変更の幅が拡大する前にセーフティネットを敷くのが目的。
+
+### 追加
+
+- `package.json` (新規、最小構成) — `"scripts": { "check": "node scripts/syntax-check.js" }` のみ。`"private": true` で誤公開を防止。ランタイムには使われない (PWA は依然クラシック `<script>` 配信)
+- `scripts/syntax-check.js` (新規、約 100 行) — `js/01..〜13c` の全 17 ファイルを `new Function(...)` でパース。SyntaxError 0 件を確認 + **同名トップレベル `function NAME(...)` の検出** (v127 / v131 で実際に踏んだ同名関数上書き事故型を警告) を兼ねる
+- ファイルリストはスクリプト側にハードコード。新規ファイル追加時の更新先が「HTML / sw.js / scripts/syntax-check.js」の 3 点に整理 (従来の「コメント手書きワンライナー」より明示的)
+
+### 使い方
+
+```bash
+npm run check
+```
+
+出力例 (clean):
+
+```
+OK   01-constants
+... (17 行)
+---
+OK 17 / FAIL 0 (total 17)
+
+✅ All clear.
+```
+
+SyntaxError がある場合は exit code 1 で停止し、原因ファイル・行を表示。同名関数があれば警告 (exit 0 のまま、意図的な重複もあるため終了させない)。
+
+### CACHE_VERSION
+
+`v192` → `v193`。ただし `package.json` と `scripts/syntax-check.js` は **`sw.js` の STATIC_ASSETS には含めない** (ランタイムに不要、PWA キャッシュ汚染回避)。CACHE_VERSION は「デプロイ回数 = バージョン番号の不変式」の運用ルールに従ってバンプ。
+
+### 影響範囲
+
+- `package.json` — 新規 (10 行)
+- `scripts/syntax-check.js` — 新規 (約 100 行)
+- `sw.js` — `CACHE_VERSION` のみ更新 (STATIC_ASSETS は無変更)
+- Notion §2.4 布石② を「完了」に更新
+
+### 将来の発展
+
+- pre-commit hook 化は git config を触るので個別判断 (今回は手動 `npm run check` 推奨)
+- ESLint / Prettier 導入は依存パッケージが増えるので保留 (現状は依存 0 で完結している軽さが利点)
+- CI (GitHub Actions) は GitHub Pages デプロイ前にチェックを走らせる選択肢として残す (現状の「main push 即デプロイ」運用とは別レーン)
+
+### Phase 3.8 ステータス更新
+
+- ✅ Notion §2.4 布石② シンタックスチェック自動化を完了 (v193)
+- 🔜 次は v194 で `NORIRECO.rideRecord` ドメイン抽出 (`slRiddenSt` / `slStopType` / `slVisitCount` / `rebuildRiddenStations` の 04 → 04b 切り出し)
+
+---
+
 ## 41. v192 — SERVICE_LINES 構築ロジックを `04` → `02b-service-lines-builder.js` に切り出し + `NORIRECO.serviceLines` ドメイン名前空間 (2026-05-19)
 
 ### 背景
