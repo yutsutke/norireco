@@ -1820,6 +1820,107 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 68. v219 — ES Modules パイロット (案 β) **stage 2 完結**: 全 18 ファイル `<script type="module">` 化達成 (2026-05-19)
+
+### 背景
+
+stage 2 の **最終 18 番目**。02-data-loaders.js を module 化することで、**全 18 ファイルが `<script type="module">`** になり、案 β の 2 段階移行 (stage 1 windowization + stage 2 type=module 化) が完全に完結。
+
+### 変更内容 (3 ファイル)
+
+- `noritetsu-map.html`: `<script src="js/02-data-loaders.js">` → `<script type="module" src=...>`
+- `js/02-data-loaders.js`: 末尾に 9 個の window bridge (loadX 系 + resetTrainSelector + toggleCharacterMode) + stage 2 コメント
+- `sw.js` CACHE_VERSION v218 → v219
+
+### 案 β 全体サマリ (v195-v219、25 commit)
+
+| Stage | バージョン範囲 | commit 数 | 内容 |
+|---|---|---|---|
+| **stage 1** (windowization) | v195〜v201 | 7 | 全 7 ドメインの top-level `let`/`const` state を `window.NORIRECO.<domain>.X` の object property に集約。累計 46 state、~450 call site、18 ファイル中 16 に手を入れた |
+| **stage 2** (type=module 化) | v202〜v219 | 18 | 各ファイルを `<script type="module">` に変更、module-local function を `window.X = X` で classic/HTML から呼び出し可に。累計 ~100 個の window bridge 追加 |
+
+### Stage 2 累積 window bridge 一覧 (~100 個)
+
+| ファイル | ver | 新規 bridge 数 |
+|---|---|---|
+| 12-auth | v202 | 4 (initial pilot) |
+| 11-fraud | v203 | 2 |
+| 13c-lines | v204 | 0 (既存 NORIRECO.mypage.X で足りる) |
+| 13b-trips | v205 | 0 (v190 両建て登録済) |
+| 13a-stats | v206 | 0 (代わりに classic 側 2 箇所を namespace 経由に) |
+| 13-mypage-common | v207 | 5 (applyMpSection / showMypageToast / tripCardHtml / isTimeMachineActive / _MP_SORT_COMPARATORS) |
+| 09-tabs-stats | v208 | 3 (switchTab / renderList / renderStats) |
+| 10-init | v209 | 1 (checkAppVersion) |
+| 03-characters | v210 | 5 (isCharacterAvailable / isCharacterOwned / runCharacterGrantCheck / distMeters / syncCharacterGrantsFromSupabase) |
+| 04b-ride-record | v211 | 4 (state objects: riddenServiceIds / slRiddenSt / slVisitCount / slStopType) |
+| 01-constants | v212 | 3 (SVG_W / SVG_H / localDateStr) |
+| 02b-service-lines | v213 | 0 (既に IIFE で NORIRECO.serviceLines 公開) |
+| 06-map-leaflet | v214 | 1 (initMap) |
+| 05-supabase-data | v215 | 14 (filter / supabase sync / stats helper) |
+| 04-gps-location | v216 | 11 (location tracking / character / record panel) |
+| 07-record-mode | v217 | 6 (toggleRecordMode / onRecordStationClick / saveMultiSegmentTrip / redrawAllLinesAfterTripChange / showRecordToast / fitToRiddenLines) |
+| 08-rendering | v218 | 12 (drawLines / updateLOD / updateOverlays / memo / char modal / drawServiceLineBase) |
+| **02-data-loaders** | **v219** | **9** (loadX 系 + resetTrainSelector + toggleCharacterMode) |
+
+合計 ~80 個の関数 + 4 個の state object = ~84 個の window bridge。これら全てが「classic→module 移行で失われるグローバル可視性を 1:1 で補修した」結果。
+
+### 教訓 (案 β 全体を通して)
+
+#### 1. 「stage 1 windowization」の価値はここで証明された
+
+stage 1 で 46 state を `window.NORIRECO.<domain>.X` に集約しなければ、stage 2 では state も window bridge する必要があり、bridge 数が倍増していた。state-state 間の依存も同時に複雑化していたはず。**state を namespace 化する投資は stage 2 で完全に回収される**。
+
+#### 2. 「両建て登録 (window.X + NORIRECO.<domain>.X)」の長期価値
+
+v190 のマイページ分割時に行った「全関数を `window.X` + `NORIRECO.mypage.X` の両方に登録」というルールが、stage 2 で 4 ファイル (13a/13b/13c/13-common) を ほぼ無料 で module 化できた決め手。新規 namespace を切るときは、この両建てルールを最初から徹底すべき。
+
+#### 3. 部分文字列衝突は `replace_all` の盲点
+
+stage 1 で発覚した `LINES ⊂ SERVICE_LINES ⊂ SERVICE_LINES_MASTER` の cascading corruption は、`replace_all` の literal substring match に起因する古典的バグ。今後 grep/sed/replace_all で大規模置換する時は **常に「短いほうを先に処理 → cleanup pass」** の手順を頭に置く。
+
+#### 4. 評価順序は lazy evaluation で守られる
+
+modules は暗黙 defer のため、全 classic script の後に評価される。ただし `function` 内の処理は **呼出時に評価** されるため、classic script の評価時に module の export を直接読まない限り、評価順のずれは破綻しない。v202 の 12-auth pilot で `renderMypage` (13-common) の中に `NORIRECO.auth.currentUser` 参照がある場合も、event-driven なので問題なかったのと同じ原理。
+
+#### 5. `npm run check` は module syntax を通せない (将来課題)
+
+現状の `scripts/syntax-check.js` は `new Function(src)` で classic context のパース。stage 2 完結時点でも `export` / `import` を 1 つも使っていないため通っているが、stage 3 で本格的に `import` を使うときは `node --check --input-type=module` ベースに置換が必要。
+
+### Stage 3 への展望
+
+stage 2 完結により、次のような未来が開ける:
+
+1. **モジュール間 `import`/`export`** — `window.NORIRECO.<domain>` の bridge を廃止し、`export const data = {...}` + `import { data } from './02-data-loaders.js'` に置換。型推論の前提条件
+2. **TypeScript 化** — module syntax が前提条件 (classic script は実質サポート外)
+3. **Vite/esbuild バンドリング** — module 化していれば bundler が依存解析できる。HTTP/2 多重化や即時 hot-reload も可能
+4. **API ラッパー導入 (布石⑤)** — `NORIRECO.api.xxx` を新規 module として追加し、`05-supabase-data` の直接 fetch を置換
+
+stage 3 の優先度は **シェア機能** / 垢BAN 対応 / 他の TODO 🔥 タスクとの兼ね合いで決める。stage 2 完結だけで「動くマップが module 由来でも変わらず動く」のは大きな achievement。
+
+### 機能リグレッション検証 (実機チェック必須)
+
+- [ ] 地図初期表示 (初回ロード〜LINES 表示〜キャラ表示)
+- [ ] タブ切替 (地図 ⇄ マイページ)
+- [ ] マイページ全タブ (統計 / 旅程 / 路線)
+- [ ] 手動記録モード (📝 → 駅選択 → 経路選択 → 保存)
+- [ ] GPS 記録モード (📍 → 最寄駅選択 → 記録開始 → 終了 → 不正検知)
+- [ ] ログインフロー (Magic Link / Google OAuth / signOut)
+- [ ] 期間フィルタ (📅 → 今年/去年/カスタム/月指定)
+- [ ] 駅フィルタ (🚉 → 表示/非表示)
+- [ ] キャラ獲得 (タップでの確認・GPS 獲得・自動獲得)
+- [ ] バージョンバッジ (右下、クリックで再確認)
+
+### 25 commit の振り返り
+
+| 区分 | commit |
+|---|---|
+| Stage 1 (windowization) | v195 auth / v196 map / v197 record / v198 gps / v199 trains / v200 data / v201 mypage |
+| Stage 2 (type=module) | v202 12-auth (pilot) / v203 11-fraud / v204 13c / v205 13b / v206 13a / v207 13-common / v208 09 / v209 10 / v210 03 / v211 04b / v212 01 / v213 02b / v214 06 / v215 05 / v216 04 / v217 07 / v218 08 / v219 02 |
+
+各 commit が独立して revert 可能。最も大規模 (v200 data domain、15 ファイル / 146 call site) でも 1 commit で完結。
+
+---
+
 ## 67. v218 — ES Modules パイロット (案 β) stage 2 拡張: 08-rendering.js を `<script type="module">` 化 (2026-05-19)
 
 stage 2 の 17 番目。描画エンジン本体。12 個の window bridge (drawLines / updateLOD / updateOverlays / メモモーダル系 / キャラモーダル系 / drawServiceLineBase)。

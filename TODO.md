@@ -4,14 +4,14 @@
 詳しい仕様や経緯は `CHANGELOG.md`（更新履歴詳細）、ビジネス背景は [Notion 開発ノート](https://www.notion.so/35b71b458b63818494afe7c1ab917ca5)。
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v218 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v219 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13-..` 機能別分割（v131〜v138、`CHANGELOG.md §20, §21` 参照）
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
 **マイページ**: 3 サブタブ (統計 / 旅程 / 路線)、詳細統計 16 種、期間指定で過去状態 (地図ピル「〜月指定」)
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **保存ボタン**: 記録種別に応じて「💾 手動記録で保存する」/「💾 GPS 記録で保存する」に動的切替（v176）
-**直近の作業**: **ES Modules パイロット (案 β) stage 2 拡張 — mypage 系完結** — 13-mypage-common.js を `<script type="module">` 化、window bridge 5 個 (applyMpSection / showMypageToast / tripCardHtml / isTimeMachineActive / _MP_SORT_COMPARATORS) 追加で mypage 4 ファイル全 module 化完成（v207）/ 13a-stats（v206、最大ファイル 1308 行）/ 13b-trips（v205）/ 13c-lines（v204）/ 11-fraud-detection（v203）/ 12-auth（v202、パイロット）/ stage 1 全 7 ドメイン (v195〜v201、累計 46 state)。stage 2 で **6/18 ファイル module 化済み**
+**直近の作業**: **ES Modules パイロット (案 β) 完全完結 — 全 18 ファイル module 化達成** — 02-data-loaders を最後に module 化（v219）。stage 1 (v195-v201、7 commit、46 state を NORIRECO.<domain>.X に集約) + stage 2 (v202-v219、18 commit、~84 個の window bridge 追加で全ファイル `<script type="module">` 化) 計 **25 commit**。各 commit が独立 revert 可能、機能リグレッション無し (npm run check 18/18 OK)。次は実機検証 → stage 3 (`import`/`export` 化) or 別のロードマップ着手
 
 ---
 

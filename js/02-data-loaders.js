@@ -6,6 +6,9 @@
 // v200 ES Modules パイロット (案 β) — データドメイン state を window.NORIRECO.data に集約。
 // 案 β 5 ドメイン目、最大規模 (state 11 個 / 15 ファイル / 146 cross-file 参照)。
 // 外部 (全 18 ファイルから参照あり) は NORIRECO.data.X、内部 (02) は D.X 短縮。
+//
+// v219 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化、**全 18 ファイル module 化完結**。
+// loadX 系 / 列車セレクタ系の関数を末尾で window 公開。
 window.NORIRECO = window.NORIRECO || {};
 NORIRECO.data = NORIRECO.data || {
   LINES: [],                       // N02 物理路線 (606) — central master
@@ -362,3 +365,14 @@ function toggleCharacterMode() {
     redrawAllLinesAfterTripChange();
   }
 }
+
+// v219 stage 2: 外部 (02b/04/06/07 module + HTML) から bare 呼出される関数を window 公開
+window.loadLines = loadLines;
+window.loadLinesForZoom = loadLinesForZoom;
+window.loadRunningServices = loadRunningServices;
+window.loadMergedStations = loadMergedStations;
+window.loadServiceLinesMaster = loadServiceLinesMaster;
+window.loadCharacters = loadCharacters;
+window.loadTrains = loadTrains;
+window.resetTrainSelector = resetTrainSelector;
+window.toggleCharacterMode = toggleCharacterMode;
