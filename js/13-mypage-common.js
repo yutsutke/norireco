@@ -56,7 +56,7 @@ async function renderMypage() {
   }
 
   // 1. コンパクトユーザーヘッダ + 常時表示の完乗率カード + サブタブ nav
-  const email = (currentUser && currentUser.email) || '(メール非公開)';
+  const email = (NORIRECO.auth.currentUser && NORIRECO.auth.currentUser.email) || '(メール非公開)';
   const initial = (email[0] || '?').toUpperCase();
   c.innerHTML = `
     <div class="mp-header-compact">

@@ -4,10 +4,18 @@
 // 初回ログイン時に user_id=NULL の既存レコードを自分の uid に backfill
 // ══════════════════════════════════════════════════════════════
 
-let supabaseAuthClient = null;     // Supabase JS SDK client (auth 専用)
-let currentUser = null;            // { id, email, ... } or null
-let currentSession = null;
-let authBackfillRan = false;       // 初回ログインの backfill 重複防止
+// v195 ES Modules パイロット (案 β) — 状態を window.NORIRECO.auth に集約。
+// stage 2 (type=module 化) では `export const auth` に置き換え、この
+// `window.NORIRECO.auth = auth` ブリッジで classic script consumer
+// (13-mypage-common.js 他) との互換を保つ。
+window.NORIRECO = window.NORIRECO || {};
+window.NORIRECO.auth = window.NORIRECO.auth || {
+  supabaseAuthClient: null,    // Supabase JS SDK client (auth 専用)
+  currentUser: null,           // { id, email, ... } or null
+  currentSession: null,
+  authBackfillRan: false,      // 初回ログインの backfill 重複防止
+};
+const auth = window.NORIRECO.auth;
 
 // SDK 初期化 (CDN 経由で読み込まれた supabase グローバルを使う)
 async function initAuth() {
@@ -16,7 +24,7 @@ async function initAuth() {
     console.warn('[Auth] Supabase JS SDK が未ロード');
     return;
   }
-  supabaseAuthClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth.supabaseAuthClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
@@ -29,7 +37,7 @@ async function initAuth() {
   console.log('[Auth] client 作成完了');
 
   // ログイン/ログアウトイベント購読 (createClient 直後に register)
-  supabaseAuthClient.auth.onAuthStateChange((event, session) => {
+  auth.supabaseAuthClient.auth.onAuthStateChange((event, session) => {
     handleAuthChange(event, session);
   });
 
@@ -44,7 +52,7 @@ async function initAuth() {
   if (_code) {
     console.log('[Auth] PKCE code 検出 → 手動 exchange 試行...');
     try {
-      const { data, error } = await supabaseAuthClient.auth.exchangeCodeForSession(_code);
+      const { data, error } = await auth.supabaseAuthClient.auth.exchangeCodeForSession(_code);
       if (error) {
         console.warn('[Auth] exchange 失敗:', error.message);
       } else if (data?.session) {
@@ -60,7 +68,7 @@ async function initAuth() {
 
   // 起動時にセッション復元
   try {
-    const { data, error } = await supabaseAuthClient.auth.getSession();
+    const { data, error } = await auth.supabaseAuthClient.auth.getSession();
     if (error) console.warn('[Auth] getSession エラー:', error.message);
     if (data.session) {
       console.log('[Auth] セッション復元 uid=' + data.session.user.id.slice(0,8));
@@ -76,15 +84,15 @@ async function initAuth() {
 }
 
 function handleAuthChange(event, session) {
-  currentSession = session;
-  currentUser = session?.user || null;
-  console.log(`[Auth] ${event}`, currentUser ? `uid=${currentUser.id.slice(0,8)}` : '(logout)');
+  auth.currentSession = session;
+  auth.currentUser = session?.user || null;
+  console.log(`[Auth] ${event}`, auth.currentUser ? `uid=${auth.currentUser.id.slice(0,8)}` : '(logout)');
   updateAuthHeaderUI();
   closeAuthModal();
   // 初回ログイン (SIGNED_IN) は backfill
-  if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && currentUser && !authBackfillRan) {
-    authBackfillRan = true;
-    backfillUserIdForLegacyData(currentUser.id);
+  if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && auth.currentUser && !auth.authBackfillRan) {
+    auth.authBackfillRan = true;
+    backfillUserIdForLegacyData(auth.currentUser.id);
   }
   // マイページが開いていれば再描画
   const mypage = document.getElementById('pane-mypage');
@@ -101,9 +109,9 @@ function authCleanRedirectUrl() {
 }
 
 async function signInWithMagicLink(email) {
-  if (!supabaseAuthClient) return { error: { message: 'SDK 未初期化' } };
+  if (!auth.supabaseAuthClient) return { error: { message: 'SDK 未初期化' } };
   if (!email || !/.+@.+\..+/.test(email)) return { error: { message: 'メールアドレスが不正です' } };
-  const { error } = await supabaseAuthClient.auth.signInWithOtp({
+  const { error } = await auth.supabaseAuthClient.auth.signInWithOtp({
     email,
     options: { emailRedirectTo: authCleanRedirectUrl() },
   });
@@ -111,8 +119,8 @@ async function signInWithMagicLink(email) {
 }
 
 async function signInWithGoogle() {
-  if (!supabaseAuthClient) return { error: { message: 'SDK 未初期化' } };
-  const { error } = await supabaseAuthClient.auth.signInWithOAuth({
+  if (!auth.supabaseAuthClient) return { error: { message: 'SDK 未初期化' } };
+  const { error } = await auth.supabaseAuthClient.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: authCleanRedirectUrl() },
   });
@@ -120,20 +128,20 @@ async function signInWithGoogle() {
 }
 
 async function signOutUser() {
-  if (!supabaseAuthClient) return;
-  await supabaseAuthClient.auth.signOut();
-  authBackfillRan = false;
+  if (!auth.supabaseAuthClient) return;
+  await auth.supabaseAuthClient.auth.signOut();
+  auth.authBackfillRan = false;
 }
 
 // 認証ヘッダ (Authorization Bearer) を access_token があれば返す
 // 既存の anon key fetch を漸進的に切り替えるためのヘルパー
 function authBearerToken() {
-  return currentSession?.access_token || SUPABASE_KEY;
+  return auth.currentSession?.access_token || SUPABASE_KEY;
 }
 
 // 現在ログインしている user_id を返す (未ログイン時は null)
 function currentUserId() {
-  return currentUser?.id || null;
+  return auth.currentUser?.id || null;
 }
 
 // ── 既存データの user_id バックフィル ──────────────────────────
@@ -171,14 +179,14 @@ async function backfillUserIdForLegacyData(uid) {
 // ── ヘッダ UI ──────────────────────────────────────────────────
 function updateAuthHeaderUI() {
   // body にログイン状態を反映 (CSS で .fab-login-only の表示制御に使う)
-  document.body.classList.toggle('user-authed', !!currentUser);
-  document.body.classList.toggle('user-anonymous', !currentUser);
+  document.body.classList.toggle('user-authed', !!auth.currentUser);
+  document.body.classList.toggle('user-anonymous', !auth.currentUser);
 
   const btn = document.getElementById('auth-btn');
   if (!btn) return;
-  if (currentUser) {
+  if (auth.currentUser) {
     // ログイン中: アバター + メール (簡易表示)
-    const email = currentUser.email || '';
+    const email = auth.currentUser.email || '';
     const initial = (email[0] || '?').toUpperCase();
     btn.innerHTML = `<span class="auth-avatar">${initial}</span><span class="auth-email">${email.split('@')[0]}</span>`;
     btn.title = `ログイン中: ${email}\nクリックでログアウト`;

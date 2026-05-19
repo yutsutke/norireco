@@ -4,14 +4,14 @@
 詳しい仕様や経緯は `CHANGELOG.md`（更新履歴詳細）、ビジネス背景は [Notion 開発ノート](https://www.notion.so/35b71b458b63818494afe7c1ab917ca5)。
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v194 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v195 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13-..` 機能別分割（v131〜v138、`CHANGELOG.md §20, §21` 参照）
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
 **マイページ**: 3 サブタブ (統計 / 旅程 / 路線)、詳細統計 16 種、期間指定で過去状態 (地図ピル「〜月指定」)
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **保存ボタン**: 記録種別に応じて「💾 手動記録で保存する」/「💾 GPS 記録で保存する」に動的切替（v176）
-**直近の作業**: trip 解決 + 乗車状態集計 (`rebuildRiddenStations` / `slRiddenSt` 他) を `04b-ride-record.js` に切り出し、04 を 430 行まで縮小して `NORIRECO.rideRecord` ドメインで公開（v194）/ シンタックスチェック自動化 `npm run check`（v193、Notion §2.4 布石② 完了）/ SERVICE_LINES 構築ロジックを `02b-service-lines-builder.js` に切り出し、`NORIRECO.serviceLines` ドメイン名前空間で公開（v192）
+**直近の作業**: ES Modules パイロット (案 β) stage 1 — 認証 state (`currentUser` / `currentSession` / `supabaseAuthClient` / `authBackfillRan`) を `window.NORIRECO.auth` mutable object に集約。stage 2 (type=module 化) は別セッション（v195）/ trip 解決 + 乗車状態集計 を `04b-ride-record.js` に切り出し、04 を 430 行まで縮小して `NORIRECO.rideRecord` ドメインで公開（v194）/ シンタックスチェック自動化 `npm run check`（v193、Notion §2.4 布石② 完了）
 
 ---
 
@@ -59,11 +59,16 @@
     - ✅ trip 解決 + 乗車状態集計を `04b-ride-record.js` に切り出し (`NORIRECO.rideRecord.{rebuild, normStName}`)
     - ✅ 04-gps-location.js を 788 → 430 行に縮小、ファイル名と中身を一致させる
     - ✅ dead code `resolveLineId` 削除
-  - **次セッション v195+ 候補 (要設計議論)**:
-    1. `<script type="module">` 化パイロット — **設計上の壁**: `let LINES` / `let SERVICE_LINES` 等の top-level `let` はクラシック script 共有 lexical scope に住むが、`type="module"` のスクリプトからは見えない。3 案あり: (a) 全 18 ファイル一気にモジュール化 (b) state を `window.X` に出すリファクタ先行 (c) 新規モジュールだけ追加して既存は触らない。v195 着手前に方針議論が必要
-    2. SW (`sw.js`) の Network-First が `type="module"` でも維持できるか確認 (#1 と一緒)
-    3. Notion §2.4 布石⑤ Supabase 呼び出しを `NORIRECO.api.xxx` ラッパー化
-    4. 04-gps-location.js のさらなる純化: `recordStartedViaGPS` / `recordStartGPS` / `recordEndTime` / `lastUserGps` の状態を `NORIRECO.gps` 等のドメインに集約 (現在地表示・GPS 記録フローを分離するか議論)
+  - **v195 で完了済 (案 β stage 1 パイロット)**:
+    - ✅ 認証 state (`supabaseAuthClient` / `currentUser` / `currentSession` / `authBackfillRan`) を `window.NORIRECO.auth` mutable object に集約
+    - ✅ 12-auth.js 内は `const auth = NORIRECO.auth` の local alias で短縮、外部 (13-mypage-common.js) は `NORIRECO.auth.currentUser` のフルパス
+    - ✅ `currentUserId()` / `authBearerToken()` 等の関数 API は維持 (内部実装のみ書き換え)
+    - call site: 12-auth.js (21) + 13-mypage-common.js (1) = 22 箇所
+  - **次セッション v196+ 候補**:
+    1. **案 β stage 1 を他ドメインに展開** (推奨進行): `map` (06) → `record` (07) → `gps` (04) → `trains` (02) → `data` (02 の LINES/SERVICE_LINES/MERGED_STATIONS/CHARACTERS) → `mypage` (13-common)
+    2. **案 β stage 2 パイロット**: 12-auth を `<script type="module">` 化。deferred 化で初期化順が崩れる可能性があるので、`initAuth()` の呼び出しタイミングを `DOMContentLoaded` 後に揃える + bridge `export const auth = window.NORIRECO.auth` を追加。SW (`sw.js`) の Network-First が `type="module"` でも維持できるか確認
+    3. Notion §2.4 布石⑤ Supabase 呼び出しを `NORIRECO.api.xxx` ラッパー化 (案 β と独立、auth wrapper の延長)
+    4. 04-gps-location.js のさらなる純化: 現在地表示・GPS 記録フロー の関心分離 (案 β stage 1 の `gps` ドメイン化と同時推進)
   - **安全装置**: 「動くマップが画面に出る」を毎ステップで確認、各段階を独立コミット (戻せる)。Cloudflare Pages 移行は別タスクに切り出し、今は GitHub Pages のままで完結させる
   - 詳細仕様: 2.4 コード構成（js/01〜13c）参照
 

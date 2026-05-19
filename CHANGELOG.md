@@ -1820,6 +1820,95 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 44. v195 — ES Modules パイロット (案 β) stage 1: 認証 state を `window.NORIRECO.auth` に集約 (2026-05-19)
+
+### 背景
+
+TODO.md §🔥「ES Modules 化 (本番)」の **案 β「window 化 → モジュール化の 2 段階」のパイロット**。v194 までで `NORIRECO.mypage` / `NORIRECO.serviceLines` / `NORIRECO.rideRecord` の **関数 / IIFE 単位の namespace 化** は終わっているが、`let LINES` / `let currentUser` のような **top-level mutable state** はまだ classic script 共有 lexical scope に住んでいる。これが `<script type="module">` 化の最大の壁 (モジュールスコープは script スコープと別物で、`let X` を他ファイルから素の名前で参照できなくなる)。
+
+### 案 β の 2 段階
+
+| Stage | 内容 | この commit (v195) |
+|---|---|---|
+| 1 | 共有 state を `window.NORIRECO.<domain>.X` の **mutable object property** に集約 (classic script のまま、`<script>` ロード順は変更なし) | 12-auth に対して実施 (pilot) |
+| 2 | 各ファイルを `<script type="module">` 化し、`export const auth = ...; window.NORIRECO.auth = auth;` のブリッジで残り classic script 互換を保つ | 次セッション以降 |
+
+stage 1 は **モジュール化に進む前段の地ならし** で、call site の書き換え量を「let → object property」の機械的置換に限定して安全に進められる。stage 2 で破壊的変更 (script type 変更・load 順 deferred 化) が入っても、bridge 1 行で classic script 側が動き続ける。
+
+### 移行した state (4 個)
+
+| 旧 (top-level `let`) | 新 (NORIRECO.auth プロパティ) |
+|---|---|
+| `supabaseAuthClient` | `NORIRECO.auth.supabaseAuthClient` |
+| `currentUser` | `NORIRECO.auth.currentUser` |
+| `currentSession` | `NORIRECO.auth.currentSession` |
+| `authBackfillRan` | `NORIRECO.auth.authBackfillRan` |
+
+12-auth.js 内では先頭で `const auth = window.NORIRECO.auth` のローカル alias を作り、ファイル内のすべての参照を `auth.currentUser` / `auth.supabaseAuthClient` 等に短縮。外部 (13-mypage-common.js) からは `NORIRECO.auth.currentUser` のフルパス。
+
+### なぜ 12-auth を pilot に選んだか
+
+- **state 数が少ない** (4 個) — レビューと検証が一目で済む
+- **cross-file 参照が 13-mypage-common.js の 1 箇所のみ** (`renderMypage()` 内の email 表示) — 書き換えコスト最小
+- **render hot path に乗らない** — auth 状態は user interaction で読まれるだけ、init や描画ループから外れている
+- **モジュール化したい筆頭** (Notion §2.4 布石⑤ Supabase ラッパー化と地続き)
+
+### call site 書き換え (5 ファイル → 2 ファイル、計 22 箇所)
+
+- `js/12-auth.js` (21 箇所) — `supabaseAuthClient.auth.xxx` → `auth.supabaseAuthClient.auth.xxx`、`currentUser` → `auth.currentUser` 他
+- `js/13-mypage-common.js:59` — `currentUser` → `NORIRECO.auth.currentUser`
+
+`currentUserId()` / `authBearerToken()` / `signInWithMagicLink()` などの **関数 API は無変更** (内部で `auth.xxx` を読むようになっただけ)。他ファイルからは引き続き `currentUserId()` / `authBearerToken()` で呼べる。
+
+### 影響範囲
+
+- `js/12-auth.js` — `let X` × 4 を `window.NORIRECO.auth = { ... }` に集約、内部参照を `auth.X` に書き換え (機能無変更)
+- `js/13-mypage-common.js:59` — `currentUser` → `NORIRECO.auth.currentUser` (1 行)
+- `sw.js` — `CACHE_VERSION = 'v195'`
+- `npm run check` — 18/18 OK
+
+### stage 2 (次セッション) の段取り
+
+12-auth を `<script type="module">` 化するには:
+
+1. `<script src="js/12-auth.js">` → `<script type="module" src="js/12-auth.js">` に変更
+2. 12-auth.js の最後に `export const auth = window.NORIRECO.auth;` を追加 (将来 module consumer 用)
+3. **deferred 化の影響確認**: `type="module"` は暗黙 `defer` なので、12-auth は他の classic script (10-init.js 等) の後で評価される。`initAuth()` 呼び出しのタイミングを `DOMContentLoaded` 後に揃える
+4. 04-gps-location.js / 13-mypage-common.js 等の **classic script から `NORIRECO.auth.currentUser` を読む側** は無変更で動く (bridge オブジェクトは module 評価時に確立される)
+
+ただし stage 2 は **deferred 化で初期化順が崩れるリスク**があるため、別セッションで集中して対応。stage 1 (v195) で生まれた `NORIRECO.auth` namespace は stage 2 が来なくても単体で正しく動く。
+
+### 残る windowization 候補 (案 β stage 1 の続き、優先度順)
+
+| Domain | 候補 state | 候補ファイル | 利用箇所 |
+|---|---|---|---|
+| auth (済) | supabaseAuthClient, currentUser, currentSession, authBackfillRan | 12 | 12, 13-common |
+| map | map, memoMode, clickInfo | 06 | 全体 (最大の cross-file 参照) |
+| record | recordMode, recordSelection, recordHighlights, pairLineChoices, currentSegments | 07 | 06, 08, 13a |
+| gps | locationMode, lastUserGps, recordStartGPS, recordEndTime 他 | 04 | 04, 07 |
+| trains | TRAINS, TRAIN_CATEGORIES, selectedTrain* | 02 | 07, 13a |
+| data | LINES, SERVICE_LINES, MERGED_STATIONS, CHARACTERS 他 | 02 | 全体 (最大の規模) |
+| mypage | _mypageCache, mpActiveSection, mpTripFilter | 13-common | 13a-c |
+
+`map` / `record` / `data` が cross-file 参照の三大塊。pilot (auth) で得た書き換え量の見積りは「state 1 個 ≒ 数行 / consumer file」。`data` 系 (LINES 単体で 100+ 参照) は 1 セッション = 1 ドメインの粒度で進める想定。
+
+### 補足: 案 β を選んだ理由
+
+TODO.md §🔥 で示された 3 案のうち、
+
+- **(a) 全 18 ファイル一気にモジュール化** — 巨大 PR、戻し不能、checkpoint なし
+- **(b) state を window.X に出すリファクタ先行 = 案 β** — incremental、各 commit が単体で動く、戻し可能
+- **(c) 新規モジュールだけ追加、既存触らず** — pilot として最も safe だが、本質課題 (既存 state の lexical scope 依存) を先送りするだけで「ES Modules 化」のゴールに進まない
+
+案 β は **どの commit でも `git revert` 1 発で戻せる**という安全装置が最大の利点。v131 以降の分割祭り (v190 / v192 / v194) と同じリズムで進められる。
+
+### 教訓
+
+- 「namespace に lift する」だけだと **bare identifier を mass rewrite する必要がある**ように見えるが、**file 内に `const auth = NORIRECO.auth` の local alias を置けばファイル内は短い書き方を維持できる**。cross-file 参照だけがフルパス。これは v192 の `NORIRECO.serviceLines` でも同じパターン。
+- mutable state を `let X = ...; window.X = X` の 2 重宣言にしない。**single source of truth は `NORIRECO.<domain>.X` だけ**にする。`let X` を残すと stage 2 module 化で「export してるのは module-local X、bridge してるのは別の X」になり、bridge と module の値が divergence する事故が起きる。
+
+---
+
 ## 43. v194 — trip 解決 + 乗車状態集計を `04` → `04b-ride-record.js` に切り出し + `NORIRECO.rideRecord` ドメイン (2026-05-19)
 
 ### 背景
