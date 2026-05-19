@@ -1820,6 +1820,16 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 66. v217 — ES Modules パイロット (案 β) stage 2 拡張: 07-record-mode.js を `<script type="module">` 化 (2026-05-19)
+
+stage 2 の 16 番目。記録モード本体。既存 window 公開 11 個に加え 6 個追加 (`toggleRecordMode` / `onRecordStationClick` / `saveMultiSegmentTrip` / `redrawAllLinesAfterTripChange` / `showRecordToast` / `fitToRiddenLines`)。
+
+### 累積 stage 2 進捗
+
+**16/18 ファイル module 化済み**。残り 2: 08 / 02。
+
+---
+
 ## 65. v216 — ES Modules パイロット (案 β) stage 2 拡張: 04-gps-location.js を `<script type="module">` 化 (2026-05-19)
 
 stage 2 の 15 番目。現在地・最寄駅・GPS 記録パネル・キャラ表示。11 個の window bridge (`stopLocationTracking` / `findNearestStations` / `formatDist` / `updateNearestStationPanel` / `renderRecordingSummary` / `updateLocationButton` / `getObtainableCharactersAt` / `drawObtainableIndicators` / `getStationCharacterChoice` / `getStationCharacter` / `pickStationCharacter`) を追加。

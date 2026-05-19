@@ -2,6 +2,11 @@
 // 記録モード (RECORD MODE)
 // - 手動記録: 📝 ボタン経由 (verified=false、source='manual')
 // - GPS 記録: 📍 → 「ここから記録開始」経由 (verified=true、source='gps_button')
+//
+// v217 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
+// 既存 window 公開 (openRecConfirm 等 11 個) に加え、stage 2 で 6 個追加 (toggleRecordMode /
+// onRecordStationClick / saveMultiSegmentTrip / redrawAllLinesAfterTripChange /
+// showRecordToast / fitToRiddenLines)。
 // ════════════════════════════════════════════
 
 // v197 ES Modules パイロット (案 β) — 状態を window.NORIRECO.record に集約。
@@ -989,3 +994,11 @@ function fitToRiddenLines(){
   const bounds=L.latLngBounds(pts);
   NORIRECO.map.instance.fitBounds(bounds,{padding:[40,40],maxZoom:9,animate:false});
 }
+
+// v217 stage 2: 04/06/08 (module) / 02 (classic) などから bare 呼出される関数の window 公開
+window.toggleRecordMode = toggleRecordMode;
+window.onRecordStationClick = onRecordStationClick;
+window.saveMultiSegmentTrip = saveMultiSegmentTrip;
+window.redrawAllLinesAfterTripChange = redrawAllLinesAfterTripChange;
+window.showRecordToast = showRecordToast;
+window.fitToRiddenLines = fitToRiddenLines;
