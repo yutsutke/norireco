@@ -814,7 +814,7 @@ function drawStationsLayer() {
 
 function attachStationDotClickV2(dot, ms) {
   dot.on('click', (e) => {
-    if (recordMode) {
+    if (NORIRECO.record.mode) {
       onRecordStationClick({name: ms.name, lat: ms.lat, lon: ms.lon});
       L.DomEvent.stopPropagation(e);
     } else if (NORIRECO.map.memoMode) {

@@ -163,7 +163,7 @@ function initMap(){
 
   // メモモード or 記録モード のクリックハンドラ
   M.instance.on('click',e=>{
-    if(!M.memoMode && !recordMode) return;
+    if(!M.memoMode && !NORIRECO.record.mode) return;
     let bLine=null,bSt=null,bD=Infinity;
     LINES.forEach(line=>line.stations.forEach(s=>{
       const d=M.instance.distance([s.lat,s.lon],e.latlng);
@@ -173,7 +173,7 @@ function initMap(){
     if (M.memoMode) {
       M.clickInfo={line:bLine,station:bSt,lat:e.latlng.lat.toFixed(5),lon:e.latlng.lng.toFixed(5)};
       openMemo();
-    } else if (recordMode) {
+    } else if (NORIRECO.record.mode) {
       onRecordStationClick({name: bSt.n, lat: bSt.lat, lon: bSt.lon});
     }
   });

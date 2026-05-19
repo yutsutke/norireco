@@ -107,7 +107,7 @@ function updateNearestStationPanel(lat, lon) {
 
   // 記録モード中: GPS 記録のみ「記録中」ミニマル UI を表示
   // 手動記録 (📝 ボタン経由) では rec-panel が UI を担当するので最寄駅パネルは隠す
-  if (recordMode) {
+  if (NORIRECO.record.mode) {
     if (recordStartedViaGPS) {
       if (selectModeEl) selectModeEl.style.display = 'none';
       if (recModeEl) recModeEl.style.display = 'block';
@@ -180,20 +180,20 @@ function hideNearestStationPanel() {
 function renderRecordingSummary() {
   const el = document.getElementById('ns-recording-summary');
   if (!el) return;
-  if (!recordSelection || recordSelection.length === 0) {
+  if (!NORIRECO.record.selection || NORIRECO.record.selection.length === 0) {
     el.innerHTML = '<div class="ns-rec-hint">駅を選択してください</div>';
     return;
   }
-  const start = recordSelection[0].name;
-  const last = recordSelection[recordSelection.length - 1].name;
-  const segs = currentSegments?.length || 0;
-  const hasError = currentSegments?.some(s => s.error);
+  const start = NORIRECO.record.selection[0].name;
+  const last = NORIRECO.record.selection[NORIRECO.record.selection.length - 1].name;
+  const segs = NORIRECO.record.segments?.length || 0;
+  const hasError = NORIRECO.record.segments?.some(s => s.error);
   el.innerHTML = `
     <div class="ns-rec-lbl">📍 出発駅</div>
     <div class="ns-rec-start">${start}</div>
-    ${recordSelection.length > 1 ? `
+    ${NORIRECO.record.selection.length > 1 ? `
       <div class="ns-rec-route">
-        ${hasError ? '⚠️ 未解決区間あり' : `経路: ${recordSelection.length}駅 / ${segs}区間`}
+        ${hasError ? '⚠️ 未解決区間あり' : `経路: ${NORIRECO.record.selection.length}駅 / ${segs}区間`}
       </div>
       <div class="ns-rec-route-info">→ ${last}</div>
     ` : `
@@ -204,11 +204,11 @@ function renderRecordingSummary() {
 
 // 記録キャンセル (破棄)
 function cancelRecord() {
-  if (recordSelection.length > 0 && !confirm('記録中の経路を破棄しますか？')) return;
+  if (NORIRECO.record.selection.length > 0 && !confirm('記録中の経路を破棄しますか？')) return;
   recordStartedViaGPS = false;
   recordStartGPS = null;
   recordEndTime = null;
-  if (recordMode) toggleRecordMode();
+  if (NORIRECO.record.mode) toggleRecordMode();
   showRecordToast('🗑 記録を破棄しました', 'warn', 2500);
 }
 window.cancelRecord = cancelRecord;
@@ -229,7 +229,7 @@ function startRecordFromNearest() {
   recordStartGPS = { ...lastUserGps, timestamp: new Date().toISOString() };
   recordEndTime = null;
   // 記録モードへ
-  if (!recordMode) toggleRecordMode();
+  if (!NORIRECO.record.mode) toggleRecordMode();
   // 選択された駅をプリセレクト
   onRecordStationClick({
     name: picked.station.name,

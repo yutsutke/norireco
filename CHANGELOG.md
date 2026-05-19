@@ -1820,6 +1820,72 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 46. v197 — ES Modules パイロット (案 β) stage 1: record domain state を `window.NORIRECO.record` に集約 (2026-05-19)
+
+### 背景
+
+v195 (auth) / v196 (map) に続く 3 番目のドメイン。`record` (📝 手動記録モード) の state は 07-record-mode.js が中心、cross-file 参照は 04 / 06 / 08 の 3 ファイル。state 数は 7 個と最多 (これまで auth=4 / map=3)。
+
+### 移行した state (7 個)
+
+| 旧 (top-level `let` / `const`) | 新 (NORIRECO.record プロパティ) |
+|---|---|
+| `recordMode` | `NORIRECO.record.mode` |
+| `recordSelection` | `NORIRECO.record.selection` |
+| `recordHighlights` | `NORIRECO.record.highlights` |
+| `pairLineChoices` (Map) | `NORIRECO.record.pairLineChoices` |
+| `currentSegments` | `NORIRECO.record.segments` |
+| `endStationCandidates` (line 583) | `NORIRECO.record.endStationCandidates` |
+| `endStationPickedIdx` (line 584) | `NORIRECO.record.endStationPickedIdx` |
+
+`recordSelection` / `recordHighlights` / `pairLineChoices` は元 `const` (mutable container)、`recordMode` / `currentSegments` / `endStation*` は元 `let` (rebindable)。NORIRECO.record の object property としては区別なく扱える。
+
+07-record-mode.js 内は `const R = NORIRECO.record` の local alias で `R.mode` / `R.selection` / `R.segments` 等の短縮形を使用。外部 (04 / 06 / 08) は `NORIRECO.record.X` のフルパス。
+
+### call site 書き換え (4 ファイル、約 80 箇所)
+
+- `js/07-record-mode.js` — 宣言部 + 約 75 箇所 (replace_all で `recordMode` → `R.mode` 等の機械置換)
+- `js/04-gps-location.js` — 6 箇所 (`recordMode` ×3 + `recordSelection` ×複数 + `currentSegments` ×複数。手動記録パネルの表示更新ロジックで使う)
+- `js/06-map-leaflet.js` — 2 箇所 (`map.on('click')` ハンドラ内の `recordMode` 判定)
+- `js/08-rendering.js` — 1 箇所 (`attachStationDotClickV2` 内の `if (recordMode)`)
+
+### 教訓: replace_all とコメント内識別子の衝突
+
+state object 宣言内のプロパティ名 (`pairLineChoices: new Map()`) と外部識別子 (`pairLineChoices`) が同名の場合、`replace_all 'pairLineChoices' → 'R.pairLineChoices'` を実行すると **宣言内のキー名まで `R.pairLineChoices: ...` に化けて構文エラー**になる。
+
+v197 では `pairLineChoices` / `endStationCandidates` / `endStationPickedIdx` の 3 つで実際にこの事故が発生 (npm run check で SyntaxError なし、別の visual review で発覚)。
+
+対策:
+1. 宣言ブロックは `replace_all` の前に書き換え済みにしておく (今回採用)
+2. または declaration の property 名を意図的に変える (e.g., `pairLineChoices` → `pairChoices`) — 今回は採用せず
+3. または `replace_all` ではなく `\brecordMode\b` のような単語境界 grep + sed 系ツールで boundary check付きで置換
+
+v200 (data domain、LINES/SERVICE_LINES 等の最大規模) では state object のプロパティ名と外部識別子を意図的に分岐 (`NORIRECO.data.lines` / `NORIRECO.data.serviceLines` 等の camelCase 化) して衝突を構造的に防止する想定。
+
+### 影響範囲
+
+- `js/07-record-mode.js` — 宣言部 + 約 75 箇所書き換え (機能無変更)
+- `js/04-gps-location.js` / `06-map-leaflet.js` / `08-rendering.js` — call site のみ
+- `sw.js` — `CACHE_VERSION = 'v197'`
+- `npm run check` — 18/18 OK
+- 機能リグレッション: なし
+
+### 進捗 (案 β stage 1)
+
+| ドメイン | バージョン | state 数 | 関係ファイル | 状態 |
+|---|---|---|---|---|
+| auth | v195 | 4 | 2 | ✅ |
+| map | v196 | 3 | 6 | ✅ |
+| **record** | **v197** | **7** | **4** | **✅** |
+| gps | v198 (次) | ~10 | 2 | 🔜 |
+| trains | v199 | 4 | 2-3 | 🔜 |
+| data | v200 | ~10 (LINES 系最大) | 全体 | 🔜 |
+| mypage | v201 | 3 | 13-common/a/b | 🔜 |
+
+state 数が増えるにつれ宣言ブロックの可読性確保が課題。v198 以降は宣言を JSDoc コメント付きで整理する。
+
+---
+
 ## 45. v196 — ES Modules パイロット (案 β) stage 1: map domain state を `window.NORIRECO.map` に集約 (2026-05-19)
 
 ### 背景

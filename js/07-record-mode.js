@@ -3,19 +3,28 @@
 // - 手動記録: 📝 ボタン経由 (verified=false、source='manual')
 // - GPS 記録: 📍 → 「ここから記録開始」経由 (verified=true、source='gps_button')
 // ════════════════════════════════════════════
-let recordMode = false;
-const recordSelection = [];      // [{name, lat, lon}]
-const recordHighlights = [];     // [{station, marker}]
-const pairLineChoices = new Map(); // pair index → ユーザー手動選択した運行系統 id
-let currentSegments = [];        // refreshRecPanel で計算された区間リスト
+
+// v197 ES Modules パイロット (案 β) — 状態を window.NORIRECO.record に集約。
+// 外部 (04 / 06 / 08) からは NORIRECO.record.mode 等のフルパス、内部は R.X の短縮形。
+window.NORIRECO = window.NORIRECO || {};
+NORIRECO.record = NORIRECO.record || {
+  mode: false,                  // 記録モード ON/OFF
+  selection: [],                // [{name, lat, lon}] 選択駅列
+  highlights: [],               // [{station, marker}] 強調マーカー
+  pairLineChoices: new Map(),   // pair index → ユーザー選択 lineId
+  segments: [],                 // refreshRecPanel 計算済み区間リスト
+  endStationCandidates: [],     // 終了確認モーダルの候補駅
+  endStationPickedIdx: 0,
+};
+const R = NORIRECO.record;
 
 function toggleRecordMode() {
-  recordMode = !recordMode;
+  R.mode = !R.mode;
   const btn = document.getElementById('rec-btn');
   const panel = document.getElementById('rec-panel');
-  btn.classList.toggle('on', recordMode);
-  panel.classList.toggle('on', recordMode);
-  if (recordMode) {
+  btn.classList.toggle('on', R.mode);
+  panel.classList.toggle('on', R.mode);
+  if (R.mode) {
     // 記録モード突入時刻を必ずセット (GPS 経由でなくても depart_time 計算に使う)
     recordStartedAt = new Date().toISOString();
     // メモモードと排他
@@ -75,12 +84,12 @@ function sameStation(a, b) {
 }
 
 function onRecordStationClick(station) {
-  const idx = recordSelection.findIndex(s => sameStation(s, station));
+  const idx = R.selection.findIndex(s => sameStation(s, station));
   if (idx >= 0) {
-    recordSelection.splice(idx, 1);
+    R.selection.splice(idx, 1);
     removeRecordHighlight(station);
   } else {
-    recordSelection.push(station);
+    R.selection.push(station);
     addRecordHighlight(station);
   }
   refreshRecPanel();
@@ -92,26 +101,26 @@ function addRecordHighlight(station) {
     fill: false, opacity: 1,
     interactive: false,
   }).addTo(NORIRECO.map.instance);
-  recordHighlights.push({station, marker: h});
+  R.highlights.push({station, marker: h});
 }
 
 function removeRecordHighlight(station) {
-  const idx = recordHighlights.findIndex(h => sameStation(h.station, station));
+  const idx = R.highlights.findIndex(h => sameStation(h.station, station));
   if (idx >= 0) {
-    NORIRECO.map.instance.removeLayer(recordHighlights[idx].marker);
-    recordHighlights.splice(idx, 1);
+    NORIRECO.map.instance.removeLayer(R.highlights[idx].marker);
+    R.highlights.splice(idx, 1);
   }
 }
 
 function clearAllRecordHighlights() {
-  recordHighlights.forEach(h => { try { NORIRECO.map.instance.removeLayer(h.marker); } catch(e){} });
-  recordHighlights.length = 0;
+  R.highlights.forEach(h => { try { NORIRECO.map.instance.removeLayer(h.marker); } catch(e){} });
+  R.highlights.length = 0;
 }
 
 function clearRecSelection() {
-  recordSelection.length = 0;
-  pairLineChoices.clear();
-  currentSegments = [];
+  R.selection.length = 0;
+  R.pairLineChoices.clear();
+  R.segments = [];
   clearAllRecordHighlights();
   refreshRecPanel();
 }
@@ -140,14 +149,14 @@ function intersectLineLists(lists) {
 // - 連続2駅ペアごとに共通営業系統を見つける
 // - 同一路線が連続するペアをマージして1区間にする
 // - 路線継続性を優先 (前ペアと同じ路線が候補にあればそれを使う)
-// - ユーザー手動選択 (pairLineChoices) があれば最優先
+// - ユーザー手動選択 (R.pairLineChoices) があれば最優先
 function buildSegmentsFromSelection() {
-  if (recordSelection.length < 2) return [];
+  if (R.selection.length < 2) return [];
 
   // Step 1: 各ペアの候補を計算
   const pairs = [];
-  for (let i = 0; i < recordSelection.length - 1; i++) {
-    const a = recordSelection[i], b = recordSelection[i + 1];
+  for (let i = 0; i < R.selection.length - 1; i++) {
+    const a = R.selection[i], b = R.selection[i + 1];
     pairs.push({a, b, cands: findCommonServiceLines([a, b])});
   }
 
@@ -155,7 +164,7 @@ function buildSegmentsFromSelection() {
   let prevLineId = null;
   const chosen = pairs.map((p, i) => {
     if (p.cands.length === 0) { prevLineId = null; return null; }
-    const userPick = pairLineChoices.get(i);
+    const userPick = R.pairLineChoices.get(i);
     let ln = null;
     if (userPick) ln = p.cands.find(l => l.id === userPick);
     if (!ln && prevLineId) ln = p.cands.find(l => l.id === prevLineId);
@@ -196,15 +205,15 @@ function buildSegmentsFromSelection() {
 
 // ユーザーが区間の路線を切り替え
 function changeSegmentLine(segIdx, newLineId) {
-  const seg = currentSegments[segIdx];
+  const seg = R.segments[segIdx];
   if (!seg || !seg.pairIndices) return;
-  for (const i of seg.pairIndices) pairLineChoices.set(i, newLineId);
+  for (const i of seg.pairIndices) R.pairLineChoices.set(i, newLineId);
   refreshRecPanel();
 }
 
 function refreshRecPanel() {
   // 記録中の最寄駅パネル サマリも更新 (rec-panel は v105 で非表示化したが、内部状態は維持)
-  if (recordMode && typeof renderRecordingSummary === 'function') {
+  if (R.mode && typeof renderRecordingSummary === 'function') {
     renderRecordingSummary();
   }
   const chipsDiv = document.getElementById('rec-chips');
@@ -213,11 +222,11 @@ function refreshRecPanel() {
   if (!chipsDiv) return;
 
   // チップ表示
-  if (recordSelection.length === 0) {
+  if (R.selection.length === 0) {
     chipsDiv.innerHTML = '<span style="color:var(--silver);font-size:11px">駅をタップして 2 駅以上選択してください</span>';
   } else {
-    const parts = recordSelection.map((s, i) => {
-      const cls = i === 0 ? 'from' : (i === recordSelection.length - 1 ? 'to' : '');
+    const parts = R.selection.map((s, i) => {
+      const cls = i === 0 ? 'from' : (i === R.selection.length - 1 ? 'to' : '');
       const sn = s.name.replace(/'/g, "\\'");
       return `<span class="rec-chip ${cls}" onclick="onRecordStationClick({name:'${sn}',lat:${s.lat},lon:${s.lon}})">${s.name}<span style="color:rgba(255,255,255,.5);margin-left:4px">×</span></span>`;
     });
@@ -225,12 +234,12 @@ function refreshRecPanel() {
   }
 
   pickDiv.innerHTML = '';
-  if (recordSelection.length >= 2) {
-    currentSegments = buildSegmentsFromSelection();
+  if (R.selection.length >= 2) {
+    R.segments = buildSegmentsFromSelection();
     let hasError = false;
     let totalStations = 0;
 
-    currentSegments.forEach((seg, idx) => {
+    R.segments.forEach((seg, idx) => {
       const div = document.createElement('div');
       if (seg.error) {
         hasError = true;
@@ -258,10 +267,10 @@ function refreshRecPanel() {
       pickDiv.appendChild(div);
     });
 
-    if (currentSegments.length > 0) {
+    if (R.segments.length > 0) {
       const summary = document.createElement('div');
       summary.style.cssText = 'margin-top:6px;font-size:11px;color:var(--gold);';
-      const transferCount = currentSegments.filter(s => !s.error).length - 1;
+      const transferCount = R.segments.filter(s => !s.error).length - 1;
       summary.textContent = hasError
         ? '⚠️ 未解決区間があります'
         : `合計 ${totalStations}駅 / 乗換 ${Math.max(0, transferCount)}回`;
@@ -279,7 +288,7 @@ function refreshRecPanel() {
     }
   }
 
-  actionsDiv.innerHTML = recordSelection.length > 0
+  actionsDiv.innerHTML = R.selection.length > 0
     ? '<button class="rec-btn clear" onclick="clearRecSelection()">クリア</button>'
     : '';
 }
@@ -287,14 +296,14 @@ function refreshRecPanel() {
 // 経路 (複数区間) を1 trip として保存
 // 記録確認モーダル: 終了 → 経路レビュー → 保存 or 戻る or 破棄
 function openRecConfirm() {
-  if (!recordSelection || recordSelection.length === 0) {
+  if (!R.selection || R.selection.length === 0) {
     alert('記録する駅がありません');
     return;
   }
   // 終了時刻をキャプチャ (まだ設定されていなければ)
   if (!recordEndTime) recordEndTime = new Date().toISOString();
-  const isVisitOnly = recordSelection.length === 1 && (!currentSegments || currentSegments.length === 0);
-  if (!isVisitOnly && currentSegments && currentSegments.some(s => s.error)) {
+  const isVisitOnly = R.selection.length === 1 && (!R.segments || R.segments.length === 0);
+  if (!isVisitOnly && R.segments && R.segments.some(s => s.error)) {
     alert('未解決の区間があります');
     return;
   }
@@ -316,7 +325,7 @@ function openRecConfirm() {
 
   if (isVisitOnly) {
     // 1駅のみ「訪問」記録
-    const st = recordSelection[0];
+    const st = R.selection[0];
     body.innerHTML = `
       <div class="rec-confirm-route" style="border-left-color:#1A6FE5">
         <div class="rec-confirm-seg">
@@ -338,7 +347,7 @@ function openRecConfirm() {
     // 通常: 複数区間の経路
     let totalStations = 0;
     const lineNames = [];
-    for (const seg of currentSegments) {
+    for (const seg of R.segments) {
       if (!seg.line) continue;
       const fromIdx = seg.line.stations.findIndex(s => s.name === seg.from.name);
       const toIdx = seg.line.stations.findIndex(s => s.name === seg.to.name);
@@ -346,9 +355,9 @@ function openRecConfirm() {
       totalStations += Math.abs(toIdx - fromIdx) + 1;
       if (lineNames[lineNames.length - 1] !== seg.line.name) lineNames.push(seg.line.name);
     }
-    const fromSt = recordSelection[0]?.name || '?';
-    const toSt = recordSelection[recordSelection.length - 1]?.name || '?';
-    const routeHtml = currentSegments.map(seg => {
+    const fromSt = R.selection[0]?.name || '?';
+    const toSt = R.selection[R.selection.length - 1]?.name || '?';
+    const routeHtml = R.segments.map(seg => {
       if (!seg.line) return '';
       return `<div class="rec-confirm-seg">
         <span class="rec-confirm-seg-dot" style="background:${seg.line.color}"></span>
@@ -363,7 +372,7 @@ function openRecConfirm() {
       </div>
       <div class="rec-confirm-stat-row">
         <span class="rec-confirm-stat-lbl">🚉 駅数 / 区間</span>
-        <span class="rec-confirm-stat-val">${totalStations}駅 / ${currentSegments.length}区間</span>
+        <span class="rec-confirm-stat-val">${totalStations}駅 / ${R.segments.length}区間</span>
       </div>
       ${timeRowHtml}
       <div class="rec-confirm-stat-row">
@@ -428,7 +437,7 @@ function openRecConfirm() {
 }
 
 function closeRecConfirm() {
-  // 「戻って編集」: モーダル閉じる、recordMode はそのまま、selection 保持
+  // 「戻って編集」: モーダル閉じる、R.mode はそのまま、selection 保持
   document.getElementById('rec-confirm-modal')?.classList.remove('open');
 }
 
@@ -445,7 +454,7 @@ function discardRecord() {
   recordStartedViaGPS = false;
   recordStartGPS = null;
   recordEndTime = null;
-  if (recordMode) toggleRecordMode(); // off に
+  if (R.mode) toggleRecordMode(); // off に
   showRecordToast('🗑 記録を破棄しました', 'warn', 2500);
 }
 
@@ -580,11 +589,10 @@ function _populateRecEditYearMonth() {
 }
 
 // ─ 「📍 ここで終了 (GPS)」: 現在地から終点駅を選んで確認モーダルへ ─
-let endStationCandidates = [];
-let endStationPickedIdx = 0;
+// R.endStationCandidates / R.endStationPickedIdx は NORIRECO.record に集約済み (v197)
 
 function endRecordAtNearest() {
-  if (!recordMode) { alert('記録モード中ではありません'); return; }
+  if (!R.mode) { alert('記録モード中ではありません'); return; }
   if (!lastUserGps) {
     if (locationMode === 0) {
       // 位置情報 OFF だったらまず ON にする
@@ -600,12 +608,12 @@ function endRecordAtNearest() {
     alert('1.5km 以内に駅が見つかりません');
     return;
   }
-  endStationCandidates = nearby;
-  endStationPickedIdx = 0;
+  R.endStationCandidates = nearby;
+  R.endStationPickedIdx = 0;
   // 既に選択済みの駅と同じだったら先頭以外をデフォルト選択
-  const lastSelected = recordSelection[recordSelection.length - 1]?.name;
+  const lastSelected = R.selection[R.selection.length - 1]?.name;
   if (lastSelected && nearby[0].station.name === lastSelected && nearby.length > 1) {
-    endStationPickedIdx = 1;
+    R.endStationPickedIdx = 1;
   }
 
   const listEl = document.getElementById('end-station-list');
@@ -618,8 +626,8 @@ function endRecordAtNearest() {
     }).filter(Boolean).join('・');
     const more = lineIds.length > 3 ? ` ほか${lineIds.length - 3}` : '';
     const isSame = n.station.name === lastSelected;
-    const checked = idx === endStationPickedIdx ? 'checked' : '';
-    const selClass = idx === endStationPickedIdx ? ' selected' : '';
+    const checked = idx === R.endStationPickedIdx ? 'checked' : '';
+    const selClass = idx === R.endStationPickedIdx ? ' selected' : '';
     const sameHint = isSame ? '<span style="color:rgba(140,160,179,.6);font-size:9px;margin-left:6px">(出発駅と同じ)</span>' : '';
     return `
       <label class="ns-cand${selClass}" onclick="selectEndStationCand(${idx})">
@@ -638,7 +646,7 @@ function endRecordAtNearest() {
 }
 
 function selectEndStationCand(idx) {
-  endStationPickedIdx = idx;
+  R.endStationPickedIdx = idx;
   document.querySelectorAll('#end-station-list .ns-cand').forEach((el, i) => {
     el.classList.toggle('selected', i === idx);
     const radio = el.querySelector('input[type=radio]');
@@ -651,19 +659,19 @@ function closeEndStation() {
 }
 
 function confirmEndStation() {
-  if (!endStationCandidates || endStationCandidates.length === 0) return;
-  const picked = endStationCandidates[endStationPickedIdx] || endStationCandidates[0];
+  if (!R.endStationCandidates || R.endStationCandidates.length === 0) return;
+  const picked = R.endStationCandidates[R.endStationPickedIdx] || R.endStationCandidates[0];
   // 「ここで終了」押下時刻をキャプチャ (実際の到着時刻)
   recordEndTime = new Date().toISOString();
   // 末尾区間がエラー (= 前回の終点が解決不能) なら末尾駅を外してから選び直す
   // これで「終点を選び直す」UX が成立する
-  if (recordSelection.length >= 2 && currentSegments && currentSegments.length > 0
-      && currentSegments[currentSegments.length - 1].error) {
-    const stale = recordSelection[recordSelection.length - 1];
+  if (R.selection.length >= 2 && R.segments && R.segments.length > 0
+      && R.segments[R.segments.length - 1].error) {
+    const stale = R.selection[R.selection.length - 1];
     onRecordStationClick(stale); // toggle off
   }
-  const lastSelected = recordSelection[recordSelection.length - 1]?.name;
-  // 出発駅と同じ駅を選んだら 1駅訪問記録扱い (currentSegments は空のまま)
+  const lastSelected = R.selection[R.selection.length - 1]?.name;
+  // 出発駅と同じ駅を選んだら 1駅訪問記録扱い (R.segments は空のまま)
   if (picked.station.name !== lastSelected) {
     onRecordStationClick({
       name: picked.station.name,
@@ -672,7 +680,7 @@ function confirmEndStation() {
     });
   }
   closeEndStation();
-  // refreshRecPanel が呼ばれ currentSegments 更新後に確認モーダル表示
+  // refreshRecPanel が呼ばれ R.segments 更新後に確認モーダル表示
   setTimeout(() => openRecConfirm(), 100);
 }
 
@@ -691,16 +699,16 @@ function tripForSupabase(trip) {
 window.tripForSupabase = tripForSupabase;
 
 async function saveMultiSegmentTrip() {
-  if (!recordSelection || recordSelection.length === 0) return;
-  const isVisitOnly = recordSelection.length === 1 && (!currentSegments || currentSegments.length === 0);
-  if (!isVisitOnly && currentSegments && currentSegments.some(s => s.error)) {
+  if (!R.selection || R.selection.length === 0) return;
+  const isVisitOnly = R.selection.length === 1 && (!R.segments || R.segments.length === 0);
+  if (!isVisitOnly && R.segments && R.segments.some(s => s.error)) {
     alert('未解決の区間があります'); return;
   }
   const tripSegments = [];
   let totalStations = 0;
   const lineNames = [];
   if (!isVisitOnly) {
-    for (const seg of currentSegments) {
+    for (const seg of R.segments) {
       if (!seg.line) continue;
       const fromIdx = seg.line.stations.findIndex(s => s.name === seg.from.name);
       const toIdx = seg.line.stations.findIndex(s => s.name === seg.to.name);
@@ -714,8 +722,8 @@ async function saveMultiSegmentTrip() {
     totalStations = 1;
   }
 
-  const fromStation = recordSelection[0].name;
-  const toStation = recordSelection[recordSelection.length - 1].name;
+  const fromStation = R.selection[0].name;
+  const toStation = R.selection[R.selection.length - 1].name;
   const lineList = lineNames.join(' ▸ ');
   const tripName = isVisitOnly
     ? `${fromStation} 訪問`
@@ -917,9 +925,9 @@ async function saveMultiSegmentTrip() {
   recordEndTime = null;
   // verified=true の trip なら自動獲得チェックが発動する
   setTimeout(() => runCharacterGrantCheck(), 800);
-  // 記録モードを終了 (recordMode=true → false に切替、最寄駅パネルが「開始駅選択」に戻る)
+  // 記録モードを終了 (R.mode=true → false に切替、最寄駅パネルが「開始駅選択」に戻る)
   // toggleRecordMode の else 分岐内で clearRecSelection が呼ばれる
-  if (recordMode) {
+  if (R.mode) {
     toggleRecordMode();
   } else {
     clearRecSelection();
