@@ -1820,6 +1820,50 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 78. v229 — v228 続報: 達成率/系統数バッジと mypage キャッシュも purge (2026-05-19)
+
+### 背景
+
+v228 デプロイ後の動作確認で「地図はリセットされるけど統計は残るね」とユーザー報告。
+ヘッダ右上の「10% 達成率 / 81 路線」バッジ ([noritetsu-map.html:`h-pct` / `h-ln`](noritetsu-map.html)) と右側パネルの「全体 / 乗車路線 / 完乗」凡例 (`ms-pct` / `ms-ln` / `ms-dn`) が、ログアウト後も前ユーザーの数値のまま残っていた。
+
+### 原因
+
+`redrawAllLinesAfterTripChange()` ([js/07-record-mode.js:968](js/07-record-mode.js:968)) は地図の **線・駅ドット・パイチャート** を再描画するだけで、**`updateOverlays()`** ([js/08-rendering.js:1012](js/08-rendering.js:1012)) は呼ばない。バッジ・凡例の DOM テキストは `updateOverlays()` が `gStats()` を読んで反映する仕組みなので、明示的に併用しないと更新されない。
+
+呼出側の慣習を見ると `07-record-mode.js:927-928` の `saveMultiSegmentTrip` も明示的に両方呼んでいた:
+
+```js
+NORIRECO.rideRecord.rebuild();
+redrawAllLinesAfterTripChange();
+updateOverlays();
+```
+
+v228 の `clearLocalUserDataAfterSignOut()` ではこの 2 段目を漏らしていた。
+
+### 変更内容
+
+#### 1. `updateOverlays()` を import して purge 末尾で呼ぶ ([js/12-auth.js](js/12-auth.js))
+
+```js
+import { updateOverlays } from './08-rendering.js';
+// ...
+try { redrawAllLinesAfterTripChange(); } catch(e) {}
+try { updateOverlays(); } catch(e) {}
+```
+
+これで `h-pct` / `h-ln` / `ms-pct` / `ms-ln` / `ms-dn` の DOM テキストと `legend-lines` (営業系統別凡例) がログアウト時に 0 に揃う。
+
+#### 2. mypage キャッシュ `NORIRECO.mypage.state._mypageCache` も null に ([js/12-auth.js](js/12-auth.js))
+
+`renderMypage()` 自体は未ログイン時に「ログインしてください」空状態を出すので通常経路では問題にならないが、`tripCardHtml(trip)` 等の補助関数や旅程編集モーダルが `_mypageCache` を直接参照するため、キャッシュも明示的に null 化して前ユーザー由来の trip オブジェクトが UI に漏れないようにする。
+
+### 影響範囲
+
+ログアウト時のバッジ・凡例・mypage キャッシュのみ。`saveMultiSegmentTrip` 等の既存 trip 変更フローは元から両方呼んでいるので変化なし。
+
+---
+
 ## 77. v228 — ログアウト時に地図の乗車データをローカルから purge (2026-05-19)
 
 ### 背景

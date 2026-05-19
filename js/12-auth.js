@@ -31,6 +31,7 @@
 import { renderMypage } from './13-mypage-common.js';
 import { redrawAllLinesAfterTripChange } from './07-record-mode.js';
 import { updateStorageUI } from './05-supabase-data.js';
+import { updateOverlays } from './08-rendering.js';
 
 window.NORIRECO = window.NORIRECO || {};
 window.NORIRECO.auth = window.NORIRECO.auth || {
@@ -142,10 +143,14 @@ function clearLocalUserDataAfterSignOut() {
   }
   // 派生状態 (slRiddenSt / slStopType / slVisitCount / riddenServiceIds) を再構築 → 空になる
   try { window.NORIRECO?.rideRecord?.rebuild(); } catch(e) {}
-  // 地図再描画
+  // 地図再描画 + 達成率/系統数バッジ (h-pct/h-ln/ms-pct/ms-ln/ms-dn) と凡例の更新
   try { redrawAllLinesAfterTripChange(); } catch(e) {}
+  try { updateOverlays(); } catch(e) {}
   // ストレージ表示ラベルを「📄 静的データ」相当に
   try { updateStorageUI(0, 'static'); } catch(e) {}
+  // マイページキャッシュも空に (renderMypage は未ログイン時に空状態を出すが、
+  // 念のためキャッシュ自体をクリアして他経路からの参照が漏れないようにする)
+  try { if (window.NORIRECO?.mypage?.state) window.NORIRECO.mypage.state._mypageCache = null; } catch(e) {}
   console.log('[Auth] ローカル乗車データを purge しました (ログアウト)');
 }
 
