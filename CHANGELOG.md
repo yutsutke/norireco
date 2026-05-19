@@ -1820,6 +1820,28 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 61. v212 — ES Modules パイロット (案 β) stage 2 拡張: 01-constants.js を `<script type="module">` 化 (2026-05-19)
+
+### 背景
+
+stage 2 の 11 番目。01-constants は SVG_W/H、ISLANDS、localDateStr の超小型ユーティリティファイル。
+
+### 追加した window bridge (3 個)
+
+```js
+window.SVG_W = SVG_W;
+window.SVG_H = SVG_H;
+window.localDateStr = localDateStr;  // 03/07/08/13-common/13a (module/classic 混在) から bare 呼出
+```
+
+ISLANDS は現状未参照 (dead constants) なので window 公開しない。
+
+### 累積 stage 2 進捗
+
+**11/18 ファイル module 化済み**。残り 7: 04 / 05 / 06 / 07 / 08 / 02 / 02b。
+
+---
+
 ## 60. v211 — ES Modules パイロット (案 β) stage 2 拡張: 04b-ride-record.js を `<script type="module">` 化 (2026-05-19)
 
 ### 背景
