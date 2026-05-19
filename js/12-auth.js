@@ -151,8 +151,8 @@ function clearLocalUserDataAfterSignOut() {
   // 地図再描画 + 達成率/系統数バッジ (h-pct/h-ln/ms-pct/ms-ln/ms-dn) と凡例の更新
   try { redrawAllLinesAfterTripChange(); } catch(e) {}
   try { updateOverlays(); } catch(e) {}
-  // ストレージ表示ラベルを「📄 静的データ」相当に
-  try { updateStorageUI(0, 'static'); } catch(e) {}
+  // ストレージ表示ラベルを「📄 データなし」相当に (v234 で 'static' → 'empty')
+  try { updateStorageUI(0, 'empty'); } catch(e) {}
   // マイページキャッシュも空に (renderMypage は未ログイン時に空状態を出すが、
   // 念のためキャッシュ自体をクリアして他経路からの参照が漏れないようにする)
   try { if (window.NORIRECO?.mypage?.state) window.NORIRECO.mypage.state._mypageCache = null; } catch(e) {}

@@ -1820,6 +1820,40 @@ function deriveMapDisplayMode(stf) {
 
 ---
 
+## 83. v234 — 静的デモデータ `RIDDEN_SEGS_STATIC` を撤去 (2026-05-19)
+
+### 背景
+
+v233 で未ログイン時の Supabase 同期を skip するようにしたが、ユーザーから「まだデータが残ってる」報告。スクリーンショットでは「📄 静的データ」ラベルで東海道新幹線・山手線・北陸新幹線・予讃線などのデモ線が表示されており、`RIDDEN_SEGS_STATIC` (21 segments の demo trip 集) が描画されていた。
+
+このデモデータは元々「初回訪問時にアプリの可能性を見せる」目的だったが、本人の記録と区別が付かず混乱の元になっていた。乗レコは記録系アプリなので、ユーザーが自分で記録するまで空マップの方が UX 上正しい。
+
+### 変更内容
+
+#### 1. `RIDDEN_SEGS_STATIC` 配列を削除 ([js/05-supabase-data.js](js/05-supabase-data.js))
+
+旧 [js/05-supabase-data.js:17-47](js/05-supabase-data.js) の 21 segment 定義 + 関連コメントを撤去。
+
+#### 2. フォールバック先を空配列に
+
+- `applyDateFilter()`: `trips.length === 0` → `segs = []` (旧 `[...RIDDEN_SEGS_STATIC]`)
+- `RIDDEN_SEGS` モジュール初期化: `loadRiddenSegsFromStorage() || []` (旧 `|| [...RIDDEN_SEGS_STATIC]`)
+
+#### 3. ストレージ識別子 `'static'` → `'empty'` に改名
+
+- `getStorageStats()` の戻り値: `source: trips.length > 0 ? 'local' : 'empty'`
+- `updateStorageUI('empty')`: ラベルを `📄 静的データ` → `📄 データなし` に
+- 12-auth の `clearLocalUserDataAfterSignOut()` も `updateStorageUI(0, 'empty')` に
+- 06-map-leaflet の復元モーダル文言も `'静的データ（Supabaseから自動同期）'` → `'データなし（ログイン後 Supabase から同期）'` に
+
+### 影響範囲
+
+- 未ログイン + 空 localStorage = 完全に空のマップ (路線も駅も描かれない)
+- ログイン中の挙動は不変。Supabase 同期成功で従来通り表示
+- 初回訪問者には「ログインしてください」UX 経路を強化する余地あり (別タスク)
+
+---
+
 ## 82. v233 — 未ログイン時の Supabase 同期で他人の trip / キャラ獲得が漏れていたのを修正 (2026-05-19)
 
 ### 背景

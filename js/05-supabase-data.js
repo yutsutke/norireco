@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════
-// 乗車記録：localStorage優先、フォールバックとして静的データ
+// 乗車記録：localStorage優先、なければ空配列 (未ログイン or 初回 = 空地図)
 //
 // v215 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
 // 既存 window 公開 (toggleStopTypeFilter / updateStopTypeFilterUI / toggleMapCtrl /
@@ -8,44 +8,13 @@
 // v223 ES Modules stage 3: 03-characters.runCharacterGrantCheck を import 化。
 // v225: 08-rendering の drawLines / updateOverlays を import 化。
 // v225: 13-mypage-common.renderMypage を import 化。
+// v234: 静的デモデータ RIDDEN_SEGS_STATIC を撤去。未ログイン + 空 localStorage =
+//       完全な空マップを返すように変更 (旧デモ trip は混乱の元なので削除)。
 // ══════════════════════════════════════════════
 import { runCharacterGrantCheck } from './03-characters.js';
 import { drawLines, updateOverlays } from './08-rendering.js';
 import { renderMypage } from './13-mypage-common.js';
 import { currentUserId, authBearerToken } from './12-auth.js';
-
-// 静的フォールバック（localStorageが空の端末用）
-const RIDDEN_SEGS_STATIC=[
-  // 2026/4/29 四ツ谷→西川口
-  {lineId:'chuo',from:'四ツ谷',to:'中野'},
-  {lineId:'keihin',from:'中野',to:'西川口'},
-  // 2026/4/29 与野→横浜
-  {lineId:'keihin',from:'与野',to:'横浜'},
-  // 2026/4/29 東京→博多
-  {lineId:'tokaido-shinkansen',from:'東京',to:'博多'},
-  // 2026/5/1 田町→高田馬場
-  {lineId:'yamanote',from:'田町',to:'高田馬場'},
-  // 2026/5/4 東京→敦賀
-  {lineId:'hokuriku',from:'東京',to:'敦賀'},
-  // 2026/5/5 東京→高尾
-  {lineId:'chuo',from:'東京',to:'高尾'},
-  // 2026/5/6 高麗川→横浜
-  {lineId:'hachioji',from:'高麗川',to:'八王子'},
-  {lineId:'yokohama',from:'八王子',to:'東神奈川'},
-  {lineId:'keikyu-kurihama',from:'堀ノ内',to:'三崎口'},
-  {lineId:'yokosuka',from:'横須賀',to:'横浜'},
-  // 2026/5/6 東京→本郷三丁目
-  {lineId:'sobu',from:'東京',to:'千葉'},
-  {lineId:'saikyo',from:'大崎',to:'戸田公園'},
-  {lineId:'yokosuka',from:'東京',to:'横須賀'},
-  {lineId:'yamanote',from:'東京',to:'神田'},
-  {lineId:'shonan',from:'赤羽',to:'小田原'},
-  {lineId:'tokyometro-ginza',from:'浅草',to:'渋谷'},
-  {lineId:'tokyometro-marunouchi',from:'東京',to:'荻窪'},
-  {lineId:'tokyometro-hibiya',from:'上野',to:'茅場町'},
-  {lineId:'toei-asakusa',from:'押上',to:'東銀座'},
-  {lineId:'toei-oedo',from:'都庁前',to:'本郷三丁目'},
-];
 
 // ══════════════════════════════════════════════
 // Supabase 設定
@@ -263,10 +232,10 @@ export function updateDateFilterUI() {
 function applyDateFilter() {
   let trips = [];
   try { trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]'); } catch(e) {}
-  // localStorage が空なら静的フォールバック(全期間扱いのみ)
+  // v234: localStorage が空なら空配列 (旧 RIDDEN_SEGS_STATIC フォールバックは撤去)
   let segs;
   if (trips.length === 0) {
-    segs = [...RIDDEN_SEGS_STATIC];
+    segs = [];
   } else {
     const filtered = filterTripsByDate(trips);
     segs = tripsToSegs(filtered);
@@ -392,7 +361,7 @@ function applyUntilMonthFilter() {
 // Supabaseから旅程を取得して地図を更新。
 // v233: 未ログイン時は他人の trip まで anon key で fetch していたので、
 //   - ログイン中: user_id=eq.<uid> でフィルタ
-//   - 未ログイン: skip (localStorage / 静的データのまま)
+//   - 未ログイン: skip (localStorage が空なら空マップ)
 // に変更。Bearer も anon key 直挿しから authBearerToken() (access_token 優先) へ。
 export async function syncFromSupabase() {
   const uid = currentUserId();
@@ -451,14 +420,14 @@ function loadRiddenSegsFromStorage() {
   }
 }
 
-// RIDDEN_SEGS = localStorage優先、なければ静的データ（可変配列）
-const RIDDEN_SEGS = loadRiddenSegsFromStorage() || [...RIDDEN_SEGS_STATIC];
+// RIDDEN_SEGS = localStorage 優先、なければ空配列 (v234 で静的デモ撤去)。可変配列。
+const RIDDEN_SEGS = loadRiddenSegsFromStorage() || [];
 
 export function getStorageStats() {
   try {
     const trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
-    return { count: trips.length, source: trips.length > 0 ? 'local' : 'static' };
-  } catch(e) { return { count: 0, source: 'static' }; }
+    return { count: trips.length, source: trips.length > 0 ? 'local' : 'empty' };
+  } catch(e) { return { count: 0, source: 'empty' }; }
 }
 
 export function updateStorageUI(count, source) {
@@ -474,7 +443,8 @@ export function updateStorageUI(count, source) {
     cnt.textContent = `${count}件`;
     cnt.style.color = 'var(--gold)';
   } else {
-    lbl.textContent = '📄 静的データ';
+    // v234: 旧 'static' を 'empty' に改名 (デモデータ撤去後の意味付け)
+    lbl.textContent = '📄 データなし';
     cnt.textContent = '';
   }
 }

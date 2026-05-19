@@ -129,17 +129,13 @@ export function initMap(){
   // Supabaseから最新データを非同期で取得・同期（バックグラウンド）
   syncFromSupabase();
 
-  // 復元ヒント表示
-  if (stats.source === 'static') {
-    // restore-hint は削除済み (ユーザー要望)
-  }
-
+  // v234: 旧 'static' (静的デモデータ) は撤去済。データ未取得状態は 'empty'。
   // 復元モーダルの情報更新
   const tripCount = document.getElementById('current-trip-count');
   const dataSource = document.getElementById('current-data-source');
   if (tripCount) tripCount.textContent = stats.count;
   if (dataSource) dataSource.textContent = stats.source === 'local'
-    ? 'このiPhoneのlocalStorage' : '静的データ（Supabaseから自動同期）';
+    ? 'このiPhoneのlocalStorage' : 'データなし（ログイン後 Supabase から同期）';
 
   // 路線データをJSONファイルから読み込み
   // 初期表示: P1（新幹線）+ P2（JR在来）+ P3（大手私鉄）
