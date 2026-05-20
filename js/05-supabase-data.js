@@ -229,10 +229,24 @@ export function updateDateFilterUI() {
   }
 }
 
+// v238: ヘッダ (h-pct/h-ln) とマイページ完乗率カードで数字がズレる問題の修正。
+// 原因: localStorage の `norireco_trips` には過去ログインの他ユーザー trip や
+// user_id 未設定の古い trip が残留しているケースがある。マイページは Supabase 側で
+// `user_id=eq.{uid}` フィルタしているため自分の trip だけだが、ヘッダ用の
+// applyDateFilter / loadRiddenSegsFromStorage は localStorage を生で読んでいた。
+// 対応: ログイン中なら `trip.user_id === uid` のみ採用 (未ログイン時は全件を許容)。
+function filterTripsByCurrentUser(trips) {
+  const uid = currentUserId();
+  if (!uid) return trips; // 未ログイン: localStorage の全件 (ガイド用)
+  return trips.filter(t => !t.user_id || t.user_id === uid);
+}
+
 function applyDateFilter() {
   let trips = [];
   try { trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]'); } catch(e) {}
   // v234: localStorage が空なら空配列 (旧 RIDDEN_SEGS_STATIC フォールバックは撤去)
+  // v238: 自分の user_id でフィルタ (マイページと数字を揃えるため)
+  trips = filterTripsByCurrentUser(trips);
   let segs;
   if (trips.length === 0) {
     segs = [];
@@ -244,14 +258,17 @@ function applyDateFilter() {
   RIDDEN_SEGS.length = 0;
   segs.forEach(s => RIDDEN_SEGS.push(s));
   NORIRECO.rideRecord.rebuild();
-  // 地図再描画
+  // v238: updateOverlays は map.instance に依存しない (h-pct / h-ln / ms-* の
+  // DOM テキスト更新のみ) ため、地図初期化前 or マイページタブ滞在中でも
+  // ヘッダ完乗率が古い値に固定される問題を回避するため、ブロック外で常に呼ぶ。
+  try { updateOverlays(); } catch(e) { /* DOM 要素未生成期は無視 */ }
+  // 地図再描画は map.instance がある場合のみ
   if (NORIRECO.map.instance && typeof dotLayerRef !== 'undefined' && dotLayerRef) {
     allLayers.forEach(l => { try { NORIRECO.map.instance.removeLayer(l); } catch(e){} });
     allLayers.length = 0;
     dotLayerRef.clearLayers();
     if (typeof labelLayerRef !== 'undefined' && labelLayerRef) labelLayerRef.clearLayers();
     drawLines();
-    updateOverlays();
   }
 }
 
@@ -388,14 +405,15 @@ export async function syncFromSupabase() {
     newSegs.forEach(s => RIDDEN_SEGS.push(s));
     NORIRECO.rideRecord.rebuild();
 
-    // 地図を再描画
+    // v238: updateOverlays は map 初期化に依存しないので常に呼ぶ
+    try { updateOverlays(); } catch(e) {}
+    // 地図を再描画は map.instance がある場合のみ
     if (NORIRECO.map.instance && dotLayerRef) {
       allLayers.forEach(l => { try { NORIRECO.map.instance.removeLayer(l); } catch(e){} });
       allLayers.length = 0;
       dotLayerRef.clearLayers();
       if (labelLayerRef) labelLayerRef.clearLayers();
       drawLines();
-      updateOverlays();
     }
     updateStorageUI(trips.length, 'supabase');
     // Supabase 同期後にも自動獲得チェック
@@ -406,14 +424,20 @@ export async function syncFromSupabase() {
 }
 
 // localStorageから読み込み
+// v238: 起動時の初期 RIDDEN_SEGS にも user_id フィルタを適用。
+// ただしこの時点では currentUserId() がまだ undefined (auth 初期化前) のため、
+// 暫定的に user_id 未設定 trip だけは除外 (確実に anonymous/他ユーザーの遺物) し、
+// 自分かどうかの判定は applyDateFilter (setDateFilter / signIn 時) に任せる。
 function loadRiddenSegsFromStorage() {
   try {
-    const trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
+    let trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
     if (trips.length === 0) return null;
+    // 起動時は currentUserId 未確定だが、user_id 列が空文字/null の古い trip は除外
+    trips = trips.filter(t => t.user_id);
     const filtered = filterTripsByDate(trips);
     const segs = tripsToSegs(filtered);
     const f = window._tripDateFilter || { mode: 'all' };
-    console.log(`[乗レコ] localStorage: ${trips.length}件 [期間=${f.mode}] → ${filtered.length}件 → ${segs.length}区間`);
+    console.log(`[乗レコ] localStorage: ${trips.length}件 (user_id 付) [期間=${f.mode}] → ${filtered.length}件 → ${segs.length}区間`);
     return segs;
   } catch(e) {
     return null;

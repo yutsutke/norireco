@@ -36,6 +36,84 @@
 
 ---
 
+## 87. v238 — ヘッダ完乗率とマイページ完乗率の数字ズレ修正 (2026-05-20)
+
+### 背景
+
+ユーザー報告: 「今年のみ表示中」状態で
+- ヘッダ右上: **8%** / 79 系統
+- マイページ全記録: **4%** / 32 系統 (完乗 9)
+
+同じ「全記録」を見ているはずなのに 2 倍の差が出ていた。
+
+### 原因 (2 つ)
+
+#### A. `applyDateFilter` で localStorage を user_id フィルタなしで読んでいた
+
+`js/05-supabase-data.js:232-243`
+```js
+let trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
+// ↑ 過去ログインの他ユーザー trip や user_id 未設定の古い trip も全部読む
+```
+
+マイページは Supabase 側で `user_id=eq.{uid}` フィルタしているが、ヘッダ計算は localStorage を生で読むので localStorage に他ユーザー trip が混ざっていると数字が膨らむ。`syncFromSupabase` が走れば overwrite で綺麗になるが、起動直後やキャッシュ状態次第で残留することがある。
+
+#### B. `updateOverlays()` が map 初期化条件下でしか呼ばれていなかった (主犯)
+
+`js/05-supabase-data.js:248-255` (修正前):
+```js
+if (NORIRECO.map.instance && typeof dotLayerRef !== 'undefined' && dotLayerRef) {
+  ...
+  drawLines();
+  updateOverlays();  ← この if の中
+}
+```
+
+`updateOverlays()` は `h-pct` / `h-ln` / `ms-pct` などの DOM テキストを書き換えるだけで Leaflet 依存はない。にもかかわらず map 再描画ブロック内にあるため、マイページタブ滞在中に期間フィルタを変更すると `slRiddenSt` は更新されるがヘッダの数字は古い値に固定される。これが「ヘッダ 8% (全期間ベース) vs マイページ 4% (今年ベース)」の主因。
+
+### 修正内容
+
+#### 1. `applyDateFilter` に user_id フィルタ追加 ([js/05-supabase-data.js:232](js/05-supabase-data.js:232))
+
+```js
+function filterTripsByCurrentUser(trips) {
+  const uid = currentUserId();
+  if (!uid) return trips; // 未ログイン: localStorage の全件 (ガイド用)
+  return trips.filter(t => !t.user_id || t.user_id === uid);
+}
+```
+
+`!t.user_id` を許容するのは、ログイン前に作成された自分の trip (user_id 未設定) を排除しないため。他ユーザーの trip は `t.user_id === uid` で確実に弾く。
+
+#### 2. `loadRiddenSegsFromStorage` で user_id 未設定 trip を除外 ([js/05-supabase-data.js:425](js/05-supabase-data.js:425))
+
+起動時は `currentUserId()` がまだ未確定なので、確実に anonymous/遺物と判別できる `user_id === null/undefined` だけを排除。
+
+#### 3. `updateOverlays()` を map 再描画ブロックから出して常に呼ぶ ([js/05-supabase-data.js:248](js/05-supabase-data.js:248))
+
+```js
+// 修正後:
+try { updateOverlays(); } catch(e) {}
+if (NORIRECO.map.instance && dotLayerRef) {
+  ... // 地図再描画 (map.instance がある場合のみ)
+  drawLines();
+}
+```
+
+`syncFromSupabase` も同様に修正 ([js/05-supabase-data.js:408](js/05-supabase-data.js:408))。
+
+### バージョン番号
+
+v238 (Phase 3.8 後半 §87)
+
+### 落とし穴メモ
+
+- `updateOverlays` を unconditional に呼ぶときは `try/catch` 必須 (DOM 要素 `h-pct` が未生成な瞬間がありうる)
+- user_id フィルタは `!t.user_id || t.user_id === uid` の OR 条件。`!t.user_id` を許容しないと、Magic Link 認証完了前に手動記録した trip が消える
+- ヘッダ計算とマイページ計算は将来的に同じ関数ベースに統一すべき (今は片方が `globalStats() → slRiddenSt`、もう片方が `collect() → trip.segments` で経路が違う)。とはいえ slRiddenSt は地図描画にも使われるため、無理に統一すると影響範囲が広い
+
+---
+
 ## 86. v237 — OGP 日本地図を Natural Earth ベース 47 都道府県境界に置換 (2026-05-20)
 
 ### 背景

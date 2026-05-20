@@ -6,7 +6,7 @@
 ---
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v237 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v238 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13c-..` ES Modules (v195〜v225 で全 18 ファイル `<script type="module">` + `import`/`export` 化完了)
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
@@ -14,7 +14,8 @@
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **完乗率**: ユニーク駅単位に統一 (v235) — ヘッダ「完乗率 X%」と マイページ「全記録完乗率」が一致、「公式完乗率」は GPS 認証のみ
 
-**直近の作業 (v228〜v237)**:
+**直近の作業 (v228〜v238)**:
+- v238: ヘッダ完乗率 (h-pct/h-ln) とマイページ完乗率の数字ズレ修正。(A) `applyDateFilter` で localStorage を user_id フィルタ、(B) `updateOverlays()` を map 再描画ブロックから出して常に呼ぶ (期間フィルタ変更時にマイページ滞在中だとヘッダが古い値に固定される問題)
 - v237: OGP 日本地図を Natural Earth ベース 47 都道府県境界に置換。`scripts/build-japan-geo.js` で dataofjapan/land を Douglas-Peucker 簡略化 (tolerance 0.02 deg) → `js/share-japan-geo.js` (59KB) を export。本州が自己交差して破綻していた v236 の 4 島粗ポリゴンを撤去
 - v236: シェア機能 MVP — `js/14-share-ogp.js` で Canvas 1200×630 の OGP 画像を生成 (日本地図 + 乗車区間 + 完乗率/駅/系統/距離)。マイページ完乗率カード直下に「📸 シェア画像を作成」ボタン。ダウンロード + `navigator.share` (画像対応端末) + X intent fallback。verified ガードは未実装 (`users.share_status` + RLS 強化と同時着手予定)
 
