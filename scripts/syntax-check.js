@@ -47,6 +47,7 @@ const FILES = [
   '13b-trips',
   '13c-lines',
   '14-share-ogp',
+  'share-japan-geo',
 ];
 
 let okCount = 0;

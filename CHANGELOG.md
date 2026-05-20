@@ -36,6 +36,84 @@
 
 ---
 
+## 86. v237 — OGP 日本地図を Natural Earth ベース 47 都道府県境界に置換 (2026-05-20)
+
+### 背景
+
+v236 で実装した OGP 画像生成の日本地図シルエットが「45 頂点の 4 島ポリゴン (本州・北海道・九州・四国)」だったため、本州が自己交差して塗りつぶしが破綻していた (ユーザー報告のスクショで明白)。
+
+業界の解法を調査:
+- Strava: Mapbox Static API (商用、月 5 万 req 無料)
+- 駅メモ! / 鉄レコ: 自前の簡略化 GeoJSON
+- 乗りつぶしオンライン: 都道府県別 SVG パス
+- StationGraph: OpenStreetMap タイル
+
+乗レコのプロダクト不変原則 (外部依存最小化、無料配信維持) と布石ポリシー (ベンダーロックイン回避) を考慮し、**自前 GeoJSON 埋め込み** (Option A) を採用。
+
+### 変更内容
+
+#### 1. `scripts/build-japan-geo.js` 新規作成 (118 行)
+
+- `dataofjapan/land/japan.geojson` (12.7MB, 47 都道府県境界, public domain) を fetch
+- 自前実装の **Douglas-Peucker (RDP)** で簡略化 (tolerance 0.02 deg ≈ 2km)
+- 8km 未満の小島は捨てる (OGP 1200×630 では点にもならない)
+- [lon,lat] → [lat,lon] に並べ替え + 小数 3 桁に丸めて出力
+- 出力: 80,370 → 3,482 points (4.3%)、ファイル 12.7MB → **59KB** (200倍圧縮)
+
+```bash
+node scripts/build-japan-geo.js
+# → js/share-japan-geo.js (59KB) を生成
+```
+
+#### 2. `js/share-japan-geo.js` AUTO-GENERATED (59KB)
+
+```js
+export const JAPAN_PREFS = [
+  { name: '北海道', polygons: [[[lat,lon], ...], ...] },
+  ...  // 47 件
+];
+window.JAPAN_PREFS = JAPAN_PREFS;
+```
+
+各都道府県は `Polygon` (本州内陸の県) または `MultiPolygon` (北海道・長崎・鹿児島・東京都の島嶼) を持ち、`polygons[]` の長さで変わる。
+
+#### 3. `js/14-share-ogp.js` を `JAPAN_PREFS` ベースに書き換え
+
+- 旧: `JP_ISLANDS` (4 島粗ポリゴン) を撤去
+- 新: `getJapanPrefs()` で `window.JAPAN_PREFS` を取得し、47 都道府県を 2-pass 描画
+  - 1 pass: 全 polygon を陸地色 `#152434` で fill (隣接 polygon の境を消す)
+  - 2 pass: 全 polygon を境界線色 `#243d55` (lw 0.6) で stroke (都道府県境を細く)
+- 沖縄は OGP では bbox 外 (lat 30.5 以下) のため自動カット (Canvas clip)
+- 北方領土は dataofjapan/land に未含のため自動的に描画されない
+
+#### 4. ロード順 / アセット登録
+
+- `noritetsu-map.html`: `<script type="module" src="js/share-japan-geo.js">` を 13c → 14 の間に追加 (14-share-ogp.js が `window.JAPAN_PREFS` を参照するため先読み)
+- `sw.js`: CACHE_VERSION v236 → v237、STATIC_ASSETS に `./js/share-japan-geo.js` 追加
+- `scripts/syntax-check.js`: FILES に `share-japan-geo` 追加 (20/20 OK)
+
+### 期待される視覚的改善
+
+- 本州が自己交差せず、リアスのある海岸線がちゃんと出る
+- 47 都道府県の境界線が薄く見える (情報量増)
+- 北海道・四国・九州も正しい輪郭で描画
+- ファイル増分は SW キャッシュ後は無視できる (59KB)
+
+### 落とし穴メモ
+
+- **JAPAN_PREFS は window 公開必須**: ES Module の `export` だけだと 14-share-ogp.js から見えない。`window.JAPAN_PREFS = JAPAN_PREFS` も必須 (`share-japan-geo.js` の末尾で実施)
+- **ロード順**: `share-japan-geo.js` を `14-share-ogp.js` より先に読まないと、シェアボタン押下時に `getJapanPrefs()` が空配列を返す
+- **データソースのライセンス**: dataofjapan/land は public domain (CC0 相当)。出力ファイルの先頭にソース URL を AUTO-GENERATED コメントとして明記
+- **build スクリプトは手動実行**: package.json には足してない (年単位で変わらないデータのため、必要なときに `node scripts/build-japan-geo.js` で再生成)
+- **沖縄カット**: JP_BBOX を意図的に 30.5N から開始しており、沖縄本島 (26.5N) は OGP 画像に出ない。Phase 2 でインセット表示を検討
+- **fetch エラー時のフォールバックなし**: `window.JAPAN_PREFS` が空のとき OGP は地図なしで生成される (segments と海岸線がない状態)。実用上は SW プリキャッシュで救われる
+
+### バージョン番号
+
+v237 (Phase 3.8 後半 §86)
+
+---
+
 ## 85. v236 — シェア機能 MVP: OGP 画像生成 (Canvas) (2026-05-20)
 
 ### 背景

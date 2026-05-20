@@ -8,20 +8,15 @@
 const OGP_W = 1200;
 const OGP_H = 630;
 
-// 日本全国 bbox (固定) — 沖縄は別レイアウトで描く
+// 日本全国 bbox (固定) — 沖縄は OGP では切り落とし、メイン 4 島 + 主要離島を表示
 const JP_BBOX = { lat0: 30.5, lat1: 45.7, lon0: 128.5, lon1: 146.0 };
 
-// 4 島シンプル化ポリゴン (lat, lon) — noritetsu-log.html の ISLANDS と同等
-const JP_ISLANDS = [
-  // 本州
-  [[35.68,139.77],[35.55,139.88],[35.30,139.70],[35.18,136.90],[34.70,136.50],[34.50,135.10],[34.70,134.60],[34.85,134.25],[34.70,133.90],[34.55,133.60],[34.20,132.45],[34.00,131.90],[33.95,131.05],[34.05,130.85],[34.25,131.15],[34.80,132.10],[35.00,132.55],[35.30,133.20],[35.55,133.95],[35.80,135.00],[36.20,136.10],[36.65,137.20],[36.90,138.30],[37.30,138.85],[37.50,139.10],[37.90,139.50],[38.30,140.30],[38.90,141.15],[39.70,141.90],[40.20,142.00],[40.65,141.40],[40.90,140.80],[41.20,140.40],[41.40,140.20],[41.55,140.70],[41.10,141.40],[40.50,141.95],[39.80,141.95],[39.10,141.15],[38.25,140.90],[37.80,140.75],[36.80,140.65],[36.30,140.30],[35.75,140.35],[35.68,139.77]],
-  // 北海道
-  [[41.55,140.70],[42.00,140.95],[42.30,141.10],[42.60,141.40],[42.80,141.65],[43.10,141.35],[43.40,141.65],[43.65,142.00],[44.00,142.50],[44.40,143.20],[44.75,144.00],[44.35,144.60],[43.85,145.10],[43.50,145.45],[43.20,145.75],[43.00,145.55],[43.30,145.05],[43.60,144.65],[44.00,143.85],[43.70,143.30],[43.35,142.80],[43.00,142.30],[42.65,141.90],[42.30,141.60],[42.00,141.40],[41.80,141.00],[41.55,140.70]],
-  // 九州
-  [[33.95,131.05],[33.85,130.55],[33.60,130.25],[33.30,129.90],[33.00,129.70],[32.65,130.10],[32.45,130.70],[32.20,131.25],[31.60,130.55],[31.00,130.55],[31.20,131.10],[31.55,131.50],[32.05,131.90],[32.50,131.65],[32.90,131.00],[33.20,130.40],[33.55,130.90],[33.85,130.85],[33.95,131.05]],
-  // 四国
-  [[34.05,130.85],[34.20,132.45],[33.95,133.30],[33.50,133.55],[33.20,133.15],[32.95,132.55],[33.00,132.00],[33.30,131.50],[33.65,131.25],[34.05,130.85]],
-];
+// 47 都道府県境界ポリゴン: scripts/build-japan-geo.js が
+// dataofjapan/land/japan.geojson (public domain) を Douglas-Peucker (tol 0.02 deg)
+// で簡略化したものを js/share-japan-geo.js が export している (window.JAPAN_PREFS)。
+function getJapanPrefs() {
+  return (window.JAPAN_PREFS) || [];
+}
 
 function projToCanvas(lat, lon, bbox, x0, y0, w, h) {
   return {
@@ -78,19 +73,34 @@ function drawJapanMap(ctx, x0, y0, w, h, polylines) {
     ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
   }
 
-  // 4 島シルエット
+  // 47 都道府県シルエット (v237〜 Natural Earth ベース)
+  // 1 段目: 全 polygon を陸地色で fill (隣接 polygon の境を消す)
+  // 2 段目: 全 polygon を境界線色で stroke (都道府県境を細く)
+  const prefs = getJapanPrefs();
   ctx.fillStyle = '#152434';
-  ctx.strokeStyle = '#243d55';
-  ctx.lineWidth = 1.5;
-  JP_ISLANDS.forEach(pts => {
-    ctx.beginPath();
-    pts.forEach(([la, lo], i) => {
-      const p = projToCanvas(la, lo, JP_BBOX, x0, y0, w, h);
-      if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+  prefs.forEach(pref => {
+    pref.polygons.forEach(ring => {
+      ctx.beginPath();
+      ring.forEach(([la, lo], i) => {
+        const p = projToCanvas(la, lo, JP_BBOX, x0, y0, w, h);
+        if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+      });
+      ctx.closePath();
+      ctx.fill();
     });
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+  });
+  ctx.strokeStyle = '#243d55';
+  ctx.lineWidth = 0.6;
+  prefs.forEach(pref => {
+    pref.polygons.forEach(ring => {
+      ctx.beginPath();
+      ring.forEach(([la, lo], i) => {
+        const p = projToCanvas(la, lo, JP_BBOX, x0, y0, w, h);
+        if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+      });
+      ctx.closePath();
+      ctx.stroke();
+    });
   });
 
   // 乗車区間 polyline
