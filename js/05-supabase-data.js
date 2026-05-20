@@ -586,3 +586,8 @@ window.applyCustomDateFilter = applyCustomDateFilter;
 window.toggleUntilMonthFilter = toggleUntilMonthFilter;
 window.closeUntilMonthFilter = closeUntilMonthFilter;
 window.applyUntilMonthFilter = applyUntilMonthFilter;
+
+// v248: noritetsu-map.html の復元モーダル onclick="closeRestoreModal()" / "restoreFromJson(...)"
+//   が v225 以降 ReferenceError で無反応になっていた問題を修正 (HTML onclick はグローバル参照のため window 公開が必須)
+window.closeRestoreModal = closeRestoreModal;
+window.restoreFromJson = restoreFromJson;

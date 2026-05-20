@@ -36,6 +36,83 @@
 
 ---
 
+## 97. v248 — HTML onclick の window bridge 漏れ修正 (toggleRecordMode 他) (2026-05-20)
+
+### 背景
+
+ユーザー報告: 📝 (rec-btn FAB) を押しても無反応で手動記録できない。v246 で polyline click を抑制したが直っていない。スクショで「以前の問題化. クリックもタップもできない」。
+
+### 原因
+
+v225 (ES Modules stage 3) で `window.toggleRecordMode` 等を「`export` 経由に移行」として削除したが、`noritetsu-map.html` の rec-btn FAB が `onclick="toggleRecordMode()"` というインライン HTML onclick 属性で呼び出していたのを見落としていた。
+
+HTML の inline onclick はグローバル (window) スコープを参照するため、module 内の `export function` は見えない → ReferenceError で無反応。
+
+監査スクリプトで全 inline onclick と window bridge を突き合わせた結果、3 関数が漏れていた:
+
+```bash
+$ grep -oE 'onclick="[a-zA-Z_$][a-zA-Z0-9_$]*' noritetsu-map.html | sed 's/onclick="//' | sort -u > onclicks
+$ grep -oE 'window\.[a-zA-Z_$][a-zA-Z0-9_$]*' js/*.js | sed 's/.*window\.//' | sort -u > windows
+$ comm -23 onclicks windows
+→ closeRestoreModal
+→ restoreFromJson
+→ toggleRecordMode
+```
+
+(`if` / `this` は `onclick="if(event.target===this)..."` のパース誤検知)
+
+### 変更内容
+
+#### 1. `js/07-record-mode.js` 末尾 ([js/07-record-mode.js:1024](js/07-record-mode.js:1024))
+
+```js
+window.toggleRecordMode = toggleRecordMode;
+window.onRecordStationClick = onRecordStationClick;  // 既存
+```
+
+#### 2. `js/05-supabase-data.js` 末尾 ([js/05-supabase-data.js:591](js/05-supabase-data.js:591))
+
+```js
+// v248: 復元モーダル onclick="closeRestoreModal()" / "restoreFromJson(...)"
+window.closeRestoreModal = closeRestoreModal;
+window.restoreFromJson = restoreFromJson;
+```
+
+#### 3. 検証
+
+修正後の差分:
+```bash
+$ comm -23 onclicks windows
+→ if    # 誤検知
+→ this  # 誤検知
+```
+
+クリーン。
+
+### 期間: v225 〜 v247 までずっと壊れていた
+
+- **2026 年 1 月〜春**: ユーザーは GPS 記録 (📍) を主に使っていたため、📝 手動記録の不具合に気付かなかった可能性が高い
+- **2026-05-20 セッション**: v245 で地図 polyline click を実装した際にユーザーが手動記録を試して発覚
+
+### v243-v247 の polyline click 関連は無罪
+
+v245 で path click が記録モードと干渉する別バグ (v246 で修正) があったが、今回の「📝 が押せない」は v245 のせいではなく v225 から潜在していた別問題。
+
+### 落とし穴メモ (今回の教訓)
+
+- **ES Modules 化で window bridge を撤去するときは、HTML inline onclick も grep で確認する**:
+  ```bash
+  grep -oE 'onclick="[a-zA-Z_$][a-zA-Z0-9_$]*' *.html | ... | comm -23 ... windows
+  ```
+- **これを CI に組み込むなら**: `scripts/syntax-check.js` に「HTML onclick で参照されているが window 公開されていない関数」検出を追加検討
+- **v219→v220 で `IS_TOUCH` const bridge 漏れ → LINES 描画停止の前例**: 同じ轍を踏んだ。bridge 監査チェックリストに「HTML inline event handler」も追加
+
+### バージョン番号
+
+v248 (Phase 3.8 後半 §97)
+
+---
+
 ## 96. v247 — 系統色カスタマイズの Supabase 同期 (デバイス間共有) (2026-05-20)
 
 ### 背景

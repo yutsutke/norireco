@@ -1016,5 +1016,10 @@ export function fitToRiddenLines(){
 // v217 stage 2: 04/06/08 (module) / 02 (classic) などから bare 呼出される関数の window 公開
 // v225 stage 3: toggleRecordMode / redrawAllLinesAfterTripChange / showRecordToast /
 // fitToRiddenLines は `export` 経由に移行 (window bridge 撤去)。
+// v248: toggleRecordMode は noritetsu-map.html の rec-btn FAB の onclick="toggleRecordMode()"
+//   から呼ばれており、HTML onclick はグローバルスコープを参照するため window 公開が必須。
+//   v225 で撤去したのは module 内 import の方を意図しており、HTML onclick 側を見落とし。
+//   結果として v225 〜 v247 の間、📝 手動記録 FAB が無反応 (ReferenceError) になっていた。
 // onRecordStationClick は 07 内の HTML 文字列 onclick (line 252) で呼ばれるため window 維持。
+window.toggleRecordMode = toggleRecordMode;
 window.onRecordStationClick = onRecordStationClick;

@@ -6,7 +6,7 @@
 ---
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v247 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v248 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13c-..` ES Modules (v195〜v225 で全 18 ファイル `<script type="module">` + `import`/`export` 化完了)
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
@@ -14,7 +14,8 @@
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **完乗率**: ユニーク駅単位に統一 (v235) — ヘッダ「完乗率 X%」と マイページ「全記録完乗率」が一致、「GPS 記録 完乗率」(旧 公式完乗率、v240 で改名) は GPS 認証のみ
 
-**直近の作業 (v228〜v247)**:
+**直近の作業 (v228〜v248)**:
+- v248: HTML inline onclick の window bridge 漏れ修正。v225 (ES Modules stage 3) で `window.toggleRecordMode` 等を撤去したが noritetsu-map.html の `onclick="toggleRecordMode()"` を見落とし、📝 手動記録が無反応だった (= v225〜v247 で潜在的に壊れていた)。`closeRestoreModal` / `restoreFromJson` も同様。grep -oE で全件監査クリア
 - v247: 系統色カスタマイズの Supabase 同期 — 別端末でも色設定が引き継がれる。`norireco_line_color_overrides` 専用テーブル + RLS。set/reset/resetAll で fire-and-forget upsert/delete、SIGNED_IN で pull → localStorage に merge (Supabase 優先、ローカル独自は bulk push)。`supabase/migrations/v247_line_color_overrides.sql` を Supabase Dashboard で要実行
 - v246: v245 リグレッション修正 — 記録モード・メモモード中も polyline click ハンドラが発火して色モーダルが開いてしまい、駅選択ができなかった (= 手動記録不可)。`NORIRECO.record.mode` / `NORIRECO.map.memoMode` チェックで早期 return。ESC キーで色モーダルを閉じる handler も追加
 - v245: 地図上の路線クリック → 色変更モーダル。系統名・現在色・color picker・元色復帰ボタンを表示。`attachLineClick` で 8 種類のポリラインに click ハンドラを attach、stopPropagation で map クリック誤発火を抑制
