@@ -36,6 +36,78 @@
 
 ---
 
+## 93. v244 — 駅マーカーも色 override に追従 (2026-05-20)
+
+### 背景
+
+v243 で系統色をユーザーカスタマイズできるようにしたが、ユーザー報告:
+> 路線の色しかかわらないね
+
+路線ポリラインの色は変わるのに、**駅マーカー (ドット・パイチャート) の色は古いまま**だった。
+
+### 原因
+
+`merged_stations.json` の各駅 entry に `colors: [#RRGGBB, ...]` という**事前計算キャッシュ**が含まれていて、`drawStationsLayer` がそれを優先して読んでいた:
+
+```js
+// 旧 (v243 まで):
+const colors = ms.colors && ms.colors.length === nLines ? ms.colors : ms.lines.map(...);
+```
+
+`ms.colors` は Python 等のビルドスクリプトで `service_lines_master.json` の color を事前焼き込みしたもの。実行時に `sl.color` を override してもキャッシュは古いまま。
+
+### 修正内容
+
+#### 1. `drawStationsLayer` 冒頭で `Map<lineId, color>` 構築 ([js/08-rendering.js:584](js/08-rendering.js:584))
+
+```js
+const _slColorById = new Map();
+for (const sl of NORIRECO.data.SERVICE_LINES) _slColorById.set(sl.id, sl.color);
+```
+
+633 系統 × 1 回 = O(633) の初期化。駅ループ内では `_slColorById.get(lid)` の O(1) ルックアップ。
+
+#### 2. 駅マーカー色取得を Map 経由に ([js/08-rendering.js:639](js/08-rendering.js:639))
+
+```js
+// 旧: ms.colors キャッシュ優先
+// 新: 常に SERVICE_LINES から動的取得
+const colors = ms.lines.map(lid => _slColorById.get(lid) || '#888');
+```
+
+#### 3. キャラモーダルの系統リスト色も修正 ([js/08-rendering.js:810](js/08-rendering.js:810))
+
+```js
+// 旧: const color = (ms.colors && ms.colors[idx]) || (sl && sl.color) || '#888';
+// 新: const color = (sl && sl.color) || '#888';
+```
+
+`ms.colors` の参照を廃止。`sl.color` 1 本に統一。
+
+### 影響範囲
+
+色 override が即時反映されるようになった箇所:
+- 駅ドット (単色 circleMarker / divIcon)
+- 駅パイチャート (多系統駅の扇形分割)
+- キャラモーダル内の乗り入れ系統リスト
+- 既に v243 で動いていた: 路線ポリライン、路線一覧プログレスバー、OGP 画像
+
+### パフォーマンス
+
+`Map` 構築は `drawStationsLayer` 呼出時に 1 度だけ。
+旧コードは 9017 駅 × 平均 5 系統 × `Array.find` (O(633)) = **28M 比較** 相当だったが、新コードは Map 初期化 633 + ルックアップ 45085 = **45K アクセス** に。むしろ高速化。
+
+### 落とし穴メモ
+
+- **`merged_stations.json` の `colors` 列は dead column 化**: ビルドスクリプトで再生成不要 (元 colors は無視されるため)。将来的に新ビルド時に `colors` 列を出さない選択肢もあるが、ファイルサイズ削減効果は小さい (1.8MB → 1.5MB 程度予想) ので緊急性なし
+- **`_slColorById` がスナップショット**: drawStationsLayer 内で構築するため、その関数の実行中は固定。色変更すると triggerReRender が drawStationsLayer を呼び直すので問題なし
+
+### バージョン番号
+
+v244 (Phase 3.8 後半 §93)
+
+---
+
 ## 92. v243 — 系統色のユーザーカスタマイズ機能 (2026-05-20)
 
 ### 背景

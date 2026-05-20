@@ -581,6 +581,12 @@ function drawStationsLayer() {
   if (!NORIRECO.data.MERGED_STATIONS || !NORIRECO.data.MERGED_STATIONS.length) return;
   if (!NORIRECO.data.SERVICE_LINES || !NORIRECO.data.SERVICE_LINES.length) return;
 
+  // v244: SERVICE_LINES id → 現在の color の Map を 1 度だけ構築。
+  //   駅ループ内で毎回 .find する代わりに O(1) ルックアップ。
+  //   ユーザーが系統色を override しても直近の sl.color が反映される。
+  const _slColorById = new Map();
+  for (const sl of NORIRECO.data.SERVICE_LINES) _slColorById.set(sl.id, sl.color);
+
   for (const ms of NORIRECO.data.MERGED_STATIONS) {
     const nLines = (ms.lines || []).length;
     if (nLines === 0) continue;
@@ -635,11 +641,11 @@ function drawStationsLayer() {
     // 駅キャラ (訪問1回以上の駅にのみ表示)
     const character = (visits > 0) ? getStationCharacter(ms.name) : null;
 
-    // 色 (営業系統色を優先)
-    const colors = ms.colors && ms.colors.length === nLines ? ms.colors : ms.lines.map(lid => {
-      const sl = NORIRECO.data.SERVICE_LINES.find(x => x.id === lid);
-      return sl ? sl.color : '#888';
-    });
+    // 色: SERVICE_LINES から動的に取得 (v243 で系統色のユーザーカスタマイズに対応した際、
+    //      merged_stations.json の事前計算キャッシュ ms.colors が override に追従しなかったため、
+    //      v244 で ms.colors は読まず常に SERVICE_LINES.color を見るように変更。
+    //      _slColorById は drawStationsLayer 冒頭で 1 度だけ構築する Map<id, color>。
+    const colors = ms.lines.map(lid => _slColorById.get(lid) || '#888');
 
     // 描画方針:
     //   - 多系統駅 (nLines>1) 平常: 単色ドット + パイ (パイは別閾値で遅出し)
@@ -807,7 +813,8 @@ export function openCharModal(ms, character) {
   // 乗り入れ系統リスト
   const slRows = (ms.lines || []).map((lid, idx) => {
     const sl = NORIRECO.data.SERVICE_LINES.find(x => x.id === lid);
-    const color = (ms.colors && ms.colors[idx]) || (sl && sl.color) || '#888';
+    // v244: ms.colors の事前計算キャッシュは色 override に追従しないため SERVICE_LINES から動的に取得
+    const color = (sl && sl.color) || '#888';
     const name = sl ? sl.name : lid;
     const rs = slRiddenSt[lid];
     const ridden = rs && rs.has(ms.name);
