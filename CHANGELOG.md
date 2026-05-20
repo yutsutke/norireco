@@ -36,6 +36,76 @@
 
 ---
 
+## 94. v245 — 地図クリックで系統色を変更 (2026-05-20)
+
+### 背景
+
+v243 で系統色のユーザーカスタマイズ機能を実装したが、路線一覧タブまで遷移して該当系統を探すのが面倒。地図上で目に入った路線をそのままクリックして色変更できるとずっと自然。
+
+### 仕様
+
+1. **地図上の路線ポリラインをクリック** → 色変更モーダル展開
+2. モーダルに表示: 系統名 / 運営会社 / 現在の色 (HEX) / color picker / (override 中なら元の色も)
+3. color picker で色変更 → localStorage 保存 + 地図/駅マーカー/路線一覧/OGP に即時反映
+4. override 中の系統には「↺ 元の色に戻す」ボタン表示
+5. 「閉じる」or モーダル外をタップで閉じる
+
+### 変更内容
+
+#### 1. `js/15-color-overrides.js` に色変更モーダルを追加
+
+- `openLineColorEditor(sl)` (export) — モーダルを表示し、`sl` の情報・現在色を反映
+- `ensureLineColorModal()` — 初回呼出時に DOM 生成、event listener 登録
+- `refreshModalDisplay(sl)` — 色変更直後にモーダル内表示・リセットボタン出し分けを更新
+- `closeLineColorModal()` — モーダルを閉じる
+- `window.NORIRECO.colorOverrides.openEditor` として公開 (08 から循環 import を避けるため)
+
+モーダルは `share-ogp` と同じパターンで `<body>` に動的 append。既存 `.memo-modal` / `.memo-sheet` の CSS を流用。
+
+#### 2. `js/08-rendering.js` に `attachLineClick(layer, sl)` helper 追加
+
+```js
+function attachLineClick(layer, sl) {
+  if (!layer || !sl) return;
+  layer._norireco_sl_id = sl.id;
+  layer.on('click', (e) => {
+    L.DomEvent.stopPropagation(e);
+    if (window.NORIRECO && NORIRECO.colorOverrides && NORIRECO.colorOverrides.openEditor) {
+      NORIRECO.colorOverrides.openEditor(sl);
+    }
+  });
+}
+```
+
+各路線描画箇所で全 polyline (glow / main / bg / hover) に attach:
+- `drawServiceLineBase` 内: 未乗車の glow + main、デスクトップ用 hover、乗車済の bg、デスクトップ用 hover
+- `drawSlRiddenRun`: glow + main (乗車済区間)
+- `drawSlRiddenWrap`: glow + main (循環線の折返し区間)
+
+`stopPropagation` で Leaflet の map クリックを抑制 (背景地図のクリックで何か起きるのを防ぐ)。
+
+#### 3. ロードコンテキスト
+
+15-color-overrides が drawLines を import している (循環依存避け) ため、08-rendering 側からは `window.NORIRECO.colorOverrides.openEditor` で参照する。
+
+### UX 上の注意
+
+- **重なる路線**: 駅密集地で複数路線が同じ座標に走る場合、Leaflet は重なり順 (z-index) で最前面のものを優先発火。priority 順 (新幹線=0 → 地方=4) で描かれているので、新幹線が最上層になりがち。次のクリックで別系統が反応することもある (回避不能、想定内)
+- **モバイル**: tap target は polyline weight に依存。glow (weight 10) があるので 10px は確保
+- **transparent hover**: `opacity:0` でも Leaflet polyline はデフォルトで interactive=true、click は発火する
+
+### 落とし穴メモ
+
+- **循環 import 回避**: 15 → 08 は import あり (drawLines 用)。08 → 15 はやりたくないので window 経由で openEditor を呼ぶ
+- **モーダル内の color picker**: change イベントは値確定時のみ。input イベント (ドラッグ中) は使わない (drawLines 連発回避)
+- **stopPropagation の必要性**: 将来「マップ クリックで現在地検索」等を追加した場合、polyline クリックがバブルすると誤発火する。今はそのような handler は無いが防衛的
+
+### バージョン番号
+
+v245 (Phase 3.8 後半 §94)
+
+---
+
 ## 93. v244 — 駅マーカーも色 override に追従 (2026-05-20)
 
 ### 背景

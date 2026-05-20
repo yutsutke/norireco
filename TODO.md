@@ -6,7 +6,7 @@
 ---
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v244 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v245 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13c-..` ES Modules (v195〜v225 で全 18 ファイル `<script type="module">` + `import`/`export` 化完了)
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
@@ -14,7 +14,8 @@
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **完乗率**: ユニーク駅単位に統一 (v235) — ヘッダ「完乗率 X%」と マイページ「全記録完乗率」が一致、「GPS 記録 完乗率」(旧 公式完乗率、v240 で改名) は GPS 認証のみ
 
-**直近の作業 (v228〜v244)**:
+**直近の作業 (v228〜v245)**:
+- v245: 地図上の路線クリック → 色変更モーダル。系統名・現在色・color picker・元色復帰ボタンを表示。`attachLineClick` で 8 種類のポリラインに click ハンドラを attach、stopPropagation で map クリック誤発火を抑制
 - v244: v243 で駅マーカー (パイチャート・ドット) が色 override に追従していなかった bug 修正。merged_stations.json の事前計算 `colors` キャッシュを参照していたため。drawStationsLayer で Map<lineId, color> を都度構築して動的に SERVICE_LINES.color を引くよう変更
 - v243: 系統色のユーザーカスタマイズ機能。路線一覧タブの input[type=color] で色変更 → localStorage 保存 + 地図/パイ/凡例/OGP に即時反映。↺ リセットボタンで元色に戻せる。Supabase 同期は次フェーズ
 - v242: REGION_CENTER の同名駅誤マッチ修正。`Set('高松')` だと石川県の北陸鉄道高松駅も中央駅扱いされていた → `Map(name → {lat, lon})` + 約 50km 圏内の近接判定に変更

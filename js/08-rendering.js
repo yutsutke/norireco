@@ -457,6 +457,21 @@ function getServiceLinePriority(sl) {
   return 3;
 }
 
+// v245: 路線クリック → 系統色変更モーダル
+// 各 L.polyline に click ハンドラを attach。stopPropagation で map クリックを抑制。
+// 15-color-overrides.js の openLineColorEditor を window 経由で呼ぶ
+// (循環 import 回避、15 側は drawLines を import しているため)。
+function attachLineClick(layer, sl) {
+  if (!layer || !sl) return;
+  layer._norireco_sl_id = sl.id;
+  layer.on('click', (e) => {
+    L.DomEvent.stopPropagation(e);
+    if (window.NORIRECO && NORIRECO.colorOverrides && NORIRECO.colorOverrides.openEditor) {
+      NORIRECO.colorOverrides.openEditor(sl);
+    }
+  });
+}
+
 // 営業系統 1本のポリライン描画
 // 表示モード (window._mapDisplayMode):
 //   'both'     — 通常 (未乗車=点線 / 乗車済=点線+solid run)
@@ -492,6 +507,7 @@ function drawServiceLineBase(sl) {
     });
     glow._norireco_priority = priority;
     main._norireco_priority = priority;
+    attachLineClick(glow, sl); attachLineClick(main, sl);
     allLayers.push(glow, main);
     if (visible) { glow.addTo(NORIRECO.map.instance); main.addTo(NORIRECO.map.instance); }
     if (!IS_MOBILE) {
@@ -501,6 +517,7 @@ function drawServiceLineBase(sl) {
           {className:'norireco-tooltip',sticky:true,offset:[10,0]}
         );
       hover._norireco_priority = priority;
+      attachLineClick(hover, sl);
       allLayers.push(hover);
       if (visible) hover.addTo(NORIRECO.map.instance);
     }
@@ -513,6 +530,7 @@ function drawServiceLineBase(sl) {
         dashArray: '6 5', lineCap: 'round', renderer: canvas
       });
       bg._norireco_priority = priority;
+      attachLineClick(bg, sl);
       allLayers.push(bg);
       if (visible) bg.addTo(NORIRECO.map.instance);
     }
@@ -523,6 +541,7 @@ function drawServiceLineBase(sl) {
           {className:'norireco-tooltip',sticky:true,offset:[12,0]}
         );
       hover._norireco_priority = priority;
+      attachLineClick(hover, sl);
       allLayers.push(hover);
       if (visible) hover.addTo(NORIRECO.map.instance);
     }
@@ -557,6 +576,7 @@ function drawSlRiddenRun(sl, fromIdx, toIdx, canvas, priority, visible) {
   glow._norireco_priority = priority;
   main._norireco_priority = priority;
   hi._norireco_priority = priority;
+  attachLineClick(glow, sl); attachLineClick(main, sl);
   allLayers.push(glow, main, hi);
   if (visible) { glow.addTo(NORIRECO.map.instance); main.addTo(NORIRECO.map.instance); hi.addTo(NORIRECO.map.instance); }
 }
@@ -571,6 +591,7 @@ function drawSlRiddenWrap(sl, canvas, priority, visible) {
   glow._norireco_priority = priority;
   main._norireco_priority = priority;
   hi._norireco_priority = priority;
+  attachLineClick(glow, sl); attachLineClick(main, sl);
   allLayers.push(glow, main, hi);
   if (visible) { glow.addTo(NORIRECO.map.instance); main.addTo(NORIRECO.map.instance); hi.addTo(NORIRECO.map.instance); }
 }
