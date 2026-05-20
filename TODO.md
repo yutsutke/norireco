@@ -61,7 +61,7 @@
 
 - [ ] **後追い記録モードの拡張（駅メモ + Supabase 列追加）**
   - v178 で「乗車日 / 出発 / 到着」の手動入力対応済（`date_precision='minute'`）
-  - v181 で `trip.notes` (text) / `trip.delay_minutes` (int) を確認モーダル + マイページに実装済（CHANGELOG_PHASE3.8-early.md §30）
+  - v181 で `trip.notes` (text) / `trip.delay_minutes` (int) を確認モーダル + マイページに実装済
     - 現状は Supabase 送信時に `tripForSupabase()` で除外、localStorage のみ保存
     - **Supabase スキーマ追加 SQL** を実行後、workaround を撤去:
       ```sql
@@ -137,7 +137,7 @@
   - 横浜市営・京都市営・京福電気鉄道・埼玉高速・横浜高速鉄道 ほか
   - `service_lines_master.json` 内の placeholder（`op_` の後にアンダースコア連続）を本来の id（例: `yokohama_city`, `kyoto_city`, `keifuku`, `saitama_rapid`）に置換
   - 影響: `detectServiceLineGroup` が地域グループを正しく付けられず「首都圏・ローカル」「その他」にフォールバックしている
-  - 西武池袋線駅順 / 箱根登山系 / 伊豆箱根 の 4 件は v173 で対応済（`CHANGELOG_PHASE3.8-early.md §22`）
+  - 西武池袋線駅順 / 箱根登山系 / 伊豆箱根 の 4 件は v173 で対応済
 
 - [ ] **直通系統の追加**（service_lines_master.json）
   - F ライナー（元町中華街〜小川町/小手指）
