@@ -36,6 +36,69 @@
 
 ---
 
+## 91. v242 — 同名駅の誤マッチ修正 (REGION_CENTER の緯度経度判定化) (2026-05-20)
+
+### 背景
+
+v241 でリリースした「リージョン中央駅 10 駅を tier 7 で常時表示」機能で、**石川県の高松駅 (北陸鉄道) が金沢の隣にも tier 7 として表示**されていたとユーザー報告。
+
+### 原因
+
+`REGION_CENTER_STATIONS` を `Set('高松', ...)` で持っていたため、名前だけで判定 → 同名駅 (北陸鉄道高松駅) も誤マッチしていた。
+
+### 修正内容
+
+`REGION_CENTER_STATIONS` を `Set` → `Map(name → {lat, lon})` に変更し、緯度経度の近接判定を追加 ([js/08-rendering.js:202-232](js/08-rendering.js:202)):
+
+```js
+const REGION_CENTER_STATIONS = new Map([
+  ['札幌',   { lat: 43.07, lon: 141.35 }],
+  ['仙台',   { lat: 38.26, lon: 140.88 }],
+  ['東京',   { lat: 35.68, lon: 139.77 }],
+  ['新宿',   { lat: 35.69, lon: 139.70 }],
+  ['金沢',   { lat: 36.58, lon: 136.65 }],
+  ['名古屋', { lat: 35.17, lon: 136.88 }],
+  ['大阪',   { lat: 34.70, lon: 135.50 }],
+  ['広島',   { lat: 34.40, lon: 132.48 }],
+  ['高松',   { lat: 34.35, lon: 134.05 }],  // ← JR高松駅、北陸鉄道高松駅(36.83, 136.74)は弾かれる
+  ['博多',   { lat: 33.59, lon: 130.42 }],
+]);
+
+function isRegionCenter(name, lat, lon) {
+  const c = REGION_CENTER_STATIONS.get(name);
+  if (!c || lat == null || lon == null) return false;
+  return Math.abs(lat - c.lat) < 0.5 && Math.abs(lon - c.lon) < 0.5;  // 約 50km 圏内
+}
+
+function stationTier(nLines, name, lat, lon) { // ← 引数追加
+  if (name && isRegionCenter(name, lat, lon)) return 7;
+  ...
+}
+```
+
+callsite ([js/08-rendering.js:574](js/08-rendering.js:574)):
+```js
+const baseTier = stationTier(nLines, ms.name, ms.lat, ms.lon);
+```
+
+### トレランス選定
+
+`0.5 度 ≈ 50km` は:
+- canonical 座標と実駅座標 (MERGED_STATIONS の緯度経度) のズレ吸収には十分
+- 同一都市内の駅でも問題なくマッチ
+- 異なる都道府県の同名駅 (例: 北陸高松駅 36.83N vs 香川高松駅 34.35N、緯度差 2.48 度 ≈ 250km) は確実に弾ける
+
+### 落とし穴メモ
+
+- **SUPER_MEGA_STATIONS は据置**: 「東京」「博多」等の SUPER_MEGA 7 駅は同名駅の存在可能性が低い (北陸博多駅とかは無い) ため Set のまま維持。将来同名衝突が報告されたら同じパターンに移行
+- **canonical 座標**: Wikipedia から拾った主要 JR 駅の中心座標。MERGED_STATIONS 側の駅座標 (国土地理院数値地図) と数百メートルズレがあり得るので、トレランスは余裕を持って 50km にしている
+
+### バージョン番号
+
+v242 (Phase 3.8 後半 §91)
+
+---
+
 ## 90. v241 — 9 地域の中央駅 10 駅を tier 7 で日本全国ビューから表示 (2026-05-20)
 
 ### 背景

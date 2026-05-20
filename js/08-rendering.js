@@ -199,17 +199,30 @@ const SUPER_MEGA_STATIONS = new Set([
 ]);
 
 // v241: 9 地域の最主要駅 (1〜2 駅) — 日本全国ビュー (z >= 4) から常時表示。
+// v242: 同名駅の誤マッチ対策で Set → Map(name → {lat, lon}) に変更。
+//   例: 高松駅は香川県 (JR四国) と石川県 (北陸鉄道) に存在し、名前だけでは
+//   北陸の高松駅まで中央駅扱いされてしまうため、緯度経度の近接判定で曖昧性解消。
 // 各地域の「ここを起点に旅程が組まれる」中央駅を選定。SUPER_MEGA 7 駅では
 // 関東(新宿)・北陸(金沢)・近畿(大阪)・四国(高松) が抜けていたため tier 7 として補完。
-// 北海道=札幌 / 東北=仙台 / 関東=東京・新宿 / 北陸=金沢 / 東海=名古屋
-// 近畿=大阪 / 中国=広島 / 四国=高松 / 九州=博多
-const REGION_CENTER_STATIONS = new Set([
-  '札幌', '仙台',
-  '東京', '新宿',
-  '金沢', '名古屋',
-  '大阪', '広島',
-  '高松', '博多',
+const REGION_CENTER_STATIONS = new Map([
+  ['札幌',   { lat: 43.07, lon: 141.35 }],  // 北海道
+  ['仙台',   { lat: 38.26, lon: 140.88 }],  // 東北
+  ['東京',   { lat: 35.68, lon: 139.77 }],  // 関東
+  ['新宿',   { lat: 35.69, lon: 139.70 }],  // 関東
+  ['金沢',   { lat: 36.58, lon: 136.65 }],  // 北陸
+  ['名古屋', { lat: 35.17, lon: 136.88 }],  // 東海
+  ['大阪',   { lat: 34.70, lon: 135.50 }],  // 近畿
+  ['広島',   { lat: 34.40, lon: 132.48 }],  // 中国
+  ['高松',   { lat: 34.35, lon: 134.05 }],  // 四国 — JR高松駅 (北陸鉄道高松駅と区別)
+  ['博多',   { lat: 33.59, lon: 130.42 }],  // 九州
 ]);
+
+// 同名駅の誤マッチを排除: 約 0.5度 (≈ 50km) 以内に canonical 座標があれば中央駅
+function isRegionCenter(name, lat, lon) {
+  const c = REGION_CENTER_STATIONS.get(name);
+  if (!c || lat == null || lon == null) return false;
+  return Math.abs(lat - c.lat) < 0.5 && Math.abs(lon - c.lon) < 0.5;
+}
 
 // v230: 旧 isMetroArea(lat, lon) (首都圏・大阪・名古屋の bbox 判定) は撤去。
 // 駅ランク (baseTier + isolationBonus from nearest_km) が密集度を自動で
@@ -225,8 +238,8 @@ const REGION_CENTER_STATIONS = new Set([
 // tier 4: 7+路線(新宿・渋谷・池袋・横浜・大宮等の超ターミナル)
 // tier 2: 2-6路線 (中規模 junction / 小 junction を統合)
 // tier 1: 1路線(通常駅)
-function stationTier(nLines, name) {
-  if (name && REGION_CENTER_STATIONS.has(name)) return 7;
+function stationTier(nLines, name, lat, lon) {
+  if (name && isRegionCenter(name, lat, lon)) return 7;
   if (name && SUPER_MEGA_STATIONS.has(name)) return 6;
   if (nLines >= 7) return 4;
   if (nLines >= 2) return 2;
@@ -571,7 +584,7 @@ function drawStationsLayer() {
   for (const ms of NORIRECO.data.MERGED_STATIONS) {
     const nLines = (ms.lines || []).length;
     if (nLines === 0) continue;
-    const baseTier = stationTier(nLines, ms.name);
+    const baseTier = stationTier(nLines, ms.name, ms.lat, ms.lon);
     // nearest_km (隣接駅までの距離) で bonus を決定
     //   遠い (孤立): プラス boost で早出し
     //   近い (密集): マイナス boost で更にズームしないと出ない
