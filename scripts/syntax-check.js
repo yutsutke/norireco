@@ -47,6 +47,7 @@ const FILES = [
   '13b-trips',
   '13c-lines',
   '14-share-ogp',
+  '15-color-overrides',
   'share-japan-geo',
 ];
 

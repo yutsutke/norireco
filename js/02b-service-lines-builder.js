@@ -142,6 +142,19 @@ import { loadServiceLinesMaster, loadLines } from './02-data-loaders.js';
     }
     NORIRECO.data.serviceLinesBuilt = true;
     console.log(`[乗レコ] NORIRECO.data.SERVICE_LINES built: ${NORIRECO.data.SERVICE_LINES.length} 系統`);
+
+    // v243: 起動時にユーザーカスタム色 (localStorage) を適用。
+    //   sl.originalColor を退避してから localStorage[norireco_line_color_overrides]
+    //   の entry があれば sl.color を上書き。15-color-overrides.js が同じ仕様で
+    //   set/reset を扱うため、起動時とランタイム変更で挙動が揃う。
+    try {
+      const raw = localStorage.getItem('norireco_line_color_overrides');
+      const overrides = raw ? JSON.parse(raw) : {};
+      for (const sl of NORIRECO.data.SERVICE_LINES) {
+        if (sl.originalColor == null) sl.originalColor = sl.color;
+        if (overrides && overrides[sl.id]) sl.color = overrides[sl.id];
+      }
+    } catch (e) { /* localStorage 不可・JSON 壊れは無視 */ }
   }
 
   // 営業系統の達成率 (slRiddenSt は 04b-ride-record.js で宣言、runtime に参照)

@@ -982,6 +982,14 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .lcard.done{border-color:rgba(232,53,42,.3);}
 .lc-h{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
 .lc-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+/* v243: 系統色カスタマイズ — input[type=color] を丸ドット風に */
+.lc-color{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--track);cursor:pointer;padding:0;-webkit-appearance:none;appearance:none;background:transparent;flex-shrink:0;}
+.lc-color::-webkit-color-swatch-wrapper{padding:0;}
+.lc-color::-webkit-color-swatch{border:none;border-radius:50%;}
+.lc-color::-moz-color-swatch{border:none;border-radius:50%;}
+.lc-color:hover{transform:scale(1.15);}
+.lc-color-reset{font-size:9px;background:rgba(255,255,255,.08);border:1px solid var(--track);color:var(--silver);padding:2px 6px;border-radius:4px;cursor:pointer;margin-left:6px;font-family:inherit;}
+.lc-color-reset:hover{background:rgba(255,255,255,.15);color:var(--white);}
 .lc-name{font-size:13px;font-weight:700;flex:1;}
 .lc-reg{font-size:10px;color:var(--silver);}
 .lc-pct{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;}
@@ -1458,6 +1466,7 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 <script type="module" src="js/13c-lines.js"></script>
 <script type="module" src="js/share-japan-geo.js"></script>
 <script type="module" src="js/14-share-ogp.js"></script>
+<script type="module" src="js/15-color-overrides.js"></script>
 <script type="module" src="js/09-tabs-stats.js"></script>
 <script type="module" src="js/10-init.js"></script>
 </body>

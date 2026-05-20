@@ -36,6 +36,105 @@
 
 ---
 
+## 92. v243 — 系統色のユーザーカスタマイズ機能 (2026-05-20)
+
+### 背景
+
+TODO.md 🟡 体験向上 の長期積み残し「系統の色をユーザーカスタマイズ可能に」を実装。
+
+> マップ上の系統色と、ユーザー（特にマニア）が想起する色が乖離するとイワカン。
+> 系統ごとに color override を localStorage / Supabase に保存。
+
+### 仕様
+
+1. **路線一覧タブ (📋 路線)** の各系統カード左に `<input type="color">` を配置 (旧 lc-dot 置換)
+2. **change** で `NORIRECO.colorOverrides.set(slId, color)` → localStorage 保存 + 全関連箇所を即時再描画
+3. override 中の系統は `↺ 色をリセット` ボタン表示 → 元色に戻せる
+4. 起動時に localStorage から色を読み込んで地図描画に反映 (リロード後もカスタム色維持)
+5. データは端末 localStorage のみ (Supabase 同期は次フェーズ)
+
+### 変更内容
+
+#### 1. `js/15-color-overrides.js` 新規作成 (107 行)
+
+ES Module。`NORIRECO.colorOverrides` に以下を公開:
+- `get()` — localStorage の override 全件
+- `set(slId, color)` — 単一系統を override + 保存 + 再描画
+- `reset(slId)` — 単一系統を元色に戻す
+- `resetAll()` — 全系統リセット
+- `applyAfterBuild()` — 02b.build() 後の一括適用 (現状 02b 側で直接読んでいるので未使用、将来用に残置)
+
+再描画は `drawLines()` + `updateOverlays()` + `renderList()` をまとめて呼ぶ `triggerReRender()` で集約。`setDateFilter` と同じパターンで `allLayers` / `dotLayerRef` / `labelLayerRef` をクリアしてから redraw。
+
+```js
+const STORAGE_KEY = 'norireco_line_color_overrides';
+// localStorage: { "auto_東海道線_東日本旅客鉄道": "#FF0000", ... }
+```
+
+#### 2. `js/02b-service-lines-builder.js` build() 末尾に override 適用
+
+```js
+NORIRECO.data.serviceLinesBuilt = true;
+console.log(`[乗レコ] NORIRECO.data.SERVICE_LINES built: ${NORIRECO.data.SERVICE_LINES.length} 系統`);
+
+// v243: 起動時に override 適用、sl.originalColor を退避
+try {
+  const overrides = JSON.parse(localStorage.getItem('norireco_line_color_overrides') || '{}');
+  for (const sl of NORIRECO.data.SERVICE_LINES) {
+    if (sl.originalColor == null) sl.originalColor = sl.color;
+    if (overrides[sl.id]) sl.color = overrides[sl.id];
+  }
+} catch (e) {}
+```
+
+15-color-overrides に依存させない (循環 import 回避)。同じ STORAGE_KEY を直読み。
+
+#### 3. `js/09-tabs-stats.js` renderList に color picker + reset ボタン
+
+`<div class="lc-dot">` を `<input type="color" class="lc-color">` に置換。  
+override 中なら下段に `<button class="lc-color-reset">↺ 色をリセット</button>` を表示。  
+change / click イベントは `NORIRECO.colorOverrides.set/reset` 呼び出し。
+
+#### 4. CSS in noritetsu-map.html ([line 985](noritetsu-map.html:985))
+
+```css
+.lc-color { width:18px; height:18px; border-radius:50%; border:1.5px solid var(--track); cursor:pointer; ... }
+.lc-color::-webkit-color-swatch{ border:none; border-radius:50%; }
+.lc-color:hover { transform:scale(1.15); }
+.lc-color-reset { font-size:9px; background:rgba(255,255,255,.08); ... }
+```
+
+`-webkit-color-swatch` / `-moz-color-swatch` で input[type=color] の内側スウォッチを丸く整形。  
+
+#### 5. ロード順 / アセット登録
+
+- `noritetsu-map.html`: `<script type="module" src="js/15-color-overrides.js">` を 14-share-ogp の後に追加
+- `sw.js`: CACHE_VERSION v242 → v243、STATIC_ASSETS に追加
+- `scripts/syntax-check.js` FILES に追加 (21/21 OK)
+
+### 反映される箇所
+
+色を変えると即時に反映:
+- 地図上の路線ポリライン (`drawLines()`)
+- 駅マーカー / パイチャート (`drawStationsLayer()` 経由)
+- 路線一覧タブの色ドット / プログレスバー / % 表示
+- ヘッダ完乗率 (色変更で数字は変わらないが、関連 DOM 更新の副作用)
+- OGP 画像生成 (`buildSegmentPolylines()` も `sl.color` を参照)
+
+### 落とし穴メモ
+
+- **再描画コスト**: drawLines は約 633 系統 + パイチャート再構築でやや重い。change イベント (確定時のみ発火) を使い、input イベント (ドラッグ中) では再描画しない方針
+- **`#888` フォールバック**: service_lines_master.json に color 未定義の系統は `#888` (グレー)。override で色付け可能
+- **Supabase 同期未対応**: 別端末では色設定が共有されない。Phase 2 で `users.preferences` JSON か別テーブルで同期検討
+- **OGP のキャッシュ**: シェア画像生成時の色は実行時の `sl.color` を見るのでカスタム色がそのまま出る。意図通り
+- **input[type=color] の制約**: HEX のみ (透明度 alpha なし)。RGBA で半透明色をつけたい場合は別 UI (例: tinycolor.js + slider) が必要だが、当面は HEX で十分
+
+### バージョン番号
+
+v243 (Phase 3.8 後半 §92)
+
+---
+
 ## 91. v242 — 同名駅の誤マッチ修正 (REGION_CENTER の緯度経度判定化) (2026-05-20)
 
 ### 背景

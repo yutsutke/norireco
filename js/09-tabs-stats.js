@@ -50,8 +50,38 @@ export async function renderList(){
     lines.forEach(sl=>{
       const s=NORIRECO.serviceLines.stats(sl);const card=document.createElement('div');
       card.className='lcard'+(s.pct===100?' done':s.r>0?' partial':'');
-      card.innerHTML=`<div class="lc-h"><div class="lc-dot" style="background:${sl.color}"></div><span class="lc-name">${sl.name}</span><span class="lc-reg">${sl.operator||''}</span><span class="lc-pct" style="color:${s.r>0?sl.color:'var(--silver)'}">${s.pct}%</span></div><div class="prog"><div class="prog-bar" style="width:${s.pct}%;background:${sl.color}"></div></div><div class="lc-sub">${s.r}/${s.t}駅${s.pct===100?' ✓ 完乗！':''}</div>`;
+      // v243: lc-dot を input[type=color] に置換し、系統ごとに色をユーザーカスタマイズ可能に。
+      //   change で NORIRECO.colorOverrides.set → localStorage 保存 + 全関連箇所の再描画。
+      //   override 中の系統 (sl.originalColor !== sl.color) には ↺ リセットボタンを表示。
+      const isOverridden = !!(sl.originalColor && sl.originalColor !== sl.color);
+      card.innerHTML = `
+        <div class="lc-h">
+          <input type="color" class="lc-color" value="${sl.color}" data-line-id="${sl.id}" title="この系統の色を変更">
+          <span class="lc-name">${sl.name}</span>
+          <span class="lc-reg">${sl.operator||''}</span>
+          <span class="lc-pct" style="color:${s.r>0?sl.color:'var(--silver)'}">${s.pct}%</span>
+        </div>
+        <div class="prog"><div class="prog-bar" style="width:${s.pct}%;background:${sl.color}"></div></div>
+        <div class="lc-sub">
+          ${s.r}/${s.t}駅${s.pct===100?' ✓ 完乗！':''}
+          ${isOverridden ? `<button class="lc-color-reset" data-line-id="${sl.id}" title="元の色に戻す">↺ 色をリセット</button>` : ''}
+        </div>`;
       c.appendChild(card);
+    });
+  });
+
+  // v243: color picker / reset ボタンのイベント設定 (delegated でも可だが、毎回 renderList で全置換するので直接でも軽い)
+  c.querySelectorAll('.lc-color').forEach(input => {
+    input.addEventListener('change', (e) => {
+      const id = e.target.dataset.lineId;
+      const color = e.target.value;
+      if (window.NORIRECO && NORIRECO.colorOverrides) NORIRECO.colorOverrides.set(id, color);
+    });
+  });
+  c.querySelectorAll('.lc-color-reset').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.currentTarget.dataset.lineId;
+      if (window.NORIRECO && NORIRECO.colorOverrides) NORIRECO.colorOverrides.reset(id);
     });
   });
 }
