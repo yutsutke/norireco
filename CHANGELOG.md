@@ -36,6 +36,60 @@
 
 ---
 
+## 95. v246 — 記録モード中の polyline click 抑制 + ESC で色モーダル閉じる (2026-05-20)
+
+### 背景
+
+v245 で path をクリック → 色変更モーダルを実装後、ユーザー報告:
+> 📝 がおせない. 手動記録できない.
+
+### 原因
+
+v245 の `attachLineClick` が**全てのモード**で polyline click に反応していた。記録モード (📝 手動記録 / 📍 GPS 記録) 中に駅をタップしても、駅周辺を通る polyline の click ハンドラが先に発火 (もしくは同時発火) して色変更モーダルが開いてしまい、駅選択ができなかった。
+
+メモモード (📸 駅メモ) でも同じ干渉が発生していたはず。
+
+### 修正内容
+
+#### 1. `attachLineClick` で記録モード・メモモード中は早期 return ([js/08-rendering.js:478](js/08-rendering.js:478))
+
+```js
+layer.on('click', (e) => {
+  // 記録モード・メモモード中は色モーダルを開かない
+  if (window.NORIRECO && NORIRECO.record && NORIRECO.record.mode) return;
+  if (window.NORIRECO && NORIRECO.map && NORIRECO.map.memoMode) return;
+  L.DomEvent.stopPropagation(e);
+  if (window.NORIRECO?.colorOverrides?.openEditor) {
+    NORIRECO.colorOverrides.openEditor(sl);
+  }
+});
+```
+
+#### 2. ESC キーで color modal を閉じる ([js/15-color-overrides.js:155](js/15-color-overrides.js:155))
+
+脱出経路の保険として、ESC でモーダルを即閉じできるように。`openCharModal` 等の他モーダルと同じパターン。
+
+```js
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const m = document.getElementById('line-color-modal');
+    if (m && m.classList.contains('open')) closeLineColorModal();
+  }
+});
+```
+
+### 落とし穴メモ
+
+- **モード check の順序**: stopPropagation より先に return。stopPropagation を呼んでしまうと、その後 sub-handler (例: 駅 click) も発火しなくなるため
+- **記録モード判定**: `NORIRECO.record.mode` (07-record-mode.js の R.mode) が真実の source。GPS 記録 (`gps_button` トリガ) でも record.mode=true になるので一括カバー
+- **将来同種のモード追加時**: 別の「マップを直接タップする」モードを足す場合は、ここに `if (...) return` を追加する設計負債を残している。長期的には「現在アクティブな map mode」を 1 つの enum で管理する方がきれいだが、今は最小修正
+
+### バージョン番号
+
+v246 (Phase 3.8 後半 §95)
+
+---
+
 ## 94. v245 — 地図クリックで系統色を変更 (2026-05-20)
 
 ### 背景

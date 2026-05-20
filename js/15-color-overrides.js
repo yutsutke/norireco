@@ -180,6 +180,14 @@ function closeLineColorModal() {
   if (m) m.classList.remove('open');
 }
 
+// v246: ESC キーでモーダルを閉じる (脱出経路の保険)
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const m = document.getElementById('line-color-modal');
+    if (m && m.classList.contains('open')) closeLineColorModal();
+  }
+});
+
 export function openLineColorEditor(sl) {
   if (!sl) return;
   const m = ensureLineColorModal();

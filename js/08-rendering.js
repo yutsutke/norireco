@@ -461,10 +461,16 @@ function getServiceLinePriority(sl) {
 // 各 L.polyline に click ハンドラを attach。stopPropagation で map クリックを抑制。
 // 15-color-overrides.js の openLineColorEditor を window 経由で呼ぶ
 // (循環 import 回避、15 側は drawLines を import しているため)。
+// v246: 記録モード・メモモード中は polyline click を発火させない。これらのモード中は
+//       ユーザーが駅をタップして選択する必要があるため、近傍の polyline click が
+//       色変更モーダルを開いてしまうと駅選択を邪魔する (📝 手動記録不可になる)。
 function attachLineClick(layer, sl) {
   if (!layer || !sl) return;
   layer._norireco_sl_id = sl.id;
   layer.on('click', (e) => {
+    // 記録モード・メモモード中は色モーダルを開かない
+    if (window.NORIRECO && NORIRECO.record && NORIRECO.record.mode) return;
+    if (window.NORIRECO && NORIRECO.map && NORIRECO.map.memoMode) return;
     L.DomEvent.stopPropagation(e);
     if (window.NORIRECO && NORIRECO.colorOverrides && NORIRECO.colorOverrides.openEditor) {
       NORIRECO.colorOverrides.openEditor(sl);
