@@ -6,7 +6,7 @@
 ---
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v246 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v247 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13c-..` ES Modules (v195〜v225 で全 18 ファイル `<script type="module">` + `import`/`export` 化完了)
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
@@ -14,7 +14,8 @@
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **完乗率**: ユニーク駅単位に統一 (v235) — ヘッダ「完乗率 X%」と マイページ「全記録完乗率」が一致、「GPS 記録 完乗率」(旧 公式完乗率、v240 で改名) は GPS 認証のみ
 
-**直近の作業 (v228〜v246)**:
+**直近の作業 (v228〜v247)**:
+- v247: 系統色カスタマイズの Supabase 同期 — 別端末でも色設定が引き継がれる。`norireco_line_color_overrides` 専用テーブル + RLS。set/reset/resetAll で fire-and-forget upsert/delete、SIGNED_IN で pull → localStorage に merge (Supabase 優先、ローカル独自は bulk push)。`supabase/migrations/v247_line_color_overrides.sql` を Supabase Dashboard で要実行
 - v246: v245 リグレッション修正 — 記録モード・メモモード中も polyline click ハンドラが発火して色モーダルが開いてしまい、駅選択ができなかった (= 手動記録不可)。`NORIRECO.record.mode` / `NORIRECO.map.memoMode` チェックで早期 return。ESC キーで色モーダルを閉じる handler も追加
 - v245: 地図上の路線クリック → 色変更モーダル。系統名・現在色・color picker・元色復帰ボタンを表示。`attachLineClick` で 8 種類のポリラインに click ハンドラを attach、stopPropagation で map クリック誤発火を抑制
 - v244: v243 で駅マーカー (パイチャート・ドット) が色 override に追従していなかった bug 修正。merged_stations.json の事前計算 `colors` キャッシュを参照していたため。drawStationsLayer で Map<lineId, color> を都度構築して動的に SERVICE_LINES.color を引くよう変更
@@ -113,9 +114,7 @@
   - 保存後の trip 一覧・削除 UI（記録モード内で完結）
   - 駅長押しで詳細パネル（駅情報・乗り入れ路線・過去訪問数）
 
-- [ ] **系統の色をユーザーカスタマイズ可能に — Supabase 同期残し (v243 で MVP 完成)**
-  - ✅ v243: 路線一覧タブで input[type=color] → localStorage 保存 + 地図/パイ/凡例に即時反映、↺ リセットボタン
-  - **残り**: Supabase 同期 (別端末でも色設定が引き継がれるように)。`users.preferences` JSON か別テーブル `norireco_line_color_overrides` のどちらか
+<!-- ✅ v247 で完了: 系統色のユーザーカスタマイズ機能 (Supabase 同期含む) — CHANGELOG §92, §93, §94, §95, §96 参照 -->
 
 - [ ] **普通電車の車両形式も記録できるように**
   - 現在 `trains_master.json` は特急・新幹線中心、`car_model` 選択 UI も特急前提

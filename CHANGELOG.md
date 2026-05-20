@@ -36,6 +36,98 @@
 
 ---
 
+## 96. v247 — 系統色カスタマイズの Supabase 同期 (デバイス間共有) (2026-05-20)
+
+### 背景
+
+v243 で系統色のユーザーカスタマイズを実装、TODO.md には「Supabase 同期 (別端末でも色設定が引き継がれるように)」が残課題として残っていた。ユーザー要望:
+
+> 色の変更をディバイス間で共有したい。
+
+### 設計判断
+
+| 検討項目 | 採用 | 不採用との比較 |
+|---|---|---|
+| 保存先 | 専用テーブル `norireco_line_color_overrides` | `users.preferences` JSON: 1 行更新で全 override がコンフリクト |
+| PK | `(user_id, line_id)` 複合 | 行単位の upsert/delete が綺麗、RLS が簡潔 |
+| 書き込みタイミング | `set/reset/resetAll` 即時 (非同期 fire-and-forget) | 都度 push の方が同期遅延が無い |
+| 読み込みタイミング | ログイン時 (SIGNED_IN/INITIAL_SESSION) に pull → localStorage に merge | 起動時毎回 fetch は冗長 |
+| マージ規則 | **Supabase 優先** (リモートにある entry はリモート色で上書き、リモートに無い localStorage entry は Supabase に bulk push) | 「未ログインで色変えた → ログイン後に消えた」を防ぎつつ、別端末の最新を優先 |
+| オフライン | Supabase 失敗時は localStorage のみ更新 (グレースフルデグラデーション) | UI は常に動く |
+| ログアウト | localStorage purge + 全 SL を originalColor に戻す | v228-v229 のローカル purge 方針と整合 |
+
+### 必要な SQL (ユーザー実行)
+
+`supabase/migrations/v247_line_color_overrides.sql` に作成済み。Supabase Dashboard → SQL Editor で実行:
+
+```sql
+CREATE TABLE IF NOT EXISTS norireco_line_color_overrides (
+  user_id    uuid       NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  line_id    text       NOT NULL,
+  color      text       NOT NULL,
+  updated_at timestamptz DEFAULT now(),
+  PRIMARY KEY (user_id, line_id)
+);
+
+ALTER TABLE norireco_line_color_overrides ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "色 override は本人のみ読込可" ON norireco_line_color_overrides
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "色 override は本人のみ追加可" ON norireco_line_color_overrides
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "色 override は本人のみ更新可" ON norireco_line_color_overrides
+  FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "色 override は本人のみ削除可" ON norireco_line_color_overrides
+  FOR DELETE USING (auth.uid() = user_id);
+```
+
+⚠️ SQL を実行する前にコードがデプロイされても問題なし: 404/500 で localStorage のみの動作にフォールバック。
+
+### 変更内容
+
+#### 1. `js/15-color-overrides.js` に Supabase 同期 4 関数追加
+
+- `pushToSupabase(slId, color)` — 単一行 upsert (POST + `Prefer: resolution=merge-duplicates`)
+- `deleteFromSupabase(slId)` — 単一行 DELETE
+- `deleteAllFromSupabase()` — `user_id=eq.{uid}` 全件 DELETE
+- `syncColorOverridesFromSupabase()` (export) — 起動同期:
+  1. Supabase から自分の override を pull
+  2. localStorage 既存 entry のうちリモートに無いものを bulk upsert
+  3. localStorage を `{...local, ...remote}` (Supabase 優先) で上書き
+  4. SERVICE_LINES に再適用 + triggerReRender
+
+`set/reset/resetAll` は同期版だが内部で `pushToSupabase` / `deleteFromSupabase` / `deleteAllFromSupabase` を fire-and-forget で呼ぶ。`await` していないので UI は即時反映、ネットワーク失敗してもユーザーには見えない。
+
+#### 2. `js/12-auth.js` SIGNED_IN handler に sync 呼出 + ログアウト cleanup
+
+```js
+// SIGNED_IN / INITIAL_SESSION 時:
+try { window.NORIRECO?.colorOverrides?.syncFromSupabase?.(); } catch(e) {}
+
+// SIGNED_OUT 時 (clearLocalUserDataAfterSignOut 内):
+try { localStorage.removeItem('norireco_line_color_overrides'); } catch(e) {}
+try { window.NORIRECO?.colorOverrides?.resetAll?.(); } catch(e) {}
+```
+
+ログアウト時 `resetAll` は `deleteAllFromSupabase` も呼ぶが、`currentUserId()` が既に null なので Supabase 側は触らない (= 安全)。
+
+#### 3. 循環 import 回避
+
+`12-auth.js` → `15-color-overrides.js` の direct import を避けるため、`window.NORIRECO.colorOverrides.syncFromSupabase` 経由で呼出。15 → 12 は currentUserId/authBearerToken の import を追加 (循環なし、12 から見て 15 への依存は無いまま)。
+
+### 落とし穴メモ
+
+- **SQL 実行が前提**: 未実行のままだと Supabase 呼出が 404 を返す。コンソールに警告が出るが、localStorage で UI は動く (= 段階的デプロイ可能)
+- **anon key で REST 直叩き**: RLS policy なしでテーブルを公開するのは脆弱なため、今回は最初から RLS を入れる。`v233` の残課題 (trip 等の RLS 強化) と同じパターン
+- **未ログイン時の色変更**: localStorage のみ保存。ログイン後の syncFromSupabase で「リモートに無い entry を bulk push」するので吸い上げられる
+- **fire-and-forget の失敗を握りつぶし**: pushToSupabase は console.warn のみで止まる。ユーザーに通知しない (UI は localStorage で動いているため)。将来「同期失敗が連続したらバッジ表示」等を入れる場合は別タスク
+
+### バージョン番号
+
+v247 (Phase 3.8 後半 §96)
+
+---
+
 ## 95. v246 — 記録モード中の polyline click 抑制 + ESC で色モーダル閉じる (2026-05-20)
 
 ### 背景

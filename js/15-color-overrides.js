@@ -16,8 +16,10 @@
 // ══════════════════════════════════════════════════════════════
 import { drawLines, updateOverlays } from './08-rendering.js';
 import { renderList } from './09-tabs-stats.js';
+import { currentUserId, authBearerToken } from './12-auth.js';
 
 const STORAGE_KEY = 'norireco_line_color_overrides';
+const SUPABASE_TABLE = 'norireco_line_color_overrides';
 
 function readOverrides() {
   try {
@@ -36,6 +38,7 @@ export function getColorOverrides() {
 }
 
 // 単一系統の色を変更
+// v247: ログイン中なら Supabase にも upsert (非同期、失敗しても localStorage 反映を優先)
 export function setLineColor(slId, color) {
   if (!slId || !/^#[0-9a-fA-F]{6}$/.test(color)) return;
   const o = readOverrides();
@@ -43,6 +46,7 @@ export function setLineColor(slId, color) {
   writeOverrides(o);
   applyToServiceLine(slId, color);
   triggerReRender();
+  pushToSupabase(slId, color);
 }
 
 // 単一系統をデフォルト色に戻す
@@ -53,6 +57,7 @@ export function resetLineColor(slId) {
   writeOverrides(o);
   restoreOriginal(slId);
   triggerReRender();
+  deleteFromSupabase(slId);
 }
 
 // 全系統をデフォルト色に戻す
@@ -63,6 +68,7 @@ export function resetAllColors() {
     if (sl.originalColor) sl.color = sl.originalColor;
   }
   triggerReRender();
+  deleteAllFromSupabase();
 }
 
 // 02b.build() 末尾から呼ぶ: localStorage の override 全てを SERVICE_LINES に適用
@@ -105,6 +111,104 @@ function triggerReRender() {
   } catch (e) { console.warn('[色override] 地図再描画:', e); }
   try { updateOverlays(); } catch (e) {}
   try { renderList(); } catch (e) {}
+}
+
+// ─────────────────────────────────────────────
+// Supabase 同期 (v247) — デバイス間で色設定を共有
+// ─────────────────────────────────────────────
+async function pushToSupabase(slId, color) {
+  const uid = currentUserId();
+  if (!uid || !window.SUPABASE_URL) return;
+  try {
+    const res = await fetch(`${window.SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
+      method: 'POST',
+      headers: {
+        'apikey': window.SUPABASE_KEY,
+        'Authorization': `Bearer ${authBearerToken()}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates',
+      },
+      body: JSON.stringify({ user_id: uid, line_id: slId, color }),
+    });
+    if (!res.ok) console.warn('[色override] Supabase upsert 失敗:', res.status, await res.text().catch(()=>''));
+  } catch (e) { console.warn('[色override] Supabase upsert error:', e.message); }
+}
+
+async function deleteFromSupabase(slId) {
+  const uid = currentUserId();
+  if (!uid || !window.SUPABASE_URL) return;
+  try {
+    await fetch(`${window.SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?user_id=eq.${uid}&line_id=eq.${encodeURIComponent(slId)}`, {
+      method: 'DELETE',
+      headers: { 'apikey': window.SUPABASE_KEY, 'Authorization': `Bearer ${authBearerToken()}` },
+    });
+  } catch (e) { console.warn('[色override] Supabase delete:', e.message); }
+}
+
+async function deleteAllFromSupabase() {
+  const uid = currentUserId();
+  if (!uid || !window.SUPABASE_URL) return;
+  try {
+    await fetch(`${window.SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?user_id=eq.${uid}`, {
+      method: 'DELETE',
+      headers: { 'apikey': window.SUPABASE_KEY, 'Authorization': `Bearer ${authBearerToken()}` },
+    });
+  } catch (e) { console.warn('[色override] Supabase delete-all:', e.message); }
+}
+
+// ログイン時に呼ぶ: Supabase の color overrides を pull → localStorage と merge → SERVICE_LINES 再適用
+// マージ規則: Supabase 優先 (リモートにある entry はリモート色で上書き、リモートに無い localStorage entry は Supabase に push)
+export async function syncColorOverridesFromSupabase() {
+  const uid = currentUserId();
+  if (!uid || !window.SUPABASE_URL) return;
+
+  let remoteRows = [];
+  try {
+    const res = await fetch(`${window.SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?user_id=eq.${uid}&select=line_id,color`, {
+      headers: { 'apikey': window.SUPABASE_KEY, 'Authorization': `Bearer ${authBearerToken()}` },
+    });
+    if (!res.ok) {
+      console.warn('[色override] Supabase pull 失敗:', res.status);
+      return;
+    }
+    remoteRows = await res.json();
+  } catch (e) {
+    console.warn('[色override] Supabase pull error:', e.message);
+    return;
+  }
+
+  const remote = {};
+  for (const r of remoteRows) remote[r.line_id] = r.color;
+  const local = readOverrides();
+
+  // local にあって remote に無いものを bulk push (初回ログインの local override を吸い上げ)
+  const toUpsert = [];
+  for (const [lineId, color] of Object.entries(local)) {
+    if (!(lineId in remote)) toUpsert.push({ user_id: uid, line_id: lineId, color });
+  }
+  if (toUpsert.length > 0) {
+    try {
+      await fetch(`${window.SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
+        method: 'POST',
+        headers: {
+          'apikey': window.SUPABASE_KEY,
+          'Authorization': `Bearer ${authBearerToken()}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates',
+        },
+        body: JSON.stringify(toUpsert),
+      });
+    } catch (e) { console.warn('[色override] bulk push:', e.message); }
+  }
+
+  // localStorage を merged (remote 優先) に更新
+  const merged = { ...local, ...remote };
+  writeOverrides(merged);
+
+  // SERVICE_LINES に適用 + 再描画
+  applyOverridesAfterBuild();
+  triggerReRender();
+  console.log(`[色override] Supabase 同期完了: remote=${Object.keys(remote).length}, local push=${toUpsert.length}, merged=${Object.keys(merged).length}`);
 }
 
 // ─────────────────────────────────────────────
@@ -205,4 +309,5 @@ window.NORIRECO.colorOverrides = {
   resetAll: resetAllColors,
   applyAfterBuild: applyOverridesAfterBuild,
   openEditor: openLineColorEditor,
+  syncFromSupabase: syncColorOverridesFromSupabase,
 };
