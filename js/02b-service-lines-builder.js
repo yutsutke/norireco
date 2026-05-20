@@ -153,22 +153,51 @@ import { loadServiceLinesMaster, loadLines } from './02-data-loaders.js';
   }
 
   // 全営業系統の集計。
-  // v235: pct を「ユニーク駅単位」に変更 — マイページの「全記録完乗率」と一致させる。
-  //   旧 (系統単位): 1 駅が複数系統に属すると複数回カウント (ts=10446 等)
-  //   新 (ユニーク): 駅名 Set で重複排除 (ts=8491 等)
-  //   ts, rt 共にユニーク駅数。la (乗車系統数) と ld (完乗系統数) は系統単位据え置き。
+  // v235: pct を「ユニーク駅単位」に変更 (駅名 Set で重複排除)。
+  // v239: マイページ collect() と同じ「直接 lineId match + LEGACY fallback」ロジックに
+  //       変更。旧実装は slRiddenSt を読んでいたが、slRiddenSt は
+  //       「N02 路線 id → SERVICE_LINE.candidateN02Ids 経由で駅名一致でバラまく」
+  //       構築 (04b-ride-record.js:300〜) のため、1 station/seg が複数 SERVICE_LINE
+  //       にカウントされてヘッダ系統数が膨張していた (例: 東京駅を山手線で記録 →
+  //       京浜東北線等にも乗車扱い)。これがヘッダ 81 系統 vs マイページ 34 系統の
+  //       乖離の原因。
+  //
+  //       新実装: RIDDEN_SEGS を直接スキャンし、seg.lineId が SERVICE_LINE.id に
+  //       直接 match するもののみ集計。旧 N02 id を残した trip 用に
+  //       candidateN02Ids 逆引きの fallback を 1 系統だけ採用。
   function globalStats() {
+    const SL = NORIRECO.data.SERVICE_LINES;
+    const segs = (window.RIDDEN_SEGS) || [];
     const allStations = new Set();
-    const riddenStations = new Set();
+    for (const sl of SL) for (const s of sl.stations) allStations.add(s.name);
+
+    const slSet = {};                // sl.id → Set<駅名>
+    const riddenStations = new Set();// 全乗車駅のユニーク Set
+    for (const seg of segs) {
+      // 1. SERVICE_LINE.id への直接 match (新形式 trip)
+      let sl = SL.find(l => l.id === seg.lineId);
+      // 2. LEGACY fallback: trip データに N02 路線 id が残っているケース
+      //    candidateN02Ids に含む最初の SERVICE_LINE 1 つだけ採用 (バラまかない)
+      if (!sl) sl = SL.find(l => (l.candidateN02Ids || []).includes(seg.lineId));
+      if (!sl) continue;
+      const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
+      const toIdx = sl.stations.findIndex(s => s.name === seg.to);
+      if (fromIdx < 0 || toIdx < 0) continue;
+      const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
+      if (!slSet[sl.id]) slSet[sl.id] = new Set();
+      for (let i = a; i <= b; i++) {
+        const name = sl.stations[i].name;
+        slSet[sl.id].add(name);
+        riddenStations.add(name);
+      }
+    }
+
     let la = 0, ld = 0;
-    NORIRECO.data.SERVICE_LINES.forEach(sl => {
-      for (const s of sl.stations) allStations.add(s.name);
-      const rs = slRiddenSt[sl.id];
-      const r = rs ? rs.size : 0;
-      if (rs) for (const n of rs) riddenStations.add(n);
+    for (const sl of SL) {
+      const r = slSet[sl.id] ? slSet[sl.id].size : 0;
       if (r > 0) la++;
       if (r === sl.stations.length && sl.stations.length > 0) ld++;
-    });
+    }
     const ts = allStations.size;
     const rt = riddenStations.size;
     return { ts, rt, la, ld, pct: ts > 0 ? Math.round(rt/ts*100) : 0 };

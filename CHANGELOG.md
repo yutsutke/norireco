@@ -36,6 +36,71 @@
 
 ---
 
+## 88. v239 — ヘッダ/マップオーバーレイの系統数オーバーカウント修正 (2026-05-20)
+
+### 背景
+
+v238 で `updateOverlays()` を常時呼ぶよう修正したが、依然として「全期間」状態で
+- 地図オーバーレイ: 完乗率 **8%** / 乗車系統 **81** / 完乗系統 **25**
+- マイページ全記録: 完乗率 **4%** / 系統 **34** / 完乗 **9**
+
+と数字が大きく乖離していた。
+
+### 原因
+
+`slRiddenSt` (`js/04b-ride-record.js:300-316` の `rebuild()` で構築) が 2 段階の **過剰バラまき**ロジックになっていた:
+
+1. RIDDEN_SEGS → N02 路線解決 → `riddenSt[N02_line_id]` (駅名 Set) ※新形式・旧形式・3 段 fallback
+2. 各 SERVICE_LINE で `candidateN02Ids` (複数候補) を全部見て駅名一致 → `slRiddenSt[sl.id]` に書く
+
+結果: 「東京駅で山手線として乗った」と記録すると、東京駅を含む**全 SERVICE_LINE** (京浜東北線・東海道線・中央線等) の `slRiddenSt` にも書かれ、ヘッダの乗車系統数が膨らんでいた。
+
+一方マイページの `collect()` は `seg.lineId === sl.id` の**直接 match** なので、明示的に記録した系統だけカウント (= 正しい数字)。
+
+### 修正内容
+
+`js/02b-service-lines-builder.js:160-205` の `globalStats()` を、マイページ `collect()` と同じ「直接 lineId match + LEGACY fallback」ロジックに置換:
+
+```js
+function globalStats() {
+  const SL = NORIRECO.data.SERVICE_LINES;
+  const segs = window.RIDDEN_SEGS || [];
+  ...
+  for (const seg of segs) {
+    // 1. SERVICE_LINE.id への直接 match (新形式 trip)
+    let sl = SL.find(l => l.id === seg.lineId);
+    // 2. LEGACY fallback: trip データに N02 路線 id が残っているケース
+    //    candidateN02Ids に含む 最初の 1 系統だけ採用 (バラまかない)
+    if (!sl) sl = SL.find(l => (l.candidateN02Ids || []).includes(seg.lineId));
+    if (!sl) continue;
+    ...
+  }
+  ...
+}
+```
+
+`slRiddenSt` 自体は地図描画 (駅 UI 個人化・パイチャート・凡例) で使われているため、構造は touch せず温存。`globalStats()` の数字だけがマイページと整合するようになる。
+
+### 影響範囲
+
+- ヘッダ `h-pct` / `h-ln`: マイページ全記録と一致 (`updateOverlays` 経由)
+- マップオーバーレイ `ms-pct` / `ms-ln` / `ms-dn`: 同上
+- `stats(sl)` (個別 SERVICE_LINE 単位): 触らない (slRiddenSt の Set サイズを返す既存挙動)
+- マイページの数字: 変化なし (元から正しい数字を出していた)
+- 地図描画の駅 UI / パイチャート: 変化なし (slRiddenSt そのものは温存)
+
+### 落とし穴メモ
+
+- `globalStats()` は `updateOverlays()` 経由で頻繁に呼ばれる。RIDDEN_SEGS のスキャンは O(segs × SERVICE_LINES) で線形だが、一般ユーザーの segs は <1万、SERVICE_LINES は ~633 なので問題なし。100万 trip 規模になったら memo 化を検討
+- LEGACY fallback の「最初の 1 系統だけ採用」は若干アービトラリ。例えば横須賀線・湘南新宿ライン両方の candidateN02Ids に同じ N02 id があると、SERVICE_LINES 配列の登録順で決まる。実用上は問題なし
+- 個別 SERVICE_LINE 単位の `stats(sl)` だけは未だ `slRiddenSt` を参照するため、地図凡例の系統別完乗率はまだオーバーカウントしうる。これは別タスク (もしユーザー報告があれば対応)
+
+### バージョン番号
+
+v239 (Phase 3.8 後半 §88)
+
+---
+
 ## 87. v238 — ヘッダ完乗率とマイページ完乗率の数字ズレ修正 (2026-05-20)
 
 ### 背景
