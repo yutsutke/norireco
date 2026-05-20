@@ -36,6 +36,96 @@
 
 ---
 
+## 90. v241 — 9 地域の中央駅 10 駅を tier 7 で日本全国ビューから表示 (2026-05-20)
+
+### 背景
+
+日本全国ビュー (z=4-5) で地図に路線は見えるが駅マーカーは何も出ていない (現状は z >= 5 で tier 6 = 三大都市中心 7 駅から表示)。「あの地域、自分はどこ訪問してたっけ?」を一目で把握しづらかった。
+
+ユーザー指定の 9 地域 × 1〜2 駅 = 計 10 駅を、SUPER_MEGA より一段上の "tier 7" として日本全国ビューから常時表示する。
+
+| 地域 | 中央駅 |
+|---|---|
+| 北海道 | 札幌 |
+| 東北 | 仙台 |
+| 関東 | 東京、新宿 |
+| 北陸 | 金沢 |
+| 東海 | 名古屋 |
+| 近畿 | 大阪 |
+| 中国 | 広島 |
+| 四国 | 高松 |
+| 九州 | 博多 |
+
+### 変更内容
+
+すべて [js/08-rendering.js](js/08-rendering.js) 内:
+
+#### 1. `REGION_CENTER_STATIONS` 定数追加 (新規 Set)
+
+```js
+const REGION_CENTER_STATIONS = new Set([
+  '札幌', '仙台',
+  '東京', '新宿',
+  '金沢', '名古屋',
+  '大阪', '広島',
+  '高松', '博多',
+]);
+```
+
+既存 `SUPER_MEGA_STATIONS` (東京・名古屋・新大阪・札幌・仙台・博多・広島) と一部重複するが、`stationTier` が REGION_CENTER を先にチェックして tier 7 を返すため両建てで問題なし。`新大阪` は引き続き tier 6 (SUPER_MEGA)、`大阪` が tier 7 (REGION_CENTER) と独立。
+
+#### 2. `stationTier()` に tier 7 を追加
+
+```js
+function stationTier(nLines, name) {
+  if (name && REGION_CENTER_STATIONS.has(name)) return 7;  // ← 新規
+  if (name && SUPER_MEGA_STATIONS.has(name)) return 6;
+  ...
+}
+```
+
+#### 3. 密集 penalty バイパス (tier 7 の特例)
+
+```js
+// 旧: const tier = Math.min(6, baseTier + isolationBonus);
+const tier = (baseTier === 7) ? 7 : Math.min(6, baseTier + isolationBonus);
+```
+
+東京・新宿・大阪等は `nearest_km < 0.5` で `isolationBonus = -4` が乗るが、これを適用すると tier=3 になり日本全国ビューから消えてしまう。REGION_CENTER は密集 penalty を回避して常に tier 7。
+
+#### 4. `getDotMinTier(z)` に z>=4 → 7 を追加
+
+```js
+if (z >= 5)  return 6;
+if (z >= 4)  return 7; // 日本全国ビューでは REGION_CENTER のみ
+return 99;
+```
+
+z=4 (PC では日本全国フィット) で 10 駅のドット、z=5 で SUPER_MEGA も含む 17 駅、と段階的に増える。ラベルは `getLabelMinTier(z) = getDotMinTier(z-1)` なので z=5 で REGION_CENTER のラベル表示。
+
+#### 5. レイヤー追加/削除の閾値を `<= 7` に拡張
+
+`drawStationsLayer` の zoom 切替判定 `if (dotMin <= 6)` / `if (labelMin <= 6)` を `<= 7` に。これがないと REGION_CENTER 専用ズーム (z=4) でレイヤー自体が removed されて何も出ない。
+
+### 視覚的に変わること
+
+- z=4 (日本全国ビュー): 10 駅のドットが見える → 「あの地域の中央駅にだけ訪問あり/なし」が分かる
+- z=5: 旧来 7 駅 + 新 4 駅 (新宿・金沢・大阪・高松) のドット + ラベル
+- z=6 以降: 従来通り (4-6 系統駅・通常駅が段階的に追加)
+
+### 落とし穴メモ
+
+- **新大阪 vs 大阪**: 別 tier。地理的に近接するが用途が違う (新幹線 vs 在来線ハブ)。両方表示でも視覚的に混乱しない (z=5 では両方出るが z=4 では大阪のみ)
+- **東京駅の特例**: 既に SUPER_MEGA (tier 6) だったが REGION_CENTER 入り (tier 7) で密集 penalty が完全に外れる。旧仕様では z=5 で tier 6 → isolationBonus -4 で実効 tier 2 → z=9 でしか見えなかった可能性。今は z=4 から確実に出る
+- **将来拡張**: 沖縄 (那覇) を含めたい場合は `REGION_CENTER_STATIONS` に追加するだけで済む。当面ノリレコは沖縄路線非対応なのでスキップ
+- **データ駆動化**: 当面は JS にハードコード (10 駅は年単位で変わらない)。将来「リージョン別完乗率」「リージョンバッジ」等に展開する場合は `region_centers.json` に外出ししてユーザー提供の `regions[].main_stations[].features` も活用できる
+
+### バージョン番号
+
+v241 (Phase 3.8 後半 §90)
+
+---
+
 ## 89. v240 — マイページ「公式」表記を「GPS 記録」に統一 (2026-05-20)
 
 ### 背景

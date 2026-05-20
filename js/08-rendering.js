@@ -130,7 +130,7 @@ export function updateLOD() {
   //       多系統駅では単色ドットの上にパイが同タイミングで重なる (パイが視覚的にドットを覆う)。
   if (dotLayerRef) {
     const dotMin = getDotMinTier(z);
-    if (dotMin <= 6) {
+    if (dotMin <= 7) { // v241: REGION_CENTER (tier 7) も含めて判定
       if (!NORIRECO.map.instance.hasLayer(dotLayerRef)) NORIRECO.map.instance.addLayer(dotLayerRef);
       dotLayerRef.eachLayer(d => {
         const t = d._station_tier || 1;
@@ -144,7 +144,7 @@ export function updateLOD() {
   // ラベル: addLayer/removeLayer でDOM要素自体を出し入れ (ズーム/パン高速化)
   if (labelLayerRef) {
     const labelMin = getLabelMinTier(z);
-    if (labelMin <= 6) {
+    if (labelMin <= 7) { // v241: REGION_CENTER (tier 7) も含めて判定
       if (!NORIRECO.map.instance.hasLayer(labelLayerRef)) NORIRECO.map.instance.addLayer(labelLayerRef);
       // ★最重要最適化: ビューポート内のラベルだけDOMに追加
       // 画面外の駅名は読み込まない → 巨大エリアでも軽量
@@ -198,6 +198,19 @@ const SUPER_MEGA_STATIONS = new Set([
   '札幌', '仙台', '博多', '広島',
 ]);
 
+// v241: 9 地域の最主要駅 (1〜2 駅) — 日本全国ビュー (z >= 4) から常時表示。
+// 各地域の「ここを起点に旅程が組まれる」中央駅を選定。SUPER_MEGA 7 駅では
+// 関東(新宿)・北陸(金沢)・近畿(大阪)・四国(高松) が抜けていたため tier 7 として補完。
+// 北海道=札幌 / 東北=仙台 / 関東=東京・新宿 / 北陸=金沢 / 東海=名古屋
+// 近畿=大阪 / 中国=広島 / 四国=高松 / 九州=博多
+const REGION_CENTER_STATIONS = new Set([
+  '札幌', '仙台',
+  '東京', '新宿',
+  '金沢', '名古屋',
+  '大阪', '広島',
+  '高松', '博多',
+]);
+
 // v230: 旧 isMetroArea(lat, lon) (首都圏・大阪・名古屋の bbox 判定) は撤去。
 // 駅ランク (baseTier + isolationBonus from nearest_km) が密集度を自動で
 // 扱うため、bbox による地域分岐は不要 (山手線駅は nearest_km < 0.5km で
@@ -206,11 +219,14 @@ const SUPER_MEGA_STATIONS = new Set([
 // 駅の重要度ティア
 // v231: 都内の中間ターミナル多発によるクラッタを抑えるため、
 // 7+/4-6/3 系統の tier を圧縮。SUPER_MEGA とそれ以外の多系統駅で 2 段階差を確保。
+// v241: REGION_CENTER (9 地域の最主要駅 10 駅) を tier 7 として追加 — z >= 4 から表示
+// tier 7: 9 地域中央駅 (REGION_CENTER) — z >= 4 から常時表示、密集 penalty 回避
 // tier 6: 三大都市中心 (東京・名古屋・新大阪) + 政令市中心 (札幌・仙台・博多・広島)
 // tier 4: 7+路線(新宿・渋谷・池袋・横浜・大宮等の超ターミナル)
 // tier 2: 2-6路線 (中規模 junction / 小 junction を統合)
 // tier 1: 1路線(通常駅)
 function stationTier(nLines, name) {
+  if (name && REGION_CENTER_STATIONS.has(name)) return 7;
   if (name && SUPER_MEGA_STATIONS.has(name)) return 6;
   if (nLines >= 7) return 4;
   if (nLines >= 2) return 2;
@@ -236,6 +252,7 @@ function getDotMinTier(z) {
   if (z >= 8)  return 4;
   if (z >= 7)  return 5;
   if (z >= 5)  return 6;
+  if (z >= 4)  return 7; // v241: 日本全国ビューでは REGION_CENTER (10 駅) のみ
   return 99;
 }
 
@@ -570,7 +587,10 @@ function drawStationsLayer() {
       else if (km >= 0.5) isolationBonus = -3;
       else                isolationBonus = -4;
     }
-    const tier = Math.min(6, baseTier + isolationBonus);
+    // v241: REGION_CENTER (baseTier=7) は密集 penalty を回避して常に tier 7 のまま。
+    //   東京/新宿/大阪等は超密集で isolationBonus=-4 が乗るが、日本全国ビューでの
+    //   表示を担保するため bypass。他の駅は従来通り Math.min(6, ...) でキャップ。
+    const tier = (baseTier === 7) ? 7 : Math.min(6, baseTier + isolationBonus);
     const mScale = nLines === 1 ? 1.0 : Math.min(2.5, 1.0 + Math.log2(nLines) * 0.5);
 
     // 乗車判定: ms.lines のどれかでこの駅が ridden か
