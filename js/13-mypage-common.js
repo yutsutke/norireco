@@ -65,7 +65,7 @@ export async function renderMypage() {
       <div class="mp-empty">
         <div class="mp-empty-ic">🔑</div>
         <div class="mp-empty-t">ログインしてください</div>
-        <div class="mp-empty-s">マイページではあなたの旅程・公式完乗率・GPS 後追い認証が使えます</div>
+        <div class="mp-empty-s">マイページではあなたの旅程・GPS 記録 完乗率・GPS 後追い認証が使えます</div>
         <button class="mp-empty-btn" onclick="openAuthModal()">🔑 ログイン / 会員登録</button>
       </div>`;
     return;
