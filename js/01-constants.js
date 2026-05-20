@@ -23,7 +23,8 @@ function localDateStr(d) {
 
 // v212 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
 // 外部 (05/03/07/08/13-common/13a) から bare 参照される定数・関数を window 公開。
-// ISLANDS は現状未参照 (dead) なので window 公開なし。
+// v236: ISLANDS を OGP 画像生成 (js/14-share-ogp.js) で利用するため公開。
 window.SVG_W = SVG_W;
 window.SVG_H = SVG_H;
+window.ISLANDS = ISLANDS;
 window.localDateStr = localDateStr;

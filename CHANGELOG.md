@@ -36,6 +36,104 @@
 
 ---
 
+## 85. v236 — シェア機能 MVP: OGP 画像生成 (Canvas) (2026-05-20)
+
+### 背景
+
+🔥 最優先 TODO「シェア機能 (OGP 画像生成)」の MVP。Notion §3.1 と TODO.md でずっと未着手だったが、ES Modules 化 (v195〜v225) でコード基盤がクリーンになったので着手。
+
+既存実装の棚卸し:
+- `noritetsu-log.html` の旅程結果画面に **テキストベース**のシェア (絵文字テキスト + クリップボードコピー) は実装済み (`#share-txt`)
+- 画像生成・OGP・累計完乗率版・X intent などは未実装
+- `js/13a-stats.js:217` の「シェア機能 (将来) は 🟢 GPS 記録のみ対象」はコメントだけで実装なし
+
+### スコープ (MVP)
+
+- **累計版**の OGP 画像 (全駅・全系統に対する完乗率) のみ。個別 trip 版は後回し
+- **マイページ統計タブ**の完乗率カード直下に「📸 シェア画像を作成」ボタン
+- **verified 限定ガードは未実装** (`users.share_status` スキーマ + RLS 強化と同時着手するため別タスク化、布石 #6)
+
+### 変更内容
+
+#### 1. `js/14-share-ogp.js` 新規作成 (286 行)
+
+- ES Module、`window.NORIRECO.share.openShareModal(stats)` を公開
+- `generateOgpCanvas(stats)` で 1200×630 の Canvas を直接描画
+  - 背景: navy `#0D1B2A` + 上端アクセントライン
+  - ヘッダ: 🚃 乗レコ ロゴ (左) / `yutsutke.github.io/norireco` (右)
+  - 左パネル (620×470): 日本地図 (4 島ポリゴン + 緯度経度グリッド + 乗車区間 polyline + 北方位)
+  - 右パネル (440×470): 完乗率 % / 制覇駅 / 系統 / 総距離
+  - フッタ: `#乗レコ #乗り鉄 #全国制覇`
+- 日本地図シルエットは lat/lon ベースで自己完結 (`JP_ISLANDS` 配列 + `JP_BBOX` 固定 bbox + `projToCanvas()` 投影)
+- 乗車区間は `window.RIDDEN_SEGS` + `NORIRECO.data.SERVICE_LINES` から `buildSegmentPolylines()` で抽出 (lineId + from + to → station coords)
+- モーダル UI は `ensureModal()` で `<body>` に append (既存 `.memo-modal` / `.memo-sheet` CSS を流用)
+  - ダウンロード: `canvas.toBlob` → `<a download>` で `norireco-YYYY-MM-DD.png`
+  - シェア: `navigator.canShare({files})` 対応端末は `navigator.share()` で画像 + テキスト同送、未対応は X intent (`x.com/intent/tweet`) にフォールバック
+  - 閉じる: モーダル背景クリック or ボタン
+
+#### 2. `js/01-constants.js` ISLANDS を window 公開
+
+```js
+// 旧: ISLANDS は現状未参照 (dead) なので window 公開なし
+// 新 (v236): OGP 画像生成 (14-share-ogp.js) で利用するため公開
+window.ISLANDS = ISLANDS;
+```
+
+ただし `01-constants.js` の ISLANDS は pre-projected x,y で「全国 view 固定」前提のため、14-share-ogp.js では結局 lat/lon 版 (`JP_ISLANDS`) を内部に持って自己完結化。01-constants の ISLANDS 公開は将来用 (boundary 共有時)。
+
+#### 3. `js/13a-stats.js:132-153` 完乗率カード直下にボタン追加
+
+```js
+const shareBtn = document.createElement('button');
+shareBtn.className = 'mp-share-btn';
+shareBtn.textContent = '📸 シェア画像を作成';
+shareBtn.onclick = () => NORIRECO.share.openShareModal({
+  pct: all.uniquePct,
+  ridden: all.uniqueRidden,
+  totalUnique,
+  lines: all.lines,
+  complete: all.complete,
+  totalLines,
+  distanceKm: all.totalDistanceKm,
+});
+wrap.appendChild(shareBtn);
+```
+
+`all` (全記録) ベース。`sv` (verified のみ) でないのは MVP では全記録シェアを優先、verified ガードは別タスクのため。
+
+#### 4. `noritetsu-map.html` module 登録
+
+```html
+<script type="module" src="js/13c-lines.js"></script>
+<script type="module" src="js/14-share-ogp.js"></script>  ← 追加
+<script type="module" src="js/09-tabs-stats.js"></script>
+```
+
+#### 5. `sw.js` CACHE_VERSION v235 → v236 + STATIC_ASSETS に追加
+
+#### 6. `scripts/syntax-check.js` の FILES 配列に `14-share-ogp` 追加 (19/19 OK)
+
+### 残課題 (次に着手すべき順)
+
+1. **verified ガード** — `users.share_status` (warn / share_banned / full_banned) スキーマ追加 + RLS policy で実装。布石 #6 と同時
+2. **個別 trip シェア** — 旅程カードからも 1 旅程分の OGP を生成可能に
+3. **`noritetsu-log.html` のテキストシェアを地図画面に移植** — log 画面廃止 TODO とセット
+4. **シェア専用ページ** (`/share/<id>`) で OGP メタタグ込みの受け側 URL + 「自分も記録してみる」CTA
+5. **画像保存先** — 現状は端末ダウンロードのみ。永続シェア URL には R2 + Workers が必須 (布石 #2 / #4)
+
+### 落とし穴メモ
+
+- **`RIDDEN_SEGS` グローバル参照**: 14-share-ogp.js は `window.RIDDEN_SEGS` を直接読む。期間フィルタ (`setDateFilter`) で `RIDDEN_SEGS` が書き換わるので、シェアボタンを押した時点の期間フィルタ状態が反映される (=「今年だけ」シェアも可能)
+- **絵文字フォント**: Canvas API の `🚃` は OS のフォールバックフォントに依存。Windows/macOS/iOS では Emoji フォント、Linux では表示崩れの可能性 (個人開発で実機検証範囲を限定)
+- **`navigator.share` の files サポート**: iOS Safari 15+ / Android Chrome は OK、PC ブラウザは概ね非対応 → X intent fallback で吸収
+- **`canvas.toBlob` は async**: ダウンロード/シェア両方で await 必須
+
+### バージョン番号
+
+v236 (Phase 3.8 後半 §85)
+
+---
+
 ## 84. v235 — 完乗率の集計方式を「ユニーク駅単位」に統一 (2026-05-19)
 
 ### 背景

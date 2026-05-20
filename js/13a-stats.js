@@ -131,6 +131,30 @@ function buildCompletionCards(trips) {
   `;
   wrap.appendChild(cards);
 
+  // ── シェア画像ボタン (v236〜) ──────────────────────────────────
+  // 全記録完乗率ベースで OGP 画像を生成。verified ガードは MVP では未実装、
+  // 別タスクで `users.share_status` と RLS 強化と同時に導入予定。
+  const shareBtn = document.createElement('button');
+  shareBtn.className = 'mp-share-btn';
+  shareBtn.style.cssText = 'width:100%;margin-top:10px;padding:10px 12px;background:rgba(95,181,255,.12);color:#5fb5ff;border:1.5px solid rgba(95,181,255,.35);border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s';
+  shareBtn.textContent = '📸 シェア画像を作成';
+  shareBtn.onclick = () => {
+    if (!(window.NORIRECO && NORIRECO.share && NORIRECO.share.openShareModal)) {
+      alert('シェアモジュールの読込に失敗しました');
+      return;
+    }
+    NORIRECO.share.openShareModal({
+      pct: all.uniquePct,
+      ridden: all.uniqueRidden,
+      totalUnique,
+      lines: all.lines,
+      complete: all.complete,
+      totalLines,
+      distanceKm: all.totalDistanceKm,
+    });
+  };
+  wrap.appendChild(shareBtn);
+
   // ── 詳細トグル ────────────────────────────────────────────────
   const detailBtn = document.createElement('button');
   detailBtn.className = 'mp-detail-toggle-main';
