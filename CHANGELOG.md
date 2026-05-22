@@ -36,6 +36,71 @@
 
 ---
 
+## 102. v253 — 駅タップで「アクションシート」(手動記録 / メモ / 色変更 / キャラ) (2026-05-22)
+
+### 背景
+
+v251 で駅タップ → 駅メモ一覧、v252 で駅 hover に「📸 メモ N 件」を実装した流れで、ユスケさん要望: 「マップ、駅をタップ、手動記録/メモ/色の変更と選択肢が出るようにしたい」
+
+これは TODO「🟡 駅 UI の情報ハブ化 (4領域パネル)」の自分の記録・個人メモ・公的情報・周辺情報 の 4 領域パネル本格版への足がかり。まず「自分の記録」(=手動記録の起点) と「個人メモ」と既存の「🎨 色変更」を統一されたシート UI で駅から呼べるようにする。
+
+### 設計
+
+**通常モード**で駅マーカータップ → 「駅アクションシート」(`#station-action-modal`) を開く:
+- 見出し: `🚉 駅名` + 乗り入れ系統名
+- アクションボタン (動的に出し分け):
+  - 🎭 **〇〇 を見る** — キャラ獲得済 or 未獲得 locked があれば (locked は「(未獲得)」サフィックス)
+  - 📝 **ここから手動記録を始める** — 常時
+  - 📸 **メモ (N件)** or **メモを残す** — N>0 なら青バッジ
+  - 🎨 **系統色を変更** — 乗り入れ系統あり時のみ (複数なら「(N系統)」)
+  - 閉じる
+
+「🎨 系統色変更」で乗り入れ系統が複数なら、シート内が **系統選択リスト** に差し替わる (色スウォッチ付き)。「← 戻る」でアクション一覧に戻る。
+
+**記録モード ON 中・メモモード ON 中** はアクションシートを開かない (= 経路選択 / メモ新規作成の操作を妨げない)。
+
+### 変更内容
+
+#### 1. `js/17-station-actions.js` (新規, ~190 行)
+
+- `NORIRECO.stationActions` 名前空間: `state` (currentMs / currentChar / colorPickLines) + `open(ms, opts)`
+- `openStationActionSheet(ms, {character, characterLocked})` — エントリポイント (08 から呼出)
+- `renderActionList({ms, lines, memoCount})` — メイン画面のボタン群を組み立て
+- `renderColorLineSelector(lines)` — 色変更の系統選択画面
+- 各アクション handler: `onSaShowCharacter` / `onSaStartRecording` / `onSaOpenMemos` / `onSaChangeColor` / `onSaPickColorLine` / `onSaBackToMain`
+- 既存 API を window 経由 (`NORIRECO.memos.openStationMemoList` / `NORIRECO.colorOverrides.openEditor` / `window.openCharModal`) で呼出。記録モード周り (`toggleRecordMode` / `onRecordStationClick`) のみ import (07-record-mode.js)
+- 「📝 手動記録」: `toggleRecordMode()` で ON → 50ms 遅延 (記録モード DOM 更新待ち) → `onRecordStationClick(ms)` で 1 駅目に追加
+
+#### 2. `js/08-rendering.js:attachStationDotClickV2` 通常モード分岐を全置換
+
+- 旧: キャラあり → キャラモーダル直行 / 未獲得 → キャラモーダル / キャラなし & メモあり → 駅メモ一覧 (v251)
+- 新: キャラ取得済 or 未獲得 locked obtainable[0] を判定して `openStationActionSheet(ms, {character, characterLocked})` 1 行に集約
+- フォールバック: `NORIRECO.stationActions.open` が未ロードの極端ケースだけ旧キャラモーダル直行を残す (実質発生しない安全網)
+
+#### 3. `noritetsu-map.html`
+
+- `#station-action-modal` 新設 (`.memo-modal` / `.memo-sheet` を流用)
+- CSS: `.sa-actions` / `.sa-section-label` / `.sa-btn` / `.sa-btn-ic` / `.sa-btn-tx` / `.sa-btn-arrow` / `.sa-btn-badge` / `.sa-btn-back` / `.sa-line-swatch`
+- `<script type="module" src="js/17-station-actions.js">` を追加 (16 と 09 の間)
+
+#### 4. SW + syntax-check
+
+- `sw.js`: CACHE_VERSION v252 → v253 + STATIC_ASSETS に `./js/17-station-actions.js`
+- `scripts/syntax-check.js`: FILES に `'17-station-actions'` 追加 (23/23 OK、escapeHtml 重複は module 化後の無害警告)
+
+### 既存挙動への影響
+
+- **キャラ駅**: タップ → 従来の「キャラモーダル直行」が、アクションシート経由「🎭 ◯◯ を見る」ボタンになる (= 1 hop 増えるが手動記録/メモ/色変更にも到達可能)
+- **未獲得キャラ駅**: 同上 (locked プレビューも「(未獲得)」サフィックス付きでシート経由)
+- **キャラなし & メモあり**: v251 では駅メモ一覧モーダル直行だったが、アクションシート経由「📸 メモ (N件)」になる
+- **キャラなし & メモなし & 系統あり**: v251 まで何も起きなかったが、v253 ではアクションシートで「📝 手動記録」「🎨 色変更」が呼べる ← 新規体験
+
+### バージョン番号
+
+v253 (Phase 3.8 後半 §102)
+
+---
+
 ## 101. v252 — 駅 hover ツールチップに「📸 メモ N 件」を追加 (2026-05-22)
 
 ### 背景

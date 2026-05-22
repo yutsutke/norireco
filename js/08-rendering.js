@@ -821,30 +821,23 @@ function attachStationDotClickV2(dot, ms) {
       openMemo();
       L.DomEvent.stopPropagation(e);
     } else {
-      // 通常モード: キャラ駅ならキャラ詳細モーダル (従来通り優先)
+      // v253: 通常モードは「駅アクションシート」に一本化
+      //       キャラ (取得済 or 未獲得 locked) があれば「🎭 を見る」もシート内に提示。
+      //       キャラ直行ではなく一旦シートを挟むことで、手動記録/メモ/色変更にも
+      //       駅タップから 1 hop で到達できるようにする。
       const character = getStationCharacter(ms.name);
-      if (character) {
+      const obtainable = character ? [] : getObtainableCharactersAt(ms.name);
+      const charForSheet = character || obtainable[0] || null;
+      if (window.NORIRECO?.stationActions?.open) {
+        window.NORIRECO.stationActions.open(ms, {
+          character: charForSheet,
+          characterLocked: !character && !!obtainable[0],
+        });
+        L.DomEvent.stopPropagation(e);
+      } else if (character) {
+        // フォールバック (17-station-actions.js が未ロードの極端ケース)
         openCharModal(ms, character);
         L.DomEvent.stopPropagation(e);
-      } else {
-        // 未獲得 locked キャラがあればプレビュー表示
-        const obtainable = getObtainableCharactersAt(ms.name);
-        if (obtainable.length > 0) {
-          openCharModal(ms, obtainable[0]);
-          L.DomEvent.stopPropagation(e);
-        } else if (window.NORIRECO?.memos?.hasMemosForStation?.(ms.name)) {
-          // v251: キャラなし & 自分のメモがある駅 → 駅メモ一覧モーダル
-          const firstSlId = ms.lines && ms.lines[0];
-          const sl = firstSlId ? NORIRECO.data.SERVICE_LINES.find(x => x.id === firstSlId) : null;
-          window.NORIRECO.memos.openStationMemoList({
-            station: ms.name,
-            lineId: sl?.id || null,
-            lineName: sl?.name || null,
-            lat: ms.lat,
-            lon: ms.lon,
-          });
-          L.DomEvent.stopPropagation(e);
-        }
       }
     }
   });
