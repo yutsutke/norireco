@@ -597,6 +597,13 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mp-tcard-photos{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
 .mp-tcard-thumb{display:block;width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--track);background:#000;}
 .mp-tcard-thumb:hover{border-color:var(--gold);}
+/* v262+: マイページ旅程・メモカード上の写真並び替え ← → (サムネ左右に重ねる) */
+.mp-photo-cell{position:relative;display:inline-block;}
+.mp-photo-move{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.78);color:#fff;border:none;border-radius:10px;width:20px;height:20px;font-size:14px;line-height:1;cursor:pointer;font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;z-index:2;}
+.mp-photo-move.left{left:2px;}
+.mp-photo-move.right{right:2px;}
+.mp-photo-move:hover:not(:disabled){background:var(--gold);color:var(--navy);}
+.mp-photo-move:disabled{opacity:.3;cursor:not-allowed;}
 .mp-tcard-train .mp-car{font-family:'DM Mono',monospace;color:rgba(255,255,255,.7);}
 .mp-tcard-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
 .mp-act-btn{padding:5px 10px;font-size:10px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;border:1px solid;}

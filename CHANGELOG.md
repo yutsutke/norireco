@@ -36,6 +36,57 @@
 
 ---
 
+## 112. v263 — マイページの旅程・メモカード上で写真を ← → 並び替え (2026-05-22)
+
+### 背景
+
+v261 で PhotoArea (memo モーダル / 旅程編集モーダル / 記録モード確認) に並び替え UI が入ったが、ユスケさんからの指摘:「マイページ画面でも、写真が左右に移動できるようにしたい」。
+
+確かに「並び替えだけのために 編集モーダル を開く」のは手数が多い。マイページ画面で直接やれた方が UX 上いい。
+
+### 設計判断
+
+| 方式 | 採否 | 理由 |
+|---|---|---|
+| 各カードに PhotoArea を埋め込む (フル機能) | ❌ | 153 件のカードに 153 個の PhotoArea = メモリ食い・DOM 重い。並び替えしか必要ないのにオーバーキル |
+| カード上に **← → だけ**の軽量 UI | ✅ | 並び替えに限定、Supabase PATCH を直接呼ぶ |
+| ✏️ 編集モーダルだけで完結 (現状維持) | ❌ | ユスケさんの希望: カード上で完結したい |
+
+### 実装
+
+`js/13-mypage-common.js:tripCardHtml`:
+- 写真サムネを `.mp-photo-cell` (relative wrap) でラップ
+- 2 枚以上のとき `.mp-photo-move.left` / `.mp-photo-move.right` を絶対配置 (top:50% / 左右端 / 20×20 半透明黒)
+- 最左/最右は `disabled` で半透明
+
+`js/13b-trips.js`:
+- `moveTripPhoto(tripId, idx, direction)` を追加
+  1. `_mypageCache` の trip から photos[] を取得 → swap
+  2. localStorage 同期
+  3. Supabase PATCH `{ photos: newOrder }`
+  4. `renderMpTripsSection()` で再描画
+- 失敗時は console.warn のみ (alert 出さない、ローカル状態は更新済なので UX 続行)
+
+`js/16-memos.js`:
+- 同じパターンで `moveMemoPhoto(memoId, idx, direction)` を追加 (memo カード + 駅メモ一覧モーダルで動作、`memoCardHtml` 共通)
+- 既存の `updateMemoOnServer` を流用 (PATCH `{ photos }`)
+
+`noritetsu-map.html`:
+- `.mp-photo-cell` / `.mp-photo-move` CSS 追加 (PhotoArea の `.pa-move` と似た見た目だが、サムネサイズが小さい (64-80px) ため少しコンパクトに 20×20)
+
+### 影響範囲
+
+- マイページ **🚃 旅程タブ** の各カード
+- マイページ **📸 メモタブ** の各カード
+- **駅メモ一覧モーダル** (v251、`memoCardHtml` 共通使用のため自動追従)
+
+3 箇所同時に並び替え可能になる。
+
+### 残課題
+
+- 1 枚しかない時はボタン非表示 (実装済、`photos.length > 1` 条件)
+- スマホ画面の小さいサムネだと押しにくい可能性 — 実機テストで判断
+
 ## 111. v262 — 写真差し替え時の旧 R2 オブジェクト delete API (2026-05-22)
 
 ### 背景

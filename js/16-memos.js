@@ -471,10 +471,15 @@ function memoCardHtml(memo) {
   const tags = Array.isArray(memo.tags) ? memo.tags : [];
   const tagsHtml = tags.map(t => `<span class="mp-memo-tag">${escapeHtml(t)}</span>`).join('');
   const photos = (Array.isArray(memo.photos) ? memo.photos : []).filter(p => p && p.url);
+  // v262+: マイページ memo カード上で直接 ← → 並び替え (Supabase PATCH)
   const photoBit = photos.length > 0
-    ? `<div class="mp-memo-photo">${photos.map((p, i) =>
-        `<a href="${escapeHtml(p.url)}" target="_blank" rel="noopener"><img class="mp-memo-thumb" src="${escapeHtml(p.url)}" loading="lazy" alt="メモの写真 ${i + 1}"></a>`
-      ).join('')}</div>`
+    ? `<div class="mp-memo-photo">${photos.map((p, i) => {
+        const moveBtns = photos.length > 1
+          ? `<button type="button" class="mp-photo-move left" onclick="moveMemoPhoto('${escapeHtml(memo.id)}',${i},-1)" ${i === 0 ? 'disabled' : ''} aria-label="左へ">‹</button>
+             <button type="button" class="mp-photo-move right" onclick="moveMemoPhoto('${escapeHtml(memo.id)}',${i},1)" ${i === photos.length - 1 ? 'disabled' : ''} aria-label="右へ">›</button>`
+          : '';
+        return `<div class="mp-photo-cell"><a href="${escapeHtml(p.url)}" target="_blank" rel="noopener"><img class="mp-memo-thumb" src="${escapeHtml(p.url)}" loading="lazy" alt="メモの写真 ${i + 1}"></a>${moveBtns}</div>`;
+      }).join('')}</div>`
     : '';
   const where = [
     memo.station ? `🚉 ${escapeHtml(memo.station)}` : '',
@@ -571,6 +576,32 @@ export function clearLocalMemos() {
 // ── window bridge ──────────────────────────────────────────────
 // HTML onclick (memo-modal / マイページ memo カード) からの呼出と、
 // 他モジュールからの NORIRECO.memos.* アクセスをサポート。
+
+// v262+: マイページ memo カード / 駅メモ一覧モーダル上で写真を ← → 並び替え
+async function moveMemoPhoto(memoId, idx, direction) {
+  const memo = M.cache.find(m => m.id === memoId);
+  if (!memo) return;
+  const photos = Array.isArray(memo.photos) ? [...memo.photos] : [];
+  const target = idx + direction;
+  if (target < 0 || target >= photos.length) return;
+  [photos[idx], photos[target]] = [photos[target], photos[idx]];
+
+  // Supabase 同期 (失敗時は alert なし、console.warn のみ。再描画はローカル状態で進める)
+  try {
+    const updated = await updateMemoOnServer(memoId, { photos });
+    const cacheIdx = M.cache.findIndex(m => m.id === memoId);
+    if (cacheIdx >= 0) M.cache[cacheIdx] = updated;
+  } catch (e) {
+    console.warn('[Memos] 写真並び替え失敗:', e.message);
+    memo.photos = photos; // ローカルだけでも反映
+  }
+
+  // localStorage 同期
+  try { localStorage.setItem('norireco_memos', JSON.stringify(M.cache)); } catch (e) {}
+
+  rerenderMemosIfVisible();
+}
+window.moveMemoPhoto = moveMemoPhoto;
 
 window.toggleMemoMode = toggleMemoMode;
 window.closeMemo = closeMemo;

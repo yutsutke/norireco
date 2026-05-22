@@ -411,6 +411,51 @@ async function saveTripEdit() {
 window.saveTripEdit = saveTripEdit;
 NORIRECO.mypage.saveTripEdit = saveTripEdit;
 
+// v262+: マイページ旅程カード上で写真を ← → 並び替え (Supabase PATCH を直接、編集モーダル不要)
+async function moveTripPhoto(tripId, idx, direction) {
+  const trip = (NORIRECO.mypage.state._mypageCache || []).find(t => t.id === tripId);
+  if (!trip) return;
+  const photos = Array.isArray(trip.photos) ? [...trip.photos] : [];
+  const target = idx + direction;
+  if (target < 0 || target >= photos.length) return;
+  [photos[idx], photos[target]] = [photos[target], photos[idx]];
+  trip.photos = photos;
+
+  // localStorage 同期
+  try {
+    const local = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
+    const idxL = local.findIndex(t => t.id === tripId);
+    if (idxL >= 0) {
+      local[idxL].photos = photos;
+      localStorage.setItem('norireco_trips', JSON.stringify(local));
+    }
+  } catch (e) { console.warn('[マイページ] localStorage 写真並び替え失敗:', e.message); }
+
+  // Supabase 同期 (失敗してもローカルは更新済なので再描画は続行)
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_trips?id=eq.${tripId}`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${authBearerToken()}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify({ photos }),
+    });
+    if (!res.ok) {
+      console.warn('[マイページ] Supabase 写真並び替え失敗:', await res.text());
+    }
+  } catch (e) {
+    console.warn('[マイページ] Supabase 写真並び替え通信エラー:', e.message);
+  }
+
+  // 再描画 (旅程セクションだけ更新)
+  if (typeof renderMpTripsSection === 'function') renderMpTripsSection();
+}
+window.moveTripPhoto = moveTripPhoto;
+NORIRECO.mypage.moveTripPhoto = moveTripPhoto;
+
 function buildTripList(trips) {
   const list = document.createElement('div');
   list.className = 'mp-trip-list';
