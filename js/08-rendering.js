@@ -762,8 +762,21 @@ function drawStationsLayer() {
       ? `<br><span style="color:rgba(255,200,100,.95);font-size:11px;font-weight:700">🎭 ${character.meta.name}</span>` +
         (character.meta.subtitle ? `<span style="color:rgba(140,160,179,.7);font-size:9px;margin-left:6px">${character.meta.subtitle}</span>` : '')
       : '';
-    const tooltipHtml = `<b>${ms.name}</b>${riddenTag}${visitsTag}${charTag}${linesText}`;
-    dot.bindTooltip(tooltipHtml, {className:'norireco-tooltip', offset:[8,0]});
+    // v252: hover ツールチップに「📸 メモ N 件」を追加。tooltip 表示の都度 NORIRECO.memos
+    //       のキャッシュから件数を再計算するので、新規メモ作成/削除直後でも次の hover で反映。
+    const tooltipBase = `<b>${ms.name}</b>${riddenTag}${visitsTag}${charTag}`;
+    const buildMemoTag = () => {
+      const cache = window.NORIRECO?.memos?.state?.cache || [];
+      let count = 0;
+      for (let i = 0; i < cache.length; i++) if (cache[i].station === ms.name) count++;
+      return count > 0
+        ? `<br><span style="color:#5fb5ff;font-size:10px;font-weight:700">📸 メモ ${count} 件</span>`
+        : '';
+    };
+    const buildFullTooltip = () => `${tooltipBase}${buildMemoTag()}${linesText}`;
+
+    dot.bindTooltip(buildFullTooltip(), {className:'norireco-tooltip', offset:[8,0]});
+    dot.on('tooltipopen', () => { dot.getTooltip()?.setContent(buildFullTooltip()); });
 
     dot._station_tier = tier;
     attachStationDotClickV2(dot, ms);
@@ -771,7 +784,8 @@ function drawStationsLayer() {
 
     // パイチャート用の追加マーカー (多系統駅 × 平常時のみ)
     if (extraDot) {
-      extraDot.bindTooltip(tooltipHtml, {className:'norireco-tooltip', offset:[8,0]});
+      extraDot.bindTooltip(buildFullTooltip(), {className:'norireco-tooltip', offset:[8,0]});
+      extraDot.on('tooltipopen', () => { extraDot.getTooltip()?.setContent(buildFullTooltip()); });
       extraDot._station_tier = tier;
       attachStationDotClickV2(extraDot, ms);
       dotLayerRef.addLayer(extraDot);

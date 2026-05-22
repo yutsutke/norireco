@@ -36,6 +36,45 @@
 
 ---
 
+## 101. v252 — 駅 hover ツールチップに「📸 メモ N 件」を追加 (2026-05-22)
+
+### 背景
+
+v251 で駅タップ → 駅メモ一覧モーダルを実装したが、「どの駅にメモがあるか」が地図上で見えない。ユスケさん要望: 「地図 hover で、メモ１件などできる？」
+
+### 変更内容
+
+`js/08-rendering.js:drawStationsLayer` 内の駅マーカー (ドット / パイチャート extraDot 両方) の `bindTooltip` 部分を改修。既存の tooltip (駅名 / 乗車 ✓ / 訪問回数 / キャラ / 乗り入れ系統) の末尾に、自分のメモがある駅では「📸 メモ N 件」(青) を追加。
+
+```js
+const buildMemoTag = () => {
+  const cache = window.NORIRECO?.memos?.state?.cache || [];
+  let count = 0;
+  for (let i = 0; i < cache.length; i++) if (cache[i].station === ms.name) count++;
+  return count > 0
+    ? `<br><span style="color:#5fb5ff;font-size:10px;font-weight:700">📸 メモ ${count} 件</span>`
+    : '';
+};
+const buildFullTooltip = () => `${tooltipBase}${buildMemoTag()}${linesText}`;
+dot.bindTooltip(buildFullTooltip(), {...});
+dot.on('tooltipopen', () => { dot.getTooltip()?.setContent(buildFullTooltip()); });
+```
+
+`tooltipopen` ハンドラで毎回 NORIRECO.memos キャッシュから件数を再計算 → 新規メモ作成/削除直後でも次の hover で件数が反映される (地図全体再描画なしで即時更新)。
+
+PC ユーザーの hover 操作のみが対象 (モバイルでは hover が無いため見えないが、駅タップ → 駅メモ一覧モーダル v251 で代替済)。
+
+### 注意点
+
+- 同名駅は文字列完全一致なので両駅のメモがマージカウントされる (v251 と同じ既知制約)。
+- パイチャート用の `extraDot` も同じ tooltip 更新ロジックを bind 済み。
+
+### バージョン番号
+
+v252 (Phase 3.8 後半 §101)
+
+---
+
 ## 100. v251 — 駅タップで駅メモ一覧モーダルを表示 (2026-05-22)
 
 ### 背景
