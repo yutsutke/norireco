@@ -241,7 +241,7 @@ export function createPhotoArea(opts) {
   const _dragSortHandle = enableDragSort(gridEl, {
     itemSelector: '.pa-item',
     onReorder: reorderItems,
-    ignoreSelector: 'button, a, input, .pa-remove, .pa-add',
+    ignoreSelector: 'button, input, .pa-remove, .pa-add',
   });
 
   fileInput.addEventListener('change', async (e) => {

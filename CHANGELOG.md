@@ -36,6 +36,53 @@
 
 ---
 
+## 116. v267 — マイページの D&D が動かない真の原因 fix (ignoreSelector から `a` 削除) (2026-05-22)
+
+### 真の原因
+
+v264 で D&D を実装し、v265 (click 抑制)、v266 (dragstart 抑制) と修正を重ねたが、ユスケさんから「うごきませんでした」報告 (v266 反映済の Console スクショ付き、コンソールに pointerdown のエラーなし)。
+
+再調査で見つけた**本当の原因**: `js/19-drag-sort.js:onPointerDown` 内の早期 return:
+
+```js
+if (e.target.closest(ignoreSelector)) return;
+```
+
+`ignoreSelector` のデフォルト値が `'button, a, input, textarea, select'` で **`a` を含んでいた**。マイページのサムネ HTML は:
+
+```html
+<div class="mp-photo-cell">
+  <a href="..." target="_blank" draggable="false">
+    <img class="mp-tcard-thumb" ...>
+  </a>
+</div>
+```
+
+`<img>` を pointerdown → `e.target = img` → `closest('a')` で `<a>` がマッチ → **即 return → ドラッグ開始されない**。
+
+PhotoArea モーダル内のサムネは `<a>` で wrap してないため (img 直接)、こちらは正常に動いていた。だから「PhotoArea では動くがマイページでは動かない」という分かりにくい症状になった。
+
+### 修正
+
+`19-drag-sort.js` のデフォルト `ignoreSelector` から `a` を削除:
+
+```js
+ignoreSelector = 'button, input, textarea, select',
+```
+
+`<a>` 内の click は v265 で実装した `suppressNextClick()` で抑制されるので、ドラッグ後にリンクが開く問題は起きない。
+
+`18-photo-area.js` 側の override 文字列からも `a` を削除 (こちらは元々無関係だが整合性のため)。
+
+### 振り返り
+
+3 連の bug fix (v265/266/267) になった原因:
+- v265 click 抑制: 必要な保険だが、根本原因ではなかった
+- v266 dragstart 抑制 + gs 修正: dragstart 抑制も保険、gs はそもそも別 bug
+- v267 ignoreSelector: これが真因
+
+最初から「pointerdown が発火してるか」のログを 1 行入れていれば早く特定できた。次回は実機で動かない時はまず console.log を仕込む。
+
 ## 115. v266 — D&D が動かない bug fix (dragstart 抑制 + `gs is not defined` 修正) (2026-05-22)
 
 ### 背景

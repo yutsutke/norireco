@@ -28,7 +28,10 @@ export function enableDragSort(container, opts) {
   const {
     itemSelector,
     onReorder,
-    ignoreSelector = 'button, a, input, textarea, select',
+    // 注: <a> はデフォルトで ignore しない (サムネを <a target="_blank"> で wrap している
+    // ユースケースが多いため、リンクごとドラッグ可能にする)。
+    // <a> の click は drag 後 suppressNextClick で抑制される
+    ignoreSelector = 'button, input, textarea, select',
     threshold = 5,
     dragClass = 'drag-dragging',
     overClass = 'drag-over',
