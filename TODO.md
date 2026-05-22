@@ -14,48 +14,10 @@
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **完乗率**: ユニーク駅単位に統一 (v235) — ヘッダ「完乗率 X%」と マイページ「全記録完乗率」が一致、「GPS 記録 完乗率」(旧 公式完乗率、v240 で改名) は GPS 認証のみ
 
-**直近の作業 (v228〜v269)**:
-- v269: **hotfix** — `deletePhotoByUrl` の関数定義漏れで v268 push 後に ESM import 解決失敗 → 全モジュール崩壊 → 路線描画も停止。v262 commit 時に Edit が半分失敗していた (使用だけ追加され関数本体が無かった)。`js/18-photo-area.js` に欠落した `CDN_BASE` / `urlToObjectKey` / `export async function deletePhotoByUrl` を追加して復旧。詳細は CHANGELOG §118
-- v268: memo/trip 全削除時の R2 cleanup。v262 で export 済の `deletePhotoByUrl` を `deleteTripFromMypage` / `deleteMemoOnServer` で再利用、Supabase DELETE 成功後に `Promise.all` で fire-and-forget で R2 並列削除 (失敗は console.warn のみ)。布石 #2 の「写真添付 use case」は完了 (残るは OGP 永続化のみ)。詳細は CHANGELOG §117
-- v267: マイページの D&D が動かない真の原因 fix。`js/19-drag-sort.js` のデフォルト `ignoreSelector` が `'button, a, input, textarea, select'` で **`a` を含んでいた** ため、サムネを `<a target="_blank">` で wrap してる マイページの全カードで pointerdown が即 return していた。PhotoArea モーダル (img 直接で <a> なし) では動いていたので原因切り分けに時間かかった。`a` を削除して全箇所で動くように。詳細は CHANGELOG §116
-- v266: D&D が動かない bug fix (dragstart 抑制 + `gs is not defined` 修正)。`js/19-drag-sort.js` に `dragstart` 抑制を追加 (`draggable="false"` だけでは効かないブラウザでもネイティブ URL/画像ドラッグを完全停止)。`js/09-tabs-stats.js:328` で `const gs = NORIRECO.serviceLines.globalStats()` 定義漏れ修正 (renderStats の「実績」セクション 9 バッジが正しく描画される)。詳細は CHANGELOG §115
-- v265: D&D 後の click 抑制 (リンク・ボタン誤発火を防止)。`js/19-drag-sort.js:onPointerUp` で started=true なら `suppressNextClick()` を呼んで window への capture phase listener で次の click を 1 回吸収 (500ms タイムアウトでリーク防止)。サムネを `<a target=_blank>` でラップしてるため、D&D 完了時に「ドラッグした瞬間に新タブで開く」誤動作を防止。詳細は CHANGELOG §114
-- v264: 写真並び替えを ドラッグ&ドロップに全交換 + ‹ › 撤去。`js/19-drag-sort.js` 新規 (Pointer Events 自前実装、PC/モバイル両対応、event delegation で innerHTML 書き換えしても自動追従)。5 箇所 (PhotoArea モーダル 3 つ + マイページ 旅程/メモ カード) で UX 統一。threshold 5px でクリック誤動作防止、`touch-action: none` で iOS スクロール抑制。CSS: `.drag-dragging` (opacity/cursor/box-shadow) + `.drag-over` (gold dashed outline)。詳細は CHANGELOG §113
-- v263: マイページ旅程・メモカード上で写真を ← → 並び替え (編集モーダル不要)。`mp-photo-cell` でサムネをラップ、`mp-photo-move.left/right` を絶対配置 (top:50%, 20×20、最左/最右は disabled)。`moveTripPhoto` / `moveMemoPhoto` 関数を追加 → localStorage 同期 → Supabase PATCH → 再描画。memo は既存の `updateMemoOnServer` を流用。memoCardHtml 共通使用のため駅メモ一覧モーダル (v251) も自動追従。詳細は CHANGELOG §112
-- v262: 写真差し替え時の旧 R2 オブジェクト delete API。Worker `POST /delete/photo` (object_key 検証 + uid 一致チェック、404 は冪等性のため成功扱い)、フロント `js/18-photo-area.js` に `deletePhotoByUrl` + `initialUrls` Set 追加、`uploadAndGetPhotos` 冒頭で diff 計算 → 並列 delete (ベストエフォート、失敗は console.warn のみ)。memo/trip 全削除時の cleanup は別タスク。詳細は CHANGELOG §111
-- v261: 写真の並び替え UI (← → ボタン方式)。共通 PhotoArea (`js/18-photo-area.js`) のサムネ下端に `‹ ›` (22×22 半透明黒、hover で gold) を追加、両端は disabled で薄く、1 枚しかないときは非表示。`moveItem(idx, dir)` で items 配列を swap → uploadAndGetPhotos が新順序で photos[] を返す形で existing/new 混在のまま並び替え可。NEW バッジを左下→左上に移動して下端の move-row と干渉しないように。memo / 旅程編集 / 記録モード確認の 3 箇所同時改善。詳細は CHANGELOG §110
-- v260: 写真アップロードの進捗バー。共通 PhotoArea (`js/18-photo-area.js`) に `.pa-progress` (ゴールド色フィル + 0.25s easing) を追加、圧縮フェーズ・アップロードフェーズ両方で枚数ベースの進捗を視覚化。失敗時はバーを残して `❌ X/Y 完了` を表示。memo / 旅程編集 / 記録モード確認の 3 箇所同時改善。詳細は CHANGELOG §109
-- v259: `.btn-gen` の CSS 定義漏れ修正。記録モード確認 / 旅程編集 / 復元 / 終了駅選択モーダルの「保存系」ボタンがデフォルトブラウザスタイル (内容幅のみ) で small だったのを、`.btn-save` と同等のフルワイド緑ボタンに統一。詳細は CHANGELOG §108
-- v258: 旅程の写真添付 + memo の複数枚化 + 共通 PhotoArea モジュール。`js/18-photo-area.js` 新規 (圧縮/アップロード/複数枚 UI を 1 箇所に集約)、`worker/src/index.js` に `/upload/trip-photo` 追加 (`PHOTO_KINDS` で共通化)、`supabase/migrations/v258_trip_photos.sql` 新規 (`norireco_trips.photos jsonb` 追加 — ユーザー側で実行必要)。旅程編集モーダル + 記録モード確認モーダル + memo モーダル の 3 箇所で `createPhotoArea({ kind, ... })` を呼ぶ形に統一。**副次的に memo も 1 枚→5 枚化**。旅程カードに 64×64 サムネ並列表示。詳細は CHANGELOG §107
-- v257: マイページ memo カードに写真サムネイル表示。`memoCardHtml` のテキストリンク (「📷 写真を見る」) を `<img loading="lazy">` (80×80px / object-fit:cover / 角丸 / hover で gold ボーダー) に置換。`<a target="_blank">` で wrap してるのでクリックで原寸表示は維持。lazy loading + Cloudflare CDN edge cache で重くならない見込み。駅メモ一覧モーダル (v251) も同 memoCardHtml 使用のため自動追従。詳細は CHANGELOG §106
-- v256: R2/Workers 経由のメモ写真アップロード (布石 #2/#4 着手)。`worker/` ディレクトリ新規 (Cloudflare Workers + R2、`api.norireco.app` / `cdn.norireco.app`)、Supabase JWT を JWKS 経由で ES256 verify (current key が ECC P-256 に rotate 済のため。Worker 側に共有シークレット不要 + 布石 #5 とも整合)、presigned PUT URL 方式 (upload は Worker 経由、配信は R2 public バケット直)。`js/16-memos.js` の `m-photo` URL input を file input + Canvas 圧縮 (長辺 1200px / WebP 0.82) + プレビュー UI に置換、photos jsonb は `[{url, w, h, bytes, content_type}]` 形式。`/health` `/me` `/upload/memo-photo` の 3 エンドポイント疎通確認済。残: 実機通しテスト、複数枚対応、写真差し替え時の旧 R2 オブジェクト delete、マイページ memo カードのサムネイル化、OGP シェアの R2 永続化 (布石 #2 のもう一つの use case)
-- v255: キャラ詳細モーダルでキャラのサムネイルを押すと「モーダルが閉じるだけ」で切り替わらない問題を修正。pickStationCharacter から closeCharModal を撤去し、代わりに openCharModal(ms, newCharacter) でモーダルを新しいキャラで再 render するように。サムネイルを次々タップして比較できる体験に
-- v254: v253 アクションシートの 2 バグ修正。(1) 「🎭 を見る」が無反応 — openCharModal は v225 stage 3 で export 化済で window bridge なし、17 から直接 import に変更。(2) キャラモード OFF + シーズン外で「🎭」ボタンが出ない — getStationCharacter/getObtainableCharactersAt は charModeOn を要求するため、17 内に pickCharacterForStation(stationName) を新設して NORIRECO.data.stationCharMap から直接取得 (獲得済優先 → 未獲得は locked 表示)
-- v253: 駅タップで「アクションシート」(手動記録/メモ/色変更/キャラ)。`js/17-station-actions.js` 新設で `NORIRECO.stationActions.open(ms, opts)` を公開、`08-rendering.js:attachStationDotClickV2` の通常モード分岐をシート起動 1 行に集約。アクションボタンは動的: キャラあれば「🎭 を見る」、常時「📝 手動記録」「📸 メモ (N件)」、乗り入れ系統あれば「🎨 系統色を変更」(複数系統なら系統選択サブ画面)。記録/メモモード中は抑制。`noritetsu-map.html` に `station-action-modal` + `.sa-btn` 系 CSS 追加。TODO「🟡 駅 UI の情報ハブ化 (4領域パネル)」本格版への足がかり
-- v252: 駅 hover ツールチップに「📸 メモ N 件」を追加。`js/08-rendering.js:drawStationsLayer` の既存 tooltip 末尾に NORIRECO.memos キャッシュから件数集計したタグを追加、`tooltipopen` ハンドラで毎回再計算 → 新規メモ作成/削除直後でも次の hover で件数反映。PC ユーザーの「どの駅にメモがあるか」発見性向上 (モバイルは v251 の駅タップで代替)
-- v251: 駅タップで駅メモ一覧モーダル。通常モードで駅マーカータップ → キャラなし & 自分のメモあり なら「📸 〇〇駅のメモ (N件)」モーダル表示 (キャラ駅は従来通り優先)。`js/16-memos.js` に `openStationMemoList` / `closeStationMemoModal` / `addNewMemoForStation` / `hasMemosForStation` を追加、`js/08-rendering.js:attachStationDotClickV2` の else 分岐にメモ判定追加、`station-memo-modal` HTML 新設。TODO「🟡 駅 UI の情報ハブ化（4領域パネル）」の個人メモ部分 MVP に相当
-- v250: 駅メモ機能の本格化。地図画面 memo-modal が v90 頃の「Claude 貼り付けテキスト生成」レガシー運用 (Supabase POST すらしていなかった) だったのを破棄し、`js/16-memos.js` で本格 Supabase CRUD (authBearerToken + RLS) に置換。スキーマ刷新 (`supabase/migrations/v250_norireco_memos.sql`): 旧 `norireco_memos` を DROP → user_id NOT NULL + RLS + `tags jsonb` + `photos jsonb` (v251+ R2 連携の箱) + updated_at トリガー。マイページに「📸 メモ」サブタブ追加 (一覧 / フィルタ (路線/種別/気分) / 編集 / 削除)。memo-modal は「☁️ 保存」「✏️ 更新」「🗑 削除」「閉じる」に再設計。SIGNED_IN で `syncMemosFromSupabase()`、SIGNED_OUT で `clearLocalMemos()` (v247 colorOverrides と同パターン)。写真URL input は v251+ で R2 アップロード UI に置換予定のため一旦温存
-- v249: GitHub Pages → Cloudflare Pages 移行 + 独自ドメイン `norireco.app` 取得 ($14.20/年、Cloudflare Registrar at-cost、HSTS 必須の .app TLD)。`_headers` (sw.js / manifest / HTML を no-cache)・`_redirects` (`/` → `/noritetsu-map.html`) 追加、`js/14-share-ogp.js` の OGP 画像内 URL と X intent shareText を新ドメインに、`noritetsu-map.html` / `noritetsu-log.html` に og:title / og:description / og:image / twitter:card メタを追加。`js/12-auth.js` の redirect は `window.location.origin + pathname` で動的生成なので無修正で追従。Supabase Auth + Google OAuth 側に `https://norireco.app/**` を Redirect URLs に追加。GitHub Pages は当面フォールバックで残置。布石 #1 完了
-- v248: HTML inline onclick の window bridge 漏れ修正。v225 (ES Modules stage 3) で `window.toggleRecordMode` 等を撤去したが noritetsu-map.html の `onclick="toggleRecordMode()"` を見落とし、📝 手動記録が無反応だった (= v225〜v247 で潜在的に壊れていた)。`closeRestoreModal` / `restoreFromJson` も同様。grep -oE で全件監査クリア
-- v247: 系統色カスタマイズの Supabase 同期 — 別端末でも色設定が引き継がれる。`norireco_line_color_overrides` 専用テーブル + RLS。set/reset/resetAll で fire-and-forget upsert/delete、SIGNED_IN で pull → localStorage に merge (Supabase 優先、ローカル独自は bulk push)。`supabase/migrations/v247_line_color_overrides.sql` を Supabase Dashboard で要実行
-- v246: v245 リグレッション修正 — 記録モード・メモモード中も polyline click ハンドラが発火して色モーダルが開いてしまい、駅選択ができなかった (= 手動記録不可)。`NORIRECO.record.mode` / `NORIRECO.map.memoMode` チェックで早期 return。ESC キーで色モーダルを閉じる handler も追加
-- v245: 地図上の路線クリック → 色変更モーダル。系統名・現在色・color picker・元色復帰ボタンを表示。`attachLineClick` で 8 種類のポリラインに click ハンドラを attach、stopPropagation で map クリック誤発火を抑制
-- v244: v243 で駅マーカー (パイチャート・ドット) が色 override に追従していなかった bug 修正。merged_stations.json の事前計算 `colors` キャッシュを参照していたため。drawStationsLayer で Map<lineId, color> を都度構築して動的に SERVICE_LINES.color を引くよう変更
-- v243: 系統色のユーザーカスタマイズ機能。路線一覧タブの input[type=color] で色変更 → localStorage 保存 + 地図/パイ/凡例/OGP に即時反映。↺ リセットボタンで元色に戻せる。Supabase 同期は次フェーズ
-- v242: REGION_CENTER の同名駅誤マッチ修正。`Set('高松')` だと石川県の北陸鉄道高松駅も中央駅扱いされていた → `Map(name → {lat, lon})` + 約 50km 圏内の近接判定に変更
-- v241: 9 地域の中央駅 10 駅 (札幌・仙台・東京・新宿・金沢・名古屋・大阪・広島・高松・博多) を新 tier 7 として日本全国ビュー (z >= 4) から常時表示。密集 penalty (isolationBonus) を回避する特例
-- v240: マイページの「公式」表記を「GPS 記録」に統一 (v175 の用語規約と整合)。「🟢 公式完乗率」→「🟢 GPS 記録 完乗率」、詳細統計 5 種の「(公式)」サフィックスも一括リネーム
-- v239: ヘッダ/マップオーバーレイの**系統数オーバーカウント**修正。`globalStats()` が `slRiddenSt` 経由 (= 駅名一致で複数 SERVICE_LINE にバラまく) で系統数を集計していたため、東京駅を山手線で記録すると京浜東北線等にも乗車扱いされてヘッダ 81 系統 vs マイページ 34 系統と乖離していた。`globalStats()` をマイページ `collect()` と同じ「直接 lineId match + LEGACY fallback」に変更
-- v238: ヘッダ完乗率 (h-pct/h-ln) とマイページ完乗率の数字ズレ修正。(A) `applyDateFilter` で localStorage を user_id フィルタ、(B) `updateOverlays()` を map 再描画ブロックから出して常に呼ぶ (期間フィルタ変更時にマイページ滞在中だとヘッダが古い値に固定される問題)
-- v237: OGP 日本地図を Natural Earth ベース 47 都道府県境界に置換。`scripts/build-japan-geo.js` で dataofjapan/land を Douglas-Peucker 簡略化 (tolerance 0.02 deg) → `js/share-japan-geo.js` (59KB) を export。本州が自己交差して破綻していた v236 の 4 島粗ポリゴンを撤去
-- v236: シェア機能 MVP — `js/14-share-ogp.js` で Canvas 1200×630 の OGP 画像を生成 (日本地図 + 乗車区間 + 完乗率/駅/系統/距離)。マイページ完乗率カード直下に「📸 シェア画像を作成」ボタン。ダウンロード + `navigator.share` (画像対応端末) + X intent fallback。verified ガードは未実装 (`users.share_status` + RLS 強化と同時着手予定)
-
-**(v228〜v235、2026-05-19 セッション)**:
-- v228〜v229: ログアウト時に地図・統計・mypage キャッシュをローカル purge (Supabase は据置、再ログインで復元)
-- v230〜v232: 地図 LOD から首都圏 bbox 分岐を撤去 (駅ランク 1 本化)、stationTier を `6/4/2/2/2/1` に圧縮、ドットとパイチャートの出現タイミングを統一
-- v233: 未ログイン時の `syncFromSupabase` / `syncCharacterGrantsFromSupabase` で他人 trip / キャラが漏れていたのを修正 (user_id=eq.uid フィルタ + skip)
-- v234: 静的デモ `RIDDEN_SEGS_STATIC` (21 trips) を撤去、ストレージラベル「静的データ」→「データなし」に
-- v235: 完乗率の集計方式を「ユニーク駅単位」に統一 — ヘッダ「達成率」→「完乗率」、`globalStats().pct` を Set ベースに、ラベル「路線」→「系統」
+**直近の作業**: → [`CHANGELOG.md`](./CHANGELOG.md) の最新セクション (v270 時点で §75-§118 が現行 Phase 3.8 後半) を参照。各 commit ごとの背景・設計判断・失敗教訓まで含む。要約だけほしいときは git log でも可:
+```
+git log --oneline -20
+```
 
 ---
 
