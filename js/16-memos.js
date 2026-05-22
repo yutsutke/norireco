@@ -651,7 +651,7 @@ function memoCardHtml(memo) {
   const tagsHtml = tags.map(t => `<span class="mp-memo-tag">${escapeHtml(t)}</span>`).join('');
   const photos = Array.isArray(memo.photos) ? memo.photos : [];
   const photoBit = (photos[0] && photos[0].url)
-    ? `<div class="mp-memo-photo"><a href="${escapeHtml(photos[0].url)}" target="_blank" rel="noopener">📷 写真を見る</a></div>`
+    ? `<div class="mp-memo-photo"><a href="${escapeHtml(photos[0].url)}" target="_blank" rel="noopener"><img class="mp-memo-thumb" src="${escapeHtml(photos[0].url)}" loading="lazy" alt="メモの写真"></a></div>`
     : '';
   const where = [
     memo.station ? `🚉 ${escapeHtml(memo.station)}` : '',

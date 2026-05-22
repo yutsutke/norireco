@@ -36,6 +36,29 @@
 
 ---
 
+## 106. v257 — マイページ memo カードに写真サムネイル表示 (2026-05-22)
+
+### 背景
+
+v256 で memo 写真の R2 アップロードが動いた直後、マイページの memo カードは「📷 写真を見る」テキストリンクのままで、写真が表示されていなかった (元コードは Supabase POST すらしてなかった v90 時代の名残)。ユスケさんからの直接フィードバック「重くならない?」に「lazy loading + 80px 縮小表示なら大丈夫」と回答してそのまま実装。
+
+### 変更
+
+- **`js/16-memos.js:memoCardHtml`**: テキストリンクを `<img class="mp-memo-thumb" loading="lazy">` に置換 (`<a>` で wrap して写真クリックで原寸表示は維持)
+- **`noritetsu-map.html`**: `.mp-memo-photo` の色付きテキスト style を削除、`.mp-memo-thumb` (80×80px / object-fit: cover / 角丸 8px / 黒背景) を追加、hover で gold ボーダーに
+
+### パフォーマンス試算
+
+- 圧縮済 WebP は数十〜数百 KB/枚 (v256 で長辺 1200px / quality 0.82)
+- `loading="lazy"` で画面外は読み込まれない (スクロール時に順次)
+- `cdn.norireco.app` は Cloudflare CDN edge cache 効くので 2 回目以降は即時
+- 100 件のメモがあっても、初期表示は画面に見えてる数件 (5-10 枚) だけ ≒ 1-2MB
+
+### 残課題
+
+- 複数枚対応 (現状 `photos[0]` のみ、UI が 1 枚前提)
+- 駅メモ一覧モーダル (v251) 内のカードも同 `memoCardHtml` を使ってるので自動的に同改善が効くはず
+
 ## 105. v256 — R2/Workers 経由のメモ写真アップロード (布石 #2/#4 着手) (2026-05-22)
 
 ### 背景
