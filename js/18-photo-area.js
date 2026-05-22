@@ -60,6 +60,40 @@ export async function compressImageToWebP(file) {
   }
 }
 
+// 公開 URL から R2 object_key を逆抽出 (cdn.norireco.app/<object_key> 形式想定)
+const CDN_BASE = 'https://cdn.norireco.app/';
+function urlToObjectKey(url) {
+  if (typeof url !== 'string' || !url.startsWith(CDN_BASE)) return null;
+  return url.slice(CDN_BASE.length);
+}
+
+// v262: R2 オブジェクト削除 (差し替え時の掃除用、ベストエフォート)
+// 失敗してもアップロードは継続する設計 (UX 優先、R2 ゴミは将来の定期 cleanup で掃除可)
+// 注: v262 commit 時に export 定義を追加し忘れて、呼出だけ書いてあった bug を v268 で修正
+export async function deletePhotoByUrl(url) {
+  const objectKey = urlToObjectKey(url);
+  if (!objectKey) return false; // CDN URL でなければ何もしない (古いデータ等)
+  try {
+    const res = await fetch(`${NORIRECO_API_BASE}/delete/photo`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authBearerToken()}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ object_key: objectKey }),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      console.warn('[PhotoArea] delete 失敗:', res.status, err.slice(0, 200));
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn('[PhotoArea] delete 例外:', e.message);
+    return false;
+  }
+}
+
 // ── アップロード ───────────────────────────────────────────────
 // kind: 'memo' | 'trip', ownerId: memo_id | trip_id
 export async function uploadPhoto(kind, ownerId, blob, meta) {

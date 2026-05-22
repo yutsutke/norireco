@@ -36,6 +36,48 @@
 
 ---
 
+## 118. v269 — hotfix: deletePhotoByUrl の関数定義漏れで全モジュール崩壊 (2026-05-23)
+
+### 背景
+
+v268 push 後、ユスケさんから「急に路線が表示されなくなったよ」+ Console スクショ:
+
+```
+Uncaught SyntaxError: The requested module './18-photo-area.js'
+does not provide an export named 'deletePhotoByUrl' (at 16-memos.js:25:27)
+```
+
+= ESM の import 解決失敗 = **全モジュール初期化失敗** = 地図描画もマイページもすべて停止。
+
+### 真の原因
+
+実は v262「写真差し替え時の旧 R2 オブジェクト delete API」の commit 時に、`deletePhotoByUrl` 関数の **定義 Edit が失敗** していた (tool 操作のミス)。`uploadAndGetPhotos` 内で `deletePhotoByUrl(url)` を呼ぶ箇所だけが追加されて、関数本体・export 文が無い状態のまま commit + push されていた。
+
+v262〜v267 の間ずっと **写真差し替えを保存した瞬間に ReferenceError が出る潜在 bug** だったが:
+- ユーザーがその操作をしてない (ReferenceError は実行時のみ)
+- ファイル内 reference なので import 解決には影響しない
+
+→ 顕在化せず通過。
+
+v268 で `16-memos.js` / `13b-trips.js` に `import { deletePhotoByUrl } from './18-photo-area.js'` を書いた瞬間、**モジュールロード時の静的解析**で export 不在が検出 → SyntaxError → 連鎖崩壊。
+
+### 修正
+
+`js/18-photo-area.js` に欠落していた関数を追加 (`uploadPhoto` の手前):
+
+- `CDN_BASE` constant
+- `urlToObjectKey(url)` (内部関数)
+- `export async function deletePhotoByUrl(url)` (Worker `/delete/photo` を呼ぶベストエフォート関数)
+
+これらは v262 commit time に追加されているべきだったが Edit が失敗していた。今回正規化。
+
+### 振り返り
+
+- 同じ「Edit が失敗して使用だけ残る」パターンは v265「gs is not defined」と同じ構造の bug。リファクタ / 移動 / 追加時の半分操作残りは要注意
+- ESM の良いところ: import 解決時に欠落が即検出される (CommonJS や global だと runtime まで気付かない)
+- 救いは syntax check が静的に通っていたこと (使用側だけでは syntax error ではない)。runtime test で初めて顕在化
+- 次回からは: 関数を新規 export する commit で `npm run check` 後に **`grep -E "^export\b" target.js | head` で実際に export されてるか目視確認** をルーチン化
+
 ## 117. v268 — memo/trip 全削除時の R2 cleanup (2026-05-22)
 
 ### 背景

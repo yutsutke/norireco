@@ -6,7 +6,7 @@
 ---
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v268 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v269 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13c-..` ES Modules (v195〜v225 で全 18 ファイル `<script type="module">` + `import`/`export` 化完了)
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
@@ -14,7 +14,8 @@
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **完乗率**: ユニーク駅単位に統一 (v235) — ヘッダ「完乗率 X%」と マイページ「全記録完乗率」が一致、「GPS 記録 完乗率」(旧 公式完乗率、v240 で改名) は GPS 認証のみ
 
-**直近の作業 (v228〜v268)**:
+**直近の作業 (v228〜v269)**:
+- v269: **hotfix** — `deletePhotoByUrl` の関数定義漏れで v268 push 後に ESM import 解決失敗 → 全モジュール崩壊 → 路線描画も停止。v262 commit 時に Edit が半分失敗していた (使用だけ追加され関数本体が無かった)。`js/18-photo-area.js` に欠落した `CDN_BASE` / `urlToObjectKey` / `export async function deletePhotoByUrl` を追加して復旧。詳細は CHANGELOG §118
 - v268: memo/trip 全削除時の R2 cleanup。v262 で export 済の `deletePhotoByUrl` を `deleteTripFromMypage` / `deleteMemoOnServer` で再利用、Supabase DELETE 成功後に `Promise.all` で fire-and-forget で R2 並列削除 (失敗は console.warn のみ)。布石 #2 の「写真添付 use case」は完了 (残るは OGP 永続化のみ)。詳細は CHANGELOG §117
 - v267: マイページの D&D が動かない真の原因 fix。`js/19-drag-sort.js` のデフォルト `ignoreSelector` が `'button, a, input, textarea, select'` で **`a` を含んでいた** ため、サムネを `<a target="_blank">` で wrap してる マイページの全カードで pointerdown が即 return していた。PhotoArea モーダル (img 直接で <a> なし) では動いていたので原因切り分けに時間かかった。`a` を削除して全箇所で動くように。詳細は CHANGELOG §116
 - v266: D&D が動かない bug fix (dragstart 抑制 + `gs is not defined` 修正)。`js/19-drag-sort.js` に `dragstart` 抑制を追加 (`draggable="false"` だけでは効かないブラウザでもネイティブ URL/画像ドラッグを完全停止)。`js/09-tabs-stats.js:328` で `const gs = NORIRECO.serviceLines.globalStats()` 定義漏れ修正 (renderStats の「実績」セクション 9 バッジが正しく描画される)。詳細は CHANGELOG §115
