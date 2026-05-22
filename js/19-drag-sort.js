@@ -104,6 +104,18 @@ export function enableDragSort(container, opts) {
     if (dropItem) dropItem.classList.add(overClass);
   }
 
+  // ドラッグ完了直後の click を 1 回だけ抑制 (サムネ内 <a target=_blank> の発火を防ぐ)
+  function suppressNextClick() {
+    function handler(ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      window.removeEventListener('click', handler, true);
+    }
+    window.addEventListener('click', handler, true);
+    // 念のため 500ms で listener を撤去 (click が来なかった場合の保険)
+    setTimeout(() => window.removeEventListener('click', handler, true), 500);
+  }
+
   function onPointerUp(e) {
     if (!dragging || e.pointerId !== pointerId) return;
     if (!started) {
@@ -116,6 +128,8 @@ export function enableDragSort(container, opts) {
     const targetItem = container.querySelector(`.${overClass}`);
     const newIdx = (targetItem && targetItem !== dragging) ? items.indexOf(targetItem) : -1;
     reset();
+    // ドラッグ後の click を抑制 (リンク・ボタンの誤発火を防ぐ)
+    suppressNextClick();
     if (newIdx >= 0 && newIdx !== oldIdx && typeof onReorder === 'function') {
       try { onReorder(oldIdx, newIdx); } catch (err) {
         console.warn('[DragSort] onReorder エラー:', err.message);

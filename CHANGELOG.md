@@ -36,6 +36,38 @@
 
 ---
 
+## 114. v265 — D&D 後の click 抑制 (リンク・ボタン誤発火を防止) (2026-05-22)
+
+### 背景
+
+v264 で D&D を全画面に実装した直後、ユスケさんから「マイページ memo タブでも動く?」と確認の質問。スクリーンショット上で実装は反映されているが、**写真サムネは `<a target="_blank">` でラップされている** ので、D&D 完了時に **pointer up → click イベント発火 → 新タブで原寸表示** という連鎖が起きる可能性がある (mouse 系では確実に発生)。
+
+つまり「ドラッグ&ドロップした瞬間に、写真が新タブで開いてしまう」誤動作。
+
+### 修正
+
+`js/19-drag-sort.js:onPointerUp` 内で、ドラッグ確定 (`started=true`) 後の処理として `suppressNextClick()` を呼ぶ:
+
+```js
+function suppressNextClick() {
+  function handler(ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    window.removeEventListener('click', handler, true);
+  }
+  window.addEventListener('click', handler, true);
+  // 保険: 500ms で listener を撤去 (click が来なかった場合)
+  setTimeout(() => window.removeEventListener('click', handler, true), 500);
+}
+```
+
+window への capture phase listener で「次の click を 1 回だけ吸収」する典型パターン。pointer up 直後の click は確実に捕まる。500ms タイムアウトでリーク防止。
+
+### 影響範囲
+
+- 5 箇所すべての D&D (PhotoArea 3 モーダル + マイページ 旅程/メモ カード) で同時改善
+- ドラッグじゃない単純なクリック (5px 未満) は started=false のままなので suppressNextClick は呼ばれない → リンク開封は通常通り動く
+
 ## 113. v264 — 写真並び替えを D&D に全交換 + ‹ › 撤去 (2026-05-22)
 
 ### 背景
