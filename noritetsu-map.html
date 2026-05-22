@@ -1072,7 +1072,9 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .pa-add small{font-size:9px;font-family:'DM Mono',monospace;}
 .pa-add:hover:not(.pa-add-disabled){border-color:var(--gold);color:var(--gold);background:rgba(242,169,0,.08);}
 .pa-add-disabled{cursor:not-allowed;opacity:.4;font-size:11px;}
-.pa-status{font-size:11px;color:var(--silver);font-family:'DM Mono',monospace;min-height:14px;}
+.pa-status{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--silver);font-family:'DM Mono',monospace;min-height:14px;}
+.pa-progress{height:5px;border-radius:3px;background:var(--track);overflow:hidden;}
+.pa-progress-fill{height:100%;background:var(--gold);width:0%;transition:width 0.25s ease;}
 
 /* 駅アクションシート (v253) */
 .sa-actions{display:flex;flex-direction:column;gap:8px;margin-top:14px;margin-bottom:10px;}

@@ -6,7 +6,7 @@
 ---
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v259 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v260 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13c-..` ES Modules (v195〜v225 で全 18 ファイル `<script type="module">` + `import`/`export` 化完了)
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
@@ -14,7 +14,8 @@
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **完乗率**: ユニーク駅単位に統一 (v235) — ヘッダ「完乗率 X%」と マイページ「全記録完乗率」が一致、「GPS 記録 完乗率」(旧 公式完乗率、v240 で改名) は GPS 認証のみ
 
-**直近の作業 (v228〜v259)**:
+**直近の作業 (v228〜v260)**:
+- v260: 写真アップロードの進捗バー。共通 PhotoArea (`js/18-photo-area.js`) に `.pa-progress` (ゴールド色フィル + 0.25s easing) を追加、圧縮フェーズ・アップロードフェーズ両方で枚数ベースの進捗を視覚化。失敗時はバーを残して `❌ X/Y 完了` を表示。memo / 旅程編集 / 記録モード確認の 3 箇所同時改善。詳細は CHANGELOG §109
 - v259: `.btn-gen` の CSS 定義漏れ修正。記録モード確認 / 旅程編集 / 復元 / 終了駅選択モーダルの「保存系」ボタンがデフォルトブラウザスタイル (内容幅のみ) で small だったのを、`.btn-save` と同等のフルワイド緑ボタンに統一。詳細は CHANGELOG §108
 - v258: 旅程の写真添付 + memo の複数枚化 + 共通 PhotoArea モジュール。`js/18-photo-area.js` 新規 (圧縮/アップロード/複数枚 UI を 1 箇所に集約)、`worker/src/index.js` に `/upload/trip-photo` 追加 (`PHOTO_KINDS` で共通化)、`supabase/migrations/v258_trip_photos.sql` 新規 (`norireco_trips.photos jsonb` 追加 — ユーザー側で実行必要)。旅程編集モーダル + 記録モード確認モーダル + memo モーダル の 3 箇所で `createPhotoArea({ kind, ... })` を呼ぶ形に統一。**副次的に memo も 1 枚→5 枚化**。旅程カードに 64×64 サムネ並列表示。詳細は CHANGELOG §107
 - v257: マイページ memo カードに写真サムネイル表示。`memoCardHtml` のテキストリンク (「📷 写真を見る」) を `<img loading="lazy">` (80×80px / object-fit:cover / 角丸 / hover で gold ボーダー) に置換。`<a target="_blank">` で wrap してるのでクリックで原寸表示は維持。lazy loading + Cloudflare CDN edge cache で重くならない見込み。駅メモ一覧モーダル (v251) も同 memoCardHtml 使用のため自動追従。詳細は CHANGELOG §106

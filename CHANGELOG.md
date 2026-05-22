@@ -36,6 +36,40 @@
 
 ---
 
+## 109. v260 — 写真アップロードの進捗バー (2026-05-22)
+
+### 背景
+
+v258 で複数枚 (最大 5 枚) 化したことで、特にモバイル回線で 3-5 枚アップロード時に「いま何枚目」「あと何枚」が体感で分かりづらかった。テキストだけ (`アップロード中 (2/5)…`) では視覚的に進んでる感が薄い。
+
+### 変更
+
+`js/18-photo-area.js` の PhotoArea コンポーネントに**進捗バー**を追加 (`.pa-progress` / `.pa-progress-fill`、ゴールド色のフィルが滑らかに右へ伸びる):
+
+- **DOM**: `.pa-status` を `<div>` から `<div class="pa-status-text">` + `<div class="pa-progress">` の縦並びに変更
+- **API 追加**: `setProgress(percent)` / `hideProgress(delayMs)` (module 内 private)
+- **圧縮フェーズ** (file 選択時): `🗜 圧縮中 N/M` + バー (枚数ベース)、完了後 0.8 秒で消える
+- **アップロードフェーズ** (uploadAndGetPhotos): `☁️ アップロード中 N/M` + バー、完了表示 `✅ アップロード完了 (N 枚)` を 1.2 秒残す
+- **失敗時**: バーをそのまま残して `❌ アップロード失敗 (X/Y 完了)` を表示 (どこまで進んだか確認できるように)
+
+### CSS (`noritetsu-map.html`)
+
+```css
+.pa-status{display:flex;flex-direction:column;gap:4px;...}
+.pa-progress{height:5px;border-radius:3px;background:var(--track);overflow:hidden;}
+.pa-progress-fill{height:100%;background:var(--gold);width:0%;transition:width 0.25s ease;}
+```
+
+5px の細いバー (圧迫感を避ける) + 既存の `--gold` 色 (UI 全体の差別化アクセント) + 0.25s easing で滑らかに動く。
+
+### 影響範囲
+
+memo モーダル / 旅程編集モーダル / 記録モード確認モーダル の **3 箇所すべて**で進捗バーが共通動作。共通 PhotoArea を使ってる成果。
+
+### 残課題 (まだやってない)
+
+- ファイル単位の % 進捗 (XHR.upload.onprogress): 大きい単一ファイル時にバーが「枚数粒度」でしか動かない問題。将来 fetch → XHR に書き換え or `ReadableStream` 経由で実装可能だが、現状の写真 (圧縮後 < 5MB) なら 1 枚 0.5〜2 秒で完了するので体感影響小
+
 ## 108. v259 — `.btn-gen` の CSS 定義漏れを修正 (2026-05-22)
 
 ### 背景

@@ -135,15 +135,43 @@ export function createPhotoArea(opts) {
     <div class="pa-wrap">
       <div class="pa-grid"></div>
       <input type="file" class="pa-file-input" accept="image/jpeg,image/png,image/webp" multiple style="display:none">
-      <div class="pa-status"></div>
+      <div class="pa-status">
+        <div class="pa-status-text"></div>
+        <div class="pa-progress" style="display:none"><div class="pa-progress-fill" style="width:0%"></div></div>
+      </div>
     </div>
   `;
   const gridEl = container.querySelector('.pa-grid');
   const fileInput = container.querySelector('.pa-file-input');
   const statusEl = container.querySelector('.pa-status');
+  const statusTextEl = container.querySelector('.pa-status-text');
+  const progressEl = container.querySelector('.pa-progress');
+  const progressFillEl = container.querySelector('.pa-progress-fill');
 
+  // v259+: 進捗バー (表示/非表示 + 0〜100%)
+  let _hideTimer = null;
   function setStatus(text) {
-    if (statusEl) statusEl.textContent = text || '';
+    if (statusTextEl) statusTextEl.textContent = text || '';
+  }
+  function setProgress(percent) {
+    if (!progressEl || !progressFillEl) return;
+    if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+    const p = Math.max(0, Math.min(100, Math.round(percent)));
+    progressEl.style.display = '';
+    progressFillEl.style.width = `${p}%`;
+  }
+  function hideProgress(delayMs) {
+    if (!progressEl) return;
+    if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+    if (delayMs && delayMs > 0) {
+      _hideTimer = setTimeout(() => {
+        progressEl.style.display = 'none';
+        if (progressFillEl) progressFillEl.style.width = '0%';
+      }, delayMs);
+    } else {
+      progressEl.style.display = 'none';
+      if (progressFillEl) progressFillEl.style.width = '0%';
+    }
   }
 
   function escapeHtml(s) {
@@ -216,7 +244,8 @@ export function createPhotoArea(opts) {
         alert(`「${file.name}」が大きすぎ (上限 ${Math.round(PHOTO_ORIGINAL_MAX_BYTES / 1024 / 1024)}MB)`);
         continue;
       }
-      setStatus(`圧縮中 (${processed}/${accepted.length})…`);
+      setStatus(`🗜 圧縮中 ${processed}/${accepted.length}`);
+      setProgress((processed - 1) / accepted.length * 100);
       try {
         const { blob, w, h } = await compressImageToWebP(file);
         if (blob.size > PHOTO_MAX_BYTES) {
@@ -230,11 +259,13 @@ export function createPhotoArea(opts) {
           h,
           previewUrl: URL.createObjectURL(blob),
         });
+        setProgress(processed / accepted.length * 100);
       } catch (err) {
         alert(`「${file.name}」処理失敗: ${err.message}`);
       }
     }
     setStatus('');
+    hideProgress(800); // 完了後 0.8 秒で消す (バーが満タンになった視覚効果を残す)
     render();
   });
 
@@ -246,25 +277,44 @@ export function createPhotoArea(opts) {
     // ownerIdOverride: 保存直前に決まる ID (新規 trip 生成等) を渡したい場合
     async uploadAndGetPhotos(ownerIdOverride) {
       const ownerId = ownerIdOverride || (typeof getOwnerId === 'function' ? getOwnerId() : null);
+      // アップロードが必要な新規アイテムだけ数えて進捗分母にする
+      const newCount = items.filter((it) => it.kind === 'new').length;
       const result = [];
-      for (let i = 0; i < items.length; i++) {
-        const it = items[i];
-        if (it.kind === 'existing') {
-          result.push({
-            url: it.url,
-            w: it.w,
-            h: it.h,
-            bytes: it.bytes,
-            content_type: it.content_type,
-          });
-        } else {
-          if (!ownerId) throw new Error('uploadAndGetPhotos: ownerId が未確定');
-          setStatus(`アップロード中 (${i + 1}/${items.length})…`);
-          const uploaded = await uploadPhoto(kind, ownerId, it.blob, { w: it.w, h: it.h });
-          result.push(uploaded);
+      let uploadedSoFar = 0;
+      try {
+        for (let i = 0; i < items.length; i++) {
+          const it = items[i];
+          if (it.kind === 'existing') {
+            result.push({
+              url: it.url,
+              w: it.w,
+              h: it.h,
+              bytes: it.bytes,
+              content_type: it.content_type,
+            });
+          } else {
+            if (!ownerId) throw new Error('uploadAndGetPhotos: ownerId が未確定');
+            setStatus(`☁️ アップロード中 ${uploadedSoFar + 1}/${newCount}`);
+            // バーは「これからアップロードする 1 枚」の開始時点を表示 (進行中の枚目を示す)
+            setProgress(newCount > 0 ? uploadedSoFar / newCount * 100 : 0);
+            const uploaded = await uploadPhoto(kind, ownerId, it.blob, { w: it.w, h: it.h });
+            result.push(uploaded);
+            uploadedSoFar++;
+            setProgress(newCount > 0 ? uploadedSoFar / newCount * 100 : 100);
+          }
         }
+        if (newCount > 0) {
+          setStatus(`✅ アップロード完了 (${newCount} 枚)`);
+          hideProgress(1200); // 完了表示を 1.2 秒残してから消す
+        } else {
+          setStatus('');
+          hideProgress(0);
+        }
+      } catch (e) {
+        // 失敗時はバーをそのまま残して赤系メッセージ
+        setStatus(`❌ アップロード失敗 (${uploadedSoFar}/${newCount} 完了)`);
+        throw e;
       }
-      setStatus('');
       return result;
     },
 
