@@ -36,6 +36,95 @@
 
 ---
 
+## 107. v258 — 旅程の写真添付 + memo の複数枚化 + 共通 PhotoArea モジュール (2026-05-22)
+
+### 背景
+
+v256 で memo 写真の R2 アップロードが動いた直後、ユスケさんからの「旅程でも同じように写真登録できるようにしたい」フィードバック。布石 #2 「画像ストレージ: Cloudflare R2 + Workers API ゲートウェイ」の本来の use case は「旅程の写真添付 + OGP 生成」なので、想定通りの展開。memo の写真 UI を素朴に複製するのではなく、共通モジュールに切り出して両方で使う方針を採用。副次的に memo も「1 枚のみ → 5 枚まで」に拡張される。
+
+### 設計判断
+
+| 軸 | 採用 | 理由 |
+|---|---|---|
+| 共通化 vs 重複コード | **共通モジュール `js/18-photo-area.js`** | 圧縮 / アップロード / 複数枚 UI を 1 箇所に集約。memo / trip 両方で `createPhotoArea({ kind: 'memo' | 'trip', ... })` 形式で再利用。将来 OGP シェアや station photos でも転用可能 |
+| Worker エンドポイント | **`/upload/memo-photo` + `/upload/trip-photo` の 2 本** | 内部実装は `handlePhotoUpload(kind, ...)` で共通化、`PHOTO_KINDS` map で kind→keyPrefix/idRegex/bodyIdField を分岐。エンドポイントを分けることで CORS や rate limit の細かい制御を後付け可能 |
+| 1 旅程あたりの枚数 | **最大 5 枚** | 車窓・駅・乗換と複数場面を保存できる。memo も同じく 5 枚 (副次的) |
+| R2 オブジェクトキー | `trips/<uid>/<trip_id>/<photo_uuid>.<ext>` | memo と同じく uid 最上位 prefix で破壊範囲限定、trip_id で grouping |
+
+### Worker 拡張 (`worker/src/index.js`)
+
+- `PHOTO_KINDS` map を追加 (memo / trip それぞれの `keyPrefix` / `bodyIdField` / `idRegex`)
+- `handleMemoPhotoUpload` を `handlePhotoUpload(kind, ...)` にリネーム + 一般化
+- ルーターに `/upload/trip-photo` を追加 (handler 共通)
+- trip_id の regex は `^trip_[0-9a-zA-Z_]{8,40}$` (既存コードでは `trip_${Date.now()}` で 13 桁の UNIX time ms、将来 suffix 拡張に備えて緩めに)
+- 再 deploy: `Uploaded norireco-api (2.89 sec)` (62.67 KiB / gzip 15.17 KiB)
+
+### Supabase migration (`supabase/migrations/v258_trip_photos.sql`)
+
+```sql
+ALTER TABLE norireco_trips
+  ADD COLUMN IF NOT EXISTS photos jsonb DEFAULT '[]'::jsonb;
+NOTIFY pgrst, 'reload schema';
+```
+
+ユーザーが Supabase Dashboard → SQL Editor で実行する必要あり。既存 trip 約 150 件は `photos=[]` で migrate される。
+
+### 共通 PhotoArea モジュール (`js/18-photo-area.js` 新規 244 行)
+
+公開 API:
+```js
+const area = createPhotoArea({
+  container,       // HTMLElement (本 module が中身を描画)
+  kind,            // 'memo' | 'trip'
+  getOwnerId,      // () => string | null
+  initialPhotos,   // [{url, w, h, bytes, content_type}]
+  maxCount,        // default: 5
+});
+await area.uploadAndGetPhotos(ownerIdOverride)  // 新規 blob を順次アップロード
+area.destroy()                                  // blob URL revoke + DOM 撤去
+```
+
+内部 items 配列で `{ kind: 'existing', url, ... }` (既存 R2 URL) と `{ kind: 'new', blob, w, h, previewUrl }` (アップロード待ちの Blob) を統一管理。圧縮 (Canvas → WebP 0.82 / 長辺 1200px) / プレビュー (blob:URL) / ✕ 削除 / + 追加 / 圧縮ステータス表示まで自己完結。
+
+### Frontend 統合
+
+3 箇所で `createPhotoArea` を使用:
+
+1. **memo モーダル** (`js/16-memos.js`): 既存の手作り file input + 1 枚プレビュー UI を全部削除、`createPhotoArea({ kind: 'memo' })` に置き換え。**副次的に memo も最大 5 枚化**。memoCardHtml も複数枚サムネ並列表示に。
+2. **旅程編集モーダル** (`js/13b-trips.js`): `📝 自由メモ` の下に `📷 写真` セクションを追加。`openTripEditModal` で area 生成、`saveTripEdit` で `tripPatch.photos = await area.uploadAndGetPhotos(tripId)` を Supabase PATCH に含める。
+3. **記録モード確認モーダル** (`js/07-record-mode.js`): `rec-confirm-modal` の `📝 メモ` 行の下に `📷 写真` セクションを追加。`openRecConfirm` で area 生成 (毎回リセット、notes/delay と同じ挙動)、`saveMultiSegmentTrip` で trip_id 確定後にアップロード → `trip.photos = uploaded`。失敗時は alert + 保存全体をキャンセル。
+
+### 旅程カードのサムネ表示 (`js/13-mypage-common.js:tripCardHtml`)
+
+`📝 notes` の下に `📷 photos` 横並びサムネ (64×64 / object-fit:cover / lazy load / 角丸 / hover gold ボーダー / クリックで原寸別タブ)。memo カードと同じ視覚スタイル (memo は 80px、trip は少し小さめ 64px)。
+
+### 失敗時の挙動
+
+- **Worker presign 失敗** (network / 401 / 400): area が例外を throw、呼び出し側で alert + 保存中断
+- **R2 PUT 失敗**: 同上
+- **memo 保存中に 1 枚目アップロード OK・2 枚目失敗**: 1 枚目は R2 に残るが、memo POST が走らないので DB から見ると到達不能。R2 はゴミとして残る (将来の cleanup ジョブ)
+- **trip 保存中に同様**: 同上、trip POST が走らない
+
+### 残課題 (次回以降)
+
+- 写真差し替え時の旧 R2 オブジェクト delete API (現状はゴミが残る、将来の定期 cleanup or `/delete/photo` エンドポイント)
+- 写真の並び替え UI (現状は追加順固定)
+- OGP シェア画像の R2 永続化 + `/share/<id>` 受け側ページ (布石 #2 のもう一つの大きな use case)
+- 既存 Supabase SDK 直叩きコードの段階的 Worker 経由化 (布石 #4 の残り)
+
+### コミット範囲
+
+- `worker/src/index.js` (PHOTO_KINDS 共通化 + /upload/trip-photo 追加)
+- `js/18-photo-area.js` 新規
+- `js/16-memos.js` (PhotoArea に切替、複数枚化)
+- `js/13b-trips.js` (旅程編集モーダルに photo セクション追加)
+- `js/07-record-mode.js` (記録モード保存時に photo 添付)
+- `js/13-mypage-common.js` (tripCardHtml に photo サムネ追加)
+- `scripts/syntax-check.js` (FILES に 18-photo-area を追加)
+- `noritetsu-map.html` (m-photo-* CSS を削除、.pa-* / .mp-tcard-photos / 各モーダルの photo container 追加)
+- `sw.js` (CACHE_VERSION v257 → v258、STATIC_ASSETS に 18-photo-area)
+- `supabase/migrations/v258_trip_photos.sql` 新規
+
 ## 106. v257 — マイページ memo カードに写真サムネイル表示 (2026-05-22)
 
 ### 背景

@@ -30,6 +30,11 @@ import {
   _MP_SORT_COMPARATORS,
 } from './13-mypage-common.js';
 import { filterTripsByDate } from './05-supabase-data.js';
+// v258: 旅程の写真添付 (memo と共通の写真エリアコンポーネント)
+import { createPhotoArea } from './18-photo-area.js';
+
+// 旅程編集モーダル内の写真エリアコントローラ (createPhotoArea 戻り値、null = 未生成)
+let _tripEditPhotoArea = null;
 
 // ── 🚃 旅程セクション ──────────────────────────────────────────
 function renderMpTripsSection() {
@@ -246,6 +251,22 @@ function openTripEditModal(tripId) {
   if (trainNameInp) trainNameInp.value = trip.train_name || '';
   if (carModelInp) carModelInp.value = trip.car_model || '';
 
+  // v258: 📷 写真エリアを再生成 (createPhotoArea を使って最大 5 枚)
+  if (_tripEditPhotoArea) {
+    try { _tripEditPhotoArea.destroy(); } catch (e) {}
+    _tripEditPhotoArea = null;
+  }
+  const photoContainer = document.getElementById('trip-edit-photo-container');
+  if (photoContainer) {
+    _tripEditPhotoArea = createPhotoArea({
+      container: photoContainer,
+      kind: 'trip',
+      getOwnerId: () => tripId,
+      initialPhotos: Array.isArray(trip.photos) ? trip.photos : [],
+      maxCount: 5,
+    });
+  }
+
   document.getElementById('trip-edit-modal')?.classList.add('open');
 }
 window.openTripEditModal = openTripEditModal;
@@ -253,6 +274,11 @@ NORIRECO.mypage.openTripEditModal = openTripEditModal;
 
 function closeTripEditModal() {
   document.getElementById('trip-edit-modal')?.classList.remove('open');
+  // v258: 写真エリアを破棄 (blob URL を revoke)
+  if (_tripEditPhotoArea) {
+    try { _tripEditPhotoArea.destroy(); } catch (e) {}
+    _tripEditPhotoArea = null;
+  }
 }
 window.closeTripEditModal = closeTripEditModal;
 NORIRECO.mypage.closeTripEditModal = closeTripEditModal;
@@ -322,6 +348,16 @@ async function saveTripEdit() {
   // 既存のマスター選択を維持したい場合は train_name を変えなければ trip.train_id 据置
   if (tnameRaw && tnameRaw !== (trip.train_name || '')) {
     tripPatch.train_id = null;
+  }
+
+  // v258: 📷 写真 — 新規 blob を R2 にアップロード → photos[] を最新化
+  if (_tripEditPhotoArea) {
+    try {
+      tripPatch.photos = await _tripEditPhotoArea.uploadAndGetPhotos(tripId);
+    } catch (e) {
+      alert('写真アップロード失敗: ' + e.message);
+      return;
+    }
   }
 
   // NORIRECO.mypage.state._mypageCache 内の trip を直接更新

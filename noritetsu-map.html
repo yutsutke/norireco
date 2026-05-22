@@ -594,6 +594,9 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mp-tcard-sub{font-size:10px;color:var(--silver);}
 .mp-tcard-train{font-size:10px;color:var(--gold);margin-top:3px;}
 .mp-tcard-notes{font-size:11px;color:var(--silver);margin-top:4px;padding:6px 8px;background:rgba(20,32,46,.6);border-left:3px solid rgba(95,181,255,.5);border-radius:0 6px 6px 0;line-height:1.45;white-space:pre-wrap;word-break:break-word;}
+.mp-tcard-photos{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.mp-tcard-thumb{display:block;width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--track);background:#000;}
+.mp-tcard-thumb:hover{border-color:var(--gold);}
 .mp-tcard-train .mp-car{font-family:'DM Mono',monospace;color:rgba(255,255,255,.7);}
 .mp-tcard-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
 .mp-act-btn{padding:5px 10px;font-size:10px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;border:1px solid;}
@@ -1053,15 +1056,19 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .btn-del:hover{background:rgba(232,53,42,.16);}
 .btn-cls{width:100%;padding:11px;border:1.5px solid var(--track);border-radius:12px;background:transparent;color:var(--silver);font-family:'Zen Kaku Gothic New',sans-serif;font-size:13px;cursor:pointer;margin-top:8px;}
 .fl-hint{font-size:10px;color:rgba(140,160,179,.7);font-weight:400;margin-left:6px;}
-/* 写真アップロード UI (v256: R2/Workers 経由) */
-.m-photo-area{display:flex;flex-direction:column;gap:8px;}
-.m-photo-btn{display:block;width:100%;padding:14px;border:1.5px dashed var(--track);border-radius:10px;background:var(--track2);color:var(--silver);font-family:'Zen Kaku Gothic New',sans-serif;font-size:13px;cursor:pointer;text-align:center;}
-.m-photo-btn:hover{border-color:var(--gold);color:var(--gold);}
-.m-photo-preview{position:relative;border-radius:10px;overflow:hidden;background:#000;border:1px solid var(--track);}
-.m-photo-preview img{display:block;width:100%;max-height:280px;object-fit:contain;background:#000;}
-.m-photo-remove{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.75);color:#fff;border:none;border-radius:14px;padding:5px 11px;font-size:11px;cursor:pointer;font-family:'Zen Kaku Gothic New',sans-serif;}
-.m-photo-remove:hover{background:rgba(232,53,42,.85);}
-.m-photo-status{font-size:11px;color:var(--silver);font-family:'DM Mono',monospace;}
+/* PhotoArea 共通コンポーネント (v258: memo / trip 共用、1〜5枚対応) */
+.pa-wrap{display:flex;flex-direction:column;gap:8px;}
+.pa-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,82px));gap:8px;}
+.pa-item{position:relative;width:82px;height:82px;border-radius:8px;overflow:hidden;background:#000;border:1px solid var(--track);}
+.pa-thumb{width:82px;height:82px;object-fit:cover;display:block;}
+.pa-remove{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.78);color:#fff;border:none;border-radius:11px;width:22px;height:22px;font-size:11px;line-height:1;cursor:pointer;font-family:'Zen Kaku Gothic New',sans-serif;display:flex;align-items:center;justify-content:center;padding:0;}
+.pa-remove:hover{background:rgba(232,53,42,.85);}
+.pa-badge{position:absolute;left:3px;bottom:3px;background:var(--gold);color:var(--navy);font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;letter-spacing:.5px;}
+.pa-add{width:82px;height:82px;border:1.5px dashed var(--track);border-radius:8px;background:var(--track2);color:var(--silver);font-size:24px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-family:'Zen Kaku Gothic New',sans-serif;padding:0;}
+.pa-add small{font-size:9px;font-family:'DM Mono',monospace;}
+.pa-add:hover:not(.pa-add-disabled){border-color:var(--gold);color:var(--gold);background:rgba(242,169,0,.08);}
+.pa-add-disabled{cursor:not-allowed;opacity:.4;font-size:11px;}
+.pa-status{font-size:11px;color:var(--silver);font-family:'DM Mono',monospace;min-height:14px;}
 
 /* 駅アクションシート (v253) */
 .sa-actions{display:flex;flex-direction:column;gap:8px;margin-top:14px;margin-bottom:10px;}
@@ -1332,6 +1339,12 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
       </div>
       <textarea id="rec-edit-notes" rows="2" placeholder="自由メモ (車内エピソード・運休情報など)"
                 style="width:100%;box-sizing:border-box;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-size:12px;resize:vertical;min-height:48px;font-family:inherit"></textarea>
+
+      <!-- v258: 📷 写真添付 (最大 5 枚 / R2 アップロード) -->
+      <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--track)">
+        <div style="font-size:11px;color:var(--gold);margin-bottom:6px">📷 写真 <span style="font-size:9px;color:var(--silver);font-weight:400">最大 5 枚 / JPEG・PNG・WebP / 圧縮後 5MB</span></div>
+        <div id="rec-photo-container"></div>
+      </div>
     </div>
     <button class="btn-gen" id="rec-confirm-save-btn" onclick="confirmAndSaveRecord()">💾 手動記録で保存する</button>
     <button class="btn-cls" onclick="closeRecConfirm()">✏️ 戻って編集する</button>
@@ -1424,8 +1437,14 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
                 style="width:100%;box-sizing:border-box;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:8px;font-size:12px;resize:vertical;min-height:64px;font-family:inherit"></textarea>
     </div>
 
+    <!-- 📷 写真 (v258) -->
+    <div style="margin-bottom:10px;border-top:1px solid var(--track);padding-top:10px">
+      <div style="font-size:11px;color:var(--gold);margin-bottom:6px">📷 写真 <span style="font-size:9px;color:var(--silver);font-weight:400">最大 5 枚 / JPEG・PNG・WebP / 圧縮後 5MB</span></div>
+      <div id="trip-edit-photo-container"></div>
+    </div>
+
     <div style="font-size:9px;color:var(--silver);opacity:.7;line-height:1.5;margin-bottom:12px">
-      ※ メモと遅延は端末の localStorage のみ。乗車時刻・列車種別・区間は Supabase にも同期されます。
+      ※ メモと遅延は端末の localStorage のみ。乗車時刻・列車種別・区間・写真は Supabase にも同期されます。
     </div>
     <button class="btn-gen" onclick="saveTripEdit()">💾 保存する</button>
     <button class="btn-cls" onclick="closeTripEditModal()">キャンセル</button>
@@ -1529,16 +1548,8 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
     </div></div>
     <div class="fg"><div class="fl">コメント</div><textarea class="mta" id="m-comment" placeholder="車窓の景色、駅の雰囲気、気づいたことなど..."></textarea></div>
     <div class="fg">
-      <div class="fl">📷 写真 <span class="fl-hint">タップして選択 / JPEG・PNG・WebP / 圧縮後 5MB まで</span></div>
-      <div class="m-photo-area">
-        <input type="file" id="m-photo-file" accept="image/jpeg,image/png,image/webp" style="display:none">
-        <button type="button" class="m-photo-btn" id="m-photo-btn" onclick="document.getElementById('m-photo-file').click()">📷 写真を選ぶ</button>
-        <div class="m-photo-preview" id="m-photo-preview" style="display:none">
-          <img id="m-photo-img" alt="">
-          <button type="button" class="m-photo-remove" id="m-photo-remove" onclick="clearPhotoInModal()">✕ 削除</button>
-        </div>
-        <div class="m-photo-status" id="m-photo-status"></div>
-      </div>
+      <div class="fl">📷 写真 <span class="fl-hint">最大 5 枚 / JPEG・PNG・WebP / 圧縮後 5MB まで</span></div>
+      <div id="m-photo-container"></div>
     </div>
     <button class="btn-save" id="m-save-btn" onclick="saveMemoFromModal()">☁️ 保存</button>
     <button class="btn-del" id="m-delete-btn" onclick="deleteMemoFromModal()" style="display:none">🗑 このメモを削除</button>
@@ -1568,6 +1579,7 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 <script type="module" src="js/15-color-overrides.js"></script>
 <script type="module" src="js/16-memos.js"></script>
 <script type="module" src="js/17-station-actions.js"></script>
+<script type="module" src="js/18-photo-area.js"></script>
 <script type="module" src="js/09-tabs-stats.js"></script>
 <script type="module" src="js/10-init.js"></script>
 </body>

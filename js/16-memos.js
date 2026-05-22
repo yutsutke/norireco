@@ -20,16 +20,8 @@
 // ══════════════════════════════════════════════════════════════
 
 import { authBearerToken, currentUserId } from './12-auth.js';
-
-// v256: R2/Workers 経由で memo 写真をアップロード
-//   - api.norireco.app/upload/memo-photo に Supabase JWT 付きで POST
-//   - 返ってきた presigned URL に直接 PUT
-//   - photos jsonb は [{url, w, h, bytes, content_type}] 形式
-const NORIRECO_API_BASE = 'https://api.norireco.app';
-const PHOTO_MAX_LONG_SIDE = 1200;   // 圧縮後の長辺 px
-const PHOTO_WEBP_QUALITY = 0.82;
-const PHOTO_MAX_BYTES = 5 * 1024 * 1024;       // Worker 側上限と一致
-const PHOTO_ORIGINAL_MAX_BYTES = 20 * 1024 * 1024; // 圧縮前ファイルの上限
+// v258: 写真 UI は共通モジュール (memo / trip 両用、1〜5枚対応)
+import { createPhotoArea } from './18-photo-area.js';
 
 window.NORIRECO = window.NORIRECO || {};
 NORIRECO.memos = NORIRECO.memos || {
@@ -40,9 +32,8 @@ NORIRECO.memos = NORIRECO.memos || {
     // v251: 駅タップ → 駅メモ一覧モーダルの開いている駅コンテキスト
     // (「+ 新しいメモを残す」を押したときに memo-modal に渡すための保存場所)
     stationContext: null, // { station, lineId, lineName, lat, lon } | null
-    // v256: モーダル内の写真 UI 状態
-    //   state: 'none' (写真なし) / 'existing' (既存 photos[0] を保持) / 'new' (新規圧縮済 blob を保存待ち)
-    photo: { state: 'none', blob: null, meta: null, previewUrl: null, existingPhotos: null },
+    // v258: モーダル内の写真 UI コントローラ (createPhotoArea 戻り値、null = 未生成)
+    photoArea: null,
   },
 };
 const M = NORIRECO.memos.state;
@@ -146,169 +137,6 @@ async function updateMemoOnServer(id, patch) {
   return updated[0];
 }
 
-// ── 写真アップロード (v256: R2 + Workers) ─────────────────────
-
-// Canvas で長辺 PHOTO_MAX_LONG_SIDE px に縮小して WebP 化
-async function compressImageToWebP(file) {
-  const bitmap = await createImageBitmap(file);
-  try {
-    const longest = Math.max(bitmap.width, bitmap.height);
-    const ratio = longest > PHOTO_MAX_LONG_SIDE ? PHOTO_MAX_LONG_SIDE / longest : 1;
-    const w = Math.round(bitmap.width * ratio);
-    const h = Math.round(bitmap.height * ratio);
-    const canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(bitmap, 0, 0, w, h);
-    return await new Promise((resolve, reject) => {
-      canvas.toBlob(
-        (blob) => blob ? resolve({ blob, w, h }) : reject(new Error('canvas.toBlob が null を返した')),
-        'image/webp',
-        PHOTO_WEBP_QUALITY
-      );
-    });
-  } finally {
-    bitmap.close?.();
-  }
-}
-
-// Worker から presigned PUT URL を取得 → R2 へ直接アップロード → 公開 URL を返す
-async function uploadPhotoForMemo(memoId, blob, meta) {
-  const contentType = blob.type || 'image/webp';
-  const sizeBytes = blob.size;
-
-  // 1. Worker に presigned URL を要求
-  const presignRes = await fetch(`${NORIRECO_API_BASE}/upload/memo-photo`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${authBearerToken()}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      memo_id: memoId,
-      content_type: contentType,
-      size_bytes: sizeBytes,
-      ext: 'webp',
-    }),
-  });
-  if (!presignRes.ok) {
-    const err = await presignRes.text();
-    throw new Error(`presign 失敗 (${presignRes.status}): ${err.slice(0, 200)}`);
-  }
-  const { upload_url, public_url } = await presignRes.json();
-
-  // 2. presigned URL に直接 PUT
-  const putRes = await fetch(upload_url, {
-    method: 'PUT',
-    headers: { 'Content-Type': contentType },
-    body: blob,
-  });
-  if (!putRes.ok) {
-    const err = await putRes.text();
-    throw new Error(`R2 アップロード失敗 (${putRes.status}): ${err.slice(0, 200)}`);
-  }
-
-  return {
-    url: public_url,
-    w: meta.w,
-    h: meta.h,
-    bytes: sizeBytes,
-    content_type: contentType,
-  };
-}
-
-// ── 写真 UI (memo-modal 内) ───────────────────────────────────
-
-function renderPhotoUI() {
-  const p = M.photo;
-  const btn = document.getElementById('m-photo-btn');
-  const preview = document.getElementById('m-photo-preview');
-  const img = document.getElementById('m-photo-img');
-  const status = document.getElementById('m-photo-status');
-  if (!btn || !preview || !img) return;
-  if (p.state === 'none') {
-    preview.style.display = 'none';
-    btn.style.display = '';
-    if (status) status.textContent = '';
-  } else {
-    preview.style.display = '';
-    btn.style.display = 'none';
-    img.src = p.previewUrl || '';
-    if (status) {
-      if (p.state === 'new') {
-        const kb = Math.round((p.blob?.size || 0) / 1024);
-        status.textContent = `新規 ${p.meta.w}×${p.meta.h} / ${kb} KB (保存時にアップロード)`;
-      } else {
-        status.textContent = '既存の写真';
-      }
-    }
-  }
-}
-
-function revokePhotoPreview() {
-  if (M.photo?.previewUrl && M.photo.previewUrl.startsWith('blob:')) {
-    URL.revokeObjectURL(M.photo.previewUrl);
-  }
-}
-
-async function onPhotoFileSelected(file) {
-  if (!/^image\/(jpe?g|png|webp)$/i.test(file.type)) {
-    alert('JPEG / PNG / WebP のみ対応しています');
-    return;
-  }
-  if (file.size > PHOTO_ORIGINAL_MAX_BYTES) {
-    alert(`元ファイルが大きすぎます (上限 ${Math.round(PHOTO_ORIGINAL_MAX_BYTES / 1024 / 1024)}MB)`);
-    return;
-  }
-  const statusEl = document.getElementById('m-photo-status');
-  if (statusEl) statusEl.textContent = '圧縮中…';
-  try {
-    const { blob, w, h } = await compressImageToWebP(file);
-    if (blob.size > PHOTO_MAX_BYTES) {
-      alert(`圧縮後でも上限超え: ${Math.round(blob.size / 1024)} KB (上限 ${Math.round(PHOTO_MAX_BYTES / 1024)} KB)`);
-      if (statusEl) statusEl.textContent = '';
-      return;
-    }
-    revokePhotoPreview();
-    M.photo = {
-      state: 'new',
-      blob,
-      meta: { w, h },
-      previewUrl: URL.createObjectURL(blob),
-      existingPhotos: M.photo?.existingPhotos || null,
-    };
-    renderPhotoUI();
-  } catch (e) {
-    alert('写真の処理に失敗: ' + e.message);
-    if (statusEl) statusEl.textContent = '';
-  }
-}
-
-function clearPhotoInModal() {
-  revokePhotoPreview();
-  M.photo = {
-    state: 'none',
-    blob: null,
-    meta: null,
-    previewUrl: null,
-    existingPhotos: M.photo?.existingPhotos || null,
-  };
-  renderPhotoUI();
-}
-
-// file input の change ハンドラを初回 open 時に 1 度だけ wire する
-function ensurePhotoInputWired() {
-  const input = document.getElementById('m-photo-file');
-  if (!input || input.dataset.wired) return;
-  input.addEventListener('change', (e) => {
-    const file = e.target.files?.[0];
-    if (file) onPhotoFileSelected(file);
-    e.target.value = ''; // 同じファイルの再選択を許可
-  });
-  input.dataset.wired = '1';
-}
-
 async function deleteMemoOnServer(id) {
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/norireco_memos?id=eq.${encodeURIComponent(id)}`,
@@ -354,7 +182,6 @@ export function openMemo() {
     },
   });
   document.getElementById('memo-modal').classList.add('open');
-  ensurePhotoInputWired();
 }
 
 // マイページから「✏️ 編集」で呼ばれる
@@ -368,7 +195,6 @@ function openMemoForEdit(memoId) {
     memo: memo,
   });
   document.getElementById('memo-modal').classList.add('open');
-  ensurePhotoInputWired();
 }
 
 function fillModal({ title, sub, memo }) {
@@ -376,21 +202,23 @@ function fillModal({ title, sub, memo }) {
   document.getElementById('m-sub').textContent = sub;
   document.getElementById('m-comment').value = memo.comment || '';
 
-  // 写真状態を初期化 (v256: file input 方式)
-  revokePhotoPreview();
-  const existing = Array.isArray(memo.photos) ? memo.photos : [];
-  if (existing.length > 0 && existing[0].url) {
-    M.photo = {
-      state: 'existing',
-      blob: null,
-      meta: null,
-      previewUrl: existing[0].url,
-      existingPhotos: existing,
-    };
-  } else {
-    M.photo = { state: 'none', blob: null, meta: null, previewUrl: null, existingPhotos: [] };
+  // 写真エリアを再生成 (v258: 共通 PhotoArea を使用、最大 5 枚)
+  if (M.photoArea) {
+    try { M.photoArea.destroy(); } catch (e) {}
+    M.photoArea = null;
   }
-  renderPhotoUI();
+  const container = document.getElementById('m-photo-container');
+  if (container) {
+    M.photoArea = createPhotoArea({
+      container,
+      kind: 'memo',
+      // memo_id は保存直前に確定するため getOwnerId は呼ばれず、
+      // uploadAndGetPhotos に直接 ownerIdOverride を渡す方式
+      getOwnerId: () => M.editingId,
+      initialPhotos: Array.isArray(memo.photos) ? memo.photos : [],
+      maxCount: 5,
+    });
+  }
 
   document.querySelectorAll('#type-row .chip').forEach(b => {
     b.classList.toggle('active', b.dataset.v === (memo.memo_type || '駅'));
@@ -430,19 +258,10 @@ async function saveMemoFromModal() {
     // memo_id を事前に確定 (新規時もアップロード前に決定)
     const memoId = isEdit ? M.editingId : genMemoId();
 
-    // photos の解決
-    let photos;
-    const p = M.photo;
-    if (p?.state === 'new') {
-      const statusEl = document.getElementById('m-photo-status');
-      if (statusEl) statusEl.textContent = 'アップロード中…';
-      const uploaded = await uploadPhotoForMemo(memoId, p.blob, p.meta);
-      photos = [uploaded];
-    } else if (p?.state === 'existing') {
-      photos = p.existingPhotos || [];
-    } else {
-      photos = [];
-    }
+    // 写真エリアから photos[] を確定 (新規 blob は順次 R2 にアップロード)
+    const photos = M.photoArea
+      ? await M.photoArea.uploadAndGetPhotos(memoId)
+      : [];
 
     let result;
     if (isEdit) {
@@ -509,8 +328,10 @@ async function deleteMemoById(memoId) {
 function closeMemo() {
   document.getElementById('memo-modal').classList.remove('open');
   M.editingId = null;
-  revokePhotoPreview();
-  M.photo = { state: 'none', blob: null, meta: null, previewUrl: null, existingPhotos: null };
+  if (M.photoArea) {
+    try { M.photoArea.destroy(); } catch (e) {}
+    M.photoArea = null;
+  }
 }
 
 function selChip(btn, rowId) {
@@ -649,9 +470,11 @@ function memoCardHtml(memo) {
   const created = (memo.created_at || '').slice(0, 10);
   const tags = Array.isArray(memo.tags) ? memo.tags : [];
   const tagsHtml = tags.map(t => `<span class="mp-memo-tag">${escapeHtml(t)}</span>`).join('');
-  const photos = Array.isArray(memo.photos) ? memo.photos : [];
-  const photoBit = (photos[0] && photos[0].url)
-    ? `<div class="mp-memo-photo"><a href="${escapeHtml(photos[0].url)}" target="_blank" rel="noopener"><img class="mp-memo-thumb" src="${escapeHtml(photos[0].url)}" loading="lazy" alt="メモの写真"></a></div>`
+  const photos = (Array.isArray(memo.photos) ? memo.photos : []).filter(p => p && p.url);
+  const photoBit = photos.length > 0
+    ? `<div class="mp-memo-photo">${photos.map((p, i) =>
+        `<a href="${escapeHtml(p.url)}" target="_blank" rel="noopener"><img class="mp-memo-thumb" src="${escapeHtml(p.url)}" loading="lazy" alt="メモの写真 ${i + 1}"></a>`
+      ).join('')}</div>`
     : '';
   const where = [
     memo.station ? `🚉 ${escapeHtml(memo.station)}` : '',
@@ -761,8 +584,6 @@ window.updateMemoFilter = updateMemoFilter;
 // v251: 駅メモ一覧モーダル
 window.closeStationMemoModal = closeStationMemoModal;
 window.addNewMemoForStation = addNewMemoForStation;
-// v256: memo-modal の写真 UI (HTML onclick から呼ぶ)
-window.clearPhotoInModal = clearPhotoInModal;
 
 NORIRECO.memos.sync = syncMemosFromSupabase;
 NORIRECO.memos.clear = clearLocalMemos;

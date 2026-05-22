@@ -315,6 +315,18 @@ export function tripCardHtml(trip) {
     notesLine = `<div class="mp-tcard-notes">📝 ${tmp.innerHTML}</div>`;
   }
 
+  // v258: 📷 写真サムネ (cdn.norireco.app の R2 オブジェクト、lazy load)
+  let photosLine = '';
+  const tripPhotos = (Array.isArray(trip.photos) ? trip.photos : []).filter(p => p && p.url);
+  if (tripPhotos.length > 0) {
+    const escAttr = (s) => String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    photosLine = `<div class="mp-tcard-photos">${tripPhotos.map((p, i) =>
+      `<a href="${escAttr(p.url)}" target="_blank" rel="noopener"><img class="mp-tcard-thumb" src="${escAttr(p.url)}" loading="lazy" alt="旅程の写真 ${i + 1}"></a>`
+    ).join('')}</div>`;
+  }
+
   const verifyBtn = !trip.verified
     ? `<button class="mp-act-btn verify" onclick="retroactivelyVerifyTrip('${trip.id}')">📍 GPSで認証</button>`
     : '';
@@ -336,6 +348,7 @@ export function tripCardHtml(trip) {
       <div class="mp-tcard-sub">${trip.total_stations || 0}駅 · 乗換${trip.transfers || 0}回</div>
       ${trainBit}
       ${notesLine}
+      ${photosLine}
       ${recordedAtLine}
       <div class="mp-tcard-actions">
         ${verifyBtn}

@@ -15,6 +15,11 @@
 import { fraudAssessTrip } from './11-fraud-detection.js';
 import { runCharacterGrantCheck } from './03-characters.js';
 import { currentUserId } from './12-auth.js';
+// v258: 記録モード保存時の写真添付 (memo / trip 共通の PhotoArea)
+import { createPhotoArea } from './18-photo-area.js';
+
+// 記録モード確認モーダル内の写真エリアコントローラ (createPhotoArea 戻り値、null = 未生成)
+let _recPhotoArea = null;
 import {
   cycleLocationMode,
   stopLocationTracking,
@@ -458,6 +463,22 @@ function openRecConfirm() {
   if (delayHInp) delayHInp.value = '';
   if (delayMInp) delayMInp.value = '';
   if (notesInp) notesInp.value = '';
+
+  // v258: 📷 写真エリアもリセット (空のエリアを再生成、blob URL 既存ぶんは destroy で revoke)
+  if (_recPhotoArea) {
+    try { _recPhotoArea.destroy(); } catch (e) {}
+    _recPhotoArea = null;
+  }
+  const photoContainer = document.getElementById('rec-photo-container');
+  if (photoContainer) {
+    _recPhotoArea = createPhotoArea({
+      container: photoContainer,
+      kind: 'trip',
+      getOwnerId: () => null, // trip_id は保存時に確定するので uploadAndGetPhotos に直接渡す
+      initialPhotos: [],
+      maxCount: 5,
+    });
+  }
 }
 
 function closeRecConfirm() {
@@ -478,6 +499,11 @@ function discardRecord() {
   NORIRECO.gps.recordStartedViaGPS = false;
   NORIRECO.gps.recordStartGPS = null;
   NORIRECO.gps.recordEndTime = null;
+  // v258: 写真エリアも破棄 (blob URL を revoke)
+  if (_recPhotoArea) {
+    try { _recPhotoArea.destroy(); } catch (e) {}
+    _recPhotoArea = null;
+  }
   if (R.mode) toggleRecordMode(); // off に
   showRecordToast('🗑 記録を破棄しました', 'warn', 2500);
 }
@@ -846,8 +872,23 @@ async function saveMultiSegmentTrip() {
   const tripNotes = (notesRaw || '').trim() || null;
 
   const tripId = `trip_${Date.now()}`;
+
+  // v258: 📷 写真添付があれば R2 にアップロードして public URL を確定
+  // 失敗したら保存全体をキャンセル (一部アップロード済の R2 オブジェクトはゴミとして残るが、
+  // trip 自体は保存されないのでフロントから到達不能になる。将来の cleanup ジョブで掃除)
+  let tripPhotos = [];
+  if (_recPhotoArea && _recPhotoArea.getItemCount() > 0) {
+    try {
+      tripPhotos = await _recPhotoArea.uploadAndGetPhotos(tripId);
+    } catch (e) {
+      alert('写真アップロード失敗: ' + e.message + '\n保存をキャンセルしました。');
+      return;
+    }
+  }
+
   const trip = {
     id: tripId, date: tripDate, name: tripName,
+    photos: tripPhotos,
     from_station: fromStation, to_station: toStation,
     total_stations: totalStations,
     transfers: Math.max(0, tripSegments.length - 1),
@@ -947,6 +988,11 @@ async function saveMultiSegmentTrip() {
   NORIRECO.gps.recordStartedViaGPS = false;
   NORIRECO.gps.recordStartGPS = null;
   NORIRECO.gps.recordEndTime = null;
+  // v258: 写真エリアも破棄 (blob URL を revoke。アップロード済の public URL はクラッシュ後も R2 に残る)
+  if (_recPhotoArea) {
+    try { _recPhotoArea.destroy(); } catch (e) {}
+    _recPhotoArea = null;
+  }
   // verified=true の trip なら自動獲得チェックが発動する
   setTimeout(() => runCharacterGrantCheck(), 800);
   // 記録モードを終了 (R.mode=true → false に切替、最寄駅パネルが「開始駅選択」に戻る)

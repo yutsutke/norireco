@@ -6,7 +6,7 @@
 ---
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v257 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v258 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13c-..` ES Modules (v195〜v225 で全 18 ファイル `<script type="module">` + `import`/`export` 化完了)
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
@@ -14,7 +14,8 @@
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **完乗率**: ユニーク駅単位に統一 (v235) — ヘッダ「完乗率 X%」と マイページ「全記録完乗率」が一致、「GPS 記録 完乗率」(旧 公式完乗率、v240 で改名) は GPS 認証のみ
 
-**直近の作業 (v228〜v257)**:
+**直近の作業 (v228〜v258)**:
+- v258: 旅程の写真添付 + memo の複数枚化 + 共通 PhotoArea モジュール。`js/18-photo-area.js` 新規 (圧縮/アップロード/複数枚 UI を 1 箇所に集約)、`worker/src/index.js` に `/upload/trip-photo` 追加 (`PHOTO_KINDS` で共通化)、`supabase/migrations/v258_trip_photos.sql` 新規 (`norireco_trips.photos jsonb` 追加 — ユーザー側で実行必要)。旅程編集モーダル + 記録モード確認モーダル + memo モーダル の 3 箇所で `createPhotoArea({ kind, ... })` を呼ぶ形に統一。**副次的に memo も 1 枚→5 枚化**。旅程カードに 64×64 サムネ並列表示。詳細は CHANGELOG §107
 - v257: マイページ memo カードに写真サムネイル表示。`memoCardHtml` のテキストリンク (「📷 写真を見る」) を `<img loading="lazy">` (80×80px / object-fit:cover / 角丸 / hover で gold ボーダー) に置換。`<a target="_blank">` で wrap してるのでクリックで原寸表示は維持。lazy loading + Cloudflare CDN edge cache で重くならない見込み。駅メモ一覧モーダル (v251) も同 memoCardHtml 使用のため自動追従。詳細は CHANGELOG §106
 - v256: R2/Workers 経由のメモ写真アップロード (布石 #2/#4 着手)。`worker/` ディレクトリ新規 (Cloudflare Workers + R2、`api.norireco.app` / `cdn.norireco.app`)、Supabase JWT を JWKS 経由で ES256 verify (current key が ECC P-256 に rotate 済のため。Worker 側に共有シークレット不要 + 布石 #5 とも整合)、presigned PUT URL 方式 (upload は Worker 経由、配信は R2 public バケット直)。`js/16-memos.js` の `m-photo` URL input を file input + Canvas 圧縮 (長辺 1200px / WebP 0.82) + プレビュー UI に置換、photos jsonb は `[{url, w, h, bytes, content_type}]` 形式。`/health` `/me` `/upload/memo-photo` の 3 エンドポイント疎通確認済。残: 実機通しテスト、複数枚対応、写真差し替え時の旧 R2 オブジェクト delete、マイページ memo カードのサムネイル化、OGP シェアの R2 永続化 (布石 #2 のもう一つの use case)
 - v255: キャラ詳細モーダルでキャラのサムネイルを押すと「モーダルが閉じるだけ」で切り替わらない問題を修正。pickStationCharacter から closeCharModal を撤去し、代わりに openCharModal(ms, newCharacter) でモーダルを新しいキャラで再 render するように。サムネイルを次々タップして比較できる体験に
@@ -213,12 +214,13 @@
 
 <!-- ✅ v249 で完了: 静的アセット GitHub Pages → Cloudflare Pages 移行 + 独自ドメイン norireco.app 取得 — CHANGELOG §98 参照 -->
 
-- [ ] **#2 画像ストレージ: Cloudflare R2 + Workers API ゲートウェイ (一部 v256 で着手済)**
+- [ ] **#2 画像ストレージ: Cloudflare R2 + Workers API ゲートウェイ (v256/v258 で着手済)**
   - ✅ v256: メモ写真の upload パス (`worker/` + R2 バケット `norireco-photos` + `api.norireco.app` + `cdn.norireco.app`)。CHANGELOG §105 参照
+  - ✅ v258: 旅程写真の upload パス + 共通 PhotoArea モジュール化 + memo/trip 共に最大 5 枚対応。CHANGELOG §107 参照
   - **残り**:
     - OGP シェア画像の R2 永続化 + `/share/<id>` 受け側ページ (🔥 シェア機能の残りと統合)
     - 写真差し替え時の旧 R2 オブジェクト delete API
-    - 複数枚対応 (現状は `photos[0]` のみ。スキーマは配列対応済)
+    - 写真の並び替え UI (現状は追加順固定)
 
 - [ ] **#3 `norireco_trips` テーブルの将来シャーディング可能化**
   - 理由: 100 万 MAU で trip データ 2TB、Postgres 単一テーブルは 10 万 MAU で限界。`created_year` で水平分割できる構造にしておけば Neon 移行時もスムーズ

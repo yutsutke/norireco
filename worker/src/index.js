@@ -1,17 +1,19 @@
 // 乗レコ API ゲートウェイ Worker
 // ───────────────────────────────────────────────────────────────
 // エンドポイント:
-//   POST   /upload/memo-photo  : Supabase JWT verify → R2 presigned PUT URL
+//   POST   /upload/memo-photo  : 駅メモ写真の R2 presigned PUT URL (memos/<uid>/<memo_id>/...)
+//   POST   /upload/trip-photo  : 旅程写真の R2 presigned PUT URL (trips/<uid>/<trip_id>/...)
 //   GET    /me                 : JWT verify テスト用 (uid/email 返却)
 //   GET    /health             : 認証なし疎通確認
 //
 // 認証: Supabase Auth が発行する access token (ES256, JWKS 経由で公開鍵 verify)
 // ストレージ: R2 (S3 互換、SigV4 presigned URL を aws4fetch で生成)
 //
-// 設計判断 (CHANGELOG §99 を参照):
+// 設計判断:
 //   - presigned URL 方式: アップロードのみ Worker 経由、配信は cdn.norireco.app 直
 //   - JWKS は Worker isolate 内でキャッシュ (jose の createRemoteJWKSet が自動でやる)
 //   - JWT 共有シークレット不要 (非対称 ES256)
+//   - memo/trip の write path は共通化 (PHOTO_KINDS map で kind→keyPrefix/idRegex を分岐)
 // ───────────────────────────────────────────────────────────────
 
 import { createRemoteJWKSet, jwtVerify } from 'jose';
@@ -25,6 +27,22 @@ const EXT_TO_MIME = {
 };
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 const PRESIGN_EXPIRES_IN = 300;    // 5 分
+
+// 写真の所有 entity ごとに key prefix / id 形式を分岐
+const PHOTO_KINDS = {
+  memo: {
+    keyPrefix: 'memos',
+    bodyIdField: 'memo_id',
+    idRegex: /^memo_[a-zA-Z0-9_]{1,80}$/,
+  },
+  trip: {
+    keyPrefix: 'trips',
+    bodyIdField: 'trip_id',
+    // trip ID は `trip_<Date.now()>` 形式 (13 桁の UNIX time ms)。
+    // 将来 `trip_<...>_<suffix>` 等への拡張に備えて若干緩めに。
+    idRegex: /^trip_[0-9a-zA-Z_]{8,40}$/,
+  },
+};
 
 // ── isolate キャッシュ (cold start 後の 2 回目以降を高速化) ──────
 let _jwks = null;
@@ -103,12 +121,14 @@ function genPhotoId() {
     .join('');
 }
 
-function sanitizeMemoId(id) {
-  return typeof id === 'string' && /^memo_[a-zA-Z0-9_]{1,80}$/.test(id) ? id : null;
-}
+// ── ハンドラ: POST /upload/{memo|trip}-photo ─────────────────
+// kind に応じて key prefix と body 内 id field 名を分岐する共通実装
+async function handlePhotoUpload(kind, request, env, origin) {
+  const cfg = PHOTO_KINDS[kind];
+  if (!cfg) {
+    return jsonResponse({ error: `unknown kind: ${kind}` }, 400, env, origin);
+  }
 
-// ── ハンドラ: POST /upload/memo-photo ─────────────────────────
-async function handleMemoPhotoUpload(request, env, origin) {
   let auth;
   try {
     auth = await verifyAuth(request, env);
@@ -121,9 +141,9 @@ async function handleMemoPhotoUpload(request, env, origin) {
   if (!body) {
     return jsonResponse({ error: 'invalid JSON body' }, 400, env, origin);
   }
-  const memoId = sanitizeMemoId(body.memo_id);
-  if (!memoId) {
-    return jsonResponse({ error: 'invalid memo_id' }, 400, env, origin);
+  const ownerId = body[cfg.bodyIdField];
+  if (typeof ownerId !== 'string' || !cfg.idRegex.test(ownerId)) {
+    return jsonResponse({ error: `invalid ${cfg.bodyIdField}` }, 400, env, origin);
   }
   const ext = String(body.ext || 'webp').toLowerCase();
   if (!EXT_TO_MIME[ext]) {
@@ -140,7 +160,7 @@ async function handleMemoPhotoUpload(request, env, origin) {
   }
 
   const photoId = genPhotoId();
-  const objectKey = `memos/${uid}/${memoId}/${photoId}.${ext}`;
+  const objectKey = `${cfg.keyPrefix}/${uid}/${ownerId}/${photoId}.${ext}`;
   const r2 = getR2Client(env);
 
   const s3Url = new URL(
@@ -209,7 +229,10 @@ export default {
       return handleMe(request, env, origin);
     }
     if (url.pathname === '/upload/memo-photo' && request.method === 'POST') {
-      return handleMemoPhotoUpload(request, env, origin);
+      return handlePhotoUpload('memo', request, env, origin);
+    }
+    if (url.pathname === '/upload/trip-photo' && request.method === 'POST') {
+      return handlePhotoUpload('trip', request, env, origin);
     }
 
     return jsonResponse({ error: 'not found' }, 404, env, origin);

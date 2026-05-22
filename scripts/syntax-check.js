@@ -50,6 +50,7 @@ const FILES = [
   '15-color-overrides',
   '16-memos',
   '17-station-actions',
+  '18-photo-area',
   'share-japan-geo',
 ];
 
