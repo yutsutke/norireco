@@ -597,13 +597,8 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mp-tcard-photos{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
 .mp-tcard-thumb{display:block;width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--track);background:#000;}
 .mp-tcard-thumb:hover{border-color:var(--gold);}
-/* v262+: マイページ旅程・メモカード上の写真並び替え ← → (サムネ左右に重ねる) */
+/* v263+: D&D 並び替え対応セル (mp-photo-cell は trip / memo カード共通、relative wrap) */
 .mp-photo-cell{position:relative;display:inline-block;}
-.mp-photo-move{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.78);color:#fff;border:none;border-radius:10px;width:20px;height:20px;font-size:14px;line-height:1;cursor:pointer;font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;z-index:2;}
-.mp-photo-move.left{left:2px;}
-.mp-photo-move.right{right:2px;}
-.mp-photo-move:hover:not(:disabled){background:var(--gold);color:var(--navy);}
-.mp-photo-move:disabled{opacity:.3;cursor:not-allowed;}
 .mp-tcard-train .mp-car{font-family:'DM Mono',monospace;color:rgba(255,255,255,.7);}
 .mp-tcard-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
 .mp-act-btn{padding:5px 10px;font-size:10px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;border:1px solid;}
@@ -1075,11 +1070,11 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .pa-remove{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.78);color:#fff;border:none;border-radius:11px;width:22px;height:22px;font-size:11px;line-height:1;cursor:pointer;font-family:'Zen Kaku Gothic New',sans-serif;display:flex;align-items:center;justify-content:center;padding:0;}
 .pa-remove:hover{background:rgba(232,53,42,.85);}
 .pa-badge{position:absolute;left:3px;top:3px;background:var(--gold);color:var(--navy);font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;letter-spacing:.5px;}
-/* v260+: 並び替え ‹ › ボタン (サムネ下端、2 枚以上のとき表示) */
-.pa-move-row{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;padding:3px;pointer-events:none;}
-.pa-move{background:rgba(0,0,0,.78);color:#fff;border:none;border-radius:11px;width:22px;height:22px;font-size:16px;line-height:1;cursor:pointer;font-family:'Zen Kaku Gothic New',sans-serif;display:flex;align-items:center;justify-content:center;padding:0;pointer-events:auto;font-weight:700;}
-.pa-move:hover:not(:disabled){background:var(--gold);color:var(--navy);}
-.pa-move:disabled{opacity:.28;cursor:not-allowed;}
+/* v263+: ドラッグ&ドロップ並び替え用 (memo / trip 共通、PhotoArea + マイページカード両方で使用) */
+.pa-item,.mp-photo-cell{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
+.pa-item img,.mp-photo-cell img{user-select:none;-webkit-user-select:none;-webkit-user-drag:none;}
+.drag-dragging{opacity:.7;cursor:grabbing;box-shadow:0 8px 20px rgba(0,0,0,.6);transition:none;}
+.drag-over{outline:2px dashed var(--gold);outline-offset:-2px;}
 .pa-add{width:82px;height:82px;border:1.5px dashed var(--track);border-radius:8px;background:var(--track2);color:var(--silver);font-size:24px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-family:'Zen Kaku Gothic New',sans-serif;padding:0;}
 .pa-add small{font-size:9px;font-family:'DM Mono',monospace;}
 .pa-add:hover:not(.pa-add-disabled){border-color:var(--gold);color:var(--gold);background:rgba(242,169,0,.08);}
@@ -1598,6 +1593,7 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 <script type="module" src="js/16-memos.js"></script>
 <script type="module" src="js/17-station-actions.js"></script>
 <script type="module" src="js/18-photo-area.js"></script>
+<script type="module" src="js/19-drag-sort.js"></script>
 <script type="module" src="js/09-tabs-stats.js"></script>
 <script type="module" src="js/10-init.js"></script>
 </body>

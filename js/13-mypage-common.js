@@ -316,20 +316,16 @@ export function tripCardHtml(trip) {
   }
 
   // v258: 📷 写真サムネ (cdn.norireco.app の R2 オブジェクト、lazy load)
-  // v262+: 旅程カード上で直接 ← → 並び替え (Supabase PATCH を直接呼ぶ。clickRouteで処理)
+  // v263+: 旅程カード上で直接ドラッグ&ドロップ並び替え (renderMpTripsSection で D&D を attach)
   let photosLine = '';
   const tripPhotos = (Array.isArray(trip.photos) ? trip.photos : []).filter(p => p && p.url);
   if (tripPhotos.length > 0) {
     const escAttr = (s) => String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    photosLine = `<div class="mp-tcard-photos">${tripPhotos.map((p, i) => {
-      const moveBtns = tripPhotos.length > 1
-        ? `<button type="button" class="mp-photo-move left" onclick="moveTripPhoto('${escAttr(trip.id)}',${i},-1)" ${i === 0 ? 'disabled' : ''} aria-label="左へ">‹</button>
-           <button type="button" class="mp-photo-move right" onclick="moveTripPhoto('${escAttr(trip.id)}',${i},1)" ${i === tripPhotos.length - 1 ? 'disabled' : ''} aria-label="右へ">›</button>`
-        : '';
-      return `<div class="mp-photo-cell"><a href="${escAttr(p.url)}" target="_blank" rel="noopener"><img class="mp-tcard-thumb" src="${escAttr(p.url)}" loading="lazy" alt="旅程の写真 ${i + 1}"></a>${moveBtns}</div>`;
-    }).join('')}</div>`;
+    photosLine = `<div class="mp-tcard-photos" data-trip-id="${escAttr(trip.id)}">${tripPhotos.map((p, i) =>
+      `<div class="mp-photo-cell"><a href="${escAttr(p.url)}" target="_blank" rel="noopener" draggable="false"><img class="mp-tcard-thumb" src="${escAttr(p.url)}" loading="lazy" alt="旅程の写真 ${i + 1}" draggable="false"></a></div>`
+    ).join('')}</div>`;
   }
 
   const verifyBtn = !trip.verified

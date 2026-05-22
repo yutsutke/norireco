@@ -51,6 +51,7 @@ const FILES = [
   '16-memos',
   '17-station-actions',
   '18-photo-area',
+  '19-drag-sort',
   'share-japan-geo',
 ];
 

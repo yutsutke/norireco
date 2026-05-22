@@ -36,6 +36,75 @@
 
 ---
 
+## 113. v264 — 写真並び替えを D&D に全交換 + ‹ › 撤去 (2026-05-22)
+
+### 背景
+
+v261 (PhotoArea 内 ‹ ›) → v263 (マイページカードでも ‹ ›) と並び替え UI を入れたが、ユスケさんから「矢印があると見栄えがわかくなるね。ドラッグ&ドロップで操作するようにはできない?」とフィードバック。
+
+D&D 自体は実装可能だが、PWA (モバイル想定) で HTML5 native drag-and-drop はモバイル非対応 → Pointer Events で自前実装する。
+
+### 新規モジュール: `js/19-drag-sort.js`
+
+汎用 D&D 並び替えライブラリ (66 行、依存なし):
+
+```js
+enableDragSort(container, {
+  itemSelector,        // ドラッグ対象を絞る selector
+  onReorder,           // (oldIdx, newIdx) => void
+  ignoreSelector,      // 掴まない子要素 (button, a, input)
+  threshold,           // drag 確定までの px (default: 5)
+})
+```
+
+実装ポイント:
+- **Pointer Events** で PC (mouse) + モバイル (touch) を統一 (HTML5 native は touch 不可)
+- **threshold** 超過まで「クリック扱い」、超えたら「ドラッグ」に確定 (誤動作防止 = 軽くタップでドラッグ開始しない)
+- **event delegation**: container に 1 つ listener、子要素は innerHTML 書き換えで再生成されても自動追従 → 再 attach 不要 (マイページの 153 枚カードでも軽量)
+- **setPointerCapture** で長距離スワイプも追従 + `e.preventDefault()` で iOS Safari のスクロール抑制
+- ドロップ位置検出: pointer 座標を全 item の `getBoundingClientRect()` と比較
+
+### 各画面の統合
+
+| 画面 | ファイル | 統合方法 |
+|---|---|---|
+| PhotoArea (memo/trip 編集モーダル + 記録モード確認) | `js/18-photo-area.js` | `createPhotoArea` 内で `enableDragSort(gridEl, {...})` を 1 回 attach、戻り値の `destroy()` を `area.destroy()` 内で呼ぶ |
+| マイページ旅程カード | `js/13b-trips.js` | `reorderTripPhotos(tripId, fromIdx, toIdx)` を追加 (任意位置への移動。旧 `moveTripPhoto` 隣接スワップを廃止)。`renderMpTripsSection` 末尾で `attachPhotoDragSortToTripCards(sec)` を呼ぶ |
+| マイページ memo カード + 駅メモ一覧モーダル | `js/16-memos.js` | `reorderMemoPhotos(memoId, fromIdx, toIdx)` を追加 (旧 `moveMemoPhoto` 廃止)。`renderMpMemosSection` / `openStationMemoList` の末尾で `attachPhotoDragSortToMemoCards(rootEl)` を呼ぶ |
+
+### CSS (`noritetsu-map.html`)
+
+撤去:
+- `.pa-move-row` / `.pa-move` (PhotoArea 内 ‹ ›)
+- `.mp-photo-move` (マイページカード上 ‹ ›)
+
+追加:
+- `.pa-item, .mp-photo-cell { cursor: grab; touch-action: none; user-select: none; }` (D&D 対象セル)
+- `.drag-dragging { opacity: 0.7; cursor: grabbing; box-shadow: 0 8px 20px rgba(0,0,0,.6); }` (ドラッグ中のゴースト)
+- `.drag-over { outline: 2px dashed var(--gold); }` (ドロップ候補のハイライト)
+- `.pa-item img, .mp-photo-cell img { -webkit-user-drag: none; }` (画像のネイティブ drag を抑制)
+
+### 挙動
+
+1. サムネを mouse down or touch start → 5px 以上動かしたらドラッグ確定
+2. ドラッグ中: サムネが透過 + 浮いた感、他のサムネ上で gold dashed outline ハイライト
+3. 離したら入れ替え (即座に Supabase PATCH + 再描画)
+4. ハイライト無しで離す or 圏外でキャンセル → 元位置に戻る
+
+### 影響範囲 (D&D 統一の効果)
+
+5 つの並び替え場所が同じ UX:
+- 記録モード確認モーダルの 📷 写真
+- 旅程編集モーダルの 📷 写真
+- メモモーダルの 📷 写真
+- マイページ 🚃 旅程タブの各カード
+- マイページ 📸 メモタブの各カード + 駅メモ一覧モーダル
+
+### 残課題
+
+- ドラッグ中のスムーズなアニメ (他要素が「隙間を作る」transition) — 現状は即座に入れ替わるシンプル実装
+- マイページのフィルタ/ソート変更直後にもドラッグ可 (event delegation で自動追従、未確認)
+
 ## 112. v263 — マイページの旅程・メモカード上で写真を ← → 並び替え (2026-05-22)
 
 ### 背景

@@ -32,6 +32,8 @@ import {
 import { filterTripsByDate } from './05-supabase-data.js';
 // v258: 旅程の写真添付 (memo と共通の写真エリアコンポーネント)
 import { createPhotoArea } from './18-photo-area.js';
+// v263+: マイページ旅程カード上で写真をドラッグ&ドロップ並び替え
+import { enableDragSort } from './19-drag-sort.js';
 
 // 旅程編集モーダル内の写真エリアコントローラ (createPhotoArea 戻り値、null = 未生成)
 let _tripEditPhotoArea = null;
@@ -65,6 +67,9 @@ function renderMpTripsSection() {
 
   // trip list
   sec.appendChild(buildTripList(filtered));
+
+  // v263+: 各カードの写真サムネ並びに D&D を attach
+  attachPhotoDragSortToTripCards(sec);
 }
 NORIRECO.mypage.renderMpTripsSection = renderMpTripsSection;
 
@@ -411,14 +416,15 @@ async function saveTripEdit() {
 window.saveTripEdit = saveTripEdit;
 NORIRECO.mypage.saveTripEdit = saveTripEdit;
 
-// v262+: マイページ旅程カード上で写真を ← → 並び替え (Supabase PATCH を直接、編集モーダル不要)
-async function moveTripPhoto(tripId, idx, direction) {
+// v263+: マイページ旅程カード上の写真をドラッグ&ドロップで並び替え (fromIdx → toIdx)
+// 編集モーダル不要、Supabase PATCH を直接呼ぶ
+async function reorderTripPhotos(tripId, fromIdx, toIdx) {
   const trip = (NORIRECO.mypage.state._mypageCache || []).find(t => t.id === tripId);
   if (!trip) return;
   const photos = Array.isArray(trip.photos) ? [...trip.photos] : [];
-  const target = idx + direction;
-  if (target < 0 || target >= photos.length) return;
-  [photos[idx], photos[target]] = [photos[target], photos[idx]];
+  if (fromIdx < 0 || fromIdx >= photos.length || toIdx < 0 || toIdx >= photos.length || fromIdx === toIdx) return;
+  const [moved] = photos.splice(fromIdx, 1);
+  photos.splice(toIdx, 0, moved);
   trip.photos = photos;
 
   // localStorage 同期
@@ -453,8 +459,21 @@ async function moveTripPhoto(tripId, idx, direction) {
   // 再描画 (旅程セクションだけ更新)
   if (typeof renderMpTripsSection === 'function') renderMpTripsSection();
 }
-window.moveTripPhoto = moveTripPhoto;
-NORIRECO.mypage.moveTripPhoto = moveTripPhoto;
+NORIRECO.mypage.reorderTripPhotos = reorderTripPhotos;
+
+// renderMpTripsSection 末尾から呼ばれる: 全 .mp-tcard-photos に D&D を attach
+function attachPhotoDragSortToTripCards(rootEl) {
+  if (!rootEl) return;
+  rootEl.querySelectorAll('.mp-tcard-photos').forEach((photosEl) => {
+    const tripId = photosEl.dataset.tripId;
+    if (!tripId) return;
+    enableDragSort(photosEl, {
+      itemSelector: '.mp-photo-cell',
+      onReorder: (oldIdx, newIdx) => reorderTripPhotos(tripId, oldIdx, newIdx),
+    });
+  });
+}
+NORIRECO.mypage.attachPhotoDragSortToTripCards = attachPhotoDragSortToTripCards;
 
 function buildTripList(trips) {
   const list = document.createElement('div');

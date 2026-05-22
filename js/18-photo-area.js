@@ -25,6 +25,8 @@
 // ══════════════════════════════════════════════════════════════
 
 import { authBearerToken } from './12-auth.js';
+// v263+: 並び替えはドラッグ&ドロップで (PC/モバイル両対応の Pointer Events 自前実装)
+import { enableDragSort } from './19-drag-sort.js';
 
 const NORIRECO_API_BASE = 'https://api.norireco.app';
 const PHOTO_MAX_LONG_SIDE = 1200;
@@ -189,19 +191,12 @@ export function createPhotoArea(opts) {
       const src = it.kind === 'existing' ? it.url : it.previewUrl;
       const badge = it.kind === 'new'
         ? `<span class="pa-badge">NEW</span>` : '';
-      // v260+: 並び替え ‹ › ボタン (2 枚以上のとき、両端は disabled)
-      const moveRow = items.length > 1
-        ? `<div class="pa-move-row">
-             <button type="button" class="pa-move" data-action="left" data-idx="${i}" aria-label="左へ" ${i === 0 ? 'disabled' : ''}>‹</button>
-             <button type="button" class="pa-move" data-action="right" data-idx="${i}" aria-label="右へ" ${i === items.length - 1 ? 'disabled' : ''}>›</button>
-           </div>`
-        : '';
+      // v263+: 並び替えはドラッグ&ドロップ (← → ボタン撤去、enableDragSort で対応)
       return `
         <div class="pa-item" data-idx="${i}">
-          <img class="pa-thumb" src="${escapeHtml(src)}" loading="lazy" alt="写真 ${i + 1}">
+          <img class="pa-thumb" src="${escapeHtml(src)}" loading="lazy" alt="写真 ${i + 1}" draggable="false">
           ${badge}
           <button type="button" class="pa-remove" data-idx="${i}" aria-label="削除">✕</button>
-          ${moveRow}
         </div>
       `;
     }).join('');
@@ -215,11 +210,11 @@ export function createPhotoArea(opts) {
     if (onChange) onChange();
   }
 
-  // items 配列内で idx の要素を direction (-1 = 左/前, +1 = 右/後) に 1 つ動かす
-  function moveItem(idx, direction) {
-    const target = idx + direction;
-    if (target < 0 || target >= items.length) return;
-    [items[idx], items[target]] = [items[target], items[idx]];
+  // v263+: D&D による並び替え (oldIdx → newIdx へ要素を移動)
+  function reorderItems(oldIdx, newIdx) {
+    if (oldIdx < 0 || oldIdx >= items.length || newIdx < 0 || newIdx >= items.length || oldIdx === newIdx) return;
+    const [moved] = items.splice(oldIdx, 1);
+    items.splice(newIdx, 0, moved);
     render();
   }
 
@@ -237,16 +232,16 @@ export function createPhotoArea(opts) {
       }
       return;
     }
-    const moveBtn = e.target.closest('.pa-move');
-    if (moveBtn && !moveBtn.disabled) {
-      const idx = parseInt(moveBtn.dataset.idx, 10);
-      const dir = moveBtn.dataset.action === 'left' ? -1 : +1;
-      if (Number.isInteger(idx)) moveItem(idx, dir);
-      return;
-    }
     if (e.target.closest('.pa-add') && !e.target.closest('.pa-add-disabled')) {
       fileInput.click();
     }
+  });
+
+  // v263+: D&D を gridEl に 1 度だけ attach (innerHTML 書き換えしても event delegation で残る)
+  const _dragSortHandle = enableDragSort(gridEl, {
+    itemSelector: '.pa-item',
+    onReorder: reorderItems,
+    ignoreSelector: 'button, a, input, .pa-remove, .pa-add',
   });
 
   fileInput.addEventListener('change', async (e) => {
@@ -368,6 +363,7 @@ export function createPhotoArea(opts) {
     },
 
     destroy() {
+      try { _dragSortHandle.destroy(); } catch (e) {}
       items.forEach((it) => {
         if (it.kind === 'new' && it.previewUrl) URL.revokeObjectURL(it.previewUrl);
       });

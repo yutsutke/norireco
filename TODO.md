@@ -6,7 +6,7 @@
 ---
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v263 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v264 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13c-..` ES Modules (v195〜v225 で全 18 ファイル `<script type="module">` + `import`/`export` 化完了)
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
@@ -14,7 +14,8 @@
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **完乗率**: ユニーク駅単位に統一 (v235) — ヘッダ「完乗率 X%」と マイページ「全記録完乗率」が一致、「GPS 記録 完乗率」(旧 公式完乗率、v240 で改名) は GPS 認証のみ
 
-**直近の作業 (v228〜v263)**:
+**直近の作業 (v228〜v264)**:
+- v264: 写真並び替えを ドラッグ&ドロップに全交換 + ‹ › 撤去。`js/19-drag-sort.js` 新規 (Pointer Events 自前実装、PC/モバイル両対応、event delegation で innerHTML 書き換えしても自動追従)。5 箇所 (PhotoArea モーダル 3 つ + マイページ 旅程/メモ カード) で UX 統一。threshold 5px でクリック誤動作防止、`touch-action: none` で iOS スクロール抑制。CSS: `.drag-dragging` (opacity/cursor/box-shadow) + `.drag-over` (gold dashed outline)。詳細は CHANGELOG §113
 - v263: マイページ旅程・メモカード上で写真を ← → 並び替え (編集モーダル不要)。`mp-photo-cell` でサムネをラップ、`mp-photo-move.left/right` を絶対配置 (top:50%, 20×20、最左/最右は disabled)。`moveTripPhoto` / `moveMemoPhoto` 関数を追加 → localStorage 同期 → Supabase PATCH → 再描画。memo は既存の `updateMemoOnServer` を流用。memoCardHtml 共通使用のため駅メモ一覧モーダル (v251) も自動追従。詳細は CHANGELOG §112
 - v262: 写真差し替え時の旧 R2 オブジェクト delete API。Worker `POST /delete/photo` (object_key 検証 + uid 一致チェック、404 は冪等性のため成功扱い)、フロント `js/18-photo-area.js` に `deletePhotoByUrl` + `initialUrls` Set 追加、`uploadAndGetPhotos` 冒頭で diff 計算 → 並列 delete (ベストエフォート、失敗は console.warn のみ)。memo/trip 全削除時の cleanup は別タスク。詳細は CHANGELOG §111
 - v261: 写真の並び替え UI (← → ボタン方式)。共通 PhotoArea (`js/18-photo-area.js`) のサムネ下端に `‹ ›` (22×22 半透明黒、hover で gold) を追加、両端は disabled で薄く、1 枚しかないときは非表示。`moveItem(idx, dir)` で items 配列を swap → uploadAndGetPhotos が新順序で photos[] を返す形で existing/new 混在のまま並び替え可。NEW バッジを左下→左上に移動して下端の move-row と干渉しないように。memo / 旅程編集 / 記録モード確認の 3 箇所同時改善。詳細は CHANGELOG §110

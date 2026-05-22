@@ -22,6 +22,8 @@
 import { authBearerToken, currentUserId } from './12-auth.js';
 // v258: 写真 UI は共通モジュール (memo / trip 両用、1〜5枚対応)
 import { createPhotoArea } from './18-photo-area.js';
+// v263+: マイページ memo カード / 駅メモ一覧モーダル上で写真をドラッグ&ドロップ並び替え
+import { enableDragSort } from './19-drag-sort.js';
 
 window.NORIRECO = window.NORIRECO || {};
 NORIRECO.memos = NORIRECO.memos || {
@@ -396,6 +398,8 @@ function renderMpMemosSection() {
   }
 
   sec.appendChild(buildMemoList(filtered));
+  // v263+: マイページ memo カードに写真の D&D を attach
+  attachPhotoDragSortToMemoCards(sec);
 }
 
 function buildMemoFilterBar() {
@@ -471,15 +475,11 @@ function memoCardHtml(memo) {
   const tags = Array.isArray(memo.tags) ? memo.tags : [];
   const tagsHtml = tags.map(t => `<span class="mp-memo-tag">${escapeHtml(t)}</span>`).join('');
   const photos = (Array.isArray(memo.photos) ? memo.photos : []).filter(p => p && p.url);
-  // v262+: マイページ memo カード上で直接 ← → 並び替え (Supabase PATCH)
+  // v263+: マイページ memo カード上でドラッグ&ドロップ並び替え (renderMpMemosSection / openStationMemoList で D&D attach)
   const photoBit = photos.length > 0
-    ? `<div class="mp-memo-photo">${photos.map((p, i) => {
-        const moveBtns = photos.length > 1
-          ? `<button type="button" class="mp-photo-move left" onclick="moveMemoPhoto('${escapeHtml(memo.id)}',${i},-1)" ${i === 0 ? 'disabled' : ''} aria-label="左へ">‹</button>
-             <button type="button" class="mp-photo-move right" onclick="moveMemoPhoto('${escapeHtml(memo.id)}',${i},1)" ${i === photos.length - 1 ? 'disabled' : ''} aria-label="右へ">›</button>`
-          : '';
-        return `<div class="mp-photo-cell"><a href="${escapeHtml(p.url)}" target="_blank" rel="noopener"><img class="mp-memo-thumb" src="${escapeHtml(p.url)}" loading="lazy" alt="メモの写真 ${i + 1}"></a>${moveBtns}</div>`;
-      }).join('')}</div>`
+    ? `<div class="mp-memo-photo" data-memo-id="${escapeHtml(memo.id)}">${photos.map((p, i) =>
+        `<div class="mp-photo-cell"><a href="${escapeHtml(p.url)}" target="_blank" rel="noopener" draggable="false"><img class="mp-memo-thumb" src="${escapeHtml(p.url)}" loading="lazy" alt="メモの写真 ${i + 1}" draggable="false"></a></div>`
+      ).join('')}</div>`
     : '';
   const where = [
     memo.station ? `🚉 ${escapeHtml(memo.station)}` : '',
@@ -532,6 +532,8 @@ function openStationMemoList(args) {
       </div>`;
   } else {
     list.innerHTML = `<div class="mp-memo-list">${memos.map(memoCardHtml).join('')}</div>`;
+    // v263+: 駅メモ一覧モーダル内のカードに写真の D&D を attach
+    attachPhotoDragSortToMemoCards(list);
   }
 
   document.getElementById('station-memo-modal').classList.add('open');
@@ -577,14 +579,14 @@ export function clearLocalMemos() {
 // HTML onclick (memo-modal / マイページ memo カード) からの呼出と、
 // 他モジュールからの NORIRECO.memos.* アクセスをサポート。
 
-// v262+: マイページ memo カード / 駅メモ一覧モーダル上で写真を ← → 並び替え
-async function moveMemoPhoto(memoId, idx, direction) {
+// v263+: マイページ memo カード / 駅メモ一覧モーダル上で写真をドラッグ&ドロップ並び替え
+async function reorderMemoPhotos(memoId, fromIdx, toIdx) {
   const memo = M.cache.find(m => m.id === memoId);
   if (!memo) return;
   const photos = Array.isArray(memo.photos) ? [...memo.photos] : [];
-  const target = idx + direction;
-  if (target < 0 || target >= photos.length) return;
-  [photos[idx], photos[target]] = [photos[target], photos[idx]];
+  if (fromIdx < 0 || fromIdx >= photos.length || toIdx < 0 || toIdx >= photos.length || fromIdx === toIdx) return;
+  const [moved] = photos.splice(fromIdx, 1);
+  photos.splice(toIdx, 0, moved);
 
   // Supabase 同期 (失敗時は alert なし、console.warn のみ。再描画はローカル状態で進める)
   try {
@@ -601,7 +603,19 @@ async function moveMemoPhoto(memoId, idx, direction) {
 
   rerenderMemosIfVisible();
 }
-window.moveMemoPhoto = moveMemoPhoto;
+
+// renderMpMemosSection / openStationMemoList 末尾から呼ばれる: 全 .mp-memo-photo に D&D を attach
+function attachPhotoDragSortToMemoCards(rootEl) {
+  if (!rootEl) return;
+  rootEl.querySelectorAll('.mp-memo-photo').forEach((photosEl) => {
+    const memoId = photosEl.dataset.memoId;
+    if (!memoId) return;
+    enableDragSort(photosEl, {
+      itemSelector: '.mp-photo-cell',
+      onReorder: (oldIdx, newIdx) => reorderMemoPhotos(memoId, oldIdx, newIdx),
+    });
+  });
+}
 
 window.toggleMemoMode = toggleMemoMode;
 window.closeMemo = closeMemo;
