@@ -807,7 +807,7 @@ function attachStationDotClickV2(dot, ms) {
       openMemo();
       L.DomEvent.stopPropagation(e);
     } else {
-      // 通常モード: キャラ駅ならキャラ詳細モーダル
+      // 通常モード: キャラ駅ならキャラ詳細モーダル (従来通り優先)
       const character = getStationCharacter(ms.name);
       if (character) {
         openCharModal(ms, character);
@@ -817,6 +817,18 @@ function attachStationDotClickV2(dot, ms) {
         const obtainable = getObtainableCharactersAt(ms.name);
         if (obtainable.length > 0) {
           openCharModal(ms, obtainable[0]);
+          L.DomEvent.stopPropagation(e);
+        } else if (window.NORIRECO?.memos?.hasMemosForStation?.(ms.name)) {
+          // v251: キャラなし & 自分のメモがある駅 → 駅メモ一覧モーダル
+          const firstSlId = ms.lines && ms.lines[0];
+          const sl = firstSlId ? NORIRECO.data.SERVICE_LINES.find(x => x.id === firstSlId) : null;
+          window.NORIRECO.memos.openStationMemoList({
+            station: ms.name,
+            lineId: sl?.id || null,
+            lineName: sl?.name || null,
+            lat: ms.lat,
+            lon: ms.lon,
+          });
           L.DomEvent.stopPropagation(e);
         }
       }

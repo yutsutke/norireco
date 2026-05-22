@@ -27,6 +27,9 @@ NORIRECO.memos = NORIRECO.memos || {
     cache: [],
     editingId: null,
     filter: { line_id: 'all', memo_type: 'all', mood: 'all' },
+    // v251: 駅タップ → 駅メモ一覧モーダルの開いている駅コンテキスト
+    // (「+ 新しいメモを残す」を押したときに memo-modal に渡すための保存場所)
+    stationContext: null, // { station, lineId, lineName, lat, lon } | null
   },
 };
 const M = NORIRECO.memos.state;
@@ -313,6 +316,8 @@ function togTag(btn) {
 function rerenderMemosIfVisible() {
   const pane = document.getElementById('mp-sub-memos');
   if (pane && pane.style.display !== 'none') renderMpMemosSection();
+  // v251: 駅メモ一覧モーダルが開いていれば、その駅のメモ部分も再描画
+  rerenderStationMemoListIfVisible();
 }
 
 // ── マイページ「📸 メモ」サブタブ ─────────────────────────────
@@ -463,6 +468,65 @@ function memoCardHtml(memo) {
     </div>`;
 }
 
+// ── 駅メモ一覧モーダル (v251: 駅タップから「その駅のメモ」を閲覧) ──────
+
+// 駅マーカークリックから呼ばれる。args は station 情報を持つ。
+function openStationMemoList(args) {
+  // args = { station, lineId, lineName, lat, lon }
+  M.stationContext = {
+    station: args.station,
+    lineId: args.lineId || null,
+    lineName: args.lineName || null,
+    lat: typeof args.lat === 'number' ? args.lat : (parseFloat(args.lat) || null),
+    lon: typeof args.lon === 'number' ? args.lon : (parseFloat(args.lon) || null),
+  };
+  const memos = M.cache.filter(m => m.station === args.station);
+
+  document.getElementById('sm-title').textContent =
+    `📸 ${args.station} のメモ (${memos.length} 件)`;
+  document.getElementById('sm-sub').textContent = args.lineName || '';
+
+  const list = document.getElementById('sm-list');
+  if (memos.length === 0) {
+    list.innerHTML = `
+      <div class="mp-empty-s" style="padding:18px 0;text-align:center">
+        この駅のメモはまだありません
+      </div>`;
+  } else {
+    list.innerHTML = `<div class="mp-memo-list">${memos.map(memoCardHtml).join('')}</div>`;
+  }
+
+  document.getElementById('station-memo-modal').classList.add('open');
+}
+
+function closeStationMemoModal() {
+  document.getElementById('station-memo-modal').classList.remove('open');
+  M.stationContext = null;
+}
+
+// 「+ 新しいメモを残す」: station-memo-modal を閉じて memo-modal を新規モードで開く
+function addNewMemoForStation() {
+  const ctx = M.stationContext;
+  if (!ctx) return;
+  // memo-modal の openMemo() は NORIRECO.map.clickInfo を読むので組み立て直す
+  NORIRECO.map.clickInfo = {
+    line: ctx.lineId ? { id: ctx.lineId, name: ctx.lineName } : { id: null, name: ctx.lineName || '' },
+    station: { n: ctx.station, lat: ctx.lat, lon: ctx.lon },
+    lat: ctx.lat != null ? ctx.lat.toFixed(5) : '',
+    lon: ctx.lon != null ? ctx.lon.toFixed(5) : '',
+  };
+  closeStationMemoModal();
+  openMemo();
+}
+
+// station-memo-modal が開いている間にメモを編集/削除/追加したら、その駅のメモ一覧を再描画
+function rerenderStationMemoListIfVisible() {
+  const pane = document.getElementById('station-memo-modal');
+  if (pane && pane.classList.contains('open') && M.stationContext) {
+    openStationMemoList(M.stationContext);
+  }
+}
+
 // ── ログアウト時のクリア ────────────────────────────────────────
 
 export function clearLocalMemos() {
@@ -484,10 +548,17 @@ window.deleteMemoFromModal = deleteMemoFromModal;
 window.openMemoForEdit = openMemoForEdit;
 window.deleteMemoById = deleteMemoById;
 window.updateMemoFilter = updateMemoFilter;
+// v251: 駅メモ一覧モーダル
+window.closeStationMemoModal = closeStationMemoModal;
+window.addNewMemoForStation = addNewMemoForStation;
 
 NORIRECO.memos.sync = syncMemosFromSupabase;
 NORIRECO.memos.clear = clearLocalMemos;
 NORIRECO.memos.renderMpMemosSection = renderMpMemosSection;
+// v251: 08-rendering の station マーカー click から呼ぶための公開 API
+NORIRECO.memos.openStationMemoList = openStationMemoList;
+NORIRECO.memos.hasMemosForStation = (stationName) =>
+  M.cache.some(m => m.station === stationName);
 
 // マイページ統合用 (13-mypage-common.applyMpSection から呼ばれる)
 NORIRECO.mypage = NORIRECO.mypage || {};

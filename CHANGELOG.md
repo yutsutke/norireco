@@ -36,6 +36,60 @@
 
 ---
 
+## 100. v251 — 駅タップで駅メモ一覧モーダルを表示 (2026-05-22)
+
+### 背景
+
+v250 で駅メモ機能本格化完了 (動作確認 OK)。ユスケさん要望: 「マップの駅をタップしたら、その駅のメモを見れるようにしてください」。
+
+これは TODO「🟡 駅 UI の情報ハブ化（4領域パネル）」の **個人メモ部分の MVP**。完全な 4 領域パネル (自分の記録/公的情報/周辺情報/個人メモ) は将来として、まず「📸 個人メモ」だけ駅 UI から見られる導線を追加する。
+
+### 設計
+
+- **通常モード**で駅マーカータップ:
+  - キャラ駅 → 従来通りキャラモーダル (既存挙動を保つ。優先度高)
+  - キャラなし & 自分のメモあり → **「📸 〇〇駅のメモ (N 件)」モーダル**
+  - キャラなし & メモなし → 何もしない (従来通り)
+- **memoMode (📸 FAB on)** は従来通り直接新規作成モード
+- 駅メモ一覧モーダルから:
+  - 各メモを「✏️ 編集」「🗑 削除」(マイページタブと同じ memoCardHtml を再利用)
+  - 「+ 新しいメモを残す」で memo-modal を新規作成モードで起動 (NORIRECO.map.clickInfo を組み立て直して `openMemo()`)
+
+### 変更内容
+
+#### 1. `js/16-memos.js` (追記)
+
+- `M.stationContext` を state に追加 ({ station, lineId, lineName, lat, lon } | null)
+- `openStationMemoList(args)`: `args.station === m.station` でフィルタした memo[] を一覧として `#station-memo-modal` に描画
+- `closeStationMemoModal()`: モーダルを閉じて stationContext を null に
+- `addNewMemoForStation()`: stationContext から NORIRECO.map.clickInfo を組み立てて閉じる → `openMemo()` で新規モーダル起動
+- `rerenderStationMemoListIfVisible()`: 編集/削除後の再描画 (rerenderMemosIfVisible から呼ぶ)
+- `NORIRECO.memos.openStationMemoList` / `hasMemosForStation(name)` を公開 (08-rendering から呼ぶため)
+- window bridge: `closeStationMemoModal` / `addNewMemoForStation`
+
+#### 2. `js/08-rendering.js` `attachStationDotClickV2` 通常モード分岐に追加
+
+キャラ駅 (`getStationCharacter` / `getObtainableCharactersAt`) が優先で、両方とも該当しないときに `NORIRECO.memos.hasMemosForStation(ms.name)` が true なら `openStationMemoList(...)` を呼ぶ。代表系統は ms.lines[0] から SERVICE_LINES.find で取得。
+
+#### 3. `noritetsu-map.html`
+
+`station-memo-modal` を memo-modal の直前に新設 (CSS は memo-modal と同じ `.memo-modal` / `.memo-sheet` を流用、追加 CSS なし)。
+
+#### 4. `sw.js`
+
+CACHE_VERSION v250 → v251 (16-memos.js の中身が変わったので STATIC_ASSETS の登録ファイル名は不変)
+
+### 注意点
+
+- station 名一致は文字列完全一致 (memo.station vs ms.name)。merged_stations.json の駅名と memo 保存時の `ci.station.n` が一致しているはず (v250 のメモはこの規約で保存)
+- 同名駅 (「大原」が外房線・上毛電鉄等で複数存在) は現状区別なし。将来 lineId も合わせた絞り込みが必要なら拡張
+
+### バージョン番号
+
+v251 (Phase 3.8 後半 §100)
+
+---
+
 ## 99. v250 — 駅メモ機能の本格化 (Supabase CRUD + マイページ「📸 メモ」タブ) (2026-05-22)
 
 ### 背景

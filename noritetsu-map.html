@@ -1439,6 +1439,19 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
   </div>
 </div>
 
+<!-- Station Memo List Modal (v251) -->
+<!-- 駅マーカータップでその駅のメモ一覧を表示。「+ 新しいメモを残す」ボタンで memo-modal を新規モードで起動 -->
+<div class="memo-modal" id="station-memo-modal" onclick="if(event.target===this)closeStationMemoModal()">
+  <div class="memo-sheet">
+    <div class="sh"></div>
+    <div class="modal-title" id="sm-title">📸 駅のメモ</div>
+    <div class="modal-sub" id="sm-sub"></div>
+    <div id="sm-list" style="margin-top:12px"></div>
+    <button class="btn-save" onclick="addNewMemoForStation()">+ 新しいメモを残す</button>
+    <button class="btn-cls" onclick="closeStationMemoModal()">閉じる</button>
+  </div>
+</div>
+
 <!-- Memo Modal -->
 <div class="memo-modal" id="memo-modal" onclick="if(event.target===this)closeMemo()">
   <div class="memo-sheet">
