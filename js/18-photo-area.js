@@ -130,6 +130,10 @@ export function createPhotoArea(opts) {
       content_type: p.content_type || 'image/webp',
     }));
 
+  // v261+: 初期 URL を記憶 (保存時の diff で削除対象を検出)
+  // モーダル開いた時点で既にあった写真の URL セット — ✕ で外されたら R2 から削除する
+  const initialUrls = new Set(items.map((it) => it.url));
+
   // DOM 構築
   container.innerHTML = `
     <div class="pa-wrap">
@@ -300,6 +304,20 @@ export function createPhotoArea(opts) {
     // ownerIdOverride: 保存直前に決まる ID (新規 trip 生成等) を渡したい場合
     async uploadAndGetPhotos(ownerIdOverride) {
       const ownerId = ownerIdOverride || (typeof getOwnerId === 'function' ? getOwnerId() : null);
+
+      // v261+: 削除対象の検出 — 初期にあった URL のうち、現在の items から消えてるもの
+      // (ベストエフォート: 1 枚失敗しても他は試す、アップロード自体は止めない)
+      const currentExistingUrls = new Set(
+        items.filter((it) => it.kind === 'existing').map((it) => it.url)
+      );
+      const toDelete = [...initialUrls].filter((u) => !currentExistingUrls.has(u));
+      if (toDelete.length > 0) {
+        setStatus(`🗑 旧写真を削除中 (${toDelete.length} 枚)`);
+        await Promise.all(toDelete.map((u) => deletePhotoByUrl(u)));
+        // 削除した URL は initialUrls から外す (連続保存で再削除を試みないように)
+        for (const u of toDelete) initialUrls.delete(u);
+      }
+
       // アップロードが必要な新規アイテムだけ数えて進捗分母にする
       const newCount = items.filter((it) => it.kind === 'new').length;
       const result = [];

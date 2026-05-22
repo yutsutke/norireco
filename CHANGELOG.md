@@ -36,6 +36,55 @@
 
 ---
 
+## 111. v262 — 写真差し替え時の旧 R2 オブジェクト delete API (2026-05-22)
+
+### 背景
+
+v258 で複数枚化したことで、ユーザーが写真を **✕ で外す → 保存** したり **差し替え → 保存** した時に、Supabase の `photos jsonb` 列からは外れるが R2 のオブジェクト自体は残り続けるゴミ問題が顕在化。R2 は 10GB 無料枠あるので今すぐ困らないが、ユーザー数が増えると地味に肥大化する。
+
+### Worker 拡張 (`worker/src/index.js`)
+
+`POST /delete/photo` エンドポイントを追加:
+
+- Request: `{ object_key: "memos/<uid>/<memo_id>/<photo_id>.webp" }` + `Authorization: Bearer <jwt>`
+- Worker 内で:
+  1. JWT verify → uid 取得
+  2. `object_key` を正規表現 `^(memos|trips)\/([^/]+)\/([^/]+)\/([^/]+)$` で validate
+  3. uid 部分が JWT の uid と一致するか確認 (他人のオブジェクト削除を防止)
+  4. R2 に SigV4 署名付き DELETE 送信
+  5. 404 は冪等性のため成功扱い (既に消えてた = 望む状態)
+
+再 deploy 済 (Version `d8a57421`、64.23 KiB / gzip 15.40 KiB)。
+
+### フロント (`js/18-photo-area.js`)
+
+- `urlToObjectKey(url)`: `https://cdn.norireco.app/<key>` から `<key>` を抽出
+- `deletePhotoByUrl(url)`: Worker `/delete/photo` を呼ぶ (ベストエフォート、失敗は console.warn のみ。アップロード処理は止めない)
+- **`initialUrls` Set** を `createPhotoArea` 内に追加: モーダル開いた時点の existing URL を記憶
+- `uploadAndGetPhotos` 冒頭で diff を計算:
+  - `initialUrls` にあったが、現在の `items` (existing) から消えてる URL = **削除対象**
+  - 並列実行 (`Promise.all`、delete は冪等)
+  - ステータスバーに「🗑 旧写真を削除中 (N 枚)」表示
+
+### 挙動シナリオ
+
+| シナリオ | 削除対象 | アップロード対象 |
+|---|---|---|
+| 既存を ✕ で外して保存 | その 1 枚 | 0 枚 |
+| 既存を ✕ + 新規追加して保存 | 外した 1 枚 | 追加した 1 枚 |
+| 並び替えだけ | 0 枚 | 0 枚 (順序だけ DB に保存) |
+| 全部削除して保存 | 全 existing | 0 枚 |
+
+### 失敗時の挙動
+
+- Worker `/delete/photo` が 4xx/5xx を返しても、フロントは **保存処理を続行**
+  (ユーザー視点で「写真は外したいけど、外せてない」という不便を避ける。R2 ゴミは将来 cleanup ジョブで掃除可)
+- console.warn でログを残すので、開発者は気付ける
+
+### 残課題
+
+- memo/trip 全削除時の R2 オブジェクト掃除 (現状は memo/trip row 削除のみで R2 はそのまま)。別タスクで実装
+
 ## 110. v261 — 写真の並び替え UI (← → ボタン方式) (2026-05-22)
 
 ### 背景

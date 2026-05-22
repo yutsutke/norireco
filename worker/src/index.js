@@ -3,6 +3,7 @@
 // エンドポイント:
 //   POST   /upload/memo-photo  : 駅メモ写真の R2 presigned PUT URL (memos/<uid>/<memo_id>/...)
 //   POST   /upload/trip-photo  : 旅程写真の R2 presigned PUT URL (trips/<uid>/<trip_id>/...)
+//   POST   /delete/photo       : R2 オブジェクト削除 (差し替え時の旧オブジェクト掃除)
 //   GET    /me                 : JWT verify テスト用 (uid/email 返却)
 //   GET    /health             : 認証なし疎通確認
 //
@@ -187,6 +188,59 @@ async function handlePhotoUpload(kind, request, env, origin) {
   );
 }
 
+// ── ハンドラ: POST /delete/photo ──────────────────────────────
+// 写真差し替え時の旧 R2 オブジェクト掃除。冪等 (404 でも OK 扱い)。
+async function handlePhotoDelete(request, env, origin) {
+  let auth;
+  try {
+    auth = await verifyAuth(request, env);
+  } catch (e) {
+    return jsonResponse({ error: 'unauthorized', detail: e.message }, 401, env, origin);
+  }
+  const { uid } = auth;
+
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body.object_key !== 'string') {
+    return jsonResponse({ error: 'invalid body' }, 400, env, origin);
+  }
+
+  // セキュリティ: object_key が `<kind>/<uid>/<owner_id>/<photo_id>.<ext>` 形式かつ
+  // uid 部分が JWT の uid と一致することを確認 (他人のオブジェクト削除を防ぐ)
+  const m = body.object_key.match(/^(memos|trips)\/([^/]+)\/([^/]+)\/([^/]+)$/);
+  if (!m) {
+    return jsonResponse({ error: 'invalid object_key format' }, 400, env, origin);
+  }
+  if (m[2] !== uid) {
+    return jsonResponse({ error: 'forbidden: not your object' }, 403, env, origin);
+  }
+
+  const r2 = getR2Client(env);
+  const s3Url = `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${env.R2_BUCKET_NAME}/${body.object_key}`;
+  let deleteRes;
+  try {
+    const signedReq = await r2.sign(s3Url, { method: 'DELETE' });
+    deleteRes = await fetch(signedReq);
+  } catch (e) {
+    return jsonResponse({ error: `r2 delete error: ${e.message}` }, 500, env, origin);
+  }
+  // R2 の DELETE は冪等: 404 でも「望む状態 (もう存在しない)」なので OK 扱い
+  if (!deleteRes.ok && deleteRes.status !== 404) {
+    return jsonResponse(
+      { error: `r2 delete failed: ${deleteRes.status}` },
+      500,
+      env,
+      origin
+    );
+  }
+
+  return jsonResponse(
+    { ok: true, object_key: body.object_key, status: deleteRes.status },
+    200,
+    env,
+    origin
+  );
+}
+
 // ── ハンドラ: GET /me ─────────────────────────────────────────
 async function handleMe(request, env, origin) {
   try {
@@ -233,6 +287,9 @@ export default {
     }
     if (url.pathname === '/upload/trip-photo' && request.method === 'POST') {
       return handlePhotoUpload('trip', request, env, origin);
+    }
+    if (url.pathname === '/delete/photo' && request.method === 'POST') {
+      return handlePhotoDelete(request, env, origin);
     }
 
     return jsonResponse({ error: 'not found' }, 404, env, origin);
