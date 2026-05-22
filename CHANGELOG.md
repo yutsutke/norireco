@@ -36,6 +36,44 @@
 
 ---
 
+## 110. v261 — 写真の並び替え UI (← → ボタン方式) (2026-05-22)
+
+### 背景
+
+v258 で複数枚 (最大 5 枚) 化したことで、追加順以外の並びにしたい場面が出る (例: メインの写真を 1 枚目に持ってきたい、トップ画として OGP に使いたい等)。
+
+### 設計判断
+
+**← → ボタン方式**を採用 (ドラッグ&ドロップ / 長押しソート は不採用)。
+
+| 方式 | 採否 | 理由 |
+|---|---|---|
+| ← → ボタン | ✅ | 最大 5 枚なら十分。PC / モバイル 同じ挙動 = テスト 1 回。実装小 |
+| HTML5 native drag-and-drop | ❌ | モバイルで動かない (pointer events 必要) |
+| 長押しソート (Sortable.js 系) | ❌ | ライブラリ追加 (~30KB) or 自前実装で重い。ES Module 構成と相性悪 |
+
+### 実装
+
+`js/18-photo-area.js`:
+- `render()` でサムネ HTML に `.pa-move-row` (下端) を追加。`‹` (左) / `›` (右) ボタン、最左/最右は `disabled` で半透明
+- 1 枚しかないときは row 自体を出さない (`items.length > 1` 条件)
+- `moveItem(idx, direction)` 関数 (direction: -1=前 / +1=後) で `items` 配列を swap → render
+- gridEl click delegate に `.pa-move` の handler を追加 (data-action="left|right" + data-idx で分岐)
+
+`noritetsu-map.html`:
+- `.pa-badge` (NEW バッジ) を `bottom:3px` → `top:3px` に変更 (下端の move-row と干渉しないように。NEW は左上、✕ は右上、‹ › は下端の左右、で 4 隅クリーン)
+- `.pa-move-row` / `.pa-move` (22×22px 円形、半透明黒、hover で gold) CSS 追加
+
+### 挙動
+
+- items 配列の順序がそのまま `photos[]` の順序になる (uploadAndGetPhotos が items を順番にループ → 既存実装で自動追従)
+- existing (R2 既存) と new (アップロード待ち) が混在しててもそのまま並び替え可
+- 並び替えは即時 (sync)、保存ボタン押下で確定 (uploadAndGetPhotos が新順序で photos[] 返す)
+
+### 影響範囲
+
+memo / 旅程編集 / 記録モード確認の **3 箇所**で同時改善 (共通 PhotoArea を使ってる成果)。
+
 ## 109. v260 — 写真アップロードの進捗バー (2026-05-22)
 
 ### 背景

@@ -1067,7 +1067,12 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .pa-thumb{width:82px;height:82px;object-fit:cover;display:block;}
 .pa-remove{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.78);color:#fff;border:none;border-radius:11px;width:22px;height:22px;font-size:11px;line-height:1;cursor:pointer;font-family:'Zen Kaku Gothic New',sans-serif;display:flex;align-items:center;justify-content:center;padding:0;}
 .pa-remove:hover{background:rgba(232,53,42,.85);}
-.pa-badge{position:absolute;left:3px;bottom:3px;background:var(--gold);color:var(--navy);font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;letter-spacing:.5px;}
+.pa-badge{position:absolute;left:3px;top:3px;background:var(--gold);color:var(--navy);font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;letter-spacing:.5px;}
+/* v260+: 並び替え ‹ › ボタン (サムネ下端、2 枚以上のとき表示) */
+.pa-move-row{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;padding:3px;pointer-events:none;}
+.pa-move{background:rgba(0,0,0,.78);color:#fff;border:none;border-radius:11px;width:22px;height:22px;font-size:16px;line-height:1;cursor:pointer;font-family:'Zen Kaku Gothic New',sans-serif;display:flex;align-items:center;justify-content:center;padding:0;pointer-events:auto;font-weight:700;}
+.pa-move:hover:not(:disabled){background:var(--gold);color:var(--navy);}
+.pa-move:disabled{opacity:.28;cursor:not-allowed;}
 .pa-add{width:82px;height:82px;border:1.5px dashed var(--track);border-radius:8px;background:var(--track2);color:var(--silver);font-size:24px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-family:'Zen Kaku Gothic New',sans-serif;padding:0;}
 .pa-add small{font-size:9px;font-family:'DM Mono',monospace;}
 .pa-add:hover:not(.pa-add-disabled){border-color:var(--gold);color:var(--gold);background:rgba(242,169,0,.08);}
