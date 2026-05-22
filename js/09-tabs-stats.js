@@ -324,6 +324,8 @@ export async function renderStats(){
 
   // ── 実績 ──
   const at=document.createElement('div');at.className='sec-lbl';at.textContent='実績';c.appendChild(at);
+  // v265+: gs 定義漏れの bug 修正 (renderStats 内で gs が参照されていたが定義されていなかった)
+  const gs = NORIRECO.serviceLines.globalStats();
   const achs=[
     {ic:'🚃',nm:'乗り鉄デビュー',ds:'初めての旅程を記録',on:gs.rt>=1},
     {ic:'🔀',nm:'乗換マスター',ds:'乗換を含む旅程を記録',on:RIDDEN_SEGS.length>=2},

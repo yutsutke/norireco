@@ -142,10 +142,17 @@ export function enableDragSort(container, opts) {
     reset();
   }
 
+  // <a> や <img> のネイティブドラッグ (URL ドラッグ等) を明示的に抑制
+  // (draggable="false" 属性だけだとブラウザ次第で抜けるため、event でも止める)
+  function onNativeDragStart(e) {
+    if (e.target.closest(itemSelector)) e.preventDefault();
+  }
+
   container.addEventListener('pointerdown', onPointerDown);
   container.addEventListener('pointermove', onPointerMove);
   container.addEventListener('pointerup', onPointerUp);
   container.addEventListener('pointercancel', onPointerCancel);
+  container.addEventListener('dragstart', onNativeDragStart);
 
   return {
     destroy() {
@@ -153,6 +160,7 @@ export function enableDragSort(container, opts) {
       container.removeEventListener('pointermove', onPointerMove);
       container.removeEventListener('pointerup', onPointerUp);
       container.removeEventListener('pointercancel', onPointerCancel);
+      container.removeEventListener('dragstart', onNativeDragStart);
       reset();
     },
   };

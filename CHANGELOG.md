@@ -36,6 +36,38 @@
 
 ---
 
+## 115. v266 — D&D が動かない bug fix (dragstart 抑制 + `gs is not defined` 修正) (2026-05-22)
+
+### 背景
+
+v265 push 後、ユスケさんから「クリックして動かそうとしても動かないし、コンソールも反応なし」のフィードバック + Console スクショ。Console には別の独立した bug `ReferenceError: gs is not defined at renderStats (09-tabs-stats.js:328:45)` も見えていた (これは renderStats を呼んだ時の uncaught promise rejection、D&D 失敗の原因ではないが、放置すると統計タブが描画できない)。
+
+### bug 1: D&D が動かない (`js/19-drag-sort.js`)
+
+サムネは `<a target="_blank">` + `<img>` でラップされている。`draggable="false"` 属性を `<a>` / `<img>` に付けてあったが、**ブラウザによっては効かない**。ユーザーがマウスでサムネを掴むと、ブラウザのネイティブ「URL ドラッグ」or「画像ドラッグ」が即座に発動し、pointer events を奪っていた可能性が高い。
+
+修正: `dragstart` イベント自体を container レベルで明示的に抑制 (`e.preventDefault()`):
+
+```js
+function onNativeDragStart(e) {
+  if (e.target.closest(itemSelector)) e.preventDefault();
+}
+container.addEventListener('dragstart', onNativeDragStart);
+```
+
+destroy() 時にも removeEventListener。
+
+### bug 2: `gs is not defined` (`js/09-tabs-stats.js`)
+
+`renderStats` の「実績」セクション (line 327〜) で `gs.rt` `gs.la` `gs.pct` を参照していたが、`const gs = ...` の定義が消えていた (過去のリファクタで漏れた)。プロパティ名から `NORIRECO.serviceLines.globalStats()` の戻り値を期待していると判明 (`{ts, rt, la, ld, pct}`)。
+
+修正: `achs` 配列定義の直前で `const gs = NORIRECO.serviceLines.globalStats();` を追加。
+
+### 影響範囲
+
+- bug 1 修正で 5 箇所すべての D&D (PhotoArea 3 モーダル + マイページ 旅程/メモ カード) が実際に動くようになる
+- bug 2 修正で マイページ 📊 統計タブの「実績」セクション (9 個のバッジ) が正しく描画される
+
 ## 114. v265 — D&D 後の click 抑制 (リンク・ボタン誤発火を防止) (2026-05-22)
 
 ### 背景
