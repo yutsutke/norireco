@@ -1,0 +1,19 @@
+{
+  "name": "norireco-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "乗レコ API ゲートウェイ Worker (R2 presigned upload / JWT verify)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "dependencies": {
+    "aws4fetch": "^1.0.20",
+    "jose": "^5.9.6"
+  },
+  "devDependencies": {
+    "wrangler": "^4.93.1"
+  }
+}

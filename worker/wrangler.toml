@@ -1,0 +1,24 @@
+name = "norireco-api"
+main = "src/index.js"
+compatibility_date = "2026-05-01"
+
+# 公開設定 (git に commit して OK)
+[vars]
+SUPABASE_URL = "https://zkscxhhlyhdaanisjhdi.supabase.co"
+R2_ACCOUNT_ID = "3684c46b0cdbd984e1057e86a52e6287"
+R2_BUCKET_NAME = "norireco-photos"
+CDN_BASE_URL = "https://cdn.norireco.app"
+ALLOWED_ORIGINS = "https://norireco.app,https://yutsutke.github.io,http://localhost:3000,http://localhost:5500,http://localhost:8000,http://localhost:8080,http://127.0.0.1:5500"
+
+# Secrets — wrangler secret put で Cloudflare 側に登録 (この toml には書かない)
+#   - R2_ACCESS_KEY_ID
+#   - R2_SECRET_ACCESS_KEY
+
+# Custom Domain (norireco.app は Cloudflare DNS 管理下なので自動 bind)
+[[routes]]
+pattern = "api.norireco.app"
+custom_domain = true
+
+# Observability (Cloudflare ダッシュボードでログが見られる)
+[observability]
+enabled = true

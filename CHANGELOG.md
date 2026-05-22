@@ -36,6 +36,116 @@
 
 ---
 
+## 105. v256 — R2/Workers 経由のメモ写真アップロード (布石 #2/#4 着手) (2026-05-22)
+
+### 背景
+
+v250 で `norireco_memos.photos jsonb` 列を追加した時点で「写真URL を直接 input で受ける」仮 UI のままだった (CHANGELOG §83 末尾、`m-photo` の `fl-hint` に「※ R2 アップロード対応は v251 以降」と書いてあった箇所)。TODO 布石 #2 (R2 + Workers API ゲートウェイ) と #4 (API を Workers 経由に統一) の発動条件が「画像機能の実装着手時」なので、ここで両方を一気に立ち上げる。
+
+### 設計判断
+
+| 軸 | 採用 | 理由 |
+|---|---|---|
+| 配信方式 | **presigned URL 方式** | アップロードのみ Worker 経由、配信は `cdn.norireco.app` の public R2 から直接 `<img src>` で読む。Worker リクエスト数を最小化 (R2 egress は無料なので Worker proxy にしてもコストは同じだが、レイテンシが減る) |
+| JWT verify | **JWKS 経由の ES256 verify** | Supabase が JWT 署名を Legacy HS256 → ECC P-256 (ES256) に移行済 (current key = ECC、previous = HS256 / 15 日前 rotate)。新トークンは ES256 で署名されるので HS256 + 共有シークレットでは verify できない。JWKS 経由なら Worker 側に **シークレット共有不要** + 鍵 rotation にも自動追従 + 布石 #5 (認証ベンダーロックイン回避) とも整合 |
+| R2 オブジェクトキー | `memos/<uid>/<memo_id>/<photo_uuid>.<ext>` | uid を最上位 prefix で破壊範囲を限定、memo_id で grouping (将来 1 メモ複数写真対応)、photo_uuid で衝突回避 |
+| 画像圧縮 | クライアント側 Canvas で WebP / 長辺 1200px / quality 0.82 | Worker 側で sharp 等の画像処理ライブラリを動かすと CPU 制限に当たる。クライアント側なら無料 |
+| 上限 | 元 20MB / 圧縮後 5MB (Worker 側で reject) | 通常のスマホ写真 (5〜10MB) を圧縮で 100〜400KB 程度に落とせる想定 |
+
+### Cloudflare 側の構築 (2026-05-22)
+
+- **R2 サブスク有効化**: 無料枠 10GB 保存 / 100万 PUT / 1000万 GET / **egress 完全無料**
+- **R2 バケット**: `norireco-photos` (Asia-Pacific, Standard)
+- **Custom Domain**: `cdn.norireco.app` を bind (TLS 1.2、Cloudflare DNS 配下なので CNAME 自動追加)
+- **CORS Policy**: `norireco.app` / `yutsutke.github.io` / `localhost:3000-8080` / `127.0.0.1:5500` を allow、GET/PUT/HEAD、`Content-Type`/`Content-Length` ヘッダー、`ETag` expose
+- **R2 API Token**: `norireco-worker` (Account API Token、Object Read & Write、`norireco-photos` バケット限定、Forever TTL)
+  - これは production-tied (Account 紐付け) なので User Token (organization 離脱で失効) より安全
+- **R2 Account ID**: `3684c46b0cdbd984e1057e86a52e6287` (S3 endpoint に含まれる、公開情報)
+
+### Worker 実装
+
+`worker/` を repo に追加 (5 ファイル):
+
+```
+worker/
+├── package.json       deps: jose ^5.9.6, aws4fetch ^1.0.20, wrangler ^4.93.1
+├── wrangler.toml      [vars] 公開設定 + [[routes]] api.norireco.app custom_domain
+├── .gitignore         node_modules / .dev.vars / .wrangler
+├── README.md          デプロイ手順
+└── src/
+    └── index.js       3 エンドポイント (62 KiB / gzip 14.86 KiB)
+```
+
+エンドポイント:
+
+| Method | Path                  | 認証 | 用途                                  |
+|--------|-----------------------|------|---------------------------------------|
+| GET    | `/health`             | 不要 | 疎通確認                              |
+| GET    | `/me`                 | 必要 | JWT verify テスト (uid/email 返却)    |
+| POST   | `/upload/memo-photo`  | 必要 | 駅メモ写真の presigned PUT URL 発行    |
+
+`/upload/memo-photo` のフロー:
+1. `Authorization: Bearer <token>` から JWT 取得
+2. `jose.jwtVerify(token, JWKS, { issuer: SUPABASE_URL/auth/v1, audience: 'authenticated' })`
+3. `payload.sub` を uid として取得
+4. body validate (`memo_id` 形式 / `ext` whitelist / `size_bytes` 上限)
+5. `aws4fetch.AwsClient.sign(s3Url, { method: 'PUT', aws: { signQuery: true } })` で SigV4 presigned URL を生成 (有効期限 5 分)
+6. `{ upload_url, public_url, object_key, expires_at }` を返す
+
+### Secrets 管理
+
+`wrangler secret put` で Cloudflare 側に直接暗号化保存 (ローカルにも git にも残らない):
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+
+`wrangler.toml` の `[vars]` には公開情報のみ (SUPABASE_URL / R2_ACCOUNT_ID / R2_BUCKET_NAME / CDN_BASE_URL / ALLOWED_ORIGINS)。
+
+### デプロイの躓きポイント
+
+1. **PowerShell の Execution Policy で `npm install` が走らない**: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` で恒久対応
+2. **wrangler 3.114 (古い) で OAuth ログインが libuv assertion failure**: `npm install --save-dev wrangler@4` (現行 4.93.1) で解決
+3. **`[[routes]] pattern = "api.norireco.app/*"` でデプロイエラー (`Wildcard operators (*) are not allowed in Custom Domains`)**: Custom Domain はドメイン全体を Worker に bind する仕組みなので path/wildcard 不要、`pattern = "api.norireco.app"` のみで OK
+
+### フロント実装 (`js/16-memos.js` + `noritetsu-map.html`)
+
+`m-photo` URL input を file input + プレビュー + Worker 経由 upload に置換:
+
+**16-memos.js**:
+- `NORIRECO_API_BASE = 'https://api.norireco.app'` constant
+- `compressImageToWebP(file)`: Canvas + `createImageBitmap` で長辺 1200px / WebP 0.82
+- `uploadPhotoForMemo(memoId, blob, meta)`: Worker から presigned URL 取得 → R2 へ PUT → `{url, w, h, bytes, content_type}` を返す
+- `M.photo` state: `{ state: 'none' | 'existing' | 'new', blob, meta, previewUrl, existingPhotos }`
+- `onPhotoFileSelected(file)`: type/size validate → 圧縮 → `blob:` URL でプレビュー
+- `clearPhotoInModal()`: `URL.revokeObjectURL` してから state リセット
+- `ensurePhotoInputWired()`: 初回 open 時に file input の change ハンドラを 1 度だけ wire
+- `fillModal()` / `readModal()` / `saveMemoFromModal()` / `closeMemo()` を上記 state に合わせて書き換え
+- 既存 memo の photo は `state: 'existing'` で表示 (URL から直接 `<img src>`)、新規ファイル選択時は `state: 'new'` に遷移して保存時にアップロード
+
+**noritetsu-map.html**:
+- `<input type="url" id="m-photo">` を `<input type="file" id="m-photo-file">` + `📷 写真を選ぶ` ボタン + プレビュー img + `✕ 削除` ボタンに置換
+- CSS 追加: `.m-photo-area / .m-photo-btn / .m-photo-preview / .m-photo-remove / .m-photo-status` (既存 modal の `--gold / --silver / --track / --track2` CSS 変数を踏襲、最大高 280px・object-fit:contain で写真の縦横比を保持)
+
+### 動作確認
+
+- `npx wrangler deploy` 成功: `Uploaded norireco-api (2.67 sec) / Deployed norireco-api triggers / api.norireco.app (custom domain)`
+- `curl https://api.norireco.app/health` → 200 OK `{"ok":true,"service":"norireco-api","ts":...}` + CORS ヘッダー全部出力
+- `Invoke-RestMethod /me with Bearer <Supabase JWT>` → uid (`ece72ecb-...`) + email + role: `authenticated` + exp が返る = JWKS 経由 ES256 verify が動作確認
+
+### 残課題 (次セッション以降)
+
+- 実機 (PC + iPhone PWA) でメモ写真の選択 → 圧縮 → アップロード → 保存 → マイページ・駅メモ一覧モーダルでの表示の通しテスト
+- 複数枚対応 (現状は `photos[0]` のみ、配列なので 1 メモ 5 枚程度まで拡張可能)
+- 写真の差し替え時に旧 R2 オブジェクトを delete する API (現状はゴミが残る)
+- マイページの memo カードのサムネイル化 (現状はリンクのみ)
+- OGP シェア機能の R2 永続化 + `/share/<id>` ページ (布石 #2 のもう一つの use case)
+
+### コミット範囲
+
+- `worker/` 新規 (5 ファイル)
+- `js/16-memos.js` (写真アップロード 4 関数追加、既存 4 関数書き換え、`NORIRECO_API_BASE` constant 追加)
+- `noritetsu-map.html` (memo-modal の photo input セクション全置換 + CSS 9 行追加)
+- `sw.js` (CACHE_VERSION v255 → v256)
+
 ## 104. v255 — キャラモーダル内のキャラ切り替えが「閉じるだけ」だったのを修正 (2026-05-22)
 
 ### 背景

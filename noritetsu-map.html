@@ -1053,6 +1053,15 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .btn-del:hover{background:rgba(232,53,42,.16);}
 .btn-cls{width:100%;padding:11px;border:1.5px solid var(--track);border-radius:12px;background:transparent;color:var(--silver);font-family:'Zen Kaku Gothic New',sans-serif;font-size:13px;cursor:pointer;margin-top:8px;}
 .fl-hint{font-size:10px;color:rgba(140,160,179,.7);font-weight:400;margin-left:6px;}
+/* 写真アップロード UI (v256: R2/Workers 経由) */
+.m-photo-area{display:flex;flex-direction:column;gap:8px;}
+.m-photo-btn{display:block;width:100%;padding:14px;border:1.5px dashed var(--track);border-radius:10px;background:var(--track2);color:var(--silver);font-family:'Zen Kaku Gothic New',sans-serif;font-size:13px;cursor:pointer;text-align:center;}
+.m-photo-btn:hover{border-color:var(--gold);color:var(--gold);}
+.m-photo-preview{position:relative;border-radius:10px;overflow:hidden;background:#000;border:1px solid var(--track);}
+.m-photo-preview img{display:block;width:100%;max-height:280px;object-fit:contain;background:#000;}
+.m-photo-remove{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.75);color:#fff;border:none;border-radius:14px;padding:5px 11px;font-size:11px;cursor:pointer;font-family:'Zen Kaku Gothic New',sans-serif;}
+.m-photo-remove:hover{background:rgba(232,53,42,.85);}
+.m-photo-status{font-size:11px;color:var(--silver);font-family:'DM Mono',monospace;}
 
 /* 駅アクションシート (v253) */
 .sa-actions{display:flex;flex-direction:column;gap:8px;margin-top:14px;margin-bottom:10px;}
@@ -1518,7 +1527,18 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
       <button class="chip" data-tag="始発" onclick="togTag(this)">🌅 始発</button>
     </div></div>
     <div class="fg"><div class="fl">コメント</div><textarea class="mta" id="m-comment" placeholder="車窓の景色、駅の雰囲気、気づいたことなど..."></textarea></div>
-    <div class="fg"><div class="fl">写真URL <span class="fl-hint">※ R2 アップロード対応は v251 以降</span></div><input class="pin" type="url" id="m-photo" placeholder="https://..."></div>
+    <div class="fg">
+      <div class="fl">📷 写真 <span class="fl-hint">タップして選択 / JPEG・PNG・WebP / 圧縮後 5MB まで</span></div>
+      <div class="m-photo-area">
+        <input type="file" id="m-photo-file" accept="image/jpeg,image/png,image/webp" style="display:none">
+        <button type="button" class="m-photo-btn" id="m-photo-btn" onclick="document.getElementById('m-photo-file').click()">📷 写真を選ぶ</button>
+        <div class="m-photo-preview" id="m-photo-preview" style="display:none">
+          <img id="m-photo-img" alt="">
+          <button type="button" class="m-photo-remove" id="m-photo-remove" onclick="clearPhotoInModal()">✕ 削除</button>
+        </div>
+        <div class="m-photo-status" id="m-photo-status"></div>
+      </div>
+    </div>
     <button class="btn-save" id="m-save-btn" onclick="saveMemoFromModal()">☁️ 保存</button>
     <button class="btn-del" id="m-delete-btn" onclick="deleteMemoFromModal()" style="display:none">🗑 このメモを削除</button>
     <button class="btn-cls" onclick="closeMemo()">閉じる</button>

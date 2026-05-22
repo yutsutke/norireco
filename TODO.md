@@ -6,7 +6,7 @@
 ---
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v255 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v256 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13c-..` ES Modules (v195〜v225 で全 18 ファイル `<script type="module">` + `import`/`export` 化完了)
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
@@ -14,7 +14,8 @@
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **完乗率**: ユニーク駅単位に統一 (v235) — ヘッダ「完乗率 X%」と マイページ「全記録完乗率」が一致、「GPS 記録 完乗率」(旧 公式完乗率、v240 で改名) は GPS 認証のみ
 
-**直近の作業 (v228〜v255)**:
+**直近の作業 (v228〜v256)**:
+- v256: R2/Workers 経由のメモ写真アップロード (布石 #2/#4 着手)。`worker/` ディレクトリ新規 (Cloudflare Workers + R2、`api.norireco.app` / `cdn.norireco.app`)、Supabase JWT を JWKS 経由で ES256 verify (current key が ECC P-256 に rotate 済のため。Worker 側に共有シークレット不要 + 布石 #5 とも整合)、presigned PUT URL 方式 (upload は Worker 経由、配信は R2 public バケット直)。`js/16-memos.js` の `m-photo` URL input を file input + Canvas 圧縮 (長辺 1200px / WebP 0.82) + プレビュー UI に置換、photos jsonb は `[{url, w, h, bytes, content_type}]` 形式。`/health` `/me` `/upload/memo-photo` の 3 エンドポイント疎通確認済。残: 実機通しテスト、複数枚対応、写真差し替え時の旧 R2 オブジェクト delete、マイページ memo カードのサムネイル化、OGP シェアの R2 永続化 (布石 #2 のもう一つの use case)
 - v255: キャラ詳細モーダルでキャラのサムネイルを押すと「モーダルが閉じるだけ」で切り替わらない問題を修正。pickStationCharacter から closeCharModal を撤去し、代わりに openCharModal(ms, newCharacter) でモーダルを新しいキャラで再 render するように。サムネイルを次々タップして比較できる体験に
 - v254: v253 アクションシートの 2 バグ修正。(1) 「🎭 を見る」が無反応 — openCharModal は v225 stage 3 で export 化済で window bridge なし、17 から直接 import に変更。(2) キャラモード OFF + シーズン外で「🎭」ボタンが出ない — getStationCharacter/getObtainableCharactersAt は charModeOn を要求するため、17 内に pickCharacterForStation(stationName) を新設して NORIRECO.data.stationCharMap から直接取得 (獲得済優先 → 未獲得は locked 表示)
 - v253: 駅タップで「アクションシート」(手動記録/メモ/色変更/キャラ)。`js/17-station-actions.js` 新設で `NORIRECO.stationActions.open(ms, opts)` を公開、`08-rendering.js:attachStationDotClickV2` の通常モード分岐をシート起動 1 行に集約。アクションボタンは動的: キャラあれば「🎭 を見る」、常時「📝 手動記録」「📸 メモ (N件)」、乗り入れ系統あれば「🎨 系統色を変更」(複数系統なら系統選択サブ画面)。記録/メモモード中は抑制。`noritetsu-map.html` に `station-action-modal` + `.sa-btn` 系 CSS 追加。TODO「🟡 駅 UI の情報ハブ化 (4領域パネル)」本格版への足がかり
@@ -211,20 +212,21 @@
 
 <!-- ✅ v249 で完了: 静的アセット GitHub Pages → Cloudflare Pages 移行 + 独自ドメイン norireco.app 取得 — CHANGELOG §98 参照 -->
 
-- [ ] **#2 画像ストレージ: Cloudflare R2 + Workers API ゲートウェイ**
-  - 理由: 写真保存は将来必ず量が爆発。R2 の egress 無料を最初から取らないと月額 30 倍以上の差（Supabase Storage は地獄）
-  - 発動条件: 画像機能（旅程の写真添付・OGP 生成）の実装着手時 ≒ Phase 2（500〜2,000 ユーザー）
-  - 今のうちにやること: 画像保存先を Supabase Storage にしない。新規 API を書くなら Worker 前提で設計
+- [ ] **#2 画像ストレージ: Cloudflare R2 + Workers API ゲートウェイ (一部 v256 で着手済)**
+  - ✅ v256: メモ写真の upload パス (`worker/` + R2 バケット `norireco-photos` + `api.norireco.app` + `cdn.norireco.app`)。CHANGELOG §105 参照
+  - **残り**:
+    - OGP シェア画像の R2 永続化 + `/share/<id>` 受け側ページ (🔥 シェア機能の残りと統合)
+    - 写真差し替え時の旧 R2 オブジェクト delete API
+    - 複数枚対応 (現状は `photos[0]` のみ。スキーマは配列対応済)
 
 - [ ] **#3 `norireco_trips` テーブルの将来シャーディング可能化**
   - 理由: 100 万 MAU で trip データ 2TB、Postgres 単一テーブルは 10 万 MAU で限界。`created_year` で水平分割できる構造にしておけば Neon 移行時もスムーズ
   - 発動条件: 10 万 MAU 手前で実際の `PARTITION BY RANGE` 設定
   - 今のうちにやること: 新規テーブル設計時は `created_year`（または同等のパーティションキー）カラムを含める。`PARTITION` 自体は今まだ設定しない
 
-- [ ] **#4 API を Workers 経由に統一**
-  - 理由: 現状は Supabase SDK でブラウザ → 直接 DB。Cloudflare Workers の API ゲートウェイ経由にしておけば、後で DB を Neon に差し替えてもフロントエンドを触らずに済む
-  - 発動条件: 画像機能着手時（= #2 と同時、Phase 2 頃）
-  - 今のうちにやること: 新規 API エンドポイントは Worker で書く。ブラウザから Supabase SDK で直接 DB を叩くコードをこれ以上増やさない
+- [ ] **#4 API を Workers 経由に統一 (一部 v256 で着手済)**
+  - ✅ v256: `worker/` (norireco-api) を立ち上げ、`/upload/memo-photo` を Worker 経由で実装。新規 API はここに追加する規約を確立。CHANGELOG §105 参照
+  - **残り**: 既存の Supabase SDK 直叩きコード (trip / character_grants / memos の CRUD) を順次 Worker 経由に移行。布石 #5 (認証ベンダーロックイン回避) と合わせて段階的に
 
 - [ ] **#5 認証ベンダーロックイン回避**
   - 理由: Supabase Enterprise は \$数千/月でコスト交渉力が低い。10 万 MAU で Auth を Clerk / Auth.js に逃がせる選択肢を残す
