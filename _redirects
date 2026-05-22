@@ -1,0 +1,5 @@
+# Cloudflare Pages redirects
+# https://developers.cloudflare.com/pages/configuration/redirects/
+
+# ルートアクセスは地図画面へ (憲法 §1「マップ中心」)
+/  /noritetsu-map.html  302

@@ -6,7 +6,7 @@
 ---
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v248 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v249 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13c-..` ES Modules (v195〜v225 で全 18 ファイル `<script type="module">` + `import`/`export` 化完了)
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
@@ -14,7 +14,8 @@
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **完乗率**: ユニーク駅単位に統一 (v235) — ヘッダ「完乗率 X%」と マイページ「全記録完乗率」が一致、「GPS 記録 完乗率」(旧 公式完乗率、v240 で改名) は GPS 認証のみ
 
-**直近の作業 (v228〜v248)**:
+**直近の作業 (v228〜v249)**:
+- v249: GitHub Pages → Cloudflare Pages 移行 + 独自ドメイン `norireco.app` 取得 ($14.20/年、Cloudflare Registrar at-cost、HSTS 必須の .app TLD)。`_headers` (sw.js / manifest / HTML を no-cache)・`_redirects` (`/` → `/noritetsu-map.html`) 追加、`js/14-share-ogp.js` の OGP 画像内 URL と X intent shareText を新ドメインに、`noritetsu-map.html` / `noritetsu-log.html` に og:title / og:description / og:image / twitter:card メタを追加。`js/12-auth.js` の redirect は `window.location.origin + pathname` で動的生成なので無修正で追従。Supabase Auth + Google OAuth 側に `https://norireco.app/**` を Redirect URLs に追加。GitHub Pages は当面フォールバックで残置。布石 #1 完了
 - v248: HTML inline onclick の window bridge 漏れ修正。v225 (ES Modules stage 3) で `window.toggleRecordMode` 等を撤去したが noritetsu-map.html の `onclick="toggleRecordMode()"` を見落とし、📝 手動記録が無反応だった (= v225〜v247 で潜在的に壊れていた)。`closeRestoreModal` / `restoreFromJson` も同様。grep -oE で全件監査クリア
 - v247: 系統色カスタマイズの Supabase 同期 — 別端末でも色設定が引き継がれる。`norireco_line_color_overrides` 専用テーブル + RLS。set/reset/resetAll で fire-and-forget upsert/delete、SIGNED_IN で pull → localStorage に merge (Supabase 優先、ローカル独自は bulk push)。`supabase/migrations/v247_line_color_overrides.sql` を Supabase Dashboard で要実行
 - v246: v245 リグレッション修正 — 記録モード・メモモード中も polyline click ハンドラが発火して色モーダルが開いてしまい、駅選択ができなかった (= 手動記録不可)。`NORIRECO.record.mode` / `NORIRECO.map.memoMode` チェックで早期 return。ESC キーで色モーダルを閉じる handler も追加
@@ -196,10 +197,7 @@
 
 長期スケール（10万〜100万 MAU）で必要になるが、今やらないと後で改修コストが爆発する項目。「今のうちにやること」欄を必ず明記する。詳細・運用ルールは [🌱 布石リスト（Notion）](https://www.notion.so/36471b458b6381198769fcbf5ab630bd) と [🏗 インフラ戦略（Notion）](https://www.notion.so/36171b458b63818f8687d3d05ad0926e)。
 
-- [ ] **#1 静的アセット: GitHub Pages → Cloudflare Pages 移行**
-  - 理由: GitHub Pages は帯域 100GB/月のソフト上限。1 万 MAU で警告ライン、それ以上で読み込み障害。Cloudflare Pages なら帯域無制限・無料
-  - 発動条件: **今すぐ**（ユーザー数関係なし、デメリットほぼなし）
-  - 今のうちにやること: リポジトリ連携設定・カスタムドメイン DNS 切替・GitHub Pages は当面残してフォールバックに
+<!-- ✅ v249 で完了: 静的アセット GitHub Pages → Cloudflare Pages 移行 + 独自ドメイン norireco.app 取得 — CHANGELOG §98 参照 -->
 
 - [ ] **#2 画像ストレージ: Cloudflare R2 + Workers API ゲートウェイ**
   - 理由: 写真保存は将来必ず量が爆発。R2 の egress 無料を最初から取らないと月額 30 倍以上の差（Supabase Storage は地獄）

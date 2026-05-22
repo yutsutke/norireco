@@ -1,0 +1,13 @@
+# Cloudflare Pages headers
+# https://developers.cloudflare.com/pages/configuration/headers/
+
+# Service Worker は常に最新を fetch (古い SW が居座ると無限ループ的に詰む)
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+# PWA manifest と HTML は基本 no-cache (SW が Network-First で扱うため、SW 未登録時の保険)
+/manifest.json
+  Cache-Control: public, max-age=300, must-revalidate
+
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate

@@ -36,6 +36,92 @@
 
 ---
 
+## 98. v249 — GitHub Pages → Cloudflare Pages 移行 + 独自ドメイン `norireco.app` (2026-05-22)
+
+### 背景
+
+TODO.md 布石 #1「静的アセット: GitHub Pages → Cloudflare Pages 移行」を実行。発動条件は「今すぐ」(ユーザー数関係なし)、GitHub Pages の帯域 100GB/月ソフト上限を回避し、将来の R2/Workers 統合の前提を整える。Notion §インフラ戦略 Phase 1 ✅。
+
+### 決定事項
+
+| 項目 | 値 | 理由 |
+|---|---|---|
+| ドメイン | `norireco.app` | Cloudflare Registrar at-cost ($14.20/年)、HTTPS 必須 (HSTS preload) で標準安全、"app" がブランドと整合 |
+| 配信 | Cloudflare Pages (`norireco.pages.dev` + custom domain) | 帯域無制限・無料、git push 自動デプロイ、グローバル CDN |
+| DNS | Cloudflare (apex CNAME flattening で `@ → norireco.pages.dev`) | 同一アカウント内 Zone なので Pages バインドが自動 |
+| GitHub Pages | 当面残してフォールバック | 既存ユーザーの SW/PWA install を即時破壊しない (Notion 戦略通り) |
+
+### 変更内容
+
+#### 1. `_headers` (新規)
+
+Cloudflare Pages のヘッダー制御。SW が古いキャッシュで居座る事故を防ぐ。
+
+```
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/manifest.json
+  Cache-Control: public, max-age=300, must-revalidate
+
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+```
+
+#### 2. `_redirects` (新規)
+
+ルート `/` アクセスを地図画面へ (`index.html` がないため 404 回避 + 憲法「マップ中心」)。
+
+```
+/  /noritetsu-map.html  302
+```
+
+#### 3. `noritetsu-map.html` / `noritetsu-log.html` に OGP メタタグ追加
+
+シェア時の SNS カード表示用。og:image は `https://norireco.app/icon-512.png` で絶対 URL。
+
+```html
+<meta property="og:title" content="乗レコ - 電車旅">
+<meta property="og:description" content="全国鉄道の乗車記録・完乗率を可視化する PWA。乗り鉄のための YAMAP。">
+<meta property="og:image" content="https://norireco.app/icon-512.png">
+<meta property="og:url" content="https://norireco.app/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="乗レコ">
+<meta name="twitter:card" content="summary_large_image">
+```
+
+#### 4. `js/14-share-ogp.js` の URL を `norireco.app` に変更
+
+OGP 画像右上の URL 表記 (L236) と X intent の shareText (L316) を旧 `yutsutke.github.io/norireco` → 新 `norireco.app` に。
+
+#### 5. 認証 redirect URL は無修正で OK
+
+`js/12-auth.js:172` の `authCleanRedirectUrl()` は `window.location.origin + window.location.pathname` で動的生成 → 新ドメインで自動追従。Supabase Dashboard 側で `https://norireco.app/**` を Redirect URLs に追加する作業のみ必要 (このセッション中に実施)。Google OAuth Client にも `https://norireco.app` を Authorized JavaScript origins + redirect URIs に追加。
+
+### Cloudflare 側作業 (ユスケさん実施)
+
+1. Cloudflare アカウント作成 (yutsutke@yahoo.co.jp)
+2. Cloudflare Registrar で `norireco.app` 取得 ($14.20/年, expires 2027-05-22)
+3. Workers & Pages → Pages → Connect to Git → `yutsutke/norireco` 連携 (Framework preset: None, Build command: 空欄, Output: `/`)
+4. Custom Domain → `norireco.app` 追加 → DNS 自動設定 + SSL 自動発行
+
+### 動作確認 (v249 push 直前)
+
+- `norireco.pages.dev/noritetsu-map.html`: 地図描画 / パイチャート / リージョン中央駅 / ボタン反応すべて OK
+- ログイン: 許可 URL 追加前は失敗 (想定通り)
+
+### 残課題
+
+- 既存 GitHub Pages ユーザーへの誘導 (アナウンス・将来 301 redirect 検討)
+- シェア機能の「シェア専用ページ `/share/<id>`」(布石 #2 R2 + Workers と合わせて)
+- 布石 #2〜#6 (R2 / Workers ゲートウェイ / シャーディング / 認証抽象化 / 垢 BAN) は引き続き残
+
+### バージョン番号
+
+v249 (Phase 3.8 後半 §98)
+
+---
+
 ## 97. v248 — HTML onclick の window bridge 漏れ修正 (toggleRecordMode 他) (2026-05-20)
 
 ### 背景

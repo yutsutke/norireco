@@ -233,7 +233,7 @@ async function generateOgpCanvas(stats) {
   ctx.textAlign = 'right';
   ctx.font = '18px "DM Mono", monospace';
   ctx.fillStyle = 'rgba(140,160,179,0.7)';
-  ctx.fillText('yutsutke.github.io/norireco', OGP_W - 50, 78);
+  ctx.fillText('norireco.app', OGP_W - 50, 78);
   ctx.textAlign = 'left';
 
   // 地図エリア (左)
@@ -313,7 +313,7 @@ async function shareCurrentCanvas() {
   const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
   if (!blob) { alert('画像の生成に失敗しました'); return; }
   const file = new File([blob], 'norireco.png', { type: 'image/png' });
-  const shareText = '全国鉄道の完乗マップ📍 #乗レコ #乗り鉄\nhttps://yutsutke.github.io/norireco/';
+  const shareText = '全国鉄道の完乗マップ📍 #乗レコ #乗り鉄\nhttps://norireco.app/';
 
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
