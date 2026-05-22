@@ -6,7 +6,7 @@
 ---
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v253 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v254 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13c-..` ES Modules (v195〜v225 で全 18 ファイル `<script type="module">` + `import`/`export` 化完了)
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
@@ -14,7 +14,8 @@
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **完乗率**: ユニーク駅単位に統一 (v235) — ヘッダ「完乗率 X%」と マイページ「全記録完乗率」が一致、「GPS 記録 完乗率」(旧 公式完乗率、v240 で改名) は GPS 認証のみ
 
-**直近の作業 (v228〜v253)**:
+**直近の作業 (v228〜v254)**:
+- v254: v253 アクションシートの 2 バグ修正。(1) 「🎭 を見る」が無反応 — openCharModal は v225 stage 3 で export 化済で window bridge なし、17 から直接 import に変更。(2) キャラモード OFF + シーズン外で「🎭」ボタンが出ない — getStationCharacter/getObtainableCharactersAt は charModeOn を要求するため、17 内に pickCharacterForStation(stationName) を新設して NORIRECO.data.stationCharMap から直接取得 (獲得済優先 → 未獲得は locked 表示)
 - v253: 駅タップで「アクションシート」(手動記録/メモ/色変更/キャラ)。`js/17-station-actions.js` 新設で `NORIRECO.stationActions.open(ms, opts)` を公開、`08-rendering.js:attachStationDotClickV2` の通常モード分岐をシート起動 1 行に集約。アクションボタンは動的: キャラあれば「🎭 を見る」、常時「📝 手動記録」「📸 メモ (N件)」、乗り入れ系統あれば「🎨 系統色を変更」(複数系統なら系統選択サブ画面)。記録/メモモード中は抑制。`noritetsu-map.html` に `station-action-modal` + `.sa-btn` 系 CSS 追加。TODO「🟡 駅 UI の情報ハブ化 (4領域パネル)」本格版への足がかり
 - v252: 駅 hover ツールチップに「📸 メモ N 件」を追加。`js/08-rendering.js:drawStationsLayer` の既存 tooltip 末尾に NORIRECO.memos キャッシュから件数集計したタグを追加、`tooltipopen` ハンドラで毎回再計算 → 新規メモ作成/削除直後でも次の hover で件数反映。PC ユーザーの「どの駅にメモがあるか」発見性向上 (モバイルは v251 の駅タップで代替)
 - v251: 駅タップで駅メモ一覧モーダル。通常モードで駅マーカータップ → キャラなし & 自分のメモあり なら「📸 〇〇駅のメモ (N件)」モーダル表示 (キャラ駅は従来通り優先)。`js/16-memos.js` に `openStationMemoList` / `closeStationMemoModal` / `addNewMemoForStation` / `hasMemosForStation` を追加、`js/08-rendering.js:attachStationDotClickV2` の else 分岐にメモ判定追加、`station-memo-modal` HTML 新設。TODO「🟡 駅 UI の情報ハブ化（4領域パネル）」の個人メモ部分 MVP に相当

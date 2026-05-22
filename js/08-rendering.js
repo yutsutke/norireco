@@ -822,22 +822,19 @@ function attachStationDotClickV2(dot, ms) {
       L.DomEvent.stopPropagation(e);
     } else {
       // v253: 通常モードは「駅アクションシート」に一本化
-      //       キャラ (取得済 or 未獲得 locked) があれば「🎭 を見る」もシート内に提示。
-      //       キャラ直行ではなく一旦シートを挟むことで、手動記録/メモ/色変更にも
-      //       駅タップから 1 hop で到達できるようにする。
-      const character = getStationCharacter(ms.name);
-      const obtainable = character ? [] : getObtainableCharactersAt(ms.name);
-      const charForSheet = character || obtainable[0] || null;
+      //       キャラの判定 (charModeOn / 獲得 / locked / シーズン外) は 17 側で
+      //       stationCharMap を直接見て自前で行うので、ここでは ms だけ渡す
+      //       (v253.1 修正: charModeOn=false でも駅にキャラがあれば露出させるため)
       if (window.NORIRECO?.stationActions?.open) {
-        window.NORIRECO.stationActions.open(ms, {
-          character: charForSheet,
-          characterLocked: !character && !!obtainable[0],
-        });
+        window.NORIRECO.stationActions.open(ms);
         L.DomEvent.stopPropagation(e);
-      } else if (character) {
-        // フォールバック (17-station-actions.js が未ロードの極端ケース)
-        openCharModal(ms, character);
-        L.DomEvent.stopPropagation(e);
+      } else {
+        // フォールバック (17 未ロードの極端ケース) — 旧挙動
+        const character = getStationCharacter(ms.name);
+        if (character) {
+          openCharModal(ms, character);
+          L.DomEvent.stopPropagation(e);
+        }
       }
     }
   });

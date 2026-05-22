@@ -20,6 +20,8 @@
 // ══════════════════════════════════════════════════════════════
 
 import { toggleRecordMode, onRecordStationClick } from './07-record-mode.js';
+import { openCharModal } from './08-rendering.js';
+import { isCharacterOwned } from './03-characters.js';
 
 window.NORIRECO = window.NORIRECO || {};
 NORIRECO.stationActions = NORIRECO.stationActions || {
@@ -38,12 +40,40 @@ function escapeHtml(s) {
   ));
 }
 
+// 駅にキャラが紐付いているかを charModeOn / 獲得状態に依存せずに判定し、
+// 「🎭 を見る」ボタンに出す代表キャラ + locked フラグを返す。
+//
+// 優先順位:
+//   1. 獲得済み (charModeOn でフィルタされた getStationCharacter は使えないので
+//      stationCharMap → isCharacterOwned で自前判定)
+//   2. 未獲得だが期間内・obtainable (locked obtainable)
+//   3. 未獲得 + 期間外 (= シーズン外でも、お客さんが「あれ?」と
+//      なる前にキャラ情報を見られるよう露出)
+function pickCharacterForStation(stationName) {
+  const list = NORIRECO.data?.stationCharMap?.get(stationName) || [];
+  if (list.length === 0) return { character: null, locked: false };
+
+  // 1. 獲得済みを優先
+  const owned = list.find(c => isCharacterOwned(c.meta?.id));
+  if (owned) return { character: owned, locked: false };
+
+  // 2/3. 未獲得 (期間内も期間外も同じ「未獲得」扱いで openCharModal の locked 表示に任せる)
+  return { character: list[0], locked: true };
+}
+
 // 駅マーカークリックから呼ばれるエントリポイント
 export function openStationActionSheet(ms, options) {
-  // options = { character, characterLocked }
+  // options = { character, characterLocked }  // 後方互換のため受け付けるが、
+  // options が無ければ自前で判定する (charModeOn=false でもキャラを露出させる v253.1 修正)
   S.currentMs = ms;
-  S.currentChar = options?.character || null;
-  S.currentCharLocked = !!options?.characterLocked;
+  if (options && options.character !== undefined) {
+    S.currentChar = options.character;
+    S.currentCharLocked = !!options.characterLocked;
+  } else {
+    const picked = pickCharacterForStation(ms.name);
+    S.currentChar = picked.character;
+    S.currentCharLocked = picked.locked;
+  }
   S.colorPickLines = null;
 
   // 乗り入れ系統を解決
@@ -151,9 +181,8 @@ function onSaShowCharacter() {
   const ch = S.currentChar;
   if (!ms || !ch) return;
   closeStationActionSheet();
-  if (typeof window.openCharModal === 'function') {
-    window.openCharModal(ms, ch);
-  }
+  // openCharModal は 08 の export を直接 import 済 (window bridge 廃止のため)
+  openCharModal(ms, ch);
 }
 
 function onSaStartRecording() {

@@ -36,6 +36,55 @@
 
 ---
 
+## 103. v254 — v253 駅アクションシートの 2 つのバグ修正 (2026-05-22)
+
+### 背景
+
+v253 push 後ユスケさん報告:
+1. **「🎭 アール・プレーン 2.0 を見る」ボタンを押しても無反応**
+2. **「駅のキャラ表示が OFF でもキャラの詳細を選べないと混乱する」** (= キャラモード OFF 時に「🎭 を見る」ボタンが出ない)
+
+### 原因
+
+#### バグ 1: `window.openCharModal` が存在しない
+
+`js/08-rendering.js:856` の `openCharModal` は v225 stage 3 で `export function` に移行済で、window bridge が無い。`js/17-station-actions.js:onSaShowCharacter` で `typeof window.openCharModal === 'function'` の判定が常に false → silent fail (アラートも出ないので押しても何も起きないように見えた)。
+
+#### バグ 2: キャラ判定が `charModeOn` を要求
+
+`getStationCharacter()` / `getObtainableCharactersAt()` は `if (!NORIRECO.data.charModeOn) return null;` で早期 return する。v253 の判定はこの 2 関数だけに依存していたため、キャラモード OFF 時に駅にキャラがあっても `charForSheet = null` で「🎭」ボタンが出なかった。
+
+### 変更内容
+
+#### 1. 17 から `openCharModal` を直接 import
+
+```js
+import { openCharModal } from './08-rendering.js';
+import { isCharacterOwned } from './03-characters.js';
+```
+
+`onSaShowCharacter` で `window.openCharModal` 経由ではなく `openCharModal(ms, ch)` を直接呼ぶ。08 → (window) → 17 → (import) → 08 は循環ではなく一方向 import なので OK。
+
+#### 2. キャラ判定を `stationCharMap` ベースに変更
+
+17 内に `pickCharacterForStation(stationName)` を新設。`NORIRECO.data.stationCharMap.get(stationName)` から駅に紐付くキャラ全件を取得 (charModeOn 関係なし) し、優先順位:
+1. 獲得済み (`isCharacterOwned(c.meta.id)`)
+2. 未獲得 (`locked = true` でモーダル表示、シーズン内/外問わず)
+
+これでキャラモード OFF + シーズン外でも「🎭 ◯◯ を見る (未獲得)」ボタンが出るようになり、駅にキャラがあることをお客さんが発見できる。
+
+#### 3. 08 側の判定を簡素化
+
+`attachStationDotClickV2` 通常モード分岐から `getStationCharacter` / `getObtainableCharactersAt` の呼出を撤去 → `NORIRECO.stationActions.open(ms)` を ms だけ渡して呼ぶ (options 不要)。フォールバックの旧挙動 (17 未ロード時) はそのまま残置。
+
+#### 4. CACHE_VERSION v253 → v254
+
+### バージョン番号
+
+v254 (Phase 3.8 後半 §103)
+
+---
+
 ## 102. v253 — 駅タップで「アクションシート」(手動記録 / メモ / 色変更 / キャラ) (2026-05-22)
 
 ### 背景
