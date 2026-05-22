@@ -43,7 +43,7 @@ NORIRECO.mypage.formatDelayMin = formatDelayMin;
 // 案 β stage 1 全 7 ドメイン完了 (auth/map/record/gps/trains/data/mypage、累計 46 state)。
 NORIRECO.mypage.state = NORIRECO.mypage.state || {
   _mypageCache: null,            // 取得した自分の trip[]
-  mpActiveSection: 'stats',      // 'stats' | 'trips' | 'lines'
+  mpActiveSection: 'stats',      // 'stats' | 'trips' | 'lines' | 'memos'
   mpTripFilter: {
     auth: 'all',     // all | verified | manual | suspicious
     period: 'all',   // all | thisYear | lastYear | custom (日付フィルタは _tripDateFilter と独立)
@@ -88,6 +88,7 @@ export async function renderMypage() {
       <button class="mp-subtab" data-sec="stats" onclick="switchMpSection('stats')">📊 統計</button>
       <button class="mp-subtab" data-sec="trips" onclick="switchMpSection('trips')">🚃 旅程</button>
       <button class="mp-subtab" data-sec="lines" onclick="switchMpSection('lines')">📋 路線</button>
+      <button class="mp-subtab" data-sec="memos" onclick="switchMpSection('memos')">📸 メモ</button>
     </div>
   `;
 
@@ -215,15 +216,19 @@ export function applyMpSection() {
   const showStats = MP.mpActiveSection === 'stats';
   const showTrips = MP.mpActiveSection === 'trips';
   const showLines = MP.mpActiveSection === 'lines';
+  const showMemos = MP.mpActiveSection === 'memos';
   document.getElementById('mp-sub-stats').style.display       = showStats ? '' : 'none';
   document.getElementById('mp-sub-trips').style.display       = showTrips ? '' : 'none';
   document.getElementById('mp-sub-lines').style.display       = showLines ? '' : 'none';
+  const memoPane = document.getElementById('mp-sub-memos');
+  if (memoPane) memoPane.style.display = showMemos ? '' : 'none';
 
   // 内容描画 (遅延でレイアウト確定後)
   setTimeout(() => {
     if (showStats) { NORIRECO.mypage.renderMpStatsSection(); }
     if (showTrips) NORIRECO.mypage.renderMpTripsSection();
     if (showLines) { try { renderList(); } catch(e) {} }
+    if (showMemos) { try { NORIRECO.mypage.renderMpMemosSection?.(); } catch(e) {} }
   }, 30);
 }
 NORIRECO.mypage.applyMpSection = applyMpSection;

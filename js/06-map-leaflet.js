@@ -14,7 +14,8 @@ import {
   redrawAllLinesAfterTripChange,
   fitToRiddenLines,
 } from './07-record-mode.js';
-import { drawLines, updateLOD, updateOverlays, openMemo } from './08-rendering.js';
+import { drawLines, updateLOD, updateOverlays } from './08-rendering.js';
+import { openMemo } from './16-memos.js';
 import {
   loadLines,
   loadLinesForZoom,

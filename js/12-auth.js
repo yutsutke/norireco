@@ -125,6 +125,8 @@ function handleAuthChange(event, session) {
     syncCharacterGrantsFromSupabase();
     // v247: 系統色のユーザーカスタマイズをデバイス間同期 (window 経由で循環 import 回避)
     try { window.NORIRECO?.colorOverrides?.syncFromSupabase?.(); } catch(e) {}
+    // v250: 駅メモをデバイス間同期 (16-memos.js)
+    try { window.NORIRECO?.memos?.sync?.(); } catch(e) {}
   }
   // v228: ログアウト時はローカルに残った前ユーザーの乗車データ・キャラ獲得を purge し、
   // 地図を空状態で再描画する (Supabase のデータは破壊しない)。
@@ -148,6 +150,8 @@ function clearLocalUserDataAfterSignOut() {
   // (Supabase 側は残るので再ログインで syncFromSupabase が引き戻す)
   try { localStorage.removeItem('norireco_line_color_overrides'); } catch(e) {}
   try { window.NORIRECO?.colorOverrides?.resetAll?.(); } catch(e) {}
+  // v250: 駅メモも個人データなのでログアウト時にローカルから purge
+  try { window.NORIRECO?.memos?.clear?.(); } catch(e) {}
   // in-memory RIDDEN_SEGS を空に (window bridge 経由 — 05 が export 済の共有配列)
   if (Array.isArray(window.RIDDEN_SEGS)) {
     window.RIDDEN_SEGS.length = 0;

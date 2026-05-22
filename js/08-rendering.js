@@ -5,6 +5,9 @@
 // tryGrantByGPS は HTML onclick で呼ばれるため window 経由のまま (import 不要)。
 // v225: 04-gps-location の 4 関数を import 化。
 // v225: 07-record-mode.onRecordStationClick を import 化。
+// v250: 駅メモ機能を 16-memos.js に分離。openMemo / toggleMemoMode / closeMemo /
+//       selChip / togTag は 16 へ移動 (genMemo は廃止)。本ファイルは 16 から
+//       openMemo のみ import する (station マーカー click ハンドラ内で使用)。
 // ══════════════════════════════════════
 import { isCharacterOwned, isCharacterAvailable } from './03-characters.js';
 import {
@@ -15,6 +18,7 @@ import {
 } from './04-gps-location.js';
 import { onRecordStationClick } from './07-record-mode.js';
 import { gStats } from './05-supabase-data.js';
+import { openMemo } from './16-memos.js';
 
 const CANVAS = L.canvas({ padding: 0.5 });
 
@@ -994,57 +998,13 @@ export function updateOverlays(){
   }
 }
 
-// Memo mode
-export function toggleMemoMode(){
-  NORIRECO.map.memoMode=!NORIRECO.map.memoMode;
-  const btn=document.getElementById('memo-btn');
-  btn.classList.toggle('on',NORIRECO.map.memoMode);
-  if(NORIRECO.map.instance)NORIRECO.map.instance.getContainer().style.cursor=NORIRECO.map.memoMode?'crosshair':'';
-}
-
-export function openMemo(){
-  const ci = NORIRECO.map.clickInfo;
-  document.getElementById('m-title').textContent=`📸 ${ci.station?.n||''} のメモ`;
-  document.getElementById('m-sub').textContent=`${ci.line?.name||''}  ·  ${ci.lat}, ${ci.lon}`;
-  document.getElementById('m-comment').value='';
-  document.getElementById('m-photo').value='';
-  document.getElementById('out-area').style.display='none';
-  document.querySelectorAll('.chip').forEach(b=>{b.classList.remove('active','tag-on');});
-  document.querySelector('#type-row .chip[data-v="駅"]').classList.add('active');
-  document.querySelector('#mood-row .chip[data-v="良い"]').classList.add('active');
-  document.getElementById('memo-modal').classList.add('open');
-}
-function closeMemo(){document.getElementById('memo-modal').classList.remove('open');}
-function selChip(btn,rowId){document.querySelectorAll(`#${rowId} .chip`).forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
-function togTag(btn){btn.classList.toggle('tag-on');btn.classList.toggle('active',btn.classList.contains('tag-on'));}
-function genMemo(){
-  const type=document.querySelector('#type-row .chip.active')?.dataset.v||'駅';
-  const mood=document.querySelector('#mood-row .chip.active')?.dataset.v||'良い';
-  const tags=[...document.querySelectorAll('.chip[data-tag].tag-on')].map(b=>b.dataset.tag);
-  const comment=document.getElementById('m-comment').value.trim();
-  const photo=document.getElementById('m-photo').value.trim();
-  const ci = NORIRECO.map.clickInfo;
-  const payload={_type:'駅メモ_記録',
-    タイトル:`${ci.station?.n||''}（${ci.line?.name||''}）`,
-    駅名:type!=='路線'?ci.station?.n||'':'',路線名:ci.line?.name||'',
-    種別:type,コメント:comment,写真URL:photo,
-    日付:localDateStr(),
-    気分:mood,タグ:tags.join('、'),緯度:ci.lat||'',経度:ci.lon||''};
-  const text=`📸駅メモデータ\n${JSON.stringify(payload)}\nこのデータをNotionの「駅メモ」DBに保存してください。`;
-  const ta=document.getElementById('out-ta');
-  ta.value=text;document.getElementById('out-area').style.display='block';ta.select();
-}
+// v250: メモ機能 (toggleMemoMode / openMemo / closeMemo / selChip / togTag / genMemo)
+//       は 16-memos.js に分離。genMemo (Claude 貼り付け用テキスト生成) は廃止し、
+//       本格 Supabase CRUD + マイページ「📸 メモ」タブに置き換え。
+//       本ファイルでは openMemo を import して station マーカー click から呼び出すのみ。
 
 // v218 stage 2: classic / module 双方から bare 呼出される関数の window 公開
-// v225 stage 3: drawLines / updateLOD / updateOverlays / openMemo / openCharModal を
-// `export` 経由に移行。closeCharModal / toggleMemoMode は HTML onclick + JS module 両方から
-// 呼ばれるので window と export の両建て。closeMemo / selChip / togTag / genMemo は HTML
-// onclick のみのため window 維持。drawServiceLineBase は 08 内のみ使用、bridge 撤去。
-window.toggleMemoMode = toggleMemoMode;
-window.closeMemo = closeMemo;
-window.selChip = selChip;
-window.togTag = togTag;
-window.genMemo = genMemo;
+// v225 stage 3: drawLines / updateLOD / updateOverlays / openCharModal を `export` 経由に移行。
 window.closeCharModal = closeCharModal;
 // v220: v218 で 08 を module 化した際に bridge を貼り忘れた定数を追加公開。
 // IS_TOUCH は 06-map-leaflet.js initMap が bare 参照しており、未公開だと ReferenceError で

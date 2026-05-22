@@ -24,7 +24,8 @@ import {
   renderRecordingSummary,
   updateLocationButton,
 } from './04-gps-location.js';
-import { drawLines, updateOverlays, toggleMemoMode } from './08-rendering.js';
+import { drawLines, updateOverlays } from './08-rendering.js';
+import { toggleMemoMode } from './16-memos.js';
 import { resetTrainSelector } from './02-data-loaders.js';
 
 // v197 ES Modules パイロット (案 β) — 状態を window.NORIRECO.record に集約。

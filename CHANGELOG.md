@@ -36,6 +36,110 @@
 
 ---
 
+## 99. v250 — 駅メモ機能の本格化 (Supabase CRUD + マイページ「📸 メモ」タブ) (2026-05-22)
+
+### 背景
+
+地図画面の右下「📸」FAB → memo-modal の正体が、v90 頃に作られた `js/08-rendering.js:genMemo()` で「📸駅メモデータ\n{JSON}\nこのデータをNotionの「駅メモ」DBに保存してください。」というテキストを生成して textarea に貼り付け、ユーザーが長押しコピー → Claude に貼り付けて Notion DB に転写するという超レガシー運用だった。Supabase には POST すらしておらず、写真URLも手入力テキスト。
+
+(`noritetsu-log.html` 側にだけ `norireco_memos` への POST 実装があったが、log ページは削除予定なので無関係。)
+
+ユスケさんとの設計合意 (2026-05-22):
+- 既存メモは捨てて OK → スキーマ刷新可能
+- log ページは触らない (削除予定のため別タスク)
+- マイページに「📸 メモ」を 4 タブ目として追加 (統計 / 旅程 / 路線 / メモ)
+- 一覧 / 詳細 / 編集 / 削除 すべて実装
+- 種別 / 気分 / タグ のチップ設計は現状を踏襲
+
+### スキーマ刷新 (`supabase/migrations/v250_norireco_memos.sql`)
+
+旧 `norireco_memos` テーブルを `DROP` し、以下で再作成:
+
+```sql
+CREATE TABLE norireco_memos (
+  id          text PRIMARY KEY,
+  user_id     uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now(),
+  line_id text, line_name text, station text,
+  lat double precision, lon double precision,
+  memo_type text NOT NULL DEFAULT '駅',     -- 駅/車内/路線/その他
+  mood      text NOT NULL DEFAULT '良い',   -- 最高/良い/普通/微妙/最悪
+  tags      jsonb NOT NULL DEFAULT '[]',
+  comment   text NOT NULL DEFAULT '',
+  photos    jsonb NOT NULL DEFAULT '[]'    -- v251+ R2 連携で {key,w,h,mime,created_at} 配列を入れる箱
+);
+```
+
+主な変更点:
+- `user_id NOT NULL` + RLS (`auth.uid() = user_id`) を必須化 (旧テーブルは anon key Bearer で実質匿名書き込み、🔥 TODO「Supabase RLS 強化」の `norireco_memos` 分も同時完了)
+- `tags` を text `'、'` join から `jsonb` 配列に
+- `photos jsonb` を新設 (v251+ で R2 連携の箱として先取り)
+- `updated_at` 自動更新トリガー `norireco_memos_touch_updated_at()`
+- index 3 種: `(user_id, created_at DESC)` / `(user_id, line_id)` / `(user_id, station)`
+
+### 変更内容
+
+#### 1. `js/16-memos.js` (新規, ~400 行)
+
+`NORIRECO.memos` 名前空間に集約:
+- state: `cache[]` / `editingId` / `filter`
+- CRUD: `syncMemosFromSupabase()` / `createMemoOnServer()` / `updateMemoOnServer()` / `deleteMemoOnServer()` (全て `authBearerToken()` で RLS 通過)
+- Modal: `openMemo()` (新規) / `openMemoForEdit(id)` (編集) / `saveMemoFromModal()` / `deleteMemoFromModal()` / `closeMemo()` / `selChip()` / `togTag()`
+- マイページ: `renderMpMemosSection()` + フィルタバー (路線 / 種別 / 気分) + memo カード生成
+- `clearLocalMemos()` (ログアウト時の purge 用)
+- `toggleMemoMode()` (右下「📸」FAB の cursor crosshair 切替)
+
+#### 2. `js/08-rendering.js` から memo 関連を撤去
+
+- `toggleMemoMode` / `openMemo` / `closeMemo` / `selChip` / `togTag` を削除 → 16 へ移動
+- `genMemo` (Claude 貼り付け用テキスト生成) を完全廃止
+- L803 の station マーカー click から `openMemo()` を呼ぶ箇所は `import { openMemo } from './16-memos.js'` に変更
+- 関連 window bridge 5 件 (`window.toggleMemoMode` 等) を削除 → 16 で改めて公開
+
+#### 3. `js/06-map-leaflet.js` / `js/07-record-mode.js` の import 切替
+
+- 06: `import { openMemo } from './16-memos.js'` (旧 08 から)
+- 07: `import { toggleMemoMode } from './16-memos.js'` (旧 08 から、記録モードとの排他に使用)
+
+#### 4. memo-modal HTML 改修 (`noritetsu-map.html`)
+
+- `<button class="btn-gen" onclick="genMemo()">📋 データを生成 → Claudeに貼り付け</button>` → `<button class="btn-save" id="m-save-btn" onclick="saveMemoFromModal()">☁️ 保存</button>` に置換
+- `<button class="btn-del" id="m-delete-btn" onclick="deleteMemoFromModal()" style="display:none">🗑 このメモを削除</button>` を追加 (編集モード時のみ表示)
+- `<div class="out-area">` (Claude 貼り付け用 textarea) を完全削除
+- 写真URL input は残し、ラベルに「※ R2 アップロード対応は v251 以降」のヒントを追加
+- 関連 CSS: `.btn-gen` / `.out-area` / `.out-hint` / `.out-ta` を撤去、`.btn-save` / `.btn-del` / `.fl-hint` を追加
+
+#### 5. マイページ「📸 メモ」サブタブ追加
+
+- `js/13-mypage-common.js` の `renderMypage()` 内サブタブ nav に `📸 メモ` ボタン追加
+- `applyMpSection()` に `showMemos = MP.mpActiveSection === 'memos'` 分岐追加 + `NORIRECO.mypage.renderMpMemosSection()` 呼出
+- `noritetsu-map.html` の `pane-mypage` に `<div class="mp-subpane" id="mp-sub-memos"><div class="pane-inner" id="mp-memo-section"></div></div>` を追加
+- メモカード CSS (`.mp-memo-list` / `.mp-memo-card` / `.mp-memo-head` / `.mp-memo-comment` / `.mp-memo-tag` / `.mp-memo-photo` / `.mp-memo-actions`) を追加 (既存の `.mp-act-btn.edit-memo` / `.mp-act-btn.delete` を流用)
+
+#### 6. SIGNED_IN sync + SIGNED_OUT clear (`js/12-auth.js`)
+
+- v247 colorOverrides 同期と同じパターン: `window.NORIRECO?.memos?.sync?.()` / `window.NORIRECO?.memos?.clear?.()` を window 経由 (循環 import 回避)
+- SIGNED_IN 時に Supabase から自分のメモを fetch、SIGNED_OUT 時に in-memory + localStorage を purge
+
+#### 7. SW + syntax-check 更新
+
+- `sw.js`: `CACHE_VERSION = 'v250'` + `STATIC_ASSETS` に `./js/16-memos.js` を追加
+- `scripts/syntax-check.js`: FILES 配列に `'16-memos'` を追加 (22/22 OK)
+
+### 残課題 (次フェーズ)
+
+- **写真添付の R2 アップロード対応** (B(b) = 駅メモに写真添付): `photos jsonb` の箱は確保済み。布石 #2 (R2 + Workers) と統合実装予定
+- **駅 UI からの直接編集導線**: 現状は「右下「📸」FAB → 地図クリック」が起点、駅マーカー長押し → 既存メモ一覧表示等は未実装
+- **メモのソート切替**: 現状 created_at DESC 固定。気分・路線でソートできると振り返り UX 向上
+- **🔥 TODO「Supabase RLS 強化」の `norireco_trips` / `norireco_character_grants` 分は引き続き残**
+
+### バージョン番号
+
+v250 (Phase 3.8 後半 §99)
+
+---
+
 ## 98. v249 — GitHub Pages → Cloudflare Pages 移行 + 独自ドメイン `norireco.app` (2026-05-22)
 
 ### 背景

@@ -6,7 +6,7 @@
 ---
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v249 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v250 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13c-..` ES Modules (v195〜v225 で全 18 ファイル `<script type="module">` + `import`/`export` 化完了)
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
@@ -14,7 +14,8 @@
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **完乗率**: ユニーク駅単位に統一 (v235) — ヘッダ「完乗率 X%」と マイページ「全記録完乗率」が一致、「GPS 記録 完乗率」(旧 公式完乗率、v240 で改名) は GPS 認証のみ
 
-**直近の作業 (v228〜v249)**:
+**直近の作業 (v228〜v250)**:
+- v250: 駅メモ機能の本格化。地図画面 memo-modal が v90 頃の「Claude 貼り付けテキスト生成」レガシー運用 (Supabase POST すらしていなかった) だったのを破棄し、`js/16-memos.js` で本格 Supabase CRUD (authBearerToken + RLS) に置換。スキーマ刷新 (`supabase/migrations/v250_norireco_memos.sql`): 旧 `norireco_memos` を DROP → user_id NOT NULL + RLS + `tags jsonb` + `photos jsonb` (v251+ R2 連携の箱) + updated_at トリガー。マイページに「📸 メモ」サブタブ追加 (一覧 / フィルタ (路線/種別/気分) / 編集 / 削除)。memo-modal は「☁️ 保存」「✏️ 更新」「🗑 削除」「閉じる」に再設計。SIGNED_IN で `syncMemosFromSupabase()`、SIGNED_OUT で `clearLocalMemos()` (v247 colorOverrides と同パターン)。写真URL input は v251+ で R2 アップロード UI に置換予定のため一旦温存
 - v249: GitHub Pages → Cloudflare Pages 移行 + 独自ドメイン `norireco.app` 取得 ($14.20/年、Cloudflare Registrar at-cost、HSTS 必須の .app TLD)。`_headers` (sw.js / manifest / HTML を no-cache)・`_redirects` (`/` → `/noritetsu-map.html`) 追加、`js/14-share-ogp.js` の OGP 画像内 URL と X intent shareText を新ドメインに、`noritetsu-map.html` / `noritetsu-log.html` に og:title / og:description / og:image / twitter:card メタを追加。`js/12-auth.js` の redirect は `window.location.origin + pathname` で動的生成なので無修正で追従。Supabase Auth + Google OAuth 側に `https://norireco.app/**` を Redirect URLs に追加。GitHub Pages は当面フォールバックで残置。布石 #1 完了
 - v248: HTML inline onclick の window bridge 漏れ修正。v225 (ES Modules stage 3) で `window.toggleRecordMode` 等を撤去したが noritetsu-map.html の `onclick="toggleRecordMode()"` を見落とし、📝 手動記録が無反応だった (= v225〜v247 で潜在的に壊れていた)。`closeRestoreModal` / `restoreFromJson` も同様。grep -oE で全件監査クリア
 - v247: 系統色カスタマイズの Supabase 同期 — 別端末でも色設定が引き継がれる。`norireco_line_color_overrides` 専用テーブル + RLS。set/reset/resetAll で fire-and-forget upsert/delete、SIGNED_IN で pull → localStorage に merge (Supabase 優先、ローカル独自は bulk push)。`supabase/migrations/v247_line_color_overrides.sql` を Supabase Dashboard で要実行
@@ -192,6 +193,12 @@
 - [ ] **モバイル描画パフォーマンス継続改善**
   - Phase 2 で改善したが、まだ重い駅がある（多系統駅のパイ・キャラ）
   - 必要なら viewport culling、divIcon → canvas への寄せを再検討
+
+- [ ] **PreToolUse (git push) フックの設計と実装**
+  - Notion ⚙️ セッション運用 三層設計 §2.1 / §5 を参照
+  - `sw.js` CACHE_VERSION +1 grep / `.html` 内 inline script の syntax check / §2.5 落とし穴チェック を 1 本に統合
+  - 漏れていたら exit 2 でブロック（PreToolUse はゲート）
+  - §5 未確定論点（push 判定 / CACHE_VERSION 自動化 or 検査のみ / HTML syntax の深さ）を先に潰す
 
 ## 🌱 布石（B カテゴリ：設計だけ今・実装は後）
 

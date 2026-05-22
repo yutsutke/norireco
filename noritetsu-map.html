@@ -1046,11 +1046,30 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mta{width:100%;height:78px;background:var(--track2);border:1.5px solid var(--track);border-radius:10px;color:var(--white);font-family:'Zen Kaku Gothic New',sans-serif;font-size:13px;padding:9px;resize:none;line-height:1.6;outline:none;}
 .mta:focus,.pin{border-color:var(--gold);}
 .pin{width:100%;background:var(--track2);border:1.5px solid var(--track);border-radius:10px;color:var(--white);font-family:'DM Mono',monospace;font-size:11px;padding:9px 12px;outline:none;}
-.btn-gen{width:100%;padding:13px;border:none;border-radius:12px;background:var(--gold);color:var(--navy);font-family:'Zen Kaku Gothic New',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-top:13px;}
+.btn-save{width:100%;padding:13px;border:none;border-radius:12px;background:#48d597;color:var(--navy);font-family:'Zen Kaku Gothic New',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-top:13px;}
+.btn-save:disabled{opacity:.5;cursor:not-allowed;}
+.btn-save:hover:not(:disabled){background:#5fe0a8;}
+.btn-del{width:100%;padding:11px;border:1.5px solid rgba(232,53,42,.4);border-radius:12px;background:rgba(232,53,42,.08);color:var(--red);font-family:'Zen Kaku Gothic New',sans-serif;font-size:13px;cursor:pointer;margin-top:8px;}
+.btn-del:hover{background:rgba(232,53,42,.16);}
 .btn-cls{width:100%;padding:11px;border:1.5px solid var(--track);border-radius:12px;background:transparent;color:var(--silver);font-family:'Zen Kaku Gothic New',sans-serif;font-size:13px;cursor:pointer;margin-top:8px;}
-.out-area{display:none;margin-top:9px;}
-.out-hint{font-size:10px;color:var(--gold);margin-bottom:5px;letter-spacing:1px;}
-.out-ta{width:100%;height:120px;background:#060f1a;border:1.5px solid rgba(242,169,0,.4);border-radius:10px;color:var(--gold);font-family:'DM Mono',monospace;font-size:10px;padding:9px;resize:none;line-height:1.6;-webkit-user-select:all;user-select:all;}
+.fl-hint{font-size:10px;color:rgba(140,160,179,.7);font-weight:400;margin-left:6px;}
+
+/* マイページ「📸 メモ」サブタブの一覧 (v250) */
+.mp-memo-list{display:flex;flex-direction:column;gap:10px;margin-top:10px;}
+.mp-memo-card{background:var(--steel);border:1.5px solid var(--track);border-radius:12px;padding:12px;}
+.mp-memo-head{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver);margin-bottom:6px;flex-wrap:wrap;}
+.mp-memo-date{font-family:'DM Mono',monospace;}
+.mp-memo-type{font-weight:600;color:var(--gold);}
+.mp-memo-mood{font-size:16px;}
+.mp-memo-edited{font-size:10px;opacity:.6;margin-left:auto;}
+.mp-memo-where{font-size:13px;color:var(--white);margin-bottom:6px;}
+.mp-memo-comment{font-size:13px;line-height:1.55;color:var(--white);background:rgba(20,32,46,.6);border-left:3px solid var(--gold);padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:6px;white-space:pre-wrap;word-break:break-word;}
+.mp-memo-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px;}
+.mp-memo-tag{font-size:10px;padding:2px 8px;border-radius:14px;background:rgba(46,204,113,.16);color:var(--green);border:1px solid rgba(46,204,113,.32);}
+.mp-memo-photo{font-size:11px;color:#5fb5ff;margin-bottom:6px;}
+.mp-memo-photo a{color:#5fb5ff;text-decoration:none;}
+.mp-memo-photo a:hover{text-decoration:underline;}
+.mp-memo-actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;}
 </style>
 </head>
 <body>
@@ -1414,6 +1433,9 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
     <div class="mp-subpane" id="mp-sub-lines">
       <div class="pane-inner" id="list-content"></div>
     </div>
+    <div class="mp-subpane" id="mp-sub-memos">
+      <div class="pane-inner" id="mp-memo-section"></div>
+    </div>
   </div>
 </div>
 
@@ -1445,12 +1467,9 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
       <button class="chip" data-tag="始発" onclick="togTag(this)">🌅 始発</button>
     </div></div>
     <div class="fg"><div class="fl">コメント</div><textarea class="mta" id="m-comment" placeholder="車窓の景色、駅の雰囲気、気づいたことなど..."></textarea></div>
-    <div class="fg"><div class="fl">写真URL（Google Photos / iCloud など）</div><input class="pin" type="url" id="m-photo" placeholder="https://..."></div>
-    <button class="btn-gen" onclick="genMemo()">📋 データを生成 → Claudeに貼り付け</button>
-    <div class="out-area" id="out-area">
-      <div class="out-hint">▼ 長押し → 全選択 → コピー してClaudeに貼り付け</div>
-      <textarea class="out-ta" id="out-ta" readonly onclick="this.select()"></textarea>
-    </div>
+    <div class="fg"><div class="fl">写真URL <span class="fl-hint">※ R2 アップロード対応は v251 以降</span></div><input class="pin" type="url" id="m-photo" placeholder="https://..."></div>
+    <button class="btn-save" id="m-save-btn" onclick="saveMemoFromModal()">☁️ 保存</button>
+    <button class="btn-del" id="m-delete-btn" onclick="deleteMemoFromModal()" style="display:none">🗑 このメモを削除</button>
     <button class="btn-cls" onclick="closeMemo()">閉じる</button>
   </div>
 </div>
@@ -1475,6 +1494,7 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 <script type="module" src="js/share-japan-geo.js"></script>
 <script type="module" src="js/14-share-ogp.js"></script>
 <script type="module" src="js/15-color-overrides.js"></script>
+<script type="module" src="js/16-memos.js"></script>
 <script type="module" src="js/09-tabs-stats.js"></script>
 <script type="module" src="js/10-init.js"></script>
 </body>

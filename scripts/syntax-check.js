@@ -48,6 +48,7 @@ const FILES = [
   '13c-lines',
   '14-share-ogp',
   '15-color-overrides',
+  '16-memos',
   'share-japan-geo',
 ];
 
