@@ -36,6 +36,58 @@
 
 ---
 
+## 104. v255 — キャラモーダル内のキャラ切り替えが「閉じるだけ」だったのを修正 (2026-05-22)
+
+### 背景
+
+ユスケさん報告: 「キャラ詳細モーダルでキャラのサムネイルを押しても切り替えられない」
+
+### 原因
+
+`js/04-gps-location.js:pickStationCharacter` が以下の動作だった:
+
+```js
+function pickStationCharacter(stationName, charId) {
+  setStationCharacterChoice(stationName, charId);
+  closeCharModal();  // ← モーダルを閉じてしまう
+  redrawAllLinesAfterTripChange();
+}
+```
+
+サムネイルクリック → `setStationCharacterChoice` で localStorage に保存 → **`closeCharModal()` でモーダルが閉じる** → 地図再描画。
+
+ユーザー視点だと「サムネイルを押すとモーダルが閉じるだけで、何が起きたのか分からない」 → 「切り替えられない」と感じる。
+
+### 変更内容
+
+`pickStationCharacter` を「モーダルを閉じず、新しいキャラで再 render する」に変更:
+
+```js
+function pickStationCharacter(stationName, charId) {
+  setStationCharacterChoice(stationName, charId);
+  redrawAllLinesAfterTripChange();
+  const ms = (NORIRECO.data.MERGED_STATIONS || []).find(s => s.name === stationName);
+  const character = (NORIRECO.data.stationCharMap?.get(stationName) || [])
+    .find(c => c.meta?.id === charId);
+  if (ms && character) {
+    openCharModal(ms, character);
+  }
+}
+```
+
+これで:
+1. localStorage に新しい choice 保存
+2. 地図再描画 (背景の駅マーカーキャラアイコンも切り替わる)
+3. モーダル内のヒーロー画像 / 名前 / アクティブ枠が新しいキャラで再描画 ← UX 改善
+
+サムネイルを次々タップして比較できる体験になる。
+
+### バージョン番号
+
+v255 (Phase 3.8 後半 §104)
+
+---
+
 ## 103. v254 — v253 駅アクションシートの 2 つのバグ修正 (2026-05-22)
 
 ### 背景

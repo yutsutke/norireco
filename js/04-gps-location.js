@@ -432,11 +432,19 @@ export function getStationCharacter(stationName) {
   return ownedList[0]; // デフォルト: 所持済みリスト先頭
 }
 
-// キャラ選択を変更してマップ再描画
+// キャラ選択を変更してマップ + キャラモーダルを再描画
+// v255: モーダルを閉じてしまうと「切り替わった」のが見えないので、
+//       モーダルを開いたまま新しいキャラで再 render するように変更。
 function pickStationCharacter(stationName, charId) {
   setStationCharacterChoice(stationName, charId);
-  closeCharModal();
   redrawAllLinesAfterTripChange();
+  // モーダル内のヒーロー画像・名前・active 表示を新しいキャラで再構築
+  const ms = (NORIRECO.data.MERGED_STATIONS || []).find(s => s.name === stationName);
+  const character = (NORIRECO.data.stationCharMap?.get(stationName) || [])
+    .find(c => c.meta?.id === charId);
+  if (ms && character) {
+    openCharModal(ms, character);
+  }
 }
 // ── データローダー (loadMergedStations / loadServiceLinesMaster / loadLines) は
 // v191 で 02-data-loaders.js に移管された。NORIRECO.data.SERVICE_LINES_MASTER / NORIRECO.data.SERVICE_LINES /
