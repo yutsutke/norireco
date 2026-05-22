@@ -6,7 +6,7 @@
 ---
 
 **ブランド**: 乗レコ - 電車旅（2026-05-13 確定）
-**現在の SW**: v267 / **キャラ**: 7体（八王子3・立川3・小宮1）
+**現在の SW**: v268 / **キャラ**: 7体（八王子3・立川3・小宮1）
 **列車マスター**: 約260種（新幹線19・特急90+・寝台18・クルーズ3・観光列車60+・SL9・急行18、戦前〜現代まで）
 **コード構成**: `js/01-..〜13c-..` ES Modules (v195〜v225 で全 18 ファイル `<script type="module">` + `import`/`export` 化完了)
 **認証**: Supabase Auth (Magic Link + Google OAuth) — v135〜 / 3 テーブルに user_id 紐付け済
@@ -14,7 +14,8 @@
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
 **完乗率**: ユニーク駅単位に統一 (v235) — ヘッダ「完乗率 X%」と マイページ「全記録完乗率」が一致、「GPS 記録 完乗率」(旧 公式完乗率、v240 で改名) は GPS 認証のみ
 
-**直近の作業 (v228〜v267)**:
+**直近の作業 (v228〜v268)**:
+- v268: memo/trip 全削除時の R2 cleanup。v262 で export 済の `deletePhotoByUrl` を `deleteTripFromMypage` / `deleteMemoOnServer` で再利用、Supabase DELETE 成功後に `Promise.all` で fire-and-forget で R2 並列削除 (失敗は console.warn のみ)。布石 #2 の「写真添付 use case」は完了 (残るは OGP 永続化のみ)。詳細は CHANGELOG §117
 - v267: マイページの D&D が動かない真の原因 fix。`js/19-drag-sort.js` のデフォルト `ignoreSelector` が `'button, a, input, textarea, select'` で **`a` を含んでいた** ため、サムネを `<a target="_blank">` で wrap してる マイページの全カードで pointerdown が即 return していた。PhotoArea モーダル (img 直接で <a> なし) では動いていたので原因切り分けに時間かかった。`a` を削除して全箇所で動くように。詳細は CHANGELOG §116
 - v266: D&D が動かない bug fix (dragstart 抑制 + `gs is not defined` 修正)。`js/19-drag-sort.js` に `dragstart` 抑制を追加 (`draggable="false"` だけでは効かないブラウザでもネイティブ URL/画像ドラッグを完全停止)。`js/09-tabs-stats.js:328` で `const gs = NORIRECO.serviceLines.globalStats()` 定義漏れ修正 (renderStats の「実績」セクション 9 バッジが正しく描画される)。詳細は CHANGELOG §115
 - v265: D&D 後の click 抑制 (リンク・ボタン誤発火を防止)。`js/19-drag-sort.js:onPointerUp` で started=true なら `suppressNextClick()` を呼んで window への capture phase listener で次の click を 1 回吸収 (500ms タイムアウトでリーク防止)。サムネを `<a target=_blank>` でラップしてるため、D&D 完了時に「ドラッグした瞬間に新タブで開く」誤動作を防止。詳細は CHANGELOG §114
@@ -228,9 +229,9 @@
   - ✅ v258: 旅程写真の upload パス + 共通 PhotoArea モジュール化 + memo/trip 共に最大 5 枚対応。CHANGELOG §107 参照
   - ✅ v261: 写真の並び替え UI (← → ボタン方式、共通 PhotoArea 内)。CHANGELOG §110 参照
   - ✅ v262: 写真差し替え時の旧 R2 オブジェクト delete API (`POST /delete/photo` + フロント diff)。CHANGELOG §111 参照
+  - ✅ v268: memo/trip 全削除時の R2 cleanup (deleteTripFromMypage / deleteMemoOnServer 内で deletePhotoByUrl 並列実行)。CHANGELOG §117 参照
   - **残り**:
     - OGP シェア画像の R2 永続化 + `/share/<id>` 受け側ページ (🔥 シェア機能の残りと統合)
-    - memo/trip 全削除時の R2 オブジェクト掃除 (現状は row 削除のみで R2 はそのまま)
 
 - [ ] **#3 `norireco_trips` テーブルの将来シャーディング可能化**
   - 理由: 100 万 MAU で trip データ 2TB、Postgres 単一テーブルは 10 万 MAU で限界。`created_year` で水平分割できる構造にしておけば Neon 移行時もスムーズ

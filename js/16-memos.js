@@ -21,7 +21,8 @@
 
 import { authBearerToken, currentUserId } from './12-auth.js';
 // v258: 写真 UI は共通モジュール (memo / trip 両用、1〜5枚対応)
-import { createPhotoArea } from './18-photo-area.js';
+// v267+: deletePhotoByUrl は memo 削除時の R2 cleanup でも使う
+import { createPhotoArea, deletePhotoByUrl } from './18-photo-area.js';
 // v263+: マイページ memo カード / 駅メモ一覧モーダル上で写真をドラッグ&ドロップ並び替え
 import { enableDragSort } from './19-drag-sort.js';
 
@@ -140,6 +141,10 @@ async function updateMemoOnServer(id, patch) {
 }
 
 async function deleteMemoOnServer(id) {
+  // v267+: 削除前に photos[] を取って R2 並列削除の準備 (ベストエフォート、失敗してもログのみ)
+  const memo = M.cache.find(m => m.id === id);
+  const photosToDelete = (memo && Array.isArray(memo.photos)) ? memo.photos.filter(p => p && p.url) : [];
+
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/norireco_memos?id=eq.${encodeURIComponent(id)}`,
     {
@@ -154,6 +159,13 @@ async function deleteMemoOnServer(id) {
     const err = await res.text();
     throw new Error(`削除に失敗: ${err.slice(0, 200)}`);
   }
+
+  // v267+: memo 削除成功後に R2 オブジェクトも削除 (非同期 fire-and-forget)
+  if (photosToDelete.length > 0) {
+    Promise.all(photosToDelete.map(p => deletePhotoByUrl(p.url)))
+      .catch(e => console.warn('[Memos] memo 写真の R2 削除失敗:', e));
+  }
+
   return true;
 }
 

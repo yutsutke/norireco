@@ -36,6 +36,49 @@
 
 ---
 
+## 117. v268 — memo/trip 全削除時の R2 cleanup (2026-05-22)
+
+### 背景
+
+v258 で R2 写真機能を本格化、v262 で差し替え時の旧オブジェクト delete API を実装した。残った穴は **「memo / trip 自体を 🗑 削除」する時に R2 オブジェクトが置き去り** になる問題。R2 無料枠 10GB あるので即困らないが、累積で地味に肥える + 「自分のアカウントから消したい」のに R2 に残るのは UX 的にも違和感。
+
+### 実装
+
+`deletePhotoByUrl(url)` は v262 で `js/18-photo-area.js` から export 済の関数 (Worker `/delete/photo` を呼ぶ、ベストエフォート)。これを 2 箇所の削除関数で再利用:
+
+**`js/13b-trips.js:deleteTripFromMypage`**:
+- 削除前に `_mypageCache` から trip を引いて `photos[]` 取得
+- Supabase DELETE 成功後、`Promise.all(photos.map(p => deletePhotoByUrl(p.url)))` を fire-and-forget
+- await しない → 削除 toast はすぐ表示、R2 削除は背景で進行
+- 失敗時は console.warn のみ (trip 自体は既に DB から消えてるので、R2 ゴミが残るだけ。許容)
+
+**`js/16-memos.js:deleteMemoOnServer`**:
+- 同じパターンで `M.cache` から memo の photos[] 取得
+- Supabase DELETE 成功後に R2 並列削除 (fire-and-forget)
+- `deleteMemoFromModal` (モーダル内 🗑) / `deleteMemoById` (マイページ memo カード 🗑) 両方が `deleteMemoOnServer` を経由するので、1 箇所の修正で両方に効く
+
+### 漏れケース
+
+- Supabase DELETE 失敗 (network error など) → throw されるので R2 削除も実行されない (正しい挙動: trip/memo は DB に残ってる)
+- Worker `/delete/photo` 失敗 → console.warn のみで継続 (R2 ゴミが残るが、将来の cleanup ジョブで掃除可能。trip/memo 自体の削除は完了済)
+- `_mypageCache` / `M.cache` に該当 trip/memo がない (削除直前にリロードされた等) → `photosToDelete = []` で削除なし。R2 ゴミ残る (レアケース)
+
+### Worker 側
+
+無修正。v262 で実装した `POST /delete/photo` (JWT verify + uid prefix チェック付き) をそのまま呼ぶ。
+
+### これで完結する範囲
+
+R2 写真機能の完成度:
+- ✅ アップロード (memo / trip、1〜5 枚、複数選択、進捗バー)
+- ✅ 表示 (サムネ + クリック原寸、lazy load + CDN cache)
+- ✅ 並び替え (ドラッグ&ドロップ、5 箇所統一)
+- ✅ 写真個別の差し替え/削除 (✕ で外す or 差し替え時の旧 R2 cleanup)
+- ✅ memo/trip 全削除時の R2 cleanup ← v268
+- ✅ セキュリティ (JWT verify + uid prefix チェックで他人のオブジェクト削除不可)
+
+布石 #2「画像ストレージ: Cloudflare R2 + Workers API ゲートウェイ」のうち **写真添付ユースケースは完了**。残るのは OGP シェア画像の R2 永続化 (別 use case)。
+
 ## 116. v267 — マイページの D&D が動かない真の原因 fix (ignoreSelector から `a` 削除) (2026-05-22)
 
 ### 真の原因

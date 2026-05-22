@@ -31,7 +31,8 @@ import {
 } from './13-mypage-common.js';
 import { filterTripsByDate } from './05-supabase-data.js';
 // v258: 旅程の写真添付 (memo と共通の写真エリアコンポーネント)
-import { createPhotoArea } from './18-photo-area.js';
+// v267+: deletePhotoByUrl は trip 削除時の R2 cleanup でも使う
+import { createPhotoArea, deletePhotoByUrl } from './18-photo-area.js';
 // v263+: マイページ旅程カード上で写真をドラッグ&ドロップ並び替え
 import { enableDragSort } from './19-drag-sort.js';
 
@@ -564,6 +565,11 @@ NORIRECO.mypage.retroactivelyVerifyTrip = retroactivelyVerifyTrip;
 // ── 削除 ───────────────────────────────────────────────────────
 async function deleteTripFromMypage(tripId) {
   if (!confirm('この旅程を削除しますか? (元に戻せません)')) return;
+
+  // v267+: 削除前に photos[] を取得して R2 から並列削除 (ベストエフォート、失敗してもログのみ)
+  const trip = (NORIRECO.mypage.state._mypageCache || []).find(t => t.id === tripId);
+  const photosToDelete = (trip && Array.isArray(trip.photos)) ? trip.photos.filter(p => p && p.url) : [];
+
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_trips?id=eq.${tripId}`, {
       method: 'DELETE',
@@ -583,6 +589,13 @@ async function deleteTripFromMypage(tripId) {
     const next = existing.filter(t => t.id !== tripId);
     localStorage.setItem('norireco_trips', JSON.stringify(next));
   } catch(e) {}
+
+  // v267+: trip 削除成功後に R2 オブジェクトも削除 (非同期 fire-and-forget)
+  if (photosToDelete.length > 0) {
+    Promise.all(photosToDelete.map(p => deletePhotoByUrl(p.url)))
+      .catch(e => console.warn('[マイページ] trip 写真の R2 削除失敗:', e));
+  }
+
   showMypageToast('🗑 削除しました', 'success');
   setTimeout(() => renderMypage(), 500);
 }
