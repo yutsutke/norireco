@@ -1,18 +1,9 @@
 # 乗レコ - 電車旅 更新履歴詳細
 
 各セッションごとの実装ログ・経緯・失敗教訓を時系列で残す詳細メモ。
-「いま何がどうなっているか」のスナップショットは [`STATUS.md`](STATUS.md)、次の着手項目は `TODO.md`、各セッションで具体的に何を実装してどこで詰まったかはこのファイルを参照。
 
-## 役割と使い分け
-
-| ドキュメント | 内容 | 更新タイミング |
-|---|---|---|
-| [`STATUS.md`](STATUS.md) | 現在のスナップショット (CACHE_VERSION・領域別ステータス・直近フェーズ) — v271 で Notion §0.1 から分離・git 管轄化 | ターンごとに最新に保つ |
-| `TODO.md` | 次の着手項目 (🔥/🟡/🟢/🔧 で分類) | 着手・完了の都度 |
-| `CHANGELOG.md` (本ファイル) | 現行 Phase 3.8 後半 (§75〜, v226 以降) のセッション詳細・失敗教訓・コード変更の経緯 | 各セッション末に新セクション追記 |
-| [`CHANGELOG_PHASE3.8-modules.md`](CHANGELOG_PHASE3.8-modules.md) | Phase 3.8 中盤 (§38〜§74, v189〜v225, コード分割 + ES Modules 化) | アーカイブ (2026-05-20 分割) |
-| [`CHANGELOG_PHASE3.8-early.md`](CHANGELOG_PHASE3.8-early.md) | Phase 3.8 前半 (§22〜§37, v173〜v188, データ補修・期間フィルタ・記録 UX) | アーカイブ (2026-05-20 分割) |
-| [`CHANGELOG_PHASE1-3.7.md`](CHANGELOG_PHASE1-3.7.md) | Phase 1〜3.7 (§1〜§21, v60〜v157) | アーカイブ (2026-05-20 分割) |
+> ドキュメント役割分担は [`CLAUDE.md`](CLAUDE.md) §「ドキュメント地図」が真実の源（v275 で集約）。本ファイルは変更履歴詳細を扱う。
+> 過去フェーズは [`CHANGELOG_PHASE1-3.7.md`](CHANGELOG_PHASE1-3.7.md) / [`CHANGELOG_PHASE3.8-early.md`](CHANGELOG_PHASE3.8-early.md) / [`CHANGELOG_PHASE3.8-modules.md`](CHANGELOG_PHASE3.8-modules.md) にアーカイブ。
 
 ## 分割ポリシー
 
@@ -33,6 +24,35 @@
 - 認証グラデーション・GPS 記録フロー初期実装・列車種別・コードベース 13 ファイル分割・Supabase 認証/マイページ初期版 → [`CHANGELOG_PHASE1-3.7.md`](CHANGELOG_PHASE1-3.7.md)
 - データ補修・期間フィルタ「〜月指定」・記録モード用語統一・後追い記録・stop_type 駅 UI 個人化・地図フィルタ統合 → [`CHANGELOG_PHASE3.8-early.md`](CHANGELOG_PHASE3.8-early.md)
 - 13-mypage 4 分割・SERVICE_LINES builder 分離・ride-record 分離・ES Modules stage 1〜3 (`<script type="module">` + `import`/`export` 化) → [`CHANGELOG_PHASE3.8-modules.md`](CHANGELOG_PHASE3.8-modules.md)
+
+---
+
+## 123. v275 — ドキュメント役割分担表を CLAUDE.md に一本化（3 か所重複の解消） (2026-05-23)
+
+### 背景
+
+v274 で「同じ内容を 2 か所に書かない」と決めた直後に、その役割分担表自体が 3 か所に書かれているという皮肉な状況に気づいた:
+
+1. `CLAUDE.md`「ドキュメント地図」
+2. `CHANGELOG.md` 冒頭「役割と使い分け」表
+3. Notion §0「ドキュメント役割分担」表
+
+### 設計判断
+
+`CLAUDE.md` を**真実の源**にする。理由:
+- Claude Code が毎回自動ロード → context に常駐
+- git 管轄 → 機械検知可
+- 規約・指針の置き場として既に位置付けられている
+
+### 実装
+
+- **CLAUDE.md「ドキュメント地図」**: 表形式で完全版に強化（7 行: STATUS / CHANGELOG / TODO / CLAUDE.md / hooks / Notion / アーカイブ）
+- **CHANGELOG.md 冒頭「役割と使い分け」表**: 撤去 → CLAUDE.md へのリンク + 過去アーカイブ参照のみに簡略化。「分割ポリシー」「過去ログ早見表」は CHANGELOG 独自情報なので保持
+- **Notion §0「ドキュメント役割分担」表**: 撤去 → CLAUDE.md へのリンクのみに簡略化。「作業中（トリガー → 参照先）」「真実の源」は Notion 内ナビゲーションとして保持
+
+### 役割分担の単一の源
+
+これで「ドキュメント役割分担」は CLAUDE.md「ドキュメント地図」一箇所のみ。他は全部リンク。
 
 ---
 
