@@ -1,0 +1,3 @@
+# Claude Code — ユーザー個人設定 / ローカル worktree は追跡しない
+.claude/settings.local.json
+.claude/worktrees/

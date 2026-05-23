@@ -36,6 +36,37 @@
 
 ---
 
+## 120. v272 — .claude/ hook を git 追跡化 + STATUS.md を SessionStart に inline (2026-05-23)
+
+### 背景
+
+v271 で STATUS.md を作ったが、SessionStart hook がまだ「Notion §0.1 を fetch しろ」と指示していて整合が取れていなかった。さらに hook script (`.claude/hooks/session-start.js` 等) は untracked のまま運用していたため、他デバイスや将来の協業者に届かないリスクがあった。
+
+### 設計判断
+
+- **SessionStart hook の出力に STATUS.md 全文を inline**: Read tool call も不要で、セッション開始直後から最新スナップショットが context に乗る。STATUS.md は現状 ~70 行なので context cost も許容範囲
+- **`.claude/` を git 追跡開始** (CLAUDE.md を v270 で追跡開始したのと同じ精神): プロジェクト共通の hook 設定はリポジトリの一部として管理
+- **個人設定とローカル状態は除外**: `.gitignore` 新規作成して `.claude/settings.local.json` / `.claude/worktrees/` を ignore
+
+### 実装
+
+- `.claude/hooks/session-start.js`:
+  - STATUS.md を `readFileSafe()` で読み込み hook 出力に inline する `[STATUS.md — 現在のスナップショット]` セクション追加
+  - 「着手前に必ず」の手順 1 を「Notion §0 fetch」から「上の STATUS.md を流し見」に書き換え
+  - 手順 2 も Notion を「仕様詳細の参照先」に格下げ
+- `.claude/hooks/stop-reminder.js`:
+  - sw.js を変更したら STATUS.md の CACHE_VERSION 追従もチェック対象に追加 (v271 ルール)
+  - メッセージから「Notion §0.1」を撤去 (STATUS.md / CHANGELOG.md / TODO.md の git 三本柱に集約)
+- `.gitignore` 新規作成
+- `.claude/settings.json` + `.claude/hooks/*.js` を git 追跡
+
+### 残課題
+
+- session-start.js が STATUS.md を inline するので、STATUS.md が肥大化すると毎セッション開始の context cost が増える。1500 行超えたら「冒頭 + 領域別ステータス見出しだけ」抽出に切り替える
+- CACHE_VERSION 上げ忘れ防止のため `.gitignore` に sw.js は含めない (当然)。stop-reminder が新規 v271 ルールで catch する
+
+---
+
 ## 119. v271 — §0.1 現在のステータスを STATUS.md に分離（git 管轄化） (2026-05-23)
 
 ### 背景
