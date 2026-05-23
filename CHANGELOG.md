@@ -36,6 +36,40 @@
 
 ---
 
+## 121. v273 — permission allowlist 整理 (user global ↔ project shared) (2026-05-23)
+
+### 背景
+
+`~/.claude/settings.json`（user global）に norireco 特化の `notion-fetch` 許可が混ざっていた。さらに毎セッション permission prompt が出るコマンドがあり、煩雑だった。
+
+### 整理方針
+
+**user global** (`~/.claude/settings.json`): 全プロジェクト共通
+- `Bash(git push origin claude/*:main)`
+- `Bash(git push origin HEAD:main)`
+- `autoUpdatesChannel: latest`
+
+**project shared** (`<norireco>/.claude/settings.json`): norireco 特化
+- `mcp__...notion-fetch` (user global から移動)
+- `mcp__...notion-search` (新規)
+- `mcp__...notion-update-page` (新規・write だが運用上必須)
+- `Bash(node --check *)` (新規・JS syntax check、`--check` フラグは実行せず構文検証のみ)
+- `Bash(node .claude/hooks/*)` (新規・project hook の手動テスト用)
+- hooks (SessionStart + Stop)
+
+### 抽出方法
+
+`~/.claude/projects/*/*.jsonl` の最近 37 セッション・5,470 tool 呼び出しを Node script でスキャン、頻度順にソート。auto-allow 済 (cat/ls/grep/git status 等) と write 操作 / 任意コード実行 (`node -e`, `curl`) は除外。`fewer-permission-prompts` skill を使用。
+
+### スキップした候補（参考）
+
+- `Bash(node -e ...)` (~102 件): 任意コード実行のため
+- `Bash(curl ...)` (31 件): 任意 URL アクセス
+- `Bash(git add/push/commit ...)`: mutation 系で global / 既存 allow 済
+- `mcp__...notion-create-pages` (11 件): write・低頻度
+
+---
+
 ## 120. v272 — .claude/ hook を git 追跡化 + STATUS.md を SessionStart に inline (2026-05-23)
 
 ### 背景

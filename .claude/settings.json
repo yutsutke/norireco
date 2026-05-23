@@ -1,4 +1,13 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(node --check *)",
+      "Bash(node .claude/hooks/*)",
+      "mcp__a640ce9c-47e1-4f86-920e-6d6bfc8fe2a3__notion-fetch",
+      "mcp__a640ce9c-47e1-4f86-920e-6d6bfc8fe2a3__notion-search",
+      "mcp__a640ce9c-47e1-4f86-920e-6d6bfc8fe2a3__notion-update-page"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {
