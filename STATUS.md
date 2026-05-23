@@ -28,7 +28,7 @@
 
 ## Service Worker
 
-**`CACHE_VERSION = 'v275'`** · デプロイ回数 = バージョン番号の不変式
+**`CACHE_VERSION = 'v276'`** · デプロイ回数 = バージョン番号の不変式
 
 ---
 

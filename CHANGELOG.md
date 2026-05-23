@@ -2,7 +2,7 @@
 
 各セッションごとの実装ログ・経緯・失敗教訓を時系列で残す詳細メモ。
 
-> ドキュメント役割分担は [`CLAUDE.md`](CLAUDE.md) §「ドキュメント地図」が真実の源（v275 で集約）。本ファイルは変更履歴詳細を扱う。
+> ドキュメント役割分担は Notion §0「ドキュメント役割分担」が真実の源（v276 で Notion に集約）。本ファイルは変更履歴詳細を扱う。
 > 過去フェーズは [`CHANGELOG_PHASE1-3.7.md`](CHANGELOG_PHASE1-3.7.md) / [`CHANGELOG_PHASE3.8-early.md`](CHANGELOG_PHASE3.8-early.md) / [`CHANGELOG_PHASE3.8-modules.md`](CHANGELOG_PHASE3.8-modules.md) にアーカイブ。
 
 ## 分割ポリシー
@@ -24,6 +24,42 @@
 - 認証グラデーション・GPS 記録フロー初期実装・列車種別・コードベース 13 ファイル分割・Supabase 認証/マイページ初期版 → [`CHANGELOG_PHASE1-3.7.md`](CHANGELOG_PHASE1-3.7.md)
 - データ補修・期間フィルタ「〜月指定」・記録モード用語統一・後追い記録・stop_type 駅 UI 個人化・地図フィルタ統合 → [`CHANGELOG_PHASE3.8-early.md`](CHANGELOG_PHASE3.8-early.md)
 - 13-mypage 4 分割・SERVICE_LINES builder 分離・ride-record 分離・ES Modules stage 1〜3 (`<script type="module">` + `import`/`export` 化) → [`CHANGELOG_PHASE3.8-modules.md`](CHANGELOG_PHASE3.8-modules.md)
+
+---
+
+## 124. v276 — ドキュメント役割分担表を Notion §0 に再集約（v275 の方針転換） (2026-05-23)
+
+### 背景
+
+v275 で CLAUDE.md「ドキュメント地図」に集約したばかりだが、ユスケさんの指摘で再考:
+
+- 役割分担表は **更新頻度が低い**（一度確定すれば数ヶ月変わらない）
+- **毎回見るものでもない**（Claude も覚えている）
+- CLAUDE.md は Claude Code が毎回自動ロード → **context cost が毎回かかる**
+
+→ Notion に置いて必要なときだけ fetch する方が合理的。
+
+### 実装
+
+- **Notion §0「ドキュメント役割分担」** に表 7 行（STATUS / CHANGELOG / TODO / CLAUDE.md / hooks / Notion / アーカイブ）を再配置 → **真実の源**
+- **CLAUDE.md「ドキュメント地図」**: 表を撤去し Notion §0 へのリンク 1 行のみに
+- **CHANGELOG.md 冒頭**: 「CLAUDE.md 参照」を「Notion §0 参照」に変更
+
+### v270〜v276 の整理シリーズ振り返り
+
+7 連続のドキュメント運用整理:
+
+| v   | 整理内容 |
+|---|---|
+| v270 | CHANGELOG/TODO ルール簡略化 + CLAUDE.md git 追跡開始 |
+| v271 | §0.1 → STATUS.md 分離（Stop hook で機械検知可に） |
+| v272 | .claude/ git 追跡 + STATUS.md を SessionStart hook に inline |
+| v273 | permission allowlist 整理（user global ↔ project shared） |
+| v274 | Notion §0 を現状整合化 + §0.1 旧表削除 |
+| v275 | 役割分担表を CLAUDE.md に一本化（3 か所重複の解消） |
+| **v276** | **v275 を方針転換: CLAUDE.md ではなく Notion §0 に集約**（context cost 観点） |
+
+教訓: ドキュメント置き場の選択基準は「更新頻度 × Claude Code の毎回ロードコスト」で判断する。静的なものほど Notion 側、動的なものほど git 側。
 
 ---
 
