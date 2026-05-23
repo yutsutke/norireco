@@ -36,6 +36,51 @@
 
 ---
 
+## 122. v274 — Notion §0 セッション運用ガイドの現状整合化 (2026-05-23)
+
+### 背景
+
+Notion §0「🎯 セッション運用ガイド」は v248 時点のドラフトのまま残っており、現在の運用 (hook + CLAUDE.md + STATUS.md) と矛盾していた。例:
+
+- 「開始時 1. §0.1 を流し見」← 既に SessionStart hook が STATUS.md inline 化済 (v272)
+- 「終了時 (セッション中はちょこちょこ更新せず、ここでまとめて反映)」← 既に CLAUDE.md ルールで「ターンごとに STATUS / CHANGELOG / TODO 更新」に
+- 「Notion §0.1 領域別ステータスに概要1行追記」← §0.1 は v271 で STATUS.md に分離済
+
+### 整理 (案 C: 中間)
+
+- **§9 編集メモ下「⚙️ セッション運用 三層設計」子ページ** を真実の源として書き直し
+  - 🚧 ドラフト → ✅ 確定 + 運用中 に格上げ
+  - §2.3 SessionStart の内容を v272 版 (STATUS.md inline) に更新
+  - §2.4 Stop の内容を v272 版 (sw.js 変更時 STATUS.md チェック追加) に更新
+  - §3 CLAUDE.md ドラフト → 撤去し repo の CLAUDE.md を真実の源と明記
+  - §4 Notion に残すもの → STATUS.md 分離後の整理版に
+  - §5 未確定論点: Windows + node 安定動作を ✅ 解決済に、PreToolUse(git push) は引き続き残課題
+  - §6 決定ログに v270〜v273 の整理を追記
+
+- **親ページ §0** を簡略化
+  - 「開始時 / 作業中 / 終了時」の冗長な手順 → 削除
+  - ドキュメント役割分担表を v273 整理版 (STATUS / CHANGELOG / TODO / CLAUDE.md / Notion の 5 軸) に書き換え
+  - 詳細な運用フローは子ページ参照、規約は repo の CLAUDE.md 参照 (二重管理回避)
+
+- **§0.1 旧表撤去**
+  - v271 で「次回 Notion 編集時に削除予定」と書いていた領域別ステータス旧表 + コメント 3 つ + 「直近のフェーズ (旧)」見出しを物理削除
+  - §0.1 は STATUS.md / CHANGELOG.md §119 へのリンクのみに完全簡略化
+
+### 役割分担の最終形 (v273 整理 + v274 で Notion 反映)
+
+| ドキュメント | 役割 | 真実の源 |
+|---|---|---|
+| STATUS.md | 現在 (状態軸) | git |
+| CHANGELOG.md | 履歴 (時間軸) | git |
+| TODO.md | 予定 | git |
+| CLAUDE.md | 規約 (指針) | git |
+| Notion | 仕様詳細・大方針・戦略 | Notion (人間が俯瞰) |
+| .claude/hooks/*.js | 強制 (機械) | git |
+
+5 ドキュメント + hook で責務を直交化。同じ内容を 2 か所に書かない。
+
+---
+
 ## 121. v273 — permission allowlist 整理 (user global ↔ project shared) (2026-05-23)
 
 ### 背景
