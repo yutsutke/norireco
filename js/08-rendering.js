@@ -697,7 +697,8 @@ function drawStationsLayer() {
     // v186/v187: stop_type ('alighted' | 'boarded' | 'passed' | 未訪問は 'unvisited' 扱い)
     //  - サイズ倍率: alighted=1.25 / boarded=1.0 / passed=0.8 / unvisited=1.0
     //  - フィルタ: 該当 stype が false ならその駅を skip (未訪問駅も含む)
-    const stype = ridden ? (slStopType[ms.name] || 'boarded') : 'unvisited';
+    // v323 (Phase 3): slStopType は駅 id キー化。ms.id を直接引く。
+    const stype = ridden ? (slStopType[ms.id] || 'boarded') : 'unvisited';
     const stf = window._stopTypeFilter || { alighted: true, boarded: true, passed: true, unvisited: true };
     if (stf[stype] === false) continue;
     const stypeMul = stype === 'alighted' ? 1.25 : stype === 'passed' ? 0.8 : 1.0;

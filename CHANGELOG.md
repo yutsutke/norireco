@@ -27,6 +27,41 @@
 
 ---
 
+## 173. v323 — 駅 ID 体系 Phase 3-f: slStopType を駅 id キー化 (2026-05-25)
+
+### 背景
+
+Phase 3-e (v316/v317) で visitCount / 駅名検索 / slVisitCount は駅 id 化が完了したが、**slStopType だけは name キーのまま据え置き** (CHANGELOG §165 でも理由を「id 化メリットが薄い、Phase 3 完了 = name 列廃止と一緒にやる方が効率的」と明記)。Phase 3 残り (name 列廃止) 着手にあたり、まず JS のみで完結する slStopType id 化を v323 で先に潰す。
+
+### 動機
+
+- 同名異所駅 (高松 香川/石川/多摩、原町 福島/茨城 等) で stop_type 判定が混線するリスクを潰す。現状は両方が同じ slStopType[name] スロットを共有しており、片方で 'alighted' になるともう片方も 'alighted' 表示になる
+- name 列廃止後に slStopType を残すと「stop_type だけ name 経由」という残骸になり、name 廃止判断が複雑化する
+
+### 変更
+
+- **js/04b-ride-record.js**:
+  - rebuild() 内 v186 ブロック: `slStopType[nm]` (駅名キー) → `slStopType[sid]` (駅 id キー) に変更。`sid = sl.stations[i].id` (v293 以降必ず存在)
+  - SERVICE_LINES.stations[].id が無い場合は continue で防御 (v293 以前データ救済)
+  - 冒頭コメント「slStopType[駅名]」→「slStopType[駅 id]」に修正
+- **js/08-rendering.js:700**: `slStopType[ms.name]` → `slStopType[ms.id]` に変更
+
+### リスク・検証
+
+- SERVICE_LINES の全 stations が id を持つことは v293 で確認済 (`02b-service-lines-builder.js:150` で必ず付与)
+- ms.id も MERGED_STATIONS で必ず付くため (v290〜)、両側とも id 引きで動く
+- 既存 RIDDEN_SEGS は seg.from/to が name のままだが、sl.stations.findIndex(s => s.name === seg.from) で SERVICE_LINES の駅順 index を得てから id を引くので、seg 側 schema 変更は不要
+
+### CACHE_VERSION
+
+v322 → v323
+
+### 変更ファイル
+
+`git diff --name-only HEAD` で確認 (sw.js / js/04b-ride-record.js / js/08-rendering.js / CHANGELOG.md / STATUS.md / TODO.md)
+
+---
+
 ## 172. v322 (no deploy) — CLAUDE.md セッション開始時手順を強化（Notion §0 必須化 + 完了報告 3 行） (2026-05-25)
 
 ### 背景

@@ -3,7 +3,7 @@
 //
 // 状態 (top-level const、外部スクリプトから lexical scope 経由で参照される):
 //   slRiddenSt[sl.id]    — 営業系統 id → 乗車済み駅 id Set (Phase 2 主索引)
-//   slStopType[駅名]      — 'alighted' | 'boarded' | 'passed' (v186 自動派生)
+//   slStopType[駅 id]    — 'alighted' | 'boarded' | 'passed' (v186 自動派生 / v323 で id 化)
 //   slVisitCount[駅 id]  — 駅 id → 訪問 seg 数 (個人化 Lv1-4 判定用、v317 で id 化)
 //   riddenServiceIds     — 旧運行系統 (running_services.json) の乗車済み set
 //
@@ -378,6 +378,8 @@
     //   - 中間駅   = passed (通過)
     // 複数 seg / 複数 trip で同じ駅が出る場合は最高優先度 (alighted > boarded > passed) を採用。
     // 乗換駅は実質「降りて乗った」ので alighted 扱いになる (どこかの seg.to に必ず該当)。
+    // v323 (Phase 3): キーを駅名 → 駅 id (s_NNNNN) に切替。同名異所駅 (例: 高松 香川/石川/多摩)
+    //   を別駅として stop_type 判定するため。08-rendering の参照側も ms.id に切替済。
     Object.keys(slStopType).forEach(k => delete slStopType[k]);
     if (NORIRECO.data.SERVICE_LINES && NORIRECO.data.SERVICE_LINES.length > 0) {
       RIDDEN_SEGS.forEach(seg => {
@@ -388,14 +390,15 @@
         if (fromIdx < 0 || toIdx < 0) return;
         const lo = Math.min(fromIdx, toIdx), hi = Math.max(fromIdx, toIdx);
         for (let i = lo; i <= hi; i++) {
-          const nm = sl.stations[i].name;
+          const sid = sl.stations[i].id;
+          if (!sid) continue;  // v293 以降 SERVICE_LINES.stations[].id は必ず付くが防御
           let type;
           if (i === fromIdx) type = 'boarded';
           else if (i === toIdx) type = 'alighted';
           else type = 'passed';
-          const cur = slStopType[nm];
+          const cur = slStopType[sid];
           if (!cur || _STYPE_PRIORITY[type] > _STYPE_PRIORITY[cur]) {
-            slStopType[nm] = type;
+            slStopType[sid] = type;
           }
         }
       });
