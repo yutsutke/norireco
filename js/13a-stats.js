@@ -37,21 +37,24 @@ function buildCompletionCards(trips) {
   const wrap = document.createElement('div');
   wrap.className = 'mp-stats-wrap';
 
-  // 全駅マスター (ユニーク) — NORIRECO.data.SERVICE_LINES から駅名 Set を作る
+  // v293: 全駅マスターは駅 id ベースで Set 化 — 同名異所 (高松 3 駅等) を別駅として
+  //   正しくカウント。id が無い駅 (極稀) は除外。
   const allUniqueStations = new Set();
   let lineUnitTotal = 0;
   for (const sl of NORIRECO.data.SERVICE_LINES) {
-    for (const s of sl.stations) allUniqueStations.add(s.name);
+    for (const s of sl.stations) if (s.id) allUniqueStations.add(s.id);
     lineUnitTotal += sl.stations.length;
   }
   const totalUnique = allUniqueStations.size;
   const totalLines = NORIRECO.data.SERVICE_LINES.length;
 
   // ── 共通の集計 (verifiedOnly / 全記録) ────────────────────────────
+  // visitCount キーは駅名のままにする (v641/v706/v845/v1032/v1237/v1264 等の他カードが
+  // まだ駅名キーで参照しているため。Phase 3 で完全 id 化予定)。
   function collect(verifiedOnly) {
     const slSet = {};
     const visitedUnique = new Set();
-    const visitCount = {};       // 駅名 → 訪問 trip 数
+    const visitCount = {};       // 駅名 → 訪問 trip 数 (Phase 3 で id 化検討)
     const lineRideCount = {};    // sl.id → 乗車 trip 数
     let totalDistanceKm = 0;
     let totalMinutes = 0;
@@ -61,7 +64,7 @@ function buildCompletionCards(trips) {
       if (!trip.segments) continue;
       validTrips++;
       if (trip.total_minutes) totalMinutes += trip.total_minutes;
-      const tripStations = new Set();
+      const tripStations = new Set(); // 駅名 (visitCount 用)
       const tripLines = new Set();
       for (const seg of trip.segments) {
         const sl = NORIRECO.data.SERVICE_LINES.find(l => l.id === seg.lineId);
@@ -73,10 +76,13 @@ function buildCompletionCards(trips) {
         if (!slSet[sl.id]) slSet[sl.id] = new Set();
         tripLines.add(sl.id);
         for (let i = a; i <= b; i++) {
-          const name = sl.stations[i].name;
-          slSet[sl.id].add(name);
-          visitedUnique.add(name);
-          tripStations.add(name);
+          const st = sl.stations[i];
+          // 集計用 (slSet / visitedUnique) は駅 id (v293)、tripStations だけ visitCount 互換で name
+          if (st.id) {
+            slSet[sl.id].add(st.id);
+            visitedUnique.add(st.id);
+          }
+          tripStations.add(st.name);
         }
         // 距離
         for (let i = a; i < b; i++) {

@@ -27,6 +27,29 @@
 
 ---
 
+## 142. v294 — v293 抜け修正: マイページ完乗率カードも id ベース化 (2026-05-24)
+
+### 背景
+
+v293 デプロイ後、ユスケのスクショで「完乗率カードの分母が 8,491 のまま」を確認。`globalStats()` は id 化したが、マイページの完乗率カード ([js/13a-stats.js:36 `buildCompletionCards`](js/13a-stats.js#L36)) は **独自実装で name ベース集計**しており、分母が変わっていなかった。
+
+ヘッダの「3% / 29 系統」(画面右上) は `globalStats()` 由来で正しく動作していたが、マイページのカード (画面中央) は別経路。
+
+### 修正
+
+`buildCompletionCards` の `collect()` 内集計を id ベース化:
+
+- `allUniqueStations.add(s.name)` → `if (s.id) ... add(s.id)`
+- `visitedUnique.add(name)` → `if (st.id) ... add(st.id)`
+- `slSet[sl.id].add(name)` → `add(st.id)`
+- `visitCount` の key は名前のまま (他の統計カード [v641 / v706 / v845 / v1032 / v1237 / v1264] と互換性を保つため、`tripStations` は引き続き name Set)
+
+### 残課題
+
+13a-stats.js には他にも `add(sl.stations[i].name)` パターンが 6 箇所あり (運営会社別 / 地域別 / 都道府県別 / 路線別 etc)。これらは Phase 3 で順次 id 化予定。今回は画面トップの完乗率カードだけ正常化。
+
+---
+
 ## 141. v293 — 駅 id 体系を導入 Phase 1 (集計・描画を駅名→駅 id 化、同名異所を正しく区別) (2026-05-24)
 
 ### 背景
