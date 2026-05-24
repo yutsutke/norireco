@@ -121,14 +121,14 @@ function buildCompletionCards(trips) {
   cards.className = 'mp-stat-grid';
   cards.innerHTML = `
     <div class="mp-scard verified">
-      <div class="mp-sc-h">🟢 GPS 記録 完乗率</div>
+      <div class="mp-sc-h">🟢 GPS 記録 完駅率</div>
       <div class="mp-sc-sub">GPS 認証された乗車記録のみ</div>
       <div class="mp-sc-pct">${sv.uniquePct}<span>%</span></div>
       <div class="mp-sc-detail">${sv.uniqueRidden.toLocaleString()} / ${totalUnique.toLocaleString()} 駅</div>
       <div class="mp-sc-detail">${sv.lines} / ${totalLines} 系統 (完乗 ${sv.complete})</div>
     </div>
     <div class="mp-scard all">
-      <div class="mp-sc-h">⚪ 全記録完乗率</div>
+      <div class="mp-sc-h">⚪ 全記録 完駅率</div>
       <div class="mp-sc-sub">手動記録も含む全ての乗車</div>
       <div class="mp-sc-pct">${all.uniquePct}<span>%</span></div>
       <div class="mp-sc-detail">${all.uniqueRidden.toLocaleString()} / ${totalUnique.toLocaleString()} 駅</div>
@@ -217,14 +217,14 @@ function buildDetailContent(pane, sv, all, trips, totalUnique, totalLines) {
     `各旅程の区間 (出発駅〜到着駅) を service_lines_master の駅順で展開し、隣接駅間の Haversine 距離を累積。営業キロではなく直線距離なので、実際の運行距離より少し短めに出る。GPS 軌跡 (将来) で精度向上予定。`
   ));
 
-  // ③ 運営会社別 完乗率 (GPS 記録ベース)
-  pane.appendChild(detailCard('運営会社別 完乗率 (GPS 記録)',
+  // ③ 運営会社別 完駅率 (GPS 記録ベース)
+  pane.appendChild(detailCard('運営会社別 完駅率 (GPS 記録)',
     buildByOperator(sv),
     `NORIRECO.data.SERVICE_LINES の operator (運営会社) でグルーピングし、駅 id でユニーク集計。同じ会社の中で複数系統に属する駅は 1 駅としてカウント (v293〜 同名異所も別駅扱い)。<br><br><strong>⚠ 各社の合計は全国総駅数 (9,017) を超えます</strong>。乗り入れ駅 (例: 東京駅は JR 東日本 + JR 東海 + 東京メトロ ...) は各会社それぞれにカウントされるため。`
   ));
 
-  // ④ 三大都市圏完乗率
-  pane.appendChild(detailCard('地域別 完乗率 (GPS 記録)',
+  // ④ 三大都市圏 完駅率
+  pane.appendChild(detailCard('地域別 完駅率 (GPS 記録)',
     buildByGroup(sv),
     `NORIRECO.data.SERVICE_LINES の group (地域分類: 首都圏・関西・東海・東北・北海道・九州・四国・中国・新幹線 等) でグルーピング。三大都市圏での完乗率を見やすく可視化。<br><br><strong>⚠ 地域の合計は全国総駅数を超えます</strong>。新幹線駅 (例: 新横浜) は「首都圏」と「新幹線」両方にカウントされるなど、地域横断駅は重複集計のため。`
   ));
@@ -1316,7 +1316,7 @@ function buildTopLines(snap) {
     <div class="mp-d-row">
       <span class="mp-d-l"><span class="mp-d-dot" style="background:${r.color}"></span>${r.name}</span>
       <strong>${r.count}回</strong>
-      <span class="mp-d-pct">完乗率 ${r.pct}% (${r.ridden}/${r.total})</span>
+      <span class="mp-d-pct">完駅率 ${r.pct}% (${r.ridden}/${r.total})</span>
     </div>
   `).join('');
 }

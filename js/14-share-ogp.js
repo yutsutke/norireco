@@ -151,7 +151,7 @@ function drawStatsPanel(ctx, x0, y0, w, h, stats) {
   let y = y0 + 50;
   ctx.fillStyle = '#8CA0B3';
   ctx.font = '18px "Zen Kaku Gothic New", "Hiragino Sans", sans-serif';
-  ctx.fillText('全国鉄道 完乗率', x0 + 32, y);
+  ctx.fillText('全国鉄道 完駅率', x0 + 32, y);
 
   // 大きな % 表示
   y += 80;

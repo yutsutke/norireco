@@ -1148,7 +1148,7 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
   <div class="logo">乗<em>レコ</em><small>NORITSUBU MAP</small></div>
   <span class="app-ver-badge checking" id="app-ver-badge" onclick="checkAppVersion(true)" title="バージョン確認中">⏳ …</span>
   <div class="header-stats">
-    <div class="hstat" title="ユニーク駅単位の完乗率 (全記録)。マイページで GPS 記録のみの完乗率も確認可"><div class="hstat-val" id="h-pct">0%</div><div class="hstat-lbl">完乗率</div></div>
+    <div class="hstat" title="完駅率 = 乗車駅 / 全駅 (駅 id ベース、全記録)。マイページで GPS 記録のみの完駅率も確認可"><div class="hstat-val" id="h-pct">0%</div><div class="hstat-lbl">完駅率</div></div>
     <div class="hstat" title="乗車したことのある営業系統数"><div class="hstat-val" id="h-ln">0</div><div class="hstat-lbl">系統</div></div>
     <button class="auth-btn" id="auth-btn" title="ログイン">🔑 ログイン</button>
   </div>
@@ -1235,7 +1235,7 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
       </div>
     </div>
     <div class="map-stats-box">
-      <div class="ms-row" title="ユニーク駅単位の完乗率 (全記録)"><span class="ms-lbl">完乗率</span><span class="ms-val" id="ms-pct">0%</span></div>
+      <div class="ms-row" title="完駅率 = 乗車駅 / 全駅 (駅 id ベース、全記録)"><span class="ms-lbl">完駅率</span><span class="ms-val" id="ms-pct">0%</span></div>
       <div class="ms-row" title="乗車経験のある営業系統数"><span class="ms-lbl">乗車系統</span><span class="ms-val" id="ms-ln">0系統</span></div>
       <div class="ms-row" title="完乗 (100%) 達成済みの営業系統数"><span class="ms-lbl">完乗系統</span><span class="ms-val" id="ms-dn">0系統</span></div>
       <div class="ms-row" id="storage-row" style="margin-top:4px;padding-top:4px;border-top:1px solid var(--track)">
