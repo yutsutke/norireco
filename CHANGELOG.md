@@ -27,6 +27,47 @@
 
 ---
 
+## 160. v312 — 駅 ID 体系 Phase 2-c: 完全一致経路 (駅シート/地図駅クリック) の id 優先化 (2026-05-24)
+
+### 背景
+
+Phase 2-b (v311) で 125 件のバックフィルが成功し、全 trip が `from_station_id` / `to_station_id` + segments 各要素の `from_id` / `to_id` を持つ状態になった。続いて読み込み側を id 優先 + name fallback に切り替える。
+
+ただし読み込み 5 パスのうち、今すぐ id 化が筋なのは **完全一致経路** だけ。理由:
+
+- **完全一致** (`tripVisitsStation`): 地図駅クリック「この駅を含む旅程」、駅シート lazy fetch 一覧。`ms.id` が常に取れる → id 比較が一意で高速、同名駅問題回避
+- **substring** (マイページ駅名検索): 自由入力なので id 化は意味なし → name のまま
+- **キャラ獲得判定**: `characters_master.json` の `station_ids` がまだ駅名配列 → Phase 3 で id 化
+- **GPS 後追い認証**: `findStCoord(name)` の name→座標変換は別フェーズ
+- **集計 (`slRiddenSt`)**: Phase 1 で既に id ベース化済
+
+### 対処
+
+[`js/13-mypage-common.js`](js/13-mypage-common.js):
+
+1. `tripMatchesAnyStation` の `predicate` を **`(name, id)` 2 引数** に拡張。既存の substring callsite (`13b-trips.js:241` `n => n.includes(q)`) は id を無視するだけで従来通り動く (callsite 変更不要)。
+2. 通過駅展開 (sc.pass) でも `seg.from_id` / `to_id` を優先して `sl.stations` 内の index を解決、無ければ name fallback。
+3. `tripVisitsStation` を `(trip, ms)` 引数に変更。`ms.id && trip.*_id` 両方ある時のみ id 比較、無ければ name 比較。
+
+[`js/17-station-actions.js`](js/17-station-actions.js):
+
+4. `getTripsAtStation(stationName)` → `getTripsAtStation(ms)` に変更。
+5. 呼び出し 2 箇所 (`buildStationActionSheet` / `onSaShowTrips`) も `ms.name` → `ms` に。
+
+### 設計判断
+
+- **id 優先 + name fallback の二段構え**: バックフィル 100% 成功とはいえ、将来の編集や手動 patch ミスで id が NULL に戻る可能性は残る。fallback は安全弁。
+- **predicate 引数拡張 vs 別関数化**: predicate を 2 引数に拡張する方が DRY (`tripMatchesAnyStation` 1 本で完全一致/substring 両対応)。別関数化は通過駅展開ロジックが二重実装になる。
+- **マイページ駅名検索 (substring) を触らない**: 自由入力なので id 化のメリットがゼロ。Phase 2-d 以降 (name 列廃止) のときに駅名 → 候補 id[] 解決層を経由させる予定。
+
+### 残作業 (Phase 2-d / Phase 3)
+
+- 2-d: 集計の name 経由 fallback (slRiddenSt 構築の name match) を撤去 (Phase 3 と一緒可)
+- Phase 3: characters_master の id 化、キャラ獲得判定の id 化、GPS 後追い認証の id 化、マイページ駅名検索を id 解決層経由に、`norireco_memos` の station_id 列追加
+- 最終: `norireco_trips` の name 列削除 (代わりに stations master との JOIN で取得)
+
+---
+
 ## 159. v311 — 駅 ID 体系 Phase 2-b: 既存 trip バックフィル用 dev ヘルパー追加 (2026-05-24)
 
 ### 背景

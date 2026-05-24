@@ -76,39 +76,56 @@ const MP = NORIRECO.mypage.state;
 // 使い分け:
 //   - 地図駅クリック「この駅を含む旅程」(v282): 完全一致 predicate / scope 全 ON
 //   - マイページ駅名検索 (v288): substring predicate / scope はユーザー UI 連動 (v289)
+// v312 (Phase 2-c): predicate 引数を `(name, id)` の 2 引数に拡張。
+//   呼び出し側で「id 優先 + name fallback」の比較を自前で書ける。
+//   既存の substring callsite (マイページ駅名検索) は id を無視するだけで従来通り動く。
+//   通過駅展開 (sc.pass) も seg.from_id / to_id を優先、無ければ name fallback。
 export function tripMatchesAnyStation(trip, predicate, scope) {
   if (!trip || typeof predicate !== 'function') return false;
   const sc = scope || { from: true, end: true, transfer: true, pass: true };
-  if (sc.from && predicate(trip.from_station)) return true;
-  if (sc.end && predicate(trip.to_station)) return true;
+  if (sc.from && predicate(trip.from_station, trip.from_station_id)) return true;
+  if (sc.end && predicate(trip.to_station, trip.to_station_id)) return true;
   if (!sc.transfer && !sc.pass) return false; // segments を走らせる必要なし
   const segs = Array.isArray(trip.segments) ? trip.segments : [];
   const SL = NORIRECO.data?.SERVICE_LINES || [];
   for (const seg of segs) {
     if (!seg) continue;
     if (sc.transfer) {
-      if (predicate(seg.from)) return true;
-      if (predicate(seg.to)) return true;
+      if (predicate(seg.from, seg.from_id)) return true;
+      if (predicate(seg.to, seg.to_id)) return true;
     }
     if (!sc.pass || !seg.lineId || SL.length === 0) continue;
     let sl = SL.find(s => s.id === seg.lineId);
     if (!sl) sl = SL.find(s => Array.isArray(s.candidateN02Ids) && s.candidateN02Ids.includes(seg.lineId));
     if (!sl || !Array.isArray(sl.stations)) continue;
-    const fi = sl.stations.findIndex(s => s.name === seg.from);
-    const ti = sl.stations.findIndex(s => s.name === seg.to);
+    // 通過駅範囲の決定: seg.from_id / to_id を優先、無ければ name で fallback
+    let fi = -1, ti = -1;
+    if (seg.from_id) fi = sl.stations.findIndex(s => s.id === seg.from_id);
+    if (fi < 0) fi = sl.stations.findIndex(s => s.name === seg.from);
+    if (seg.to_id) ti = sl.stations.findIndex(s => s.id === seg.to_id);
+    if (ti < 0) ti = sl.stations.findIndex(s => s.name === seg.to);
     if (fi < 0 || ti < 0) continue;
     const lo = Math.min(fi, ti), hi = Math.max(fi, ti);
     for (let i = lo + 1; i < hi; i++) {
-      if (predicate(sl.stations[i].name)) return true;
+      const st = sl.stations[i];
+      if (predicate(st.name, st.id)) return true;
     }
   }
   return false;
 }
 
-// 完全一致版 (v282 互換) — 駅クリック時の旅程絞り込みに使う
-export function tripVisitsStation(trip, stationName) {
-  if (!stationName) return false;
-  return tripMatchesAnyStation(trip, n => n === stationName);
+// 完全一致版 (v282 互換) — 駅クリック時の旅程絞り込みに使う。
+// v312 (Phase 2-c): 引数を ms オブジェクトに変更。ms.id が trip 側の id と一致するかを
+//   優先比較し、id 不在時のみ name 比較に fallback。
+//   旧シグネチャ tripVisitsStation(trip, "駅名") は廃止 (呼び出し側はすべて ms を持つ)。
+export function tripVisitsStation(trip, ms) {
+  if (!ms) return false;
+  const tid = ms.id;
+  const tname = ms.name;
+  return tripMatchesAnyStation(trip, (name, id) => {
+    if (tid && id) return id === tid;       // id 優先: 同名駅問題回避、比較も高速
+    return !!name && !!tname && name === tname;  // fallback: バックフィル前の trip
+  });
 }
 NORIRECO.mypage.tripMatchesAnyStation = tripMatchesAnyStation;
 NORIRECO.mypage.tripVisitsStation = tripVisitsStation;

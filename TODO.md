@@ -46,10 +46,10 @@ git log --oneline -20
 
 - [ ] **駅 ID 体系 Phase 2: trip データ自体に `*_station_id` 列追加 + Supabase 移行**
   - Phase 1 完成 (v293〜v300): 駅マスター (merged_stations 9,017 駅) に `s_NNNNN` id 付与、SERVICE_LINES に伝播、集計・描画判定すべて id ベース化
-  - **Phase 2-a 完成 (v310)**: `from_station_id` / `to_station_id` 列追加 (SQL migration 実行済) + 並行書き込み
-  - **Phase 2-b 実装完了・実行待ち (v311)**: `js/20-dev-backfill.js` の `NORIRECO.dev.backfillStationIds({dryRun:true})` で試行 → 本実行
+  - **Phase 2-a 完成 (v310)**: `from_station_id` / `to_station_id` 列追加 + 並行書き込み
+  - **Phase 2-b 完成 (v311)**: 既存 trip 125 件のバックフィル完遂 (失敗 0)
+  - **Phase 2-c 完成 (v312)**: 完全一致経路 (駅シート/地図駅クリック) を id 優先化
   - **Phase 2 残り**:
-    - 2-c: 読み込み側 (tripMatchesAnyStation / キャラ獲得 / GPS 後追い認証) を id 優先 + name fallback に
     - 2-d: 集計の `seg.from/to` name 経由 fallback を撤去 (Phase 3 と一緒でも可)
     - 完了時: `js/20-dev-backfill.js` を撤去
   - 動機: 同名異所駅 (例: 高松 香川 / 石川 / 多摩) を trip データレベルで厳密に区別。Phase 1 では SERVICE_LINE 経由で間接解決していたが、trip データそのものが name しか持たないと将来 (グローバル展開・AI 自動列車判定) で破綻する

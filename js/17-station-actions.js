@@ -72,10 +72,12 @@ function pickCharacterForStation(stationName) {
 
 // v287.1: tripVisitsStation 本体は 13-mypage-common.js へ移動 (マイページ駅名検索と共通化)。
 
-function getTripsAtStation(stationName) {
+// v312 (Phase 2-c): 引数を ms オブジェクトに変更 (id 優先比較のため)。
+//   tripVisitsStation 側が ms.id ↔ trip.*_station_id の一致を優先、無ければ name 比較。
+function getTripsAtStation(ms) {
   const trips = NORIRECO.mypage?.state?._mypageCache;
   if (!Array.isArray(trips)) return null;     // cache 未初期化 (マイページ未開封)
-  return trips.filter(t => tripVisitsStation(t, stationName));
+  return trips.filter(t => tripVisitsStation(t, ms));
 }
 
 // 駅マーカークリックから呼ばれるエントリポイント
@@ -136,7 +138,8 @@ function renderActionList({ ms, lines, memoCount }) {
   // 🚃 この駅を含む旅程 (v282)
   // _mypageCache が null (マイページ未開封) の場合は件数バッジ無しで案内文に切り替え
   // v309: タップ時に lazy fetch するため、ラベルを「タップで読み込み」へ
-  const tripsHere = getTripsAtStation(ms.name);
+  // v312 (Phase 2-c): 引数を ms オブジェクトに (id 優先比較)
+  const tripsHere = getTripsAtStation(ms);
   if (tripsHere === null) {
     buttons.push(`
       <button class="sa-btn" onclick="onSaShowTrips()">
@@ -480,7 +483,7 @@ async function onSaShowTrips() {
     renderTripListInSheet('loading', ms.name);
     try { await loadMypageTripsIfNeeded(); } catch (e) {}
   }
-  const trips = getTripsAtStation(ms.name);
+  const trips = getTripsAtStation(ms);  // v312: ms オブジェクトに統一
   renderTripListInSheet(trips, ms.name);
 }
 
