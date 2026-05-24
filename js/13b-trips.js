@@ -557,7 +557,31 @@ async function retroactivelyVerifyTrip(tripId) {
 
   showMypageToast(`✅ "${nearStation}" で認証完了!`, 'success');
   setTimeout(() => runCharacterGrantCheck(), 600);
-  setTimeout(() => renderMypage(), 800);
+
+  // v281: deleteTripFromMypage と同じく renderMypage() は未 import で ReferenceError。
+  //       _mypageCache 内の該当 trip を PATCH と同じ値で楽観更新し、
+  //       旅程セクション + 完乗率カードを client 側で即時再描画する。
+  try {
+    if (Array.isArray(NORIRECO.mypage.state._mypageCache)) {
+      const t = NORIRECO.mypage.state._mypageCache.find(t => t.id === tripId);
+      if (t) {
+        t.verified = true;
+        t.gps_lat = myLat;
+        t.gps_lon = myLon;
+        t.gps_accuracy = acc;
+      }
+    }
+  } catch(e) {}
+
+  try { applyMpSection(); } catch(e) {}
+  try {
+    const pinned = document.getElementById('mp-completion-pinned');
+    if (pinned && Array.isArray(NORIRECO.data?.SERVICE_LINES) && NORIRECO.data.SERVICE_LINES.length > 0) {
+      const tripsForCards = filterTripsByDate(NORIRECO.mypage.state._mypageCache || []);
+      pinned.innerHTML = '';
+      pinned.appendChild(NORIRECO.mypage.buildCompletionCards(tripsForCards));
+    }
+  } catch(e) {}
 }
 window.retroactivelyVerifyTrip = retroactivelyVerifyTrip;
 NORIRECO.mypage.retroactivelyVerifyTrip = retroactivelyVerifyTrip;

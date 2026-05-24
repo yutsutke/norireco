@@ -27,6 +27,29 @@
 
 ---
 
+## 129. v281 — GPS 後追い認証も即時反映に修正 (renderMypage 未 import の同じ罠) (2026-05-24)
+
+### 背景
+
+v280 で `deleteTripFromMypage` の `renderMypage()` 未 import を修正した際、`retroactivelyVerifyTrip` ([js/13b-trips.js:560](js/13b-trips.js)) も同じパターン (`setTimeout(() => renderMypage(), 800)`) を踏んでいることに気付いた。ユスケに確認したら「やったことない」とのことだったので、症状報告なしのまま予防的に修正。
+
+### 修正
+
+`deleteTripFromMypage` と同じ形に統一:
+
+- `_mypageCache` 内の該当 trip を PATCH と同じ値 (`verified: true`, `gps_lat/lon/accuracy`) で楽観更新
+- `applyMpSection()` + `NORIRECO.mypage.buildCompletionCards()` で client 側のみで即時再描画
+- `runCharacterGrantCheck()` の `setTimeout(600)` はそのまま残置 (キャラ獲得判定は GPS 認証の完了演出と並走させる意図)
+
+`tripCardHtml` ([js/13-mypage-common.js:251](js/13-mypage-common.js)) は `trip.verified` フラグだけで「⚪ 手動記録」/「🟢 GPS 記録」を切り替えるので、楽観更新だけで表示も切り替わる。
+
+### 学び
+
+- `renderMypage` の bare 参照は 13b-trips.js 内で 2 箇所あり、v275 以前から両方とも ReferenceError で動いていなかった。`setTimeout` 内の async 失敗はコンソールに警告も出ずに静かに死ぬので、見つけるには「呼んでるのに反応がない」症状を踏むしかない。
+- 今後 13b-trips.js から `renderMypage` を呼ぶことがあれば import (or `NORIRECO.mypage.renderMypage`) を必ず通す。ただし大抵のケースは Supabase 再 fetch 不要で client 側再計算で済むので、`applyMpSection` + `buildCompletionCards` の組み合わせをデフォルトに。
+
+---
+
 ## 128. v280 — v279 の追加修正: renderMypage 未 import で削除即時反映が効いていなかった (2026-05-24)
 
 ### 背景
