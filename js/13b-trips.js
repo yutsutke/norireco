@@ -590,8 +590,10 @@ async function deleteTripFromMypage(tripId) {
     localStorage.setItem('norireco_trips', JSON.stringify(next));
   } catch(e) {}
 
-  // v279: 楽観的更新 — _mypageCache からも即座に除去して、
-  // renderMypage() の Supabase 再 fetch 完了を待たずに UI へ反映する。
+  // v279: 楽観的更新 — _mypageCache から該当 trip を即座に除去。
+  // v280: renderMypage() は本ファイルに import されていなかったため
+  //       ReferenceError で動いていなかった。Supabase 再 fetch は不要
+  //       なので、trip セクション + 完乗率カードを client side で即時再描画する。
   try {
     if (Array.isArray(NORIRECO.mypage.state._mypageCache)) {
       NORIRECO.mypage.state._mypageCache = NORIRECO.mypage.state._mypageCache.filter(t => t.id !== tripId);
@@ -605,7 +607,18 @@ async function deleteTripFromMypage(tripId) {
   }
 
   showMypageToast('🗑 削除しました', 'success');
-  renderMypage();
+
+  // v280: 現在表示中のサブタブを即時再描画 (旅程セクションなら件数/一覧が更新される)
+  try { applyMpSection(); } catch(e) {}
+  // v280: 常時表示の完乗率カードも再計算 (Supabase 再 fetch 不要、client 側で計算)
+  try {
+    const pinned = document.getElementById('mp-completion-pinned');
+    if (pinned && Array.isArray(NORIRECO.data?.SERVICE_LINES) && NORIRECO.data.SERVICE_LINES.length > 0) {
+      const tripsForCards = filterTripsByDate(NORIRECO.mypage.state._mypageCache || []);
+      pinned.innerHTML = '';
+      pinned.appendChild(NORIRECO.mypage.buildCompletionCards(tripsForCards));
+    }
+  } catch(e) {}
 }
 window.deleteTripFromMypage = deleteTripFromMypage;
 NORIRECO.mypage.deleteTripFromMypage = deleteTripFromMypage;

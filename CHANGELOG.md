@@ -27,6 +27,31 @@
 
 ---
 
+## 128. v280 — v279 の追加修正: renderMypage 未 import で削除即時反映が効いていなかった (2026-05-24)
+
+### 背景
+
+v279 push 後にユスケが動作確認したところ「削除しました」トーストは出るものの旅程一覧は古いまま、タブ切替で初めて消える挙動が残っていた。
+
+### 原因
+
+`js/13b-trips.js` が `renderMypage` を import していないため、v279 で書いた `renderMypage()` 呼び出し（および v275 以前から存在した `setTimeout(() => renderMypage(), 500)`）は ReferenceError で静かに失敗していた。`renderMypage` は `13-mypage-common.js` から `export` されているが、`window.renderMypage` としては登録されておらず `NORIRECO.mypage.renderMypage` のみ。
+
+v279 で入れた `_mypageCache` の楽観的更新は効いていたので、`switchMpSection` → `applyMpSection` 経路で再描画されたタブ切替時には正しく消えていた。
+
+### 修正
+
+そもそも Supabase 再 fetch は不要なので `renderMypage()` 呼び出しをやめ、import 済みの `applyMpSection()` + `NORIRECO.mypage.buildCompletionCards()` で client 側のみで即時再描画する形に変更:
+
+- 旅程セクション: `applyMpSection()` で件数 + 一覧を再描画
+- 完乗率カード: `mp-completion-pinned` を `buildCompletionCards(filterTripsByDate(_mypageCache))` で差し替え
+
+### 残課題
+
+- `retroactivelyVerifyTrip` ([js/13b-trips.js:560](js/13b-trips.js)) も `setTimeout(() => renderMypage(), 800)` を使っていて同じく ReferenceError で動いてないはず。GPS 認証後の UI 反映も「タブ切替まで遅延」している可能性があるので別途確認。
+
+---
+
 ## 127. v279 — 旅程削除が即時 UI 反映されないバグを修正 (2026-05-24)
 
 ### 背景
