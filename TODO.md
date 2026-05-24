@@ -58,11 +58,11 @@ git log --oneline -20
   - **Phase 3-a/3-b 完成 (v313)**: `characters_master.json` schema_v2 で id 化、キャラ獲得判定 / GPS 獲得 / 駅シート連携 を id 優先 + name fallback に
   - **Phase 3-c 完成 (v314)**: GPS 後追い認証 `findStCoord` を id 対応に
   - **Phase 3-d 完成 (v315)**: メモに station_id 列追加 + 並行書き込み + 読み込み id 優先化 (バックフィル省略、既存 3 件は name fallback)
+  - **Phase 3-e 部分完成 (v316)**: 13a-stats の visitCount を id 化、`js/20-dev-backfill.js` 撤去
   - **残**:
-    - 3-e: 集計 (slRiddenSt 構築) の name fallback 撤去 (Phase 2-d と一括)
-    - マイページ駅名検索 (v285〜v289) を id 解決層経由に (表示は name)
-    - 13a-stats.js の `visitCount` を name キー → id キーに移行
-    - 最終: `norireco_trips` / `characters_master.json` の name 列廃止 + `js/20-dev-backfill.js` 撤去
+    - マイページ駅名検索 (v285〜v289) を id 解決層経由に (substring 入力 → 候補 id[] 経由)
+    - `04b-ride-record.js` の slVisitCount を SERVICE_LINES ベースに統一 (LINES 側に id がないので別 refactor)
+    - 最終: `norireco_trips` / `characters_master.json` の name 列廃止
 
 ## 🟡 体験向上（コア層の継続率を上げる）
 

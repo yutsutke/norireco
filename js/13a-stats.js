@@ -49,12 +49,14 @@ function buildCompletionCards(trips) {
   const totalLines = NORIRECO.data.SERVICE_LINES.length;
 
   // ── 共通の集計 (verifiedOnly / 全記録) ────────────────────────────
-  // visitCount キーは駅名のままにする (v641/v706/v845/v1032/v1237/v1264 等の他カードが
-  // まだ駅名キーで参照しているため。Phase 3 で完全 id 化予定)。
+  // v316 (Phase 3-e): visitCount を駅 id キーに移行 (v293/v316 で SERVICE_LINES の
+  //   stations[].id が確定済)。表示時 (buildTopStations) は MERGED_STATIONS で id → name 解決。
+  //   注: 04b-ride-record.js の slVisitCount は LINES (旧 N02) ベースで stations[].id が
+  //   付与されていないため名前キーのまま据え置き (08-rendering / 08 キャラモーダルの個人化レベル用)。
   function collect(verifiedOnly) {
     const slSet = {};
     const visitedUnique = new Set();
-    const visitCount = {};       // 駅名 → 訪問 trip 数 (Phase 3 で id 化検討)
+    const visitCount = {};       // 駅 id → 訪問 trip 数 (v316)
     const lineRideCount = {};    // sl.id → 乗車 trip 数
     let totalDistanceKm = 0;
     let totalMinutes = 0;
@@ -64,7 +66,7 @@ function buildCompletionCards(trips) {
       if (!trip.segments) continue;
       validTrips++;
       if (trip.total_minutes) totalMinutes += trip.total_minutes;
-      const tripStations = new Set(); // 駅名 (visitCount 用)
+      const tripStations = new Set(); // 駅 id (visitCount 用、v316)
       const tripLines = new Set();
       for (const seg of trip.segments) {
         const sl = NORIRECO.data.SERVICE_LINES.find(l => l.id === seg.lineId);
@@ -77,12 +79,12 @@ function buildCompletionCards(trips) {
         tripLines.add(sl.id);
         for (let i = a; i <= b; i++) {
           const st = sl.stations[i];
-          // 集計用 (slSet / visitedUnique) は駅 id (v293)、tripStations だけ visitCount 互換で name
+          // v316: slSet / visitedUnique / tripStations 全て駅 id キーに統一
           if (st.id) {
             slSet[sl.id].add(st.id);
             visitedUnique.add(st.id);
+            tripStations.add(st.id);
           }
-          tripStations.add(st.name);
         }
         // 距離
         for (let i = a; i < b; i++) {
@@ -92,7 +94,7 @@ function buildCompletionCards(trips) {
           }
         }
       }
-      for (const n of tripStations) visitCount[n] = (visitCount[n]||0) + 1;
+      for (const id of tripStations) visitCount[id] = (visitCount[id]||0) + 1;
       for (const lid of tripLines) lineRideCount[lid] = (lineRideCount[lid]||0) + 1;
     }
     let lineUnitRidden = 0, lines = 0, complete = 0;
@@ -1323,9 +1325,14 @@ function buildTopLines(snap) {
 NORIRECO.mypage.buildTopLines = buildTopLines;
 
 // 駅 Top 10
+// v316 (Phase 3-e): snap.visitCount のキーが駅 id (s_NNNNN) に変わったので、
+//   MERGED_STATIONS から駅名を解決して表示。解決失敗時は id をそのまま表示。
 function buildTopStations(snap) {
+  const MS = NORIRECO.data?.MERGED_STATIONS || [];
+  const nameById = new Map();
+  for (const m of MS) nameById.set(m.id, m.name);
   const rows = Object.entries(snap.visitCount)
-    .map(([name, n]) => ({ name, count: n }))
+    .map(([id, n]) => ({ id, name: nameById.get(id) || id, count: n }))
     .sort((a,b) => b.count - a.count)
     .slice(0, 10);
   if (rows.length === 0) return '<div class="mp-empty-s">訪問駅なし</div>';

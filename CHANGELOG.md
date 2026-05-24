@@ -27,6 +27,49 @@
 
 ---
 
+## 164. v316 — 駅 ID 体系 Phase 3-e 部分: 13a-stats visitCount を id 化 + dev-backfill 撤去 (2026-05-24)
+
+### 背景
+
+Phase 3 cleanup の小規模・低リスク部分を一括で。
+
+調査で判明したこと:
+- **slRiddenSt の name fallback** は既に Phase 1 (v293〜v300) で撤去済 — 残課題なし
+- **04b-ride-record.js の slVisitCount** は LINES (旧 N02、stations[].id 未付与) ベースなので、touching すると別 refactor を引きずる → 据え置き
+- **13a-stats.js の visitCount** は SERVICE_LINES (stations[].id 付与済 v293) ベースなので clean に id 化可能
+- **20-dev-backfill.js** は v311 の一度限り dev コード、ユスケが v311 でバックフィル完遂済 → 撤去 OK
+
+### 対処
+
+**visitCount を id キーに移行**
+
+- [`js/13a-stats.js:collect`](js/13a-stats.js): `tripStations` を駅名 Set → 駅 id Set に変更、`visitCount` のキーを id に。`slSet` / `visitedUnique` と同じ id 経路に統一。
+- [`js/13a-stats.js:buildTopStations`](js/13a-stats.js): `snap.visitCount` のキーが id になったので、MERGED_STATIONS から `nameById` Map を作って表示時に id → name 解決。解決失敗時は id をそのまま表示 (フォールバック)。
+
+**dev-backfill 撤去**
+
+- `js/20-dev-backfill.js` を削除 (v311 で追加した一度限りの dev tool)。
+- [`sw.js`](sw.js) STATIC_ASSETS から該当行を削除。
+- [`noritetsu-map.html`](noritetsu-map.html) の `<script type="module" src="js/20-dev-backfill.js">` を削除。
+
+### 設計判断
+
+- **slVisitCount は据え置き**: LINES 側 (lines-p1〜p4.json) の stations[] には `.n / lat / lon / c / o / branch` のみで `.id` がない。Phase 1 で id 付与対象外だった。これを後付けで id 化するには lines-p\*.json の再生成 (merged_stations と lat/lon 一致で id 引き) が必要で範囲が広い。本セッションは見送り、Phase 3 残として記録。
+- **20-dev-backfill.js の撤去タイミング**: v311 でユスケ実行後 (125 件 PATCH 成功)、全 trip が id を持つ状態。再実行が必要なケースは「v309 以前のデータが新たに発生する」ような状況だけで、現状では起きない。万一必要になったら git history から復元可能。
+
+### 動作確認
+
+- マイページ → 📊 統計 → 「駅 Top 10」が引き続き正しい駅名で表示されるか (id → name 解決)
+- Devtools コンソールで `NORIRECO.dev` が undefined になっていることを確認 (撤去確認)
+
+### 残作業 (Phase 3 全完了まで)
+
+- マイページ駅名検索 (substring) を id 解決層経由に
+- `04b-ride-record.js` の slVisitCount を SERVICE_LINES ベースに統一 (or LINES 側にも id 付与)
+- 最終: trip の name 列廃止 + characters_master の name 列廃止
+
+---
+
 ## 163. v315 — 駅 ID 体系 Phase 3-d: メモに station_id 列追加 + 並行書き込み + 読み込み id 優先化 (2026-05-24)
 
 ### 背景
