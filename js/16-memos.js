@@ -31,7 +31,7 @@ NORIRECO.memos = NORIRECO.memos || {
   state: {
     cache: [],
     editingId: null,
-    filter: { line_id: 'all', memo_type: 'all', mood: 'all' },
+    filter: { line_id: 'all', memo_type: 'all', mood: 'all', station: '' },
     // v251: 駅タップ → 駅メモ一覧モーダルの開いている駅コンテキスト
     // (「+ 新しいメモを残す」を押したときに memo-modal に渡すための保存場所)
     stationContext: null, // { station, lineId, lineName, lat, lon } | null
@@ -446,22 +446,41 @@ function buildMemoFilterBar() {
         <option value="最悪" ${M.filter.mood === '最悪' ? 'selected' : ''}>😤 最悪</option>
       </select>
     </div>
+    <div class="mp-filter-row">
+      <label class="mp-filter-lbl">🚉 駅名</label>
+      <input type="search" class="mp-filter-input" id="mp-memo-fil-station" placeholder="例: 八王子" value="${escapeHtml(M.filter.station || '')}" oninput="updateMemoFilter('station',this.value)">
+    </div>
   `;
   return bar;
 }
 
 function applyMemoFilters(memos) {
+  const q = (M.filter.station || '').trim();
   return memos.filter(m => {
     if (M.filter.line_id !== 'all' && m.line_id !== M.filter.line_id) return false;
     if (M.filter.memo_type !== 'all' && m.memo_type !== M.filter.memo_type) return false;
     if (M.filter.mood !== 'all' && m.mood !== M.filter.mood) return false;
+    // v285: 駅名部分一致 (m.station のみ — memo は trip と違い segments を持たない)
+    if (q && !(m.station && m.station.includes(q))) return false;
     return true;
   });
 }
 
 function updateMemoFilter(key, value) {
   M.filter[key] = value;
+  // v285: station 入力中は再描画でフォーカスが外れないよう caret を復元
+  const el = (key === 'station') ? document.getElementById('mp-memo-fil-station') : null;
+  const sel = (el && document.activeElement === el)
+    ? { start: el.selectionStart, end: el.selectionEnd }
+    : null;
   renderMpMemosSection();
+  if (sel) {
+    const newEl = document.getElementById('mp-memo-fil-station');
+    if (newEl) {
+      newEl.focus();
+      try { newEl.setSelectionRange(sel.start, sel.end); } catch(e) {}
+    }
+  }
 }
 
 function buildMemoList(memos) {

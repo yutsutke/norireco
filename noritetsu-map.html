@@ -404,6 +404,10 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mp-filter-lbl{font-size:10px;color:var(--silver);font-weight:600;white-space:nowrap;}
 .mp-filter-sel{flex:1;padding:5px 7px;background:var(--navy);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:11px;font-family:inherit;outline:none;cursor:pointer;}
 .mp-filter-sel:focus{border-color:var(--red);}
+/* v285: 駅名検索の text input (mp-filter-sel と同じ高さ・色) */
+.mp-filter-input{flex:1;padding:5px 7px;background:var(--navy);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:11px;font-family:inherit;outline:none;min-width:0;}
+.mp-filter-input:focus{border-color:var(--red);}
+.mp-filter-input::placeholder{color:var(--silver);opacity:.55;}
 .mp-filter-reset{width:30px;height:30px;background:rgba(140,160,179,.1);color:var(--silver);border:1px solid var(--track);border-radius:6px;font-size:14px;cursor:pointer;font-family:inherit;flex-shrink:0;}
 .mp-filter-reset:hover{background:rgba(140,160,179,.2);color:var(--white);}
 

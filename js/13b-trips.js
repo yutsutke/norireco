@@ -39,6 +39,13 @@ import { enableDragSort } from './19-drag-sort.js';
 // 旅程編集モーダル内の写真エリアコントローラ (createPhotoArea 戻り値、null = 未生成)
 let _tripEditPhotoArea = null;
 
+// v285: filter 入力値などユーザー由来文字列を value="..." に埋める用の最小エスケープ
+function escapeAttr(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+    {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]
+  ));
+}
+
 // ── 🚃 旅程セクション ──────────────────────────────────────────
 function renderMpTripsSection() {
   const sec = document.getElementById('mp-trip-section');
@@ -113,6 +120,10 @@ function buildTripFilterBar() {
       </select>
     </div>
     <div class="mp-filter-row">
+      <label class="mp-filter-lbl">🚉 駅名</label>
+      <input type="search" class="mp-filter-input" id="mp-fil-station" placeholder="例: 八王子" value="${escapeAttr(NORIRECO.mypage.state.mpTripFilter.station || '')}" oninput="updateMpFilter('station',this.value)">
+    </div>
+    <div class="mp-filter-row">
       <label class="mp-filter-lbl">⇅ 並び替え</label>
       <select class="mp-filter-sel" id="mp-fil-sort" onchange="updateMpFilter('sort',this.value)">
         <option value="date_desc" ${NORIRECO.mypage.state.mpTripFilter.sort==='date_desc'?'selected':''}>📅 乗車日 (新しい順)</option>
@@ -131,13 +142,29 @@ NORIRECO.mypage.buildTripFilterBar = buildTripFilterBar;
 
 function updateMpFilter(key, value) {
   NORIRECO.mypage.state.mpTripFilter[key] = value;
+  // v285: station 入力中は再描画でフォーカスが外れないよう caret を復元
+  const sel = (key === 'station') ? _rememberCaret('mp-fil-station') : null;
   renderMpTripsSection();
+  if (sel) _restoreCaret('mp-fil-station', sel);
+}
+
+// v285: 駅名 input 等、oninput → 全 sec 再構築 で焦点が飛ぶ問題への対策
+function _rememberCaret(id) {
+  const el = document.getElementById(id);
+  if (!el || document.activeElement !== el) return null;
+  return { start: el.selectionStart, end: el.selectionEnd };
+}
+function _restoreCaret(id, sel) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.focus();
+  try { el.setSelectionRange(sel.start, sel.end); } catch(e) {}
 }
 window.updateMpFilter = updateMpFilter;
 NORIRECO.mypage.updateMpFilter = updateMpFilter;
 
 function resetMpFilter() {
-  NORIRECO.mypage.state.mpTripFilter = { auth: 'all', period: 'all', category: 'all', sort: 'date_desc' };
+  NORIRECO.mypage.state.mpTripFilter = { auth: 'all', period: 'all', category: 'all', sort: 'date_desc', station: '' };
   renderMpTripsSection();
 }
 window.resetMpFilter = resetMpFilter;
@@ -180,6 +207,18 @@ function applyTripFilters(trips) {
       } else {
         if (t.train_category !== NORIRECO.mypage.state.mpTripFilter.category) return false;
       }
+    }
+    // v285: 駅名検索 (from_station / to_station / segments[].from/to の部分一致)
+    const q = (NORIRECO.mypage.state.mpTripFilter.station || '').trim();
+    if (q) {
+      const hasMatch = (
+        (t.from_station && t.from_station.includes(q)) ||
+        (t.to_station && t.to_station.includes(q)) ||
+        (Array.isArray(t.segments) && t.segments.some(s =>
+          (s?.from && s.from.includes(q)) || (s?.to && s.to.includes(q))
+        ))
+      );
+      if (!hasMatch) return false;
     }
     return true;
   });

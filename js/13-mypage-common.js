@@ -49,6 +49,7 @@ NORIRECO.mypage.state = NORIRECO.mypage.state || {
     period: 'all',   // all | thisYear | lastYear | custom (日付フィルタは _tripDateFilter と独立)
     category: 'all', // all | shinkansen | limited_express | ...
     sort: 'date_desc', // v182: 旅程タブの並び替え (date_desc/asc, stations_desc, minutes_desc, recorded_desc, delay_desc)
+    station: '',     // v285: 駅名検索 (from/to/segments の部分一致)
   },
 };
 const MP = NORIRECO.mypage.state;

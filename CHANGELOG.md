@@ -27,6 +27,39 @@
 
 ---
 
+## 133. v285 — マイページの旅程・メモに駅名検索を追加 (2026-05-24)
+
+### 背景
+
+ユスケから「マイページの旅程、メモ — 駅名で検索できるといいね」との要望。既存フィルタ (期間・認証・種別・並び替え / 路線・種別・気分) は dropdown のみで、駅名による絞り込み手段がなかった。
+
+### 設計
+
+両タブに「🚉 駅名」テキスト入力 (`<input type="search">`) を追加し substring 一致で絞り込み。
+
+- **旅程**: `t.from_station` / `t.to_station` / `t.segments[].from` / `to` のいずれかに入力文字列が含まれれば一致。通過駅判定 (SERVICE_LINES 駅順展開) は今回は入れない — 駅画面の v282 「この駅を含む旅程」一覧で補完できるため。
+- **メモ**: `m.station` のみ。memo は trip と違って segments を持たないので素直に substring 一致。
+
+部分一致 (substring) にしたのは入力ミスへの寛容性 + 「八王子」「八王子みなみ野」を 1 度に拾えるため。
+
+### フォーカス維持
+
+`renderMpTripsSection` / `renderMpMemosSection` は `sec.innerHTML = ''` で全描画し直すため、`oninput` のたびに input 要素が消えてフォーカスが外れる問題がある。`update*Filter` 内で active element と caret 位置 (`selectionStart` / `End`) を覚えておき、再描画後に新しい input へ復元する。
+
+### 主な変更
+
+- [js/13-mypage-common.js](js/13-mypage-common.js): `mpTripFilter` に `station: ''` 追加。
+- [js/13b-trips.js](js/13b-trips.js): フィルタバーに `<input>` 追加、`applyTripFilters` に駅名 substring チェック、`updateMpFilter` に caret 復元、`resetMpFilter` に station リセット。`escapeAttr` ヘルパ追加。
+- [js/16-memos.js](js/16-memos.js): `M.filter` に `station: ''` 追加、フィルタバーに `<input>` 追加、`applyMemoFilters` に駅名 substring チェック、`updateMemoFilter` に caret 復元。
+- [noritetsu-map.html](noritetsu-map.html): `.mp-filter-input` CSS 追加 (mp-filter-sel と同じ寸法、placeholder スタイル含む)。
+
+### 残課題
+
+- メモタブには「リセット」ボタンが無いので、station 入力消したいときは手で消すしかない (今回は範囲外)。
+- 旅程の通過駅まで含めた検索が欲しくなったら `tripVisitsStation` (17-station-actions.js) を export 化して 13b で再利用する形に拡張可能。
+
+---
+
 ## 132. v284 — 旧 📸 memoMode を完全撤去 (駅・路線シートで代替済) (2026-05-24)
 
 ### 背景
