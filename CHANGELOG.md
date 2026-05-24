@@ -27,6 +27,31 @@
 
 ---
 
+## 148. v300 — v293 の修正漏れ: drawServiceLineBase の実線描画ループも id 化 (2026-05-24)
+
+### 背景
+
+v299 で `slRiddenSt` を正しく構築できるようになったが、ユスケのスクショで「路線実線が出ない、点線のみ」が継続。
+
+### 原因
+
+v293 で `slRiddenSt[sl.id]` を **駅 id Set** に変えたが、[js/08-rendering.js:573 / 584](js/08-rendering.js#L573) の **drawServiceLineBase 内の実線連続ラン描画ループ** だけ `rs.has(sl.stations[i].name)` のまま残っていた。id Set に対して name で `has()` を呼ぶので常に false → 実線が一度も描かれない。
+
+v293 の grep で `slRiddenSt[*].has(` パターンは捕まえたが、`rs.has(` 単独だと他の Set との区別が付かず見落としていた。
+
+### 修正
+
+- [js/08-rendering.js:572-591](js/08-rendering.js#L572): 実線連続ランループの `rs.has(sl.stations[i].name)` を `rs.has(sl.stations[i].id)` に。null check (`!!stid &&`) も追加。
+- 環状線 (circular) の wrap 判定も同様に id ベースに。
+
+念のため `rs.has(` の全箇所を grep → 残りは v293 で id 化済みの行のみ確認。
+
+### 学び
+
+v293 で grep をかけたとき `slRiddenSt\[.*\]\.has\(` のパターンしか探さなかった。一旦 `const rs = slRiddenSt[...]` で束ねて `rs.has(...)` する箇所が漏れた。**Set の中身を変えるリファクタの grep は、参照先の局所変数名まで含めるべき** (今後の規約)。
+
+---
+
 ## 147. v299 — v298 の副作用修正: resolve 経路を活用しつつ 1 SL のみに add (2026-05-24)
 
 ### 背景

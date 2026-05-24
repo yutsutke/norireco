@@ -568,9 +568,12 @@ function drawServiceLineBase(sl) {
     }
     if (mode !== 'unridden') {
       // 乗車済み連続ランを区間ごとにグロー描画
+      // v300: rs は slRiddenSt[sl.id] = 駅 id Set (v293〜)。
+      //   v293 当時の修正漏れで name のままだったため実線が常に出ていなかった。
       let ss = null;
       for (let i = 0; i < sl.stations.length; i++) {
-        const ir = rs.has(sl.stations[i].name);
+        const stid = sl.stations[i].id;
+        const ir = !!stid && rs.has(stid);
         if (ir && ss === null) ss = i;
         if (!ir && ss !== null) {
           drawSlRiddenRun(sl, ss, i - 1, canvas, priority, visible);
@@ -580,9 +583,12 @@ function drawServiceLineBase(sl) {
           drawSlRiddenRun(sl, ss, i, canvas, priority, visible);
         }
       }
-      if (sl.circular && sl.stations.length >= 2 &&
-          rs.has(sl.stations[0].name) && rs.has(sl.stations[sl.stations.length-1].name)) {
-        drawSlRiddenWrap(sl, canvas, priority, visible);
+      if (sl.circular && sl.stations.length >= 2) {
+        const firstId = sl.stations[0].id;
+        const lastId = sl.stations[sl.stations.length-1].id;
+        if (firstId && lastId && rs.has(firstId) && rs.has(lastId)) {
+          drawSlRiddenWrap(sl, canvas, priority, visible);
+        }
       }
     }
   }
