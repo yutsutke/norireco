@@ -296,26 +296,34 @@
         }
       }
     });
-    // Phase 2: 営業系統別 ridden 状態を riddenSt から導出
-    // v293: slRiddenSt は駅 id Set に変更 (同名異所の駅を別物として扱うため)。
-    //   構築元の riddenSt (N02 keyed) は引き続き name ベース — N02 側は同名異所が
-    //   別 N02 路線に分かれているので、駅名一致で問題なし。
+    // Phase 2: 営業系統別 ridden 状態を RIDDEN_SEGS から直接構築
+    // v298: 旧実装 (candidateN02Ids 経由で駅名一致して全 SERVICE_LINE にばらまく) を撤廃。
+    //   旧ロジックだと「八王子で中央線に乗ったら、横浜線・八高線の八王子も ridden 扱い」
+    //   になっていた。ユスケ要望: 系統ごとに別々に判定したい (乗った系統だけ ridden)。
+    //
+    //   新実装: globalStats / 13a-stats.js collect() と同じく seg.lineId を
+    //   SERVICE_LINE.id に直接 match する。旧データ互換のため candidateN02Ids
+    //   fallback も残すが、最初に見つかった 1 SL だけに add (バラまかない)。
     Object.keys(slRiddenSt).forEach(k => delete slRiddenSt[k]);
     if (NORIRECO.data.SERVICE_LINES && NORIRECO.data.SERVICE_LINES.length > 0) {
-      for (const sl of NORIRECO.data.SERVICE_LINES) {
-        const cand = sl.candidateN02Ids || [];
-        const allRidden = new Set();
-        for (const n02Id of cand) {
-          const rs = riddenSt[n02Id];
-          if (rs) for (const n of rs) allRidden.add(n);
+      const SL = NORIRECO.data.SERVICE_LINES;
+      for (const seg of RIDDEN_SEGS) {
+        if (!seg || !seg.lineId) continue;
+        // 1. SERVICE_LINE.id 直接 match (新形式 trip)
+        let sl = SL.find(l => l.id === seg.lineId);
+        // 2. LEGACY fallback: 旧 N02 id を残した trip 用、candidateN02Ids に
+        //    含む最初の 1 SL だけ採用 (バラまかない、v239 globalStats と同じ方針)
+        if (!sl) sl = SL.find(l => (l.candidateN02Ids || []).includes(seg.lineId));
+        if (!sl) continue;
+        const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
+        const toIdx = sl.stations.findIndex(s => s.name === seg.to);
+        if (fromIdx < 0 || toIdx < 0) continue;
+        const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
+        if (!slRiddenSt[sl.id]) slRiddenSt[sl.id] = new Set();
+        for (let i = a; i <= b; i++) {
+          const st = sl.stations[i];
+          if (st.id) slRiddenSt[sl.id].add(st.id);
         }
-        if (allRidden.size === 0) continue;
-        const slSet = new Set();
-        for (const s of sl.stations) {
-          // v293: name でマッチ → id を Set に入れる (id が無い駅は除外)
-          if (allRidden.has(s.name) && s.id) slSet.add(s.id);
-        }
-        if (slSet.size > 0) slRiddenSt[sl.id] = slSet;
       }
     }
 

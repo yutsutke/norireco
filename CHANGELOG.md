@@ -27,6 +27,41 @@
 
 ---
 
+## 146. v298 — slRiddenSt 構築をばらまき方式から「seg.lineId 直接 match」に統一 (2026-05-24)
+
+### 背景
+
+ユスケ要望: 「八王子で中央線に乗ったら、八王子 中央線だけ乗車判定にしたい。横浜線・八高線の八王子は未乗車のままに」。
+
+### 原因
+
+`slRiddenSt[sl.id]` 構築 ([js/04b-ride-record.js:299](js/04b-ride-record.js#L299)) が旧 ロジック (`candidateN02Ids` 経由で駅名一致して全 SERVICE_LINE にばらまく) のまま:
+
+1. RIDDEN_SEGS → `riddenSt[N02 line id]` (駅名 Set) を構築
+2. 各 SERVICE_LINE について `candidateN02Ids` の中から駅名を集めて、SL 駅と name 一致したら ridden 扱い
+
+これだと「中央線の八王子」乗車 → `riddenSt[中央線_東日本旅客鉄道]` に「八王子」 → 八高線 SL の `candidateN02Ids` に中央線が含まれていなくても、駅名一致でばらまかれて八高線 SL の八王子も ridden 化されていた (実害: 駅マーカーの ridden 色判定、路線リストの完駅率計算)。
+
+`globalStats` ([js/02b:181](js/02b-service-lines-builder.js#L181)) は v239 で `seg.lineId` 直接 match に変えていたが、`slRiddenSt` は変更漏れだった。
+
+### 修正
+
+`slRiddenSt` 構築を `globalStats` と同じ方針に統一:
+
+- RIDDEN_SEGS を直接スキャンし、`seg.lineId === SL.id` でマッチした SL にのみ ridden 駅を add
+- 旧形式互換 (seg.lineId が N02 id の trip データ) は `candidateN02Ids` fallback で最初の 1 SL だけ採用 (バラまかない)
+
+これで:
+- 中央線で八王子乗車 → SERVICE_LINE「中央本線」だけ ridden、八高線・横浜線の八王子は未乗車のまま
+- 駅マーカー (08-rendering) の ridden 色判定は系統ごと正確に
+- 路線リスト (`stats(sl)`) の完駅率も系統ごとの実態を反映
+
+### 副次効果
+
+旧バラまきロジックで膨張していた `slRiddenSt[sl.id].size` が圧縮される。マイページ路線タブで「ある路線の完駅率」が下がる可能性 (これが本当の値)。完駅率カードの分子 (globalStats 由来) は元から直接 match だったので変わらない。
+
+---
+
 ## 145. v297 — 駅集計の指標名を「完乗率」→「完駅率」に整理 (2026-05-24)
 
 ### 背景
