@@ -561,19 +561,35 @@ async function retroactivelyVerifyTrip(tripId) {
   }
   const myLat = pos.coords.latitude, myLon = pos.coords.longitude, acc = pos.coords.accuracy;
 
-  const findStCoord = (name) => {
-    if (Array.isArray(NORIRECO.data.MERGED_STATIONS)) {
-      const m = NORIRECO.data.MERGED_STATIONS.find(s => s.name === name);
-      if (m && m.lat != null) return [m.lat, m.lon];
+  // v314 (Phase 3-c): id 優先 + name fallback。Phase 2 で trip に *_station_id が入ったので
+  //   同名駅取り違えを防ぐ意味で id を先に試す。バックフィル前の trip (id NULL) は name で救う。
+  const findStCoord = (id, nameFallback) => {
+    const MS = NORIRECO.data?.MERGED_STATIONS;
+    if (Array.isArray(MS)) {
+      if (id) {
+        const m = MS.find(s => s.id === id);
+        if (m && m.lat != null) return [m.lat, m.lon];
+      }
+      if (nameFallback) {
+        const m = MS.find(s => s.name === nameFallback);
+        if (m && m.lat != null) return [m.lat, m.lon];
+      }
     }
     for (const sl of (NORIRECO.data.SERVICE_LINES || [])) {
-      const s = sl.stations.find(s => s.name === name);
-      if (s && s.lat != null) return [s.lat, s.lon];
+      if (!sl.stations) continue;
+      if (id) {
+        const s = sl.stations.find(x => x.id === id);
+        if (s && s.lat != null) return [s.lat, s.lon];
+      }
+      if (nameFallback) {
+        const s = sl.stations.find(x => x.name === nameFallback);
+        if (s && s.lat != null) return [s.lat, s.lon];
+      }
     }
     return null;
   };
-  const fromCoord = findStCoord(trip.from_station);
-  const toCoord = findStCoord(trip.to_station);
+  const fromCoord = findStCoord(trip.from_station_id, trip.from_station);
+  const toCoord = findStCoord(trip.to_station_id, trip.to_station);
   if (!fromCoord && !toCoord) {
     alert(`駅座標が見つかりません: ${trip.from_station} / ${trip.to_station}`);
     return;

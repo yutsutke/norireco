@@ -56,8 +56,8 @@ git log --oneline -20
 
 - [ ] **駅 ID 体系 Phase 3: memo / characters_master / 駅名検索の id 化**
   - **Phase 3-a/3-b 完成 (v313)**: `characters_master.json` schema_v2 で id 化、キャラ獲得判定 / GPS 獲得 / 駅シート連携 を id 優先 + name fallback に
+  - **Phase 3-c 完成 (v314)**: GPS 後追い認証 `findStCoord` を id 対応に
   - **残**:
-    - 3-c: GPS 後追い認証 `findStCoord` を id 対応に
     - 3-d: Supabase `norireco_memos` に `station_id` 列追加 + 既存データ移行 + 書き込みパス
     - 3-e: 集計 (slRiddenSt 構築) の name fallback 撤去 (Phase 2-d と一括)
     - マイページ駅名検索 (v285〜v289) を id 解決層経由に (表示は name)

@@ -27,6 +27,32 @@
 
 ---
 
+## 162. v314 — 駅 ID 体系 Phase 3-c: GPS 後追い認証 (findStCoord) を id 対応に (2026-05-24)
+
+### 背景
+
+Phase 2 で trip に `from_station_id` / `to_station_id` が入ったので、GPS 後追い認証 (`retroactivelyVerifyTrip`) の駅座標解決も id 経由でやれば同名駅取り違えがなくなる。同名駅 (例: 高松 香川/石川/多摩) の旅程を後追い認証するときに、name 検索だと取り違える可能性があった (今までは leaflet が他の地域の駅座標を返してしまえば「現在地が遠すぎます」エラーで失敗するだけ、致命的ではないが正確性向上)。
+
+### 対処
+
+[`js/13b-trips.js`](js/13b-trips.js) の `retroactivelyVerifyTrip` 内ローカル関数 `findStCoord(name)` を `(id, nameFallback)` に拡張:
+
+1. id があれば MERGED_STATIONS / SERVICE_LINES.stations から id 一致で検索
+2. id が NULL もしくは見つからなければ name で fallback (バックフィル前の trip を救う)
+
+呼び出しは `findStCoord(trip.from_station_id, trip.from_station)` / `findStCoord(trip.to_station_id, trip.to_station)` に。
+
+### 設計判断
+
+- **ローカル関数のまま**: `findStCoord` は `retroactivelyVerifyTrip` 内でしか使われないので、共通ユーティリティに昇格はしない。将来「id → 座標」の参照が他で必要になったら 02-data-loaders.js あたりに移動可能。
+- **MERGED_STATIONS と SERVICE_LINES 両方フォールバック**: 既存の挙動 (両方探す) を踏襲。SERVICE_LINES.stations は v293 で id 付与済なので id 検索でも動く。
+
+### 動作確認
+
+- 既存の verified ではない trip で「📍 GPS で認証」ボタン → 駅座標解決して距離判定 → 半径 500m 以内なら verified=true に昇格
+
+---
+
 ## 161. v313 — 駅 ID 体系 Phase 3-a/3-b: キャラデータと獲得判定の id 化 (2026-05-24)
 
 ### 背景
