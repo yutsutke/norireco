@@ -196,11 +196,10 @@ const IS_TOUCH = (() => {
 console.log('[乗レコ] IS_MOBILE:', IS_MOBILE, '/ IS_TOUCH:', IS_TOUCH);
 
 // v290: tolerance を入れて駅マーカーの click 判定範囲を拡大。
-//   未乗車の小さい○ (radius 4px 前後) でも指で確実にタップできるように、
-//   タッチデバイスは +10px、PC は +6px の余白を持たせる。
-//   近い 2 駅で被ったときは Leaflet が後から add したマーカーを優先するので、
-//   ridden / マルチ系統の派手なマーカーが基本的に勝つ。
-CANVAS = L.canvas({ padding: 0.5, tolerance: IS_TOUCH ? 10 : 6 });
+// v301: ユスケ報告で PC 環境でも tolerance 6px だと小さい○ がクリック困難。
+//   タッチ +16px / PC +12px に増やす。隣接駅同士で被るリスクは Leaflet が
+//   後から add したマーカーを優先する (ridden / マルチ系統が勝つ) ので体感問題なし。
+CANVAS = L.canvas({ padding: 0.5, tolerance: IS_TOUCH ? 16 : 12 });
 
 // 三大都市圏の中心駅 (最も低ズームから表示)
 const SUPER_MEGA_STATIONS = new Set([

@@ -27,6 +27,26 @@
 
 ---
 
+## 149. v301 — 小さい駅の click 判定範囲を更に拡大 (タッチ +16 / PC +12) (2026-05-24)
+
+### 背景
+
+v290 で `L.canvas({ tolerance: IS_TOUCH ? 10 : 6 })` を入れたが、ユスケ再報告で PC 環境でも小さい○の駅がクリックできないとのこと。PC tolerance 6px だと circleMarker radius 4px と合わせて click 範囲 10px 弱、まだ狭い。
+
+### 修正
+
+tolerance を増やす:
+- タッチ: 10 → **16px**
+- PC: 6 → **12px**
+
+隣接駅同士で被るリスクは Leaflet が「後から add したマーカー」を優先するので、ridden / マルチ系統の派手なマーカーが勝ち、体感問題なし。
+
+### 残課題
+
+それでも当たらない場合は circleMarker の radius 最低値 (現状 4px) 自体を増やす対応もあり得る。まず tolerance だけで様子見。
+
+---
+
 ## 148. v300 — v293 の修正漏れ: drawServiceLineBase の実線描画ループも id 化 (2026-05-24)
 
 ### 背景
