@@ -220,45 +220,41 @@ export function prefOfStation(lat, lon) {
 //   "高松 香川"     → 同名異所駅 (香川 / 石川 / 多摩 の高松) のうち香川のみ
 //   "○○ 東京 神奈川" → 駅名 ○○ AND (都道府県 東京 AND 神奈川) ※ AND マッチ なので通常 0 件
 //
-// MERGED_STATIONS (9,017 駅) を走査して条件を満たす駅の id Set を返す。
-// 呼び出し側は (name, id) predicate 内で `id && idSet.has(id)` を優先し、
-// id 不在データ (backfill 前) は name.includes(nameToken) に fallback する。
-// ただし都道府県トークンが指定されている場合は厳密性を保つため fallback しない
-// (resolveStationQueryTokens.hasPrefFilter で判定可能)。
-export function resolveStationQueryIds(q) {
-  const tokens = parseStationQueryTokens(q);
-  if (!tokens) return null;
+// MERGED_STATIONS (9,017 駅) を走査して条件を満たす駅の id Set + name Set を返す。
+// 呼び出し側は (name, id) predicate で:
+//   1. `id && ids.has(id)` を優先 (新形式 trip / memo、同名異所駅も厳密区別)
+//   2. fallback として `name.includes(nameToken) && (!hasPrefFilter || names.has(name))`
+//      (id 列が NULL の旧 trip / memo 救済。pref 指定時は pref を満たす候補駅名集合で
+//       絞り込むが、同名異所駅の中で「どれか」までは厳密区別できない)
+export function resolveStationQuery(q) {
+  if (!q || typeof q !== 'string') return null;
+  const norm = q.trim();
+  if (!norm) return null;
+  const tokens = norm.split(/[\s　]+/).filter(Boolean);
+  if (tokens.length === 0) return null;
+  const nameToken = tokens[0];
+  const prefTokens = tokens.slice(1);
+  const hasPrefFilter = prefTokens.length > 0;
   const MS = NORIRECO.data?.MERGED_STATIONS;
-  if (!Array.isArray(MS) || MS.length === 0) return null;
-  const { nameToken, prefTokens } = tokens;
+  if (!Array.isArray(MS) || MS.length === 0) {
+    return { ids: new Set(), names: new Set(), nameToken, prefTokens, hasPrefFilter };
+  }
   const ids = new Set();
+  const names = new Set();
   for (const ms of MS) {
     if (!ms || !ms.id || !ms.name) continue;
-    if (nameToken && !ms.name.includes(nameToken)) continue;
-    if (prefTokens.length > 0) {
+    if (!ms.name.includes(nameToken)) continue;
+    if (hasPrefFilter) {
       const pref = prefOfStation(ms.lat, ms.lon);
       if (!pref) continue;
       if (!prefTokens.every(t => pref.includes(t))) continue;
     }
     ids.add(ms.id);
+    names.add(ms.name);
   }
-  return ids;
+  return { ids, names, nameToken, prefTokens, hasPrefFilter };
 }
-NORIRECO.mypage.resolveStationQueryIds = resolveStationQueryIds;
-
-// v318: クエリ文字列をトークン分解。空白 (半角/全角) 区切りで先頭=駅名、残り=都道府県。
-// 都道府県トークンの有無は predicate 側の name fallback 切替に使う。
-export function parseStationQueryTokens(q) {
-  if (!q || typeof q !== 'string') return null;
-  const tokens = q.trim().split(/[\s　]+/).filter(Boolean);
-  if (tokens.length === 0) return null;
-  return {
-    nameToken: tokens[0],
-    prefTokens: tokens.slice(1),
-    hasPrefFilter: tokens.length > 1,
-  };
-}
-NORIRECO.mypage.parseStationQueryTokens = parseStationQueryTokens;
+NORIRECO.mypage.resolveStationQuery = resolveStationQuery;
 
 export async function renderMypage() {
   const c = document.getElementById('mypage-content');

@@ -29,8 +29,7 @@ import {
   applyMpSection,
   _MP_SORT_COMPARATORS,
   tripMatchesAnyStation,
-  resolveStationQueryIds,
-  parseStationQueryTokens,
+  resolveStationQuery,
 } from './13-mypage-common.js';
 import { filterTripsByDate } from './05-supabase-data.js';
 // v258: 旅程の写真添付 (memo と共通の写真エリアコンポーネント)
@@ -204,14 +203,13 @@ function applyTripFilters(trips) {
     trips = filterTripsByDate(trips);
   }
   // v317 (Phase 3-e): 駅名検索の id Set を filter() の外で 1 回だけ解決。
-  //   filter callback 内で resolveStationQueryIds を呼ぶと trip 毎に
+  //   filter callback 内で resolveStationQuery を呼ぶと trip 毎に
   //   MERGED_STATIONS 9,017 駅をループしてしまい O(N*M) になる。
   // v318: 空白区切りで「駅名 都道府県」検索 (例: "八王子 東京")。
-  //   都道府県トークンが指定されていれば fallback (name.includes) は off にして
-  //   id-only 厳密判定にする (lat/lon を持つ MERGED_STATIONS でしか pref 判定できないため)。
+  // v318.1: pref モードでも name fallback を残す (pref フィルタ済 names Set で照合)。
+  //   id 列が NULL のレガシー trip でも pref 検索が機能する。
   const _stq = (NORIRECO.mypage.state.mpTripFilter.station || '').trim();
-  const _stTokens = _stq ? parseStationQueryTokens(_stq) : null;
-  const _stIdSet = _stq ? resolveStationQueryIds(_stq) : null;
+  const _stResult = _stq ? resolveStationQuery(_stq) : null;
   const _stScope = NORIRECO.mypage.state.mpTripFilter.stationScope || { from:true, end:true, transfer:true, pass:true };
   const filtered = trips.filter(t => {
     // 認証
@@ -247,15 +245,18 @@ function applyTripFilters(trips) {
       }
     }
     // v285/v288/v289: 駅名 substring 検索 — マッチ範囲は stationScope (始点/終点/乗換/通過) で切替
-    // v317 (Phase 3-e): id 解決層経由化。_stIdSet と trip 側 *_station_id を比較。
-    // v318: 都道府県トークン有なら fallback off (lat/lon が無い trip 側 name では pref 判定不可)。
-    if (_stq && _stTokens) {
-      const nameToken = _stTokens.nameToken;
-      const hasPref = _stTokens.hasPrefFilter;
+    // v317 (Phase 3-e): id 解決層経由化。_stResult.ids と trip 側 *_station_id を比較。
+    // v318: 都道府県トークン対応。
+    // v318.1: pref モード時の fallback を「pref を満たす name 候補集合」で絞り込む形に。
+    //   id 列 NULL のレガシー trip でも pref 検索が動く (同名異所駅の厳密区別は犠牲)。
+    if (_stq && _stResult) {
+      const { ids, names, nameToken, hasPrefFilter } = _stResult;
       const predicate = (name, id) => {
-        if (id && _stIdSet && _stIdSet.has(id)) return true;
-        if (hasPref) return false;
-        return !!name && name.includes(nameToken);
+        if (id && ids.has(id)) return true;
+        if (!name) return false;
+        if (!name.includes(nameToken)) return false;
+        if (hasPrefFilter) return names.has(name);
+        return true;
       };
       if (!tripMatchesAnyStation(t, predicate, _stScope)) return false;
     }

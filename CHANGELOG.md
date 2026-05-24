@@ -27,6 +27,57 @@
 
 ---
 
+## 167. v319 — 駅名+都道府県検索の fallback バグ修正 (「八王子 東京」が 0 件になる問題) (2026-05-24)
+
+### 背景
+
+v318 で「八王子 東京」検索を出したが、ユスケの実機で「フィルタ条件に合致する旅程がありません」になる。「八王子」だけは動く。
+
+原因: v318 では pref モード時に `name fallback off` (厳密 id-only) にしていた。trip 側に `from_station_id` 列がある前提だったが、実際は v311 バックフィル後でも一部 trip (or seg 内の from/to) が id 列を持っていなかった (or NULL)。「八王子」だけだと name fallback でヒットしていたのが、pref モードで fallback off になり 0 件落ち。
+
+### 対処
+
+`resolveStationQueryIds` (Set 返し) と `parseStationQueryTokens` を、新 API `resolveStationQuery(q)` (Object 返し) に統合:
+
+```
+{ ids: Set<string>, names: Set<string>, nameToken, prefTokens, hasPrefFilter }
+```
+
+- `ids` — v318 と同じ (pref 条件を満たす駅 id Set)
+- `names` — 同条件を満たす駅 name Set (fallback 用に追加)
+
+predicate を以下に変更:
+
+```js
+(name, id) => {
+  if (id && ids.has(id)) return true;       // 厳密 id 比較 (新形式 trip)
+  if (!name || !name.includes(nameToken)) return false;
+  if (hasPrefFilter) return names.has(name); // pref 指定時は pref を満たす name 候補のみ
+  return true;                               // pref 無し: 従来通り substring fallback
+}
+```
+
+これで id 列が NULL のレガシー trip でも pref 検索が機能する。代償として「高松 香川」入力で trip.from_station="高松" の id 列 NULL trip は香川/石川/多摩 の区別不能 (いずれかが pref を満たせばヒット) — Phase 2/3 完了前の妥協。
+
+callsite 修正:
+- [`js/13b-trips.js`](js/13b-trips.js): `_stResult` 1 個に集約
+- [`js/16-memos.js`](js/16-memos.js): 同じパターン
+
+### 設計判断
+
+- **resolveStationQueryIds → resolveStationQuery にリネーム**: v317 で公開した API だが、callsite が 2 つ + 同セッション内なので清算。Object 返却で `ids` / `names` / 各 token を一括取得できる方が呼び出し側も clean。
+- **同名異所駅の厳密区別を諦めるトレードオフ**: 「香川の高松」だけほしいユスケで「石川の高松」trip もヒットする可能性が残る (id 列 NULL のレガシー trip だけ)。新規 trip (id 並行書き込み稼働中、v310〜) は idSet 経由で厳密判定されるため、時間経過とともに不一致は減る。
+- **Phase 4 へのつなぎ**: trip / memo の name 列を廃止すれば fallback 自体が消えて常に厳密判定になる。それまでは「id があれば厳密 / 無ければ name + pref-candidate names」のハイブリッドが妥当。
+
+### 動作確認
+
+- マイページ → 🚃 旅程 → 「八王子 東京」入力 → 東京の八王子の trip がヒットすることを確認 (ユスケ実機で要確認)
+- 「八王子」だけ → 全国の八王子含む trip (従来通り)
+- 「高松 香川」「高松 石川」入力で結果が変わる (id 列ある trip は厳密、無いものは pref で絞り込み)
+- npm run check: 25/25 OK
+
+---
+
 ## 166. v318 — マイページ駅名検索を「駅名 都道府県」AND 検索に拡張 (2026-05-24)
 
 ### 背景
