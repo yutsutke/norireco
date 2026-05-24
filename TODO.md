@@ -8,7 +8,10 @@
 **現在のステータス** → [`STATUS.md`](./STATUS.md)（CACHE_VERSION・カバレッジ・領域別ステータス・直近フェーズ）
 
 **用語**: 📝 経路選択 = **手動記録** (manual) / 📍 GPS 開始 = **GPS 記録** (verified) — v175 で統一
-**完乗率**: ユニーク駅単位に統一 (v235) — ヘッダ「完乗率 X%」と マイページ「全記録完乗率」が一致、「GPS 記録 完乗率」(旧 公式完乗率、v240 で改名) は GPS 認証のみ
+**完駅率 vs 完乗** (v297 整理):
+- **完駅率** = 乗車駅 / 全駅 (駅 id ベース、v293〜 同名異所も別駅扱い)。ヘッダ右上 / マイページ完駅率カード / 運営会社別 / 地域別カード等で使用
+- **完乗** = 1 系統を完全走破した状態。「(完乗 8)」「完乗達成日」「完乗系統」のように系統数で語る用語として残す
+- **乗車系統数** = 1 駅でも乗ったことのある系統数 (「29 系統」)
 
 **直近の作業**: → [`CHANGELOG.md`](./CHANGELOG.md) の最新セクション (v271 時点で §75-§119 が現行 Phase 3.8 後半) を参照。各 commit ごとの背景・設計判断・失敗教訓まで含む。要約だけほしいときは git log でも可:
 ```
@@ -40,6 +43,22 @@ git log --oneline -20
   - v233 で UI 側では他人データを表示しないよう防御済だが、本格対策は RLS policy で `user_id = auth.uid()` 必須にする
   - 影響テーブル: `norireco_trips` / `norireco_character_grants` / `norireco_memos`
   - 注意: backfill (user_id=NULL → 自分の uid に PATCH) は access_token ベースなので RLS 強化後も動作する
+
+- [ ] **駅 ID 体系 Phase 2: trip データ自体に `*_station_id` 列追加 + Supabase 移行**
+  - Phase 1 完成 (v293〜v300): 駅マスター (merged_stations 9,017 駅) に `s_NNNNN` id 付与、SERVICE_LINES に伝播、集計・描画判定すべて id ベース化
+  - **Phase 2 残り**:
+    - Supabase `norireco_trips` に `from_station_id` / `to_station_id` 列追加
+    - `trip.segments[]` に `from_id` / `to_id` を追加 (jsonb 構造拡張)
+    - 既存 trip データの batch migration スクリプト (lat/lon + lineId から id 解決)
+    - 新規 trip 記録パス (07-record-mode.js) で id を付与
+    - 完了後、集計の `seg.from/to` name 経由 fallback を撤去できる
+  - 動機: 同名異所駅 (例: 高松 香川 / 石川 / 多摩) を trip データレベルで厳密に区別。Phase 1 では SERVICE_LINE 経由で間接解決していたが、trip データそのものが name しか持たないと将来 (グローバル展開・AI 自動列車判定) で破綻する
+
+- [ ] **駅 ID 体系 Phase 3: memo / characters_master / 駅名検索の id 化**
+  - Supabase `norireco_memos` に `station_id` 列追加 + 既存データ移行
+  - `characters_master.json` の `station_ids` を `s_NNNNN` 形式に (現状は駅名配列)
+  - マイページ駅名検索 (v285〜v289) を id 解決層経由に (表示は name)
+  - 13a-stats.js の `visitCount` を name キー → id キーに移行 (Phase 1 で残置した最後の name キー)
 
 ## 🟡 体験向上（コア層の継続率を上げる）
 
@@ -312,7 +331,7 @@ git log --oneline -20
 ## メモ
 
 - **main 直 push 運用**（個人開発、PR・専用ブランチ不要、自動承認設定済み）
-- 編集後は **`sw.js` の `CACHE_VERSION` を上げる**こと（現在 v235）
+- 編集後は **`sw.js` の `CACHE_VERSION` を上げる**こと（最新値は [STATUS.md](./STATUS.md) 参照）
 - HTML 編集後は `</script></body></html>` が末尾に残っているか必ず確認
 - **JS 編集後は必ずシンタックスチェック** — `npm run check` で 18/18 OK を確認 (v193〜)
 - 新規 trip の `lineId` は `service_lines_master.json` の id を使う（旧 N02 id も `LEGACY_LINE_ID_ALIAS` で透過解決）
