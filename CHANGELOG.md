@@ -27,6 +27,32 @@
 
 ---
 
+## 153. v305 — HIT_PX を 40px に拡大 + 切り分け用 console.log (2026-05-24)
+
+### 背景
+
+v304 (map.click delegate, HIT_PX=30) でも小さい駅がタップできないとの報告。
+
+考えられる原因の切り分け候補:
+1. map.click が発火していない (polyline click が stopPropagation で握り潰し)
+2. map.click は発火しているが HIT_PX 30 では届かない
+3. 発火 + 検索成功しているが openStationActionSheet が動かない
+
+### 修正 + 観測
+
+- HIT_PX を 30 → **40px** に拡大 (混雑エリアでも誤検出は許容範囲のはず)
+- 一時的に `console.log('[乗レコ map.click]', { hit, name, distPx })` を追加。DevTools Console で発火確認することで上記 3 つのどれかを切り分け可能に
+- 安定したら次回コミットで撤去予定
+
+### ユスケに確認してほしいこと
+
+DevTools の Console を開いて小さい駅をタップしたとき:
+- **ログが出ない** → polyline 等が click を握り潰している (case 1) → 別対策
+- **ログが出る (hit: false)** → HIT_PX 40 でも当たらない (case 2) → さらに広げる or polyline 干渉対策
+- **ログが出る (hit: true)** → openStationActionSheet 側の問題 (case 3) → 17 側のデバッグ
+
+---
+
 ## 152. v304 — v303 撤回 → map.click delegate で最寄駅検索 (重い問題を解消) (2026-05-24)
 
 ### 背景

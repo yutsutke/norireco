@@ -204,11 +204,16 @@ export function initMap(){
       return;
     }
 
-    // v304: 通常モード — ピクセル距離 30px 以内の merged_station を駅クリック扱い
+    // v304/v305: 通常モード — ピクセル距離 40px 以内の merged_station を駅クリック扱い
+    //   v304 は HIT_PX=30 だったが小さい駅でタップが当たらないとの報告で v305 で 40 に拡大。
+    //   念のため console.log で発火確認も入れる (デバッグ用、安定したら撤去予定)。
     const MS = NORIRECO.data?.MERGED_STATIONS;
-    if (!Array.isArray(MS) || MS.length === 0) return;
+    if (!Array.isArray(MS) || MS.length === 0) {
+      console.log('[乗レコ map.click] MERGED_STATIONS 未初期化', MS);
+      return;
+    }
     const cp = e.containerPoint;
-    const HIT_PX = 30;
+    const HIT_PX = 40;
     let best = null, bestPx = HIT_PX;
     for (const ms of MS) {
       const pt = M.instance.latLngToContainerPoint([ms.lat, ms.lon]);
@@ -216,6 +221,7 @@ export function initMap(){
       const d = Math.sqrt(dx*dx + dy*dy);
       if (d < bestPx) { bestPx = d; best = ms; }
     }
+    console.log('[乗レコ map.click]', { hit: !!best, name: best?.name, distPx: best ? bestPx.toFixed(1) : null });
     if (best && window.NORIRECO?.stationActions?.open) {
       NORIRECO.stationActions.open(best);
     }
