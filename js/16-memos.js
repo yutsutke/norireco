@@ -448,7 +448,10 @@ function buildMemoFilterBar() {
     </div>
     <div class="mp-filter-row">
       <label class="mp-filter-lbl">🚉 駅名</label>
-      <input type="search" class="mp-filter-input" id="mp-memo-fil-station" placeholder="例: 八王子" value="${escapeHtml(M.filter.station || '')}" oninput="updateMemoFilter('station',this.value)">
+      <input type="search" class="mp-filter-input" id="mp-memo-fil-station" placeholder="例: 八王子" value="${escapeHtml(M.filter.station || '')}"
+        oninput="updateMemoFilter('station',this.value)"
+        oncompositionstart="window._mpMemoStationComposing=true"
+        oncompositionend="window._mpMemoStationComposing=false;updateMemoFilter('station',this.value)">
     </div>
   `;
   return bar;
@@ -468,6 +471,8 @@ function applyMemoFilters(memos) {
 
 function updateMemoFilter(key, value) {
   M.filter[key] = value;
+  // v285.1: IME 変換中は再描画 skip (input が作り直されて変換セッションが壊れるため)
+  if (key === 'station' && window._mpMemoStationComposing) return;
   // v285: station 入力中は再描画でフォーカスが外れないよう caret を復元
   const el = (key === 'station') ? document.getElementById('mp-memo-fil-station') : null;
   const sel = (el && document.activeElement === el)

@@ -121,7 +121,10 @@ function buildTripFilterBar() {
     </div>
     <div class="mp-filter-row">
       <label class="mp-filter-lbl">🚉 駅名</label>
-      <input type="search" class="mp-filter-input" id="mp-fil-station" placeholder="例: 八王子" value="${escapeAttr(NORIRECO.mypage.state.mpTripFilter.station || '')}" oninput="updateMpFilter('station',this.value)">
+      <input type="search" class="mp-filter-input" id="mp-fil-station" placeholder="例: 八王子" value="${escapeAttr(NORIRECO.mypage.state.mpTripFilter.station || '')}"
+        oninput="updateMpFilter('station',this.value)"
+        oncompositionstart="window._mpStationComposing=true"
+        oncompositionend="window._mpStationComposing=false;updateMpFilter('station',this.value)">
     </div>
     <div class="mp-filter-row">
       <label class="mp-filter-lbl">⇅ 並び替え</label>
@@ -142,6 +145,10 @@ NORIRECO.mypage.buildTripFilterBar = buildTripFilterBar;
 
 function updateMpFilter(key, value) {
   NORIRECO.mypage.state.mpTripFilter[key] = value;
+  // v285.1: IME 変換中 (compositionstart 〜 end) は再描画を skip。
+  //   再描画すると input 要素ごと作り直されて変換セッションが壊れる。
+  //   compositionend で確定値が来たときだけ render が走る。
+  if (key === 'station' && window._mpStationComposing) return;
   // v285: station 入力中は再描画でフォーカスが外れないよう caret を復元
   const sel = (key === 'station') ? _rememberCaret('mp-fil-station') : null;
   renderMpTripsSection();

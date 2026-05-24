@@ -27,6 +27,51 @@
 
 ---
 
+## 134. v286 — v285 駅名検索の IME 変換中フォーカス飛び問題を修正 (2026-05-24)
+
+### 背景
+
+ユスケから「駅名が打ち込めない」とのスクショ報告 (「hあいおうｊい」のような IME 合成途中の文字列のまま固まる)。
+
+### 原因
+
+`<input oninput="updateMpFilter('station', this.value)">` は **IME 変換中も発火する**。
+日本語入力で「は」を入力 → composition 中の合成文字列で oninput が走る →
+`renderMpTripsSection` で `sec.innerHTML = ''` → input 要素が DOM から消える →
+IME セッションが破壊され、以降の変換が成立しない。
+
+v285 で caret 復元は入れたが、IME 合成中の input は composition イベントの中で
+特別扱いされていて、要素ごと差し替わると Chrome / Edge 等の IME がフリーズする。
+
+### 修正
+
+`compositionstart` / `compositionend` で flag を立て、`updateMpFilter` /
+`updateMemoFilter` 内で「station キーかつ合成中」なら再描画を skip:
+
+```html
+<input ...
+  oninput="updateMpFilter('station',this.value)"
+  oncompositionstart="window._mpStationComposing=true"
+  oncompositionend="window._mpStationComposing=false;updateMpFilter('station',this.value)">
+```
+
+```js
+if (key === 'station' && window._mpStationComposing) return;
+```
+
+これで:
+- 合成中: input.value は IME の合成文字列で更新されるが、render は走らない → input が消えない → IME が生きる
+- 確定時: compositionend が flag を降ろし、確定後の値で render が走る → フィルタ反映
+
+メモタブも同じパターンで対応 (`_mpMemoStationComposing`)。
+
+### 学び
+
+`oninput` + 全 sec 再描画は IME と相性が悪い。次にテキスト入力でリアルタイム
+フィルタを書くときは最初から composition ガードを入れる。
+
+---
+
 ## 133. v285 — マイページの旅程・メモに駅名検索を追加 (2026-05-24)
 
 ### 背景
