@@ -297,32 +297,68 @@
       }
     });
     // Phase 2: 営業系統別 ridden 状態を RIDDEN_SEGS から直接構築
-    // v298: 旧実装 (candidateN02Ids 経由で駅名一致して全 SERVICE_LINE にばらまく) を撤廃。
-    //   旧ロジックだと「八王子で中央線に乗ったら、横浜線・八高線の八王子も ridden 扱い」
-    //   になっていた。ユスケ要望: 系統ごとに別々に判定したい (乗った系統だけ ridden)。
+    // v298: ばらまき方式 (旧) を撤廃し、seg.lineId が示す 1 SL のみに add する方針。
+    //   ばらまかないので「八王子で中央線に乗ったら、横浜線・八高線の八王子も ridden」
+    //   問題が解消する。
     //
-    //   新実装: globalStats / 13a-stats.js collect() と同じく seg.lineId を
-    //   SERVICE_LINE.id に直接 match する。旧データ互換のため candidateN02Ids
-    //   fallback も残すが、最初に見つかった 1 SL だけに add (バラまかない)。
+    // v299: ただし v298 単純実装は seg.lineId 直接 match と candidateN02Ids fallback
+    //   しか試さず、旧 trip の N02 id (例 "auto_中央線_東日本旅客鉄道") を持つ大半の
+    //   trip が拾えなくなって全 SL が「乗車なし」扱い (実線が出ず点線のみ) になっていた。
+    //   resolve 経路 (resolveByServiceLine / resolveServiceTrip / resolveSegments) も
+    //   使って物理路線 N02 id から SL を 1 つ推定 → そこに add する形に拡張。
     Object.keys(slRiddenSt).forEach(k => delete slRiddenSt[k]);
     if (NORIRECO.data.SERVICE_LINES && NORIRECO.data.SERVICE_LINES.length > 0) {
       const SL = NORIRECO.data.SERVICE_LINES;
       for (const seg of RIDDEN_SEGS) {
         if (!seg || !seg.lineId) continue;
         // 1. SERVICE_LINE.id 直接 match (新形式 trip)
-        let sl = SL.find(l => l.id === seg.lineId);
-        // 2. LEGACY fallback: 旧 N02 id を残した trip 用、candidateN02Ids に
-        //    含む最初の 1 SL だけ採用 (バラまかない、v239 globalStats と同じ方針)
-        if (!sl) sl = SL.find(l => (l.candidateN02Ids || []).includes(seg.lineId));
-        if (!sl) continue;
-        const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
-        const toIdx = sl.stations.findIndex(s => s.name === seg.to);
-        if (fromIdx < 0 || toIdx < 0) continue;
-        const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
-        if (!slRiddenSt[sl.id]) slRiddenSt[sl.id] = new Set();
-        for (let i = a; i <= b; i++) {
-          const st = sl.stations[i];
-          if (st.id) slRiddenSt[sl.id].add(st.id);
+        let targetSl = SL.find(l => l.id === seg.lineId);
+        // 2. candidateN02Ids 経由 fallback (1 SL のみ)
+        if (!targetSl) targetSl = SL.find(l => (l.candidateN02Ids || []).includes(seg.lineId));
+        // 3. resolve 経路から SL 推定 (旧 N02 id trip の救済、1 SL のみ)
+        let resolvedParts = null;
+        if (!targetSl) {
+          resolvedParts = resolveByServiceLine(seg.lineId, seg.from, seg.to)
+            || resolveServiceTrip(seg.lineId, seg.from, seg.to)
+            || resolveSegments(seg.lineId, seg.from, seg.to);
+          if (resolvedParts) {
+            for (const part of resolvedParts) {
+              const sl = SL.find(l => (l.candidateN02Ids || []).includes(part.line.id));
+              if (sl) { targetSl = sl; break; }
+            }
+          }
+        }
+        if (!targetSl) continue;
+
+        if (!slRiddenSt[targetSl.id]) slRiddenSt[targetSl.id] = new Set();
+
+        // targetSl 内で seg.from/to が見つかれば駅順展開、見つからなければ
+        // resolve 結果の駅名で照合 (旧 N02 形式 trip のための救済)
+        const fromIdx = targetSl.stations.findIndex(s => s.name === seg.from);
+        const toIdx = targetSl.stations.findIndex(s => s.name === seg.to);
+        if (fromIdx >= 0 && toIdx >= 0) {
+          const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
+          for (let i = a; i <= b; i++) {
+            const st = targetSl.stations[i];
+            if (st.id) slRiddenSt[targetSl.id].add(st.id);
+          }
+        } else {
+          // resolve 結果の駅名を targetSl の駅と照合 (1 SL に限定)
+          if (!resolvedParts) {
+            resolvedParts = resolveByServiceLine(seg.lineId, seg.from, seg.to)
+              || resolveServiceTrip(seg.lineId, seg.from, seg.to)
+              || resolveSegments(seg.lineId, seg.from, seg.to);
+          }
+          if (resolvedParts) {
+            for (const part of resolvedParts) {
+              const { line, fi, ti } = part;
+              for (let i = Math.min(fi, ti); i <= Math.max(fi, ti); i++) {
+                const stName = line.stations[i].n;
+                const slSt = targetSl.stations.find(s => s.name === stName);
+                if (slSt && slSt.id) slRiddenSt[targetSl.id].add(slSt.id);
+              }
+            }
+          }
         }
       }
     }

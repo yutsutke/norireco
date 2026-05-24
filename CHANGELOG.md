@@ -27,6 +27,28 @@
 
 ---
 
+## 147. v299 — v298 の副作用修正: resolve 経路を活用しつつ 1 SL のみに add (2026-05-24)
+
+### 背景
+
+v298 で `slRiddenSt` を「seg.lineId 直接 match + candidateN02Ids fallback」だけにしたら、旧 trip データの大半が `seg.lineId = "auto_中央線_東日本旅客鉄道"` のような N02 prefix 形式で、SL.id (例: `中央本線_東日本旅客鉄道`) にも candidateN02Ids にも直接マッチせず、**ほぼ全 SL が「乗車駅 0」扱い → 路線描画が全部点線**になっていた。
+
+### 修正
+
+resolve 経路 (`resolveByServiceLine` / `resolveServiceTrip` / `resolveSegments`) を活用するが、ばらまかず **1 SL のみに add** する三段構えに:
+
+1. `seg.lineId === SL.id` 直接 match
+2. `candidateN02Ids` に含む最初の 1 SL
+3. resolve 結果 (parts) の `line.id` から `candidateN02Ids` 経由で最初の 1 SL を推定
+
+targetSl 内で `seg.from/to` が見つかれば駅順展開、見つからなければ resolve 結果の駅名で targetSl 内を再照合 (旧 N02 形式 trip の救済)。
+
+これで:
+- v298 の意図 (八王子で中央線に乗ったら八高線・横浜線の八王子は未乗車のまま) は維持
+- v298 の副作用 (全 SL 乗車なし → 点線のみ) を解消、resolve 経由の旧データも正しく拾える
+
+---
+
 ## 146. v298 — slRiddenSt 構築をばらまき方式から「seg.lineId 直接 match」に統一 (2026-05-24)
 
 ### 背景
