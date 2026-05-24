@@ -27,6 +27,31 @@
 
 ---
 
+## 154. v306 — v304/v305 確認後のデバッグ console.log 撤去 (クリーンアップ) (2026-05-24)
+
+### 背景
+
+ユスケのスクショで武蔵増戸駅 (五日市線の小さい駅) のアクションシートが開いており、v304/v305 の map.click delegate (HIT_PX=40) が動作確認できた。ユスケから「小さい駅もタップできるようになった」確認も得たので、v305 で入れたデバッグ用 console.log を撤去。
+
+### 変更
+
+- [js/06-map-leaflet.js](js/06-map-leaflet.js): `console.log('[乗レコ map.click]'...)` の 2 箇所と `MERGED_STATIONS 未初期化` 警告を撤去
+- ロジック自体は v304/v305 のまま (`map.on('click')` で 40px 以内最寄駅を `openStationActionSheet` に渡す)
+
+### 駅クリック改修 v290〜v306 サマリ
+
+| バージョン | 内容 | 結果 |
+|---|---|---|
+| v290 | Canvas tolerance: タッチ 10 / PC 6 | ユスケ環境で不発 |
+| v301 | tolerance タッチ 16 / PC 12 | まだ不発 |
+| v302 | radius 最小 5px 底上げ | 一部改善 |
+| v303 | DOM hit area marker を全 circleMarker に追加 | 動くが描画が重い |
+| **v304** | hit area 撤回 + map.click delegate (HIT_PX=30) | 軽い、まだ届かない |
+| **v305** | HIT_PX 30 → 40 + デバッグログ | 動作確認 OK |
+| **v306** | デバッグログ撤去 | クリーンアップ完了 |
+
+---
+
 ## 153. v305 — HIT_PX を 40px に拡大 + 切り分け用 console.log (2026-05-24)
 
 ### 背景
