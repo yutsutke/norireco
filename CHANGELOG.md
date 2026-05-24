@@ -27,6 +27,29 @@
 
 ---
 
+## 132. v284 — 旧 📸 memoMode を完全撤去 (駅・路線シートで代替済) (2026-05-24)
+
+### 背景
+
+v282 (駅クリックで旅程一覧) + v283 (路線クリックで路線メモ) でメモ作成の動線が「対象をタップ → アクションシート → 📸 メモ」に統一されたため、地図右下の `📸` FAB から入る旧 memoMode は不要になった。
+
+旧 memoMode は「📸 FAB ON → 地図上をタップ → 最寄駅 (2km 以内) で memo-modal を開く」もので、駅マーカークリックの 📸 メモとほぼ同等の機能だった。ユスケから「もう路線や駅をクリックするとメモできるから、写真のマークのメモモードは不要かな？」との指摘。
+
+### 撤去範囲 (ユスケ判断: コードごと完全撤去 + 他 FAB を上に詰める)
+
+- [noritetsu-map.html](noritetsu-map.html): `<button id="memo-btn">` と `.memo-fab` CSS を削除。`map-mode-fab` / `record-fab` / `char-fab` / `location-fab` の `bottom` を -55px ずつ (= 1 ボタン分) 詰める。
+- [js/06-map-leaflet.js](js/06-map-leaflet.js): `NORIRECO.map.memoMode` フィールド削除、`map.click` ハンドラから memoMode 分岐削除 (記録モード単独に簡素化)。`openMemo` の import も不要に。
+- [js/07-record-mode.js](js/07-record-mode.js): 記録モード開始時の `if (NORIRECO.map.memoMode) toggleMemoMode();` 排他処理を削除、`toggleMemoMode` の import も削除。
+- [js/16-memos.js](js/16-memos.js): `toggleMemoMode` 関数本体と `window.toggleMemoMode` bridge、`NORIRECO.map.memoMode` 初期化を削除。
+- [js/08-rendering.js](js/08-rendering.js): `attachStationDotClickV2` から `else if (NORIRECO.map.memoMode) { ... }` 分岐を削除。`attachLineClick` から memoMode ガードを削除 (記録モードガードは残置)。`openMemo` の import も削除。
+
+### 学び
+
+- 「機能を 1 つ追加した」より「重複した動線を撤去した」のほうが UX 改善幅が大きい。FAB の数が 5 → 4 になり右下が空く。
+- CLAUDE.md「未使用物は削除」「コードベースの健康度を守る」原則どおり、UI 非表示だけで残すのではなく実コードまで撤去 (ユスケ判断)。
+
+---
+
 ## 131. v283 — 路線クリックでメモ/写真を残せるように「路線アクションシート」追加 (2026-05-24)
 
 ### 背景

@@ -30,7 +30,6 @@ import {
   updateLocationButton,
 } from './04-gps-location.js';
 import { drawLines, updateOverlays } from './08-rendering.js';
-import { toggleMemoMode } from './16-memos.js';
 import { resetTrainSelector } from './02-data-loaders.js';
 
 // v197 ES Modules パイロット (案 β) — 状態を window.NORIRECO.record に集約。
@@ -56,8 +55,6 @@ export function toggleRecordMode() {
   if (R.mode) {
     // 記録モード突入時刻を必ずセット (GPS 経由でなくても depart_time 計算に使う)
     NORIRECO.gps.recordStartedAt = new Date().toISOString();
-    // メモモードと排他
-    if (NORIRECO.map.memoMode) toggleMemoMode();
     refreshRecPanel();
     if(NORIRECO.map.instance) NORIRECO.map.instance.getContainer().style.cursor='crosshair';
     if (NORIRECO.gps.recordStartedViaGPS) {

@@ -12,11 +12,11 @@
 //   - editingId: null = 新規作成、string = 編集中の memo.id
 //   - filter: { line_id, memo_type, mood }
 //
-// memoMode (地図クリックで openMemo するかどうか) は backward compat のため
-// 既存の NORIRECO.map.memoMode を引き続き使う (07-record-mode.js が bare 参照)。
+// v284: 旧 memoMode (地図上クリックで最寄駅メモ作成) は撤去。駅・路線アクション
+// シート (17-station-actions.js) の「📸 メモ」で代替されたため。
 //
-// 旧 08-rendering.js 内にあった openMemo / toggleMemoMode / closeMemo /
-// selChip / togTag は本ファイルへ移動 (genMemo は廃止)。
+// 旧 08-rendering.js 内にあった openMemo / closeMemo / selChip / togTag は
+// 本ファイルへ移動 (genMemo は廃止、toggleMemoMode は v284 で撤去)。
 // ══════════════════════════════════════════════════════════════
 
 import { authBearerToken, currentUserId } from './12-auth.js';
@@ -40,10 +40,6 @@ NORIRECO.memos = NORIRECO.memos || {
   },
 };
 const M = NORIRECO.memos.state;
-
-// memoMode は NORIRECO.map.memoMode に置く (既存の 07/08 bare 参照と互換)
-NORIRECO.map = NORIRECO.map || {};
-if (typeof NORIRECO.map.memoMode === 'undefined') NORIRECO.map.memoMode = false;
 
 const MOOD_EMOJI = { '最高': '🤩', '良い': '😊', '普通': '😐', '微妙': '😕', '最悪': '😤' };
 const TYPE_EMOJI = { '駅': '🚉', '車内': '🪟', '路線': '🚃', 'その他': '📍' };
@@ -170,15 +166,6 @@ async function deleteMemoOnServer(id) {
 }
 
 // ── memo-modal ─────────────────────────────────────────────────
-
-export function toggleMemoMode() {
-  NORIRECO.map.memoMode = !NORIRECO.map.memoMode;
-  const btn = document.getElementById('memo-btn');
-  if (btn) btn.classList.toggle('on', NORIRECO.map.memoMode);
-  if (NORIRECO.map.instance) {
-    NORIRECO.map.instance.getContainer().style.cursor = NORIRECO.map.memoMode ? 'crosshair' : '';
-  }
-}
 
 // 地図クリック起点 — clickInfo を立ててから呼ばれる「新規作成」モード
 // opts (v283): { defaultMemoType, title, sub } を渡せる。路線アクションシートからの
@@ -631,7 +618,6 @@ function attachPhotoDragSortToMemoCards(rootEl) {
   });
 }
 
-window.toggleMemoMode = toggleMemoMode;
 window.closeMemo = closeMemo;
 window.selChip = selChip;
 window.togTag = togTag;

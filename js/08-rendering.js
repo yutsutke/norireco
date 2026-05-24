@@ -5,9 +5,8 @@
 // tryGrantByGPS は HTML onclick で呼ばれるため window 経由のまま (import 不要)。
 // v225: 04-gps-location の 4 関数を import 化。
 // v225: 07-record-mode.onRecordStationClick を import 化。
-// v250: 駅メモ機能を 16-memos.js に分離。openMemo / toggleMemoMode / closeMemo /
-//       selChip / togTag は 16 へ移動 (genMemo は廃止)。本ファイルは 16 から
-//       openMemo のみ import する (station マーカー click ハンドラ内で使用)。
+// v250: 駅メモ機能を 16-memos.js に分離。
+// v284: 旧 memoMode 撤去に伴い openMemo の import も削除 (駅クリック分岐から消えた)。
 // ══════════════════════════════════════
 import { isCharacterOwned, isCharacterAvailable } from './03-characters.js';
 import {
@@ -18,7 +17,6 @@ import {
 } from './04-gps-location.js';
 import { onRecordStationClick } from './07-record-mode.js';
 import { gStats } from './05-supabase-data.js';
-import { openMemo } from './16-memos.js';
 
 const CANVAS = L.canvas({ padding: 0.5 });
 
@@ -52,9 +50,9 @@ const LINE_PRIORITY = {
   'kintetsu-nagoya':2,'jr-osaka-kobe':2,'jr-kyoto':2,
 };
 // v218 ES Modules パイロット (案 β) stage 2: `<script type="module">` 化。
-// 末尾で 12 個の window bridge を追加 (drawLines / updateLOD / updateOverlays /
-// toggleMemoMode / openMemo / closeMemo / selChip / togTag / genMemo / openCharModal /
+// 末尾で window bridge を追加 (drawLines / updateLOD / updateOverlays / openCharModal /
 // closeCharModal / drawServiceLineBase)。
+// v250 で memo / v284 で memoMode 系を 16 に移管・撤去済み。
 
 function getLinePriority(line){
   return LINE_PRIORITY[line.id] || (line.group==='新幹線'?1:
@@ -473,9 +471,8 @@ function attachLineClick(layer, sl) {
   if (!layer || !sl) return;
   layer._norireco_sl_id = sl.id;
   layer.on('click', (e) => {
-    // 記録モード・メモモード中は線アクションシートを開かない
+    // 記録モード中は線アクションシートを開かない (駅選択を妨げないため)
     if (window.NORIRECO && NORIRECO.record && NORIRECO.record.mode) return;
-    if (window.NORIRECO && NORIRECO.map && NORIRECO.map.memoMode) return;
     L.DomEvent.stopPropagation(e);
     // v283: 路線アクションシート (フォールバック: 旧色変更直呼び)
     if (window.NORIRECO && NORIRECO.stationActions && NORIRECO.stationActions.openLine) {
@@ -813,22 +810,12 @@ function attachStationDotClickV2(dot, ms) {
     if (NORIRECO.record.mode) {
       onRecordStationClick({name: ms.name, lat: ms.lat, lon: ms.lon});
       L.DomEvent.stopPropagation(e);
-    } else if (NORIRECO.map.memoMode) {
-      // memo モード用に代表系統を pseudoLine として渡す
-      const firstSlId = ms.lines && ms.lines[0];
-      const sl = firstSlId ? NORIRECO.data.SERVICE_LINES.find(x => x.id === firstSlId) : null;
-      const pseudoLine = sl
-        ? {id: sl.id, name: sl.name, color: sl.color, region: sl.operator || ''}
-        : {id: 'unknown', name: ms.name, color: '#888', region: ''};
-      const pseudoSt = {n: ms.name, lat: ms.lat, lon: ms.lon};
-      NORIRECO.map.clickInfo = {line: pseudoLine, station: pseudoSt, lat: (+ms.lat).toFixed(5), lon: (+ms.lon).toFixed(5)};
-      openMemo();
-      L.DomEvent.stopPropagation(e);
     } else {
       // v253: 通常モードは「駅アクションシート」に一本化
       //       キャラの判定 (charModeOn / 獲得 / locked / シーズン外) は 17 側で
       //       stationCharMap を直接見て自前で行うので、ここでは ms だけ渡す
       //       (v253.1 修正: charModeOn=false でも駅にキャラがあれば露出させるため)
+      // v284: 旧 memoMode 分岐撤去 (シート内「📸 メモ」で代替)
       if (window.NORIRECO?.stationActions?.open) {
         window.NORIRECO.stationActions.open(ms);
         L.DomEvent.stopPropagation(e);
@@ -1018,10 +1005,9 @@ export function updateOverlays(){
   }
 }
 
-// v250: メモ機能 (toggleMemoMode / openMemo / closeMemo / selChip / togTag / genMemo)
-//       は 16-memos.js に分離。genMemo (Claude 貼り付け用テキスト生成) は廃止し、
-//       本格 Supabase CRUD + マイページ「📸 メモ」タブに置き換え。
-//       本ファイルでは openMemo を import して station マーカー click から呼び出すのみ。
+// v250: メモ機能 (openMemo / closeMemo / selChip / togTag) は 16-memos.js に分離。
+//       genMemo (Claude 貼り付け用テキスト生成) は廃止し、本格 Supabase CRUD +
+//       マイページ「📸 メモ」タブに置き換え。v284 で toggleMemoMode も撤去。
 
 // v218 stage 2: classic / module 双方から bare 呼出される関数の window 公開
 // v225 stage 3: drawLines / updateLOD / updateOverlays / openCharModal を `export` 経由に移行。

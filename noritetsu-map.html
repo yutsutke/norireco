@@ -117,18 +117,9 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 .leg-row:last-child{margin-bottom:0;}
 .leg-swatch{height:3px;width:20px;border-radius:2px;}
 
-.memo-fab{
-  position:absolute;bottom:60px;right:8px;z-index:1000;
-  width:46px;height:46px;border-radius:50%;
-  background:rgba(30,52,72,.95);border:1.5px solid var(--track);
-  color:var(--white);font-size:20px;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-  box-shadow:0 4px 16px rgba(0,0,0,.5);transition:all .2s;
-}
-.memo-fab.on{background:rgba(242,169,0,.2);border-color:var(--gold);color:var(--gold);}
-.memo-fab:hover{transform:scale(1.08);}
+/* v284: .memo-fab を撤去 (路線・駅クリック → アクションシート → 📸 メモで代替) */
 .map-mode-fab{
-  position:absolute;bottom:115px;right:8px;z-index:1000;
+  position:absolute;bottom:60px;right:8px;z-index:1000;
   width:46px;height:46px;border-radius:50%;
   background:rgba(30,52,72,.95);border:1.5px solid var(--track);
   color:var(--white);font-size:18px;cursor:pointer;
@@ -137,7 +128,7 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 }
 .map-mode-fab:hover{transform:scale(1.08);}
 .record-fab{
-  position:absolute;bottom:170px;right:8px;z-index:1000;
+  position:absolute;bottom:115px;right:8px;z-index:1000;
   width:46px;height:46px;border-radius:50%;
   background:rgba(30,52,72,.95);border:1.5px solid var(--track);
   color:var(--white);font-size:20px;cursor:pointer;
@@ -147,7 +138,7 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 .record-fab.on{background:rgba(242,169,0,.22);border-color:var(--gold);color:var(--gold);}
 .record-fab:hover{transform:scale(1.08);}
 .char-fab{
-  position:absolute;bottom:225px;right:8px;z-index:1000;
+  position:absolute;bottom:170px;right:8px;z-index:1000;
   width:46px;height:46px;border-radius:50%;
   background:rgba(30,52,72,.95);border:1.5px solid var(--track);
   color:var(--white);font-size:20px;cursor:pointer;
@@ -157,7 +148,7 @@ body{background:var(--navy);color:var(--white);font-family:'Zen Kaku Gothic New'
 .char-fab.on{background:rgba(242,169,0,.22);border-color:var(--gold);color:var(--gold);}
 .char-fab:hover{transform:scale(1.08);}
 .location-fab{
-  position:absolute;bottom:280px;right:8px;z-index:1000;
+  position:absolute;bottom:225px;right:8px;z-index:1000;
   width:46px;height:46px;border-radius:50%;
   background:rgba(30,52,72,.95);border:1.5px solid var(--track);
   color:var(--white);font-size:20px;cursor:pointer;
@@ -1240,7 +1231,6 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
       </div>
     </div>
     <button class="map-mode-fab" id="map-mode-btn" onclick="cycleMapMode()" title="背景切替">🗺️</button>
-    <button class="memo-fab fab-login-only" id="memo-btn" onclick="toggleMemoMode()" title="メモ投稿 (ログイン必須)">📸</button>
     <button class="record-fab fab-login-only" id="rec-btn" onclick="toggleRecordMode()" title="手動記録 — 駅をタップして経路を記録 (ログイン必須)">📝</button>
     <button class="char-fab on" id="char-fab" onclick="toggleCharacterMode()" title="駅キャラ表示の切替 (ON/OFF)">🎭</button>
     <button class="location-fab fab-login-only" id="location-fab" onclick="cycleLocationMode()" title="現在地表示 (ログイン必須)">📍</button>

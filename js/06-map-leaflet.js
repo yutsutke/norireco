@@ -15,7 +15,6 @@ import {
   fitToRiddenLines,
 } from './07-record-mode.js';
 import { drawLines, updateLOD, updateOverlays } from './08-rendering.js';
-import { openMemo } from './16-memos.js';
 import {
   loadLines,
   loadLinesForZoom,
@@ -35,7 +34,6 @@ import {
 window.NORIRECO = window.NORIRECO || {};
 NORIRECO.map = NORIRECO.map || {
   instance: null,     // L.map(...) インスタンス (init 後に set、以後単一代入)
-  memoMode: false,    // 📸 メモモード ON/OFF (07/08 から read/write)
   clickInfo: {},      // 直近のマップクリック context {line, station, lat, lon}
 };
 const M = NORIRECO.map;
@@ -187,21 +185,16 @@ export function initMap(){
   M.instance.on('moveend', restoreLabelsAfterMove);
   // zoomend は上で既に updateLOD を呼ぶので追加処理不要
 
-  // メモモード or 記録モード のクリックハンドラ
+  // v284: 記録モードのみのクリックハンドラ (旧 memoMode 撤去 — 駅・路線アクションシートで代替)
   M.instance.on('click',e=>{
-    if(!M.memoMode && !NORIRECO.record.mode) return;
-    let bLine=null,bSt=null,bD=Infinity;
+    if(!NORIRECO.record.mode) return;
+    let bSt=null,bD=Infinity;
     NORIRECO.data.LINES.forEach(line=>line.stations.forEach(s=>{
       const d=M.instance.distance([s.lat,s.lon],e.latlng);
-      if(d<bD){bD=d;bLine=line;bSt=s;}
+      if(d<bD){bD=d;bSt=s;}
     }));
     if (!bSt || bD > 2000) return;
-    if (M.memoMode) {
-      M.clickInfo={line:bLine,station:bSt,lat:e.latlng.lat.toFixed(5),lon:e.latlng.lng.toFixed(5)};
-      openMemo();
-    } else if (NORIRECO.record.mode) {
-      onRecordStationClick({name: bSt.n, lat: bSt.lat, lon: bSt.lon});
-    }
+    onRecordStationClick({name: bSt.n, lat: bSt.lat, lon: bSt.lon});
   });
 }
 
