@@ -27,7 +27,8 @@ import { isCharacterOwned } from './03-characters.js';
 // v283: 路線アクションシート「+ 新しい路線メモを残す」から呼ぶ
 import { openMemo } from './16-memos.js';
 // v287.1: tripVisitsStation は 13-mypage-common に共通化済 (マイページの駅名検索も同じロジックを使う)
-import { tripVisitsStation } from './13-mypage-common.js';
+// v309: loadMypageTripsIfNeeded — タブ未開封時の lazy fetch
+import { tripVisitsStation, loadMypageTripsIfNeeded } from './13-mypage-common.js';
 
 window.NORIRECO = window.NORIRECO || {};
 NORIRECO.stationActions = NORIRECO.stationActions || {
@@ -134,12 +135,13 @@ function renderActionList({ ms, lines, memoCount }) {
 
   // 🚃 この駅を含む旅程 (v282)
   // _mypageCache が null (マイページ未開封) の場合は件数バッジ無しで案内文に切り替え
+  // v309: タップ時に lazy fetch するため、ラベルを「タップで読み込み」へ
   const tripsHere = getTripsAtStation(ms.name);
   if (tripsHere === null) {
     buttons.push(`
       <button class="sa-btn" onclick="onSaShowTrips()">
         <span class="sa-btn-ic">🚃</span>
-        <span class="sa-btn-tx">この駅を含む旅程 (マイページ未読込)</span>
+        <span class="sa-btn-tx">この駅を含む旅程 (タップで読み込み)</span>
         <span class="sa-btn-arrow">›</span>
       </button>
     `);
@@ -469,9 +471,15 @@ function onSaBackToMain() {
 }
 
 // v282: 「🚃 この駅を含む旅程」ボタンのハンドラ
-function onSaShowTrips() {
+// v309: マイページタブ未開封でも、ここで lazy fetch (loadMypageTripsIfNeeded) して
+//       即座に旅程一覧を出せるようにした。fetch 中はローディング表示。
+async function onSaShowTrips() {
   const ms = S.currentMs;
   if (!ms) return;
+  if (!Array.isArray(NORIRECO.mypage?.state?._mypageCache)) {
+    renderTripListInSheet('loading', ms.name);
+    try { await loadMypageTripsIfNeeded(); } catch (e) {}
+  }
   const trips = getTripsAtStation(ms.name);
   renderTripListInSheet(trips, ms.name);
 }
@@ -480,10 +488,18 @@ function renderTripListInSheet(trips, stationName) {
   const container = document.getElementById('sa-actions');
   if (!container) return;
 
-  // _mypageCache 未初期化
+  // v309: lazy fetch 中 (onSaShowTrips が読込開始した直後の遷移用)
+  if (trips === 'loading') {
+    container.innerHTML = `
+      <div class="sa-section-label">📡 旅程を読み込み中…</div>
+    `;
+    return;
+  }
+
+  // _mypageCache 未初期化 (lazy fetch 失敗、未ログイン等)
   if (trips === null) {
     container.innerHTML = `
-      <div class="sa-section-label">マイページを一度開くと旅程が読み込まれます</div>
+      <div class="sa-section-label">旅程を読み込めませんでした (ログイン状態を確認してください)</div>
       <button class="sa-btn sa-btn-back" onclick="onSaBackToMain()">← 戻る</button>
     `;
     return;

@@ -27,6 +27,46 @@
 
 ---
 
+## 157. v309 — 駅シート「この駅を含む旅程 (マイページ未読込)」を lazy fetch 化 (2026-05-24)
+
+### 背景
+
+v282 で導入した駅アクションシートの「🚃 この駅を含む旅程」は `NORIRECO.mypage.state._mypageCache` を参照する設計だった。`_mypageCache` は `renderMypage()` が初めて呼ばれる (= マイページタブを初めて開く) まで `null` のままなので、「マイページタブを一度も開いていない状態で駅をクリックすると、ボタンに『(マイページ未読込)』と出てタップしても旅程一覧は出ない」状態になっていた。
+
+ユスケから「塩崎駅で『この駅を含む旅程 (マイページ未読込)』だけ出てしまう、これは Phase 2 の話?」との指摘。Phase 2 (駅 ID 体系) とは無関係で、純粋に UX 設計の話 — タブ未開封ガードを「ボタンタップで初期化する」モデルに切替。
+
+### 対処
+
+- [`js/13-mypage-common.js`](js/13-mypage-common.js) に `loadMypageTripsIfNeeded()` を新規追加。
+  - `MP._mypageCache` がすでに array なら no-op。
+  - 未ログインなら null を返す (キャッシュは触らない)。
+  - そうでなければ `renderMypage` と同じ Supabase fetch + localStorage merge を行い、`MP._mypageCache` に詰めて返す。完乗率カードやサブタブ描画はしない (純粋にデータだけ)。
+- [`js/17-station-actions.js`](js/17-station-actions.js):
+  - `onSaShowTrips()` を async 化、`_mypageCache` が null なら `loadMypageTripsIfNeeded` を await してから一覧描画。
+  - `renderTripListInSheet` に `'loading'` 状態を追加 (📡 読み込み中表示)。
+  - ボタンラベル「(マイページ未読込)」→「(タップで読み込み)」に変更してユーザーアクションを示唆。
+  - 「読込失敗 / 未ログイン」時はその旨を表示する案内に整理。
+
+### 設計判断
+
+- **案 A (採用): タップ時 lazy fetch**
+  - メリット: 起動時の余分なデータ転送なし、見た目で「タップで読み込み」と分かる
+  - デメリット: 最初のタップでワンテンポ遅延 (Supabase 往復 1 回)
+- **案 B: 起動時 background load**
+  - メリット: 操作感が最も滑らか
+  - デメリット: 駅シートを使わないユーザーにも常時 fetch が走る (転送量増)
+- **案 C: 現状維持 + TODO 化**
+  - メリット: 一切手を入れない
+  - デメリット: UI 上「マイページタブを開いて戻ってきてください」と暗黙に求めるのは不親切
+
+ユスケ判断で **A 採用**。
+
+### renderMypage との DRY について
+
+`renderMypage` 内の fetch + localStorage merge ブロックと `loadMypageTripsIfNeeded` は似ているが、`renderMypage` は SERVICE_LINES.build() と並列、完乗率カード描画、サブタブ描画など他の責務と絡んでいるため、現時点では別ロジックとして併存させた。スキーマ拡張 (notes / delay_minutes の Supabase 列化) のときに両方とも一緒に整理する。
+
+---
+
 ## 156. v308 — 小さい駅のクリック問題 残課題: polyline click が delegate を奪う件を修正 (2026-05-24)
 
 ### 背景

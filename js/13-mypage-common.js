@@ -213,6 +213,53 @@ export async function renderMypage() {
 // v225 stage 3: renderMypage は `export` 経由に移行。NORIRECO 名前空間登録は互換のため残置。
 NORIRECO.mypage.renderMypage = renderMypage;
 
+// v309: マイページタブ未開封でも旅程キャッシュ (_mypageCache) を埋めたい呼び出し向けの
+//   軽量 lazy fetch。駅アクションシート「この駅を含む旅程」(v282) や同種の機能から呼ぶ。
+//   renderMypage と同じ Supabase fetch + localStorage merge を行うが、
+//   完乗率カードやサブタブ描画はしない (純粋にデータだけ詰める)。
+//
+//   - 既に array なら再 fetch しない (no-op)。
+//   - 未ログイン (uid 無し) なら null を返す (キャッシュは触らない)。
+//   - 失敗時は console.warn して null を返す (キャッシュは触らない)。
+export async function loadMypageTripsIfNeeded() {
+  if (Array.isArray(MP._mypageCache)) return MP._mypageCache;
+  const uid = currentUserId();
+  if (!uid) return null;
+
+  let trips = [];
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_trips?user_id=eq.${uid}&select=*&order=recorded_at.desc`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${authBearerToken()}` }
+    });
+    if (res.ok) trips = await res.json();
+    else { console.warn('[マイページ] lazy fetch HTTP', res.status); return null; }
+  } catch (e) {
+    console.warn('[マイページ] lazy fetch エラー:', e.message);
+    return null;
+  }
+
+  // renderMypage と同じ localStorage merge (notes / delay_minutes 補完)。
+  // スキーマ拡張後に renderMypage 側も含めて撤去。
+  try {
+    const localTrips = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
+    if (Array.isArray(localTrips) && localTrips.length > 0) {
+      const localById = new Map(localTrips.map(t => [t.id, t]));
+      trips = trips.map(t => {
+        const lt = localById.get(t.id);
+        if (!lt) return t;
+        const merged = { ...t };
+        if (merged.notes == null && lt.notes != null) merged.notes = lt.notes;
+        if (merged.delay_minutes == null && lt.delay_minutes != null) merged.delay_minutes = lt.delay_minutes;
+        return merged;
+      });
+    }
+  } catch (e) {}
+
+  MP._mypageCache = trips;
+  return trips;
+}
+NORIRECO.mypage.loadTripsIfNeeded = loadMypageTripsIfNeeded;
+
 // 期間フィルタが有効ならバナー表示 (今年/去年/〜月指定/カスタム)
 function renderMpTimeMachineBanner() {
   const c = document.getElementById('mypage-content');
