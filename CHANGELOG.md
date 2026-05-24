@@ -27,6 +27,37 @@
 
 ---
 
+## 131. v283 — 路線クリックでメモ/写真を残せるように「路線アクションシート」追加 (2026-05-24)
+
+### 背景
+
+ユスケから「路線をクリックしても、路線に対してメモや写真を記録できるようにしたい」との要望。v245 以降、路線クリックは「🎨 系統色変更モーダル」直呼びのままだった。
+
+メモのデータモデルは既に `memo_type='路線'` + `line_id` + `station=null` を想定済み (16-memos.js の TYPE_EMOJI に「🚃 路線」あり) だったので、UI 側だけ追加。
+
+### 設計
+
+駅アクションシートと同じ枠 (`station-action-modal`) を共用して「路線アクションシート」を提供:
+
+- 📸 路線メモ (N件) — シート内一覧 + 「+ 新しい路線メモを残す」
+- 🎨 系統色を変更 — 既存 colorOverrides editor を呼ぶ (旧挙動)
+
+判定モードは `S.kind = 'station' | 'line'` で分岐。`S.currentSl` を路線時にセット。
+
+### 主な変更
+
+- [js/17-station-actions.js](js/17-station-actions.js): `openLineActionSheet(sl)` + 関連ハンドラ (`onSlOpenMemos` / `onSlChangeColor` / `onSlAddMemo` / `onSlBackToMain`) を追加。`memoCardHtmlMini` でシート内に詰めるコンパクトカードを自前で組み立て (マイページの `memoCardHtml` は D&D 写真付きで重いため流用せず)。
+- [js/16-memos.js](js/16-memos.js): `openMemo(opts)` を拡張、`{ defaultMemoType, title, sub }` を渡せるように。後方互換 (既存呼出は全部引数なし)。
+- [js/08-rendering.js](js/08-rendering.js): `attachLineClick` の色エディタ直呼びを `NORIRECO.stationActions.openLine(sl)` に切替。フォールバックで旧挙動も残置。
+- [noritetsu-map.html](noritetsu-map.html): `.sa-memo-*` 系 CSS 追加 (60vh スクロール、サムネ 60px)。
+
+### 残課題
+
+- v282 と同じく、シート内でメモを保存/削除した直後はシート内表示が再描画されない (`rerenderMemosIfVisible` は `mp-sub-memos` か `station-memo-modal` しか見ない)。シートを閉じて再度開けば反映。
+- 系統色エディタを開くために一旦シートを閉じる動線になっており、駅シートの「🎨 色変更」と挙動が揃っている分かりやすい一方、ワンタップ多い。将来 inline 化検討。
+
+---
+
 ## 130. v282 — 地図駅クリックで「この駅を含む旅程」一覧を表示 (2026-05-24)
 
 ### 背景

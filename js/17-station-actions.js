@@ -24,11 +24,15 @@
 import { toggleRecordMode, onRecordStationClick } from './07-record-mode.js';
 import { openCharModal } from './08-rendering.js';
 import { isCharacterOwned } from './03-characters.js';
+// v283: 路線アクションシート「+ 新しい路線メモを残す」から呼ぶ
+import { openMemo } from './16-memos.js';
 
 window.NORIRECO = window.NORIRECO || {};
 NORIRECO.stationActions = NORIRECO.stationActions || {
   state: {
-    currentMs: null,     // 開いてる駅 (merged_stations の ms オブジェクト)
+    currentMs: null,     // 開いてる駅 (merged_stations の ms オブジェクト) — kind='station' のときセット
+    currentSl: null,     // v283: 開いてる路線 (SERVICE_LINES の sl) — kind='line' のときセット
+    kind: null,          // v283: 'station' | 'line' | null (どちらモードで開いているか)
     currentChar: null,   // この駅のキャラ (取得済 or 未獲得 obtainable[0]) | null
     currentCharLocked: false,
     colorPickLines: null, // 色変更系統選択中の lines[]
@@ -104,7 +108,9 @@ function getTripsAtStation(stationName) {
 export function openStationActionSheet(ms, options) {
   // options = { character, characterLocked }  // 後方互換のため受け付けるが、
   // options が無ければ自前で判定する (charModeOn=false でもキャラを露出させる v253.1 修正)
+  S.kind = 'station';
   S.currentMs = ms;
+  S.currentSl = null;
   if (options && options.character !== undefined) {
     S.currentChar = options.character;
     S.currentCharLocked = !!options.characterLocked;
@@ -232,8 +238,185 @@ function renderColorLineSelector(lines) {
 function closeStationActionSheet() {
   document.getElementById('station-action-modal').classList.remove('open');
   S.currentMs = null;
+  S.currentSl = null;
+  S.kind = null;
   S.currentChar = null;
   S.colorPickLines = null;
+}
+
+// ── 路線アクションシート (v283) ────────────────────────────────────
+// 地図上で路線 (polyline) をクリックすると、駅アクションシートと同じ枠で
+// 開く。中身は「📸 メモ」「🎨 系統色を変更」。
+export function openLineActionSheet(sl) {
+  if (!sl) return;
+  S.kind = 'line';
+  S.currentSl = sl;
+  S.currentMs = null;
+  S.currentChar = null;
+  S.currentCharLocked = false;
+  S.colorPickLines = null;
+
+  document.getElementById('sa-title').textContent = `🚃 ${sl.name || sl.id}`;
+  document.getElementById('sa-sub').textContent = sl.group || '';
+
+  renderLineActionList(sl);
+  document.getElementById('station-action-modal').classList.add('open');
+}
+
+function getMemosForLine(lineId) {
+  const memos = window.NORIRECO?.memos?.state?.cache;
+  if (!Array.isArray(memos)) return null;     // memo cache 未初期化
+  return memos.filter(m => m.line_id === lineId);
+}
+
+function renderLineActionList(sl) {
+  const container = document.getElementById('sa-actions');
+  const buttons = [];
+
+  // 📸 メモ — 一覧 + 新規 (路線メモ: memo_type='路線' or station=null && line_id=sl.id)
+  const lineMemos = getMemosForLine(sl.id);
+  const memoBadge = lineMemos && lineMemos.length > 0
+    ? `<span class="sa-btn-badge">${lineMemos.length}</span>`
+    : '';
+  const memoLabel = lineMemos === null
+    ? 'メモ (未読込)'
+    : (lineMemos.length > 0 ? '路線メモ 一覧' : '路線メモを残す');
+  buttons.push(`
+    <button class="sa-btn" onclick="onSlOpenMemos()">
+      <span class="sa-btn-ic">📸</span>
+      <span class="sa-btn-tx">${escapeHtml(memoLabel)}</span>
+      ${memoBadge}
+      <span class="sa-btn-arrow">›</span>
+    </button>
+  `);
+
+  // 🎨 系統色を変更
+  buttons.push(`
+    <button class="sa-btn" onclick="onSlChangeColor()">
+      <span class="sa-btn-ic">🎨</span>
+      <span class="sa-btn-tx">系統色を変更</span>
+      <span class="sa-btn-arrow">›</span>
+    </button>
+  `);
+
+  container.innerHTML = buttons.join('');
+}
+
+function onSlChangeColor() {
+  const sl = S.currentSl;
+  if (!sl) return;
+  closeStationActionSheet();
+  window.NORIRECO?.colorOverrides?.openEditor?.(sl);
+}
+
+// 路線メモ一覧をシート内に展開 (駅の onSaShowTrips と同じパターン)
+function onSlOpenMemos() {
+  const sl = S.currentSl;
+  if (!sl) return;
+  renderLineMemoListInSheet(sl);
+}
+
+function renderLineMemoListInSheet(sl) {
+  const container = document.getElementById('sa-actions');
+  if (!container) return;
+
+  const memos = getMemosForLine(sl.id);
+  if (memos === null) {
+    container.innerHTML = `
+      <div class="sa-section-label">マイページ「📸 メモ」を一度開くとメモが読み込まれます</div>
+      <button class="sa-btn sa-btn-back" onclick="onSlBackToMain()">← 戻る</button>
+    `;
+    return;
+  }
+
+  // 「+ 新しい路線メモを残す」ボタンは常に表示
+  const addBtn = `
+    <button class="sa-btn" onclick="onSlAddMemo()" style="border-style:dashed;justify-content:center;">
+      <span class="sa-btn-ic">＋</span>
+      <span class="sa-btn-tx">新しい路線メモを残す</span>
+    </button>
+  `;
+
+  if (memos.length === 0) {
+    container.innerHTML = `
+      <div class="sa-section-label">この路線のメモはまだありません</div>
+      ${addBtn}
+      <button class="sa-btn sa-btn-back" onclick="onSlBackToMain()">← 戻る</button>
+    `;
+    return;
+  }
+
+  // memoCardHtml は 16-memos.js 内で private なので、軽量版を自前で組み立てる
+  const sorted = [...memos].sort((a, b) =>
+    (b.created_at || '').localeCompare(a.created_at || '')
+  );
+  const cards = sorted.map(memoCardHtmlMini).join('');
+
+  container.innerHTML = `
+    <div class="sa-section-label">📸 ${escapeHtml(sl.name || sl.id)} のメモ (${memos.length}件)</div>
+    ${addBtn}
+    <div class="sa-memo-list">${cards}</div>
+    <button class="sa-btn sa-btn-back" onclick="onSlBackToMain()">← 戻る</button>
+  `;
+}
+
+// シート内に詰めるための軽量メモカード (マイページの memoCardHtml は draggable 写真等で重いので別途)
+function memoCardHtmlMini(memo) {
+  const TYPE_ICON = { '駅': '🚉', '車内': '🪟', '路線': '🚃', 'その他': '📍' };
+  const MOOD_ICON = { '最高': '🤩', '良い': '😊', '普通': '😐', '微妙': '😕', '最悪': '😤' };
+  const dateStr = (memo.created_at || '').slice(0, 10) || '日時不明';
+  const typeIc = TYPE_ICON[memo.memo_type] || '📍';
+  const moodIc = MOOD_ICON[memo.mood] || '';
+  const station = memo.station ? `🚉 ${escapeHtml(memo.station)}` : '';
+  const photos = (Array.isArray(memo.photos) ? memo.photos : []).filter(p => p && p.url);
+  const photosHtml = photos.length > 0
+    ? `<div class="sa-memo-thumbs">${photos.map(p =>
+        `<a href="${escapeHtml(p.url)}" target="_blank" rel="noopener"><img src="${escapeHtml(p.url)}" loading="lazy" alt=""></a>`
+      ).join('')}</div>`
+    : '';
+  const comment = memo.comment ? `<div class="sa-memo-comment">${escapeHtml(memo.comment)}</div>` : '';
+  return `
+    <div class="sa-memo-card" data-memo-id="${escapeHtml(memo.id)}">
+      <div class="sa-memo-head">
+        <span class="sa-memo-date">${escapeHtml(dateStr)}</span>
+        <span>${typeIc}${moodIc ? ' ' + moodIc : ''}</span>
+        ${station ? `<span>${station}</span>` : ''}
+      </div>
+      ${comment}
+      ${photosHtml}
+      <div class="sa-memo-actions">
+        <button class="mp-act-btn edit-memo" onclick="openMemoForEdit('${escapeHtml(memo.id)}')">✏️ 編集</button>
+        <button class="mp-act-btn delete" onclick="deleteMemoById('${escapeHtml(memo.id)}')">🗑 削除</button>
+      </div>
+    </div>
+  `;
+}
+
+// 「+ 新しい路線メモを残す」: memo-modal を開く前に clickInfo を路線用に組み立てる
+function onSlAddMemo() {
+  const sl = S.currentSl;
+  if (!sl) return;
+  // 16-memos.js の openMemo は NORIRECO.map.clickInfo / opts を読む
+  window.NORIRECO = window.NORIRECO || {};
+  NORIRECO.map = NORIRECO.map || {};
+  NORIRECO.map.clickInfo = {
+    line: { id: sl.id, name: sl.name || sl.id },
+    station: { n: null, lat: null, lon: null },
+    lat: '',
+    lon: '',
+  };
+  closeStationActionSheet();
+  openMemo({
+    defaultMemoType: '路線',
+    title: `📸 ${sl.name || sl.id} の路線メモ`,
+    sub: sl.group || '路線全体',
+  });
+}
+
+function onSlBackToMain() {
+  const sl = S.currentSl;
+  if (!sl) return;
+  renderLineActionList(sl);
 }
 
 // ── 各アクションのハンドラ ─────────────────────────────────────
@@ -375,5 +558,12 @@ window.onSaChangeColor = onSaChangeColor;
 window.onSaPickColorLine = onSaPickColorLine;
 window.onSaBackToMain = onSaBackToMain;
 window.onSaShowTrips = onSaShowTrips;
+// v283: 路線アクションシート用 onclick handler
+window.onSlOpenMemos = onSlOpenMemos;
+window.onSlChangeColor = onSlChangeColor;
+window.onSlAddMemo = onSlAddMemo;
+window.onSlBackToMain = onSlBackToMain;
 
 NORIRECO.stationActions.open = openStationActionSheet;
+// v283: 路線アクションシートの公開 API
+NORIRECO.stationActions.openLine = openLineActionSheet;

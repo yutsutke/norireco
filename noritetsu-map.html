@@ -1110,6 +1110,15 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .sa-line-swatch{display:inline-block;width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(255,255,255,.18);flex-shrink:0;}
 /* v282: アクションシート内に「🚃 この駅を含む旅程」一覧を展開した時のスクロール領域 */
 .sa-trip-list{display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto;padding-right:2px;margin-bottom:8px;}
+/* v283: アクションシート内に「📸 路線メモ」一覧を展開した時のコンパクトカード */
+.sa-memo-list{display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto;padding-right:2px;margin-top:8px;margin-bottom:8px;}
+.sa-memo-card{background:var(--steel);border:1.5px solid var(--track);border-radius:10px;padding:10px;font-size:13px;}
+.sa-memo-head{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--silver);margin-bottom:6px;flex-wrap:wrap;}
+.sa-memo-date{font-family:'DM Mono',monospace;}
+.sa-memo-comment{color:var(--white);line-height:1.5;white-space:pre-wrap;margin-bottom:6px;}
+.sa-memo-thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;}
+.sa-memo-thumbs img{width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--track);}
+.sa-memo-actions{display:flex;gap:6px;justify-content:flex-end;margin-top:4px;}
 
 /* マイページ「📸 メモ」サブタブの一覧 (v250) */
 .mp-memo-list{display:flex;flex-direction:column;gap:10px;margin-top:10px;}

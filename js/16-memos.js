@@ -181,14 +181,16 @@ export function toggleMemoMode() {
 }
 
 // 地図クリック起点 — clickInfo を立ててから呼ばれる「新規作成」モード
-export function openMemo() {
+// opts (v283): { defaultMemoType, title, sub } を渡せる。路線アクションシートからの
+// 「+ 新しいメモを残す」用 (memo_type='路線' で初期化、見出しを路線名にする)。
+export function openMemo(opts) {
   const ci = NORIRECO.map.clickInfo || {};
   M.editingId = null;
   fillModal({
-    title: `📸 ${ci.station?.n || ''} のメモ`,
-    sub: `${ci.line?.name || ''}  ·  ${ci.lat || ''}, ${ci.lon || ''}`,
+    title: opts?.title || `📸 ${ci.station?.n || ''} のメモ`,
+    sub: opts?.sub || `${ci.line?.name || ''}  ·  ${ci.lat || ''}, ${ci.lon || ''}`,
     memo: {
-      memo_type: '駅',
+      memo_type: opts?.defaultMemoType || '駅',
       mood: '良い',
       tags: [],
       comment: '',

@@ -461,10 +461,11 @@ function getServiceLinePriority(sl) {
   return 3;
 }
 
-// v245: 路線クリック → 系統色変更モーダル
+// v245: 路線クリック → 系統色変更モーダル (直呼び)
+// v283: 路線クリック → 路線アクションシート (📸 メモ / 🎨 色変更を選べる)
 // 各 L.polyline に click ハンドラを attach。stopPropagation で map クリックを抑制。
-// 15-color-overrides.js の openLineColorEditor を window 経由で呼ぶ
-// (循環 import 回避、15 側は drawLines を import しているため)。
+// 17-station-actions.js の openLineActionSheet を NORIRECO 名前空間経由で呼ぶ
+// (循環 import 回避、17 側は drawLines を import するため)。
 // v246: 記録モード・メモモード中は polyline click を発火させない。これらのモード中は
 //       ユーザーが駅をタップして選択する必要があるため、近傍の polyline click が
 //       色変更モーダルを開いてしまうと駅選択を邪魔する (📝 手動記録不可になる)。
@@ -472,11 +473,14 @@ function attachLineClick(layer, sl) {
   if (!layer || !sl) return;
   layer._norireco_sl_id = sl.id;
   layer.on('click', (e) => {
-    // 記録モード・メモモード中は色モーダルを開かない
+    // 記録モード・メモモード中は線アクションシートを開かない
     if (window.NORIRECO && NORIRECO.record && NORIRECO.record.mode) return;
     if (window.NORIRECO && NORIRECO.map && NORIRECO.map.memoMode) return;
     L.DomEvent.stopPropagation(e);
-    if (window.NORIRECO && NORIRECO.colorOverrides && NORIRECO.colorOverrides.openEditor) {
+    // v283: 路線アクションシート (フォールバック: 旧色変更直呼び)
+    if (window.NORIRECO && NORIRECO.stationActions && NORIRECO.stationActions.openLine) {
+      NORIRECO.stationActions.openLine(sl);
+    } else if (window.NORIRECO && NORIRECO.colorOverrides && NORIRECO.colorOverrides.openEditor) {
       NORIRECO.colorOverrides.openEditor(sl);
     }
   });
