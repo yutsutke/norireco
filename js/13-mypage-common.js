@@ -186,22 +186,27 @@ export const PREFECTURES = [
   ['沖縄県', 24.0, 27.0, 122.9, 131.0, 26.2, 127.7],
 ];
 
-// 駅座標 → 都道府県名 (bbox 含む県のうち centroid 最近接、無ければ centroid 最近接)
+// 駅座標 → 都道府県名 (bbox 含む県のうち面積最小、無ければ centroid 最近接)
+// v321: 旧版は「bbox 内 + centroid 最近接」だったが、八王子 (東京/神奈川両方の bbox に
+//   入る + centroid は神奈川の方が近い) で神奈川県判定になり「八王子 東京」検索が 0 件落ち
+//   していた。bbox 重複時は **面積最小の県** を選ぶ heuristic に変更 (= より「特定の」県を
+//   優先する。例: 東京都 bbox 面積 0.36 < 神奈川県 bbox 面積 0.48 → 東京都採用)。
 const _prefCache = new Map();  // 'lat,lon' → 県名
 export function prefOfStation(lat, lon) {
   if (lat == null || lon == null) return null;
   const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
   if (_prefCache.has(key)) return _prefCache.get(key);
-  let best = null, bestDist = Infinity;
+  let best = null, bestArea = Infinity;
   for (const p of PREFECTURES) {
-    const [name, minLat, maxLat, minLon, maxLon, cLat, cLon] = p;
+    const [name, minLat, maxLat, minLon, maxLon] = p;
     const inBbox = lat >= minLat && lat <= maxLat && lon >= minLon && lon <= maxLon;
-    const dx = lat - cLat, dy = lon - cLon;
-    const dist = dx*dx + dy*dy;
-    if (inBbox && dist < bestDist) { best = name; bestDist = dist; }
+    if (!inBbox) continue;
+    const area = (maxLat - minLat) * (maxLon - minLon);
+    if (area < bestArea) { best = name; bestArea = area; }
   }
   if (!best) {
     // bbox に入らない: centroid 最近接でフォールバック
+    let bestDist = Infinity;
     for (const p of PREFECTURES) {
       const [name, , , , , cLat, cLon] = p;
       const dx = lat - cLat, dy = lon - cLon;
