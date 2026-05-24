@@ -27,6 +27,29 @@
 
 ---
 
+## 139. v291 — 駅キャラ「コミヤウ (小宮)」を削除 (2026-05-24)
+
+### 背景
+
+ユスケ判断で小宮駅キャラ「コミヤウ」(`id: "komiyau"`) を削除。
+
+### 変更
+
+- [characters_master.json](characters_master.json): `id: "komiyau"` のエントリを削除 (7 体 → 6 体)。
+- `characters/komiyau.svg` を git rm。
+- [STATUS.md](STATUS.md): カバレッジ表を「キャラ: 6 体（八王子 3・立川 3）」に更新。
+
+### Supabase 孤児 grant の扱い
+
+`default_unlocked: true` だったので過去ログインユーザー全員に `norireco_character_grants` レコードが残る可能性あり。コード側は [js/03-characters.js](js/03-characters.js) の全箇所で `const char = NORIRECO.data.CHARACTERS[charId]; if (!char) return;` の null-safe ガードが入っているので、孤児 grant が残っていても本番は壊れない (該当行は無視される)。
+
+気になるなら別途 Supabase 上で:
+```sql
+DELETE FROM norireco_character_grants WHERE character_id = 'komiyau';
+```
+
+---
+
 ## 138. v290 — 小さい未乗車駅マーカーをタップしやすく (Canvas tolerance) (2026-05-24)
 
 ### 背景
