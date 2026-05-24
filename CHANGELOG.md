@@ -27,6 +27,55 @@
 
 ---
 
+## 159. v311 — 駅 ID 体系 Phase 2-b: 既存 trip バックフィル用 dev ヘルパー追加 (2026-05-24)
+
+### 背景
+
+Phase 2-a (v310) で `from_station_id` / `to_station_id` 列を追加して並行書き込みは始まったが、v309 以前に作られた既存 trip の id 列は NULL のまま。Phase 2-c (読み込み id 優先化) を始める前に、既存 trip も id 化しておくとロジックが clean になる。
+
+ユスケから「ひとつずつやっていきましょう」との指示。慎重派の進め方として、まず dry-run で対象件数と解決可否を確認 → 問題なければ本実行、の 2 段。
+
+### 対処
+
+新規 [`js/20-dev-backfill.js`](js/20-dev-backfill.js) を追加。一度限りの dev コード扱い (Phase 2 全完了時に撤去予定)。`19-drag-sort.js` が既存だったため番号を 20 に。
+
+API: `NORIRECO.dev.backfillStationIds({ dryRun: true })` / `NORIRECO.dev.backfillStationIds()`
+
+resolve 戦略 (saveMultiSegmentTrip と同じ):
+1. `trip.segments[].lineId` → SERVICE_LINES から検索 → `stations[]` 内 name match で **一意に id 解決** (同名駅問題なし)
+2. 1 が失敗したら MERGED_STATIONS の name match で **fallback** (同名駅は最初の hit)
+3. trip 全体の `from_station_id` / `to_station_id` は segments の最初/最後の id を優先、無理なら trip.from_station / to_station から fallback
+
+返り値: `{ updated, skipped, partial, failed, failures }` — 失敗 / 部分解決リストはコンソールに出して原因追跡可能。
+
+### 使い方 (ユスケ作業)
+
+ログイン状態で <https://norireco.app> を開いてマイページか地図画面を一度開いてから (SERVICE_LINES / MERGED_STATIONS の読込待ち)、Devtools コンソールで:
+
+```js
+// 1. dry-run で対象件数確認
+await NORIRECO.dev.backfillStationIds({ dryRun: true });
+
+// 2. 問題なければ本実行
+await NORIRECO.dev.backfillStationIds();
+```
+
+Supabase Dashboard で `from_station_id` / `to_station_id` 列が埋まっていれば成功。
+
+### 設計判断
+
+- **dev コードを本コードベースに置く**: 1 回限りの使い捨てだが、ユスケが console から手作業実行する性質上「コードレビュー可能な状態でデプロイ」が安全。実行後に Phase 2 完了タイミングで撤去すれば良い。
+- **dryRun オプション**: 件数や PATCH 内容を実行前に確認できる安全策。
+- **partial 追跡**: from のみ resolve できたとか、to が同名駅取り違えで間違ってる可能性があるケースを後で個別確認できるよう、PATCH には進めつつ報告だけ残す方針。
+
+### 残作業
+
+- ⚠ ユスケが <https://norireco.app> で console 実行 (dry-run → 本実行)
+- Phase 2-c (読み込み id 優先化) は別セッション
+- Phase 2 全完了時に `20-dev-backfill.js` 撤去
+
+---
+
 ## 158. v310 — 駅 ID 体系 Phase 2-a: trip データに `*_station_id` 列追加 + 並行書き込み開始 (2026-05-24)
 
 ### 背景

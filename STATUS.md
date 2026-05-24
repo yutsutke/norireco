@@ -28,7 +28,7 @@
 
 ## Service Worker
 
-**`CACHE_VERSION = 'v310'`** · デプロイ回数 = バージョン番号の不変式
+**`CACHE_VERSION = 'v311'`** · デプロイ回数 = バージョン番号の不変式
 
 ---
 
@@ -73,8 +73,9 @@
 | **R2/Workers ゲートウェイ + 写真添付フル機能** (v256〜v269) | ✅ 完成 — `worker/` 新規、`api.norireco.app` + `cdn.norireco.app` bind、presigned PUT URL 方式、Supabase JWT ES256 JWKS verify、memo/trip ともに最大 5 枚対応、Canvas 圧縮（長辺 1200px / WebP 0.82）。CHANGELOG §105 / §107 |
 | **マイページ即時反映 + 駅/路線アクションシート + 駅名検索 + memoMode 撤廃** (v279〜v289) | ✅ 完成 — 削除/GPS 認証の即時 UI 反映、地図駅クリックで「この駅を含む旅程」一覧 (v282)、路線クリックで「📸 路線メモ + 🎨 色変更」(v283)、旧 📸 FAB 撤去 (v284)、マイページ旅程/メモに駅名検索 + 4 chip scope (始点/終点/乗換/通過) (v285〜v289)。CHANGELOG §127-§137 |
 | **駅 id 体系 Phase 1 + 用語整理「完駅率」 + slRiddenSt ばらまき撤廃 + 駅クリック確実化 + 旅程 lazy fetch** (v290〜v309) | ✅ 完成 — `merged_stations.json` 全 9,017 駅に `s_NNNNN` id 付与、SERVICE_LINES に伝播、集計・描画判定すべて id ベース化 (v293〜v296)。「完乗率」→「完駅率」用語整理 (v297)。slRiddenSt の「candidateN02Ids 経由ばらまき」を撤廃して系統ごとに正確判定 (v298〜v300)。Canvas tolerance 不発環境向けに map.click delegate (40px) で駅クリック確実化 (v304〜v306)。polyline click が delegate を奪う件を polyline 側にも近傍駅検索を追加して解決 (v308)。駅シート「この駅を含む旅程」をマイページ未開封でも lazy fetch で取得 (v309)。CHANGELOG §138-§157 |
-| **駅 id 体系 Phase 2-a: trip データに `*_station_id` 列追加 + 並行書き込み** (v310) | ✅ 完成 (frontend) — SQL migration `v310_trip_station_ids.sql` で `from_station_id` / `to_station_id` 列追加 (`segments` JSONB 各要素には `from_id` / `to_id` を JSON 側に追加)、書き込みパス (saveMultiSegmentTrip) で name と id を並行書き込み。読み込みは name 優先のまま (2-c で id 優先化)。⚠ Supabase Dashboard で migration の SQL 実行が必要 (ユスケ作業)。CHANGELOG §158 |
-| **駅 id 体系 Phase 2-b/2-c (既存 trip バックフィル + 読み込み id 優先化)** | ❌ 未着手 — 2-b: SQL or 一度限り js スクリプトで既存 trip の id 列を埋める。2-c: tripMatchesAnyStation / キャラ獲得 / GPS 後追い認証 を id 優先 + name fallback に。 |
+| **駅 id 体系 Phase 2-a: trip データに `*_station_id` 列追加 + 並行書き込み** (v310) | ✅ 完成 — SQL migration `v310_trip_station_ids.sql` 実行済 (確認: 新規 trip に `s_NNNNN` 入る)、書き込みパス並行書き込み稼働中。CHANGELOG §158 |
+| **駅 id 体系 Phase 2-b: 既存 trip バックフィル** (v311) | 🟡 実装完了・実行待ち — `js/20-dev-backfill.js` の `NORIRECO.dev.backfillStationIds({dryRun:true})` で試行、問題なければ本実行。⚠ ユスケがコンソールから 1 回実行する作業が必要。CHANGELOG §159 |
+| **駅 id 体系 Phase 2-c (読み込み id 優先化)** | ❌ 未着手 — tripMatchesAnyStation / キャラ獲得 / GPS 後追い認証 を id 優先 + name fallback に。 |
 | **旅程カード「✏️ 編集」拡張** (v226〜v227) | ✅ 完成 — 編集モーダル 5 セクション化、手動記録は時刻フル編集可、GPS 記録はロック。📍 区間フル編集は積み残し。CHANGELOG §75-76 |
 | **ログアウトセキュリティ + 静的デモ撤去 + 完乗率ユニーク駅統一 + LOD シンプル化** (v228〜v235) | ✅ 完成 — SIGNED_OUT で localStorage/RIDDEN_SEGS/mypage キャッシュ purge、地図 LOD 圧縮、user_id フィルタ漏れ修正、静的デモ撤去、完乗率をユニーク駅単位に統一。CHANGELOG §77-84 |
 | **DELETE_MARKER_4 (13-mypage 4 分割)** (v190) | ✅ 完成 — common/stats/trips/lines に分割、`NORIRECO.mypage.xxx` 名前空間登録 |
@@ -100,5 +101,5 @@
 - **Phase 3.5** (v95〜v108): 現在地表示 + 最寄駅 + GPS 認証 trip
 - **Phase 3.6** (v109〜v131): 安定化・列車種別・コード分割
 - **Phase 3.7** (v132〜v157): 不正検知・ログイン・マイページ
-- **Phase 3.8** (v158〜): データ補修 + 期間フィルタ拡充 + 記録 UX 磨き込み (v158〜v194, CHANGELOG_PHASE3.8-early.md) → **ES Modules 全面化** (v195〜v225, CHANGELOG_PHASE3.8-modules.md) → 旅程編集拡張 (v226〜v227) → ログアウトセキュリティ + 静的デモ撤去 + LOD シンプル化 (v228〜v235) → OGP シェア MVP (v236〜v237) → 完乗率統合 + リージョン中央駅 (v238〜v242) → 系統色カスタマイズ (v243〜v247) → onclick bridge 修正 (v248) → Cloudflare Pages + norireco.app (v249) → R2/Workers + 写真添付 (v256〜v269) → マイページ即時反映 + 駅/路線アクションシート + 駅名検索 + memoMode 撤廃 (v279〜v289) → 駅 id 体系 Phase 1 + 完駅率用語整理 + slRiddenSt 修正 + 駅クリック確実化 (v290〜v306) → polyline click が delegate を奪う件の修正 (v308) → 駅シート「この駅を含む旅程」を lazy fetch 化 (v309) → 駅 id 体系 Phase 2-a (trip データに id 列追加 + 並行書き込み開始) (v310) ← **今ここ**
+- **Phase 3.8** (v158〜): データ補修 + 期間フィルタ拡充 + 記録 UX 磨き込み (v158〜v194, CHANGELOG_PHASE3.8-early.md) → **ES Modules 全面化** (v195〜v225, CHANGELOG_PHASE3.8-modules.md) → 旅程編集拡張 (v226〜v227) → ログアウトセキュリティ + 静的デモ撤去 + LOD シンプル化 (v228〜v235) → OGP シェア MVP (v236〜v237) → 完乗率統合 + リージョン中央駅 (v238〜v242) → 系統色カスタマイズ (v243〜v247) → onclick bridge 修正 (v248) → Cloudflare Pages + norireco.app (v249) → R2/Workers + 写真添付 (v256〜v269) → マイページ即時反映 + 駅/路線アクションシート + 駅名検索 + memoMode 撤廃 (v279〜v289) → 駅 id 体系 Phase 1 + 完駅率用語整理 + slRiddenSt 修正 + 駅クリック確実化 (v290〜v306) → polyline click が delegate を奪う件の修正 (v308) → 駅シート「この駅を含む旅程」を lazy fetch 化 (v309) → 駅 id 体系 Phase 2-a (trip データに id 列追加 + 並行書き込み開始) (v310) → Phase 2-b 既存 trip バックフィル dev ヘルパー (v311) ← **今ここ**
 - **ドキュメント整理** (2026-05-20): CHANGELOG.md 4 ファイル分割 / (2026-05-23): §0.1 を本ファイル `STATUS.md` に分離・git 管轄化（Stop フック対象に）
