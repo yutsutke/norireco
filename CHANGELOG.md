@@ -27,6 +27,36 @@
 
 ---
 
+## 152. v304 — v303 撤回 → map.click delegate で最寄駅検索 (重い問題を解消) (2026-05-24)
+
+### 背景
+
+v303 で全 circleMarker 駅に DOM hit area marker を重ねた結果、マーカー数が約 9000 → 18000 になり地図描画が重くなった。ユスケから「めっちゃおもい」報告。
+
+### 修正
+
+v303 の hit area marker 追加を撤回 (マーカー数を元に戻す) し、代わりに `map.on('click')` の delegate で「ピクセル距離 30px 以内の merged_station」を検索して `openStationActionSheet` を呼ぶ方式に切替:
+
+- 多系統駅 (divIcon) は自前 click + `stopPropagation` するので `map.click` は発火せず干渉なし
+- circleMarker 駅 (small dot) の周辺をタップしたときだけ delegate が拾う
+- polyline (路線) クリックも `stopPropagation` 済 (v283)、線アクションシート維持
+- 9000 駅全件ループは毎 click で走るが 1ms 未満なので問題なし
+
+[js/06-map-leaflet.js](js/06-map-leaflet.js) の `M.instance.on('click')` を拡張。`js/08-rendering.js` から hit area 追加コードを撤去。CSS `.station-hit-area` も削除。
+
+### 効果
+
+- マーカー数は v302 以前に戻る → 描画性能回復
+- 小さい circleMarker 駅でも 30px 以内なら click 取れる
+- 既存の divIcon マーカー click は引き続き優先
+
+### 残課題
+
+- 30px 以内に複数駅がある場合 (混雑エリア) は最寄 1 駅のみ選択。意図しない駅が開く可能性は低いが要観察。
+- 厳密には「現在表示されている駅 (LOD で priority <= visible)」だけを対象にすべきだが、現状は全 9017 駅対象 (ズームアウト時に非表示の駅でも近ければ開く)。実用上気にならなければ放置。
+
+---
+
 ## 151. v303 — Canvas circleMarker に透明な DOM hit area を重ねて click を確実に (2026-05-24)
 
 ### 背景

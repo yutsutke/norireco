@@ -1114,8 +1114,7 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .sa-line-swatch{display:inline-block;width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(255,255,255,.18);flex-shrink:0;}
 /* v282: アクションシート内に「🚃 この駅を含む旅程」一覧を展開した時のスクロール領域 */
 .sa-trip-list{display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto;padding-right:2px;margin-bottom:8px;}
-/* v303: Canvas circleMarker の click が効かない環境用、透明な DOM hit area */
-.station-hit-area{cursor:pointer;background:transparent;}
+/* v303 で hit area を全駅追加したが重すぎたため v304 で map.click delegate に切替、CSS も削除 */
 /* v283: アクションシート内に「📸 路線メモ」一覧を展開した時のコンパクトカード */
 .sa-memo-list{display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto;padding-right:2px;margin-top:8px;margin-bottom:8px;}
 .sa-memo-card{background:var(--steel);border:1.5px solid var(--track);border-radius:10px;padding:10px;font-size:13px;}

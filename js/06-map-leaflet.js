@@ -186,15 +186,39 @@ export function initMap(){
   // zoomend は上で既に updateLOD を呼ぶので追加処理不要
 
   // v284: 記録モードのみのクリックハンドラ (旧 memoMode 撤去 — 駅・路線アクションシートで代替)
-  M.instance.on('click',e=>{
-    if(!NORIRECO.record.mode) return;
-    let bSt=null,bD=Infinity;
-    NORIRECO.data.LINES.forEach(line=>line.stations.forEach(s=>{
-      const d=M.instance.distance([s.lat,s.lon],e.latlng);
-      if(d<bD){bD=d;bSt=s;}
-    }));
-    if (!bSt || bD > 2000) return;
-    onRecordStationClick({name: bSt.n, lat: bSt.lat, lon: bSt.lon});
+  // v304: 通常モード時も map.click を delegate として使い、ピクセル距離 30px 以内に
+  //   merged_stations の駅があれば駅アクションシートを開く。Canvas circleMarker の
+  //   click が効かない環境 (v303 で hit area を全駅追加したら重すぎた) への対策。
+  //   多系統駅 (divIcon) は自前 click + stopPropagation するので map.click は発火せず、
+  //   ここに来るのは circleMarker 駅 (= small dot) の周辺をタップしたときだけ。
+  M.instance.on('click', e => {
+    // 記録モード: 既存ロジック (N02 LINES の最寄駅から距離判定)
+    if (NORIRECO.record.mode) {
+      let bSt=null,bD=Infinity;
+      NORIRECO.data.LINES.forEach(line=>line.stations.forEach(s=>{
+        const d=M.instance.distance([s.lat,s.lon],e.latlng);
+        if(d<bD){bD=d;bSt=s;}
+      }));
+      if (!bSt || bD > 2000) return;
+      onRecordStationClick({name: bSt.n, lat: bSt.lat, lon: bSt.lon});
+      return;
+    }
+
+    // v304: 通常モード — ピクセル距離 30px 以内の merged_station を駅クリック扱い
+    const MS = NORIRECO.data?.MERGED_STATIONS;
+    if (!Array.isArray(MS) || MS.length === 0) return;
+    const cp = e.containerPoint;
+    const HIT_PX = 30;
+    let best = null, bestPx = HIT_PX;
+    for (const ms of MS) {
+      const pt = M.instance.latLngToContainerPoint([ms.lat, ms.lon]);
+      const dx = pt.x - cp.x, dy = pt.y - cp.y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < bestPx) { bestPx = d; best = ms; }
+    }
+    if (best && window.NORIRECO?.stationActions?.open) {
+      NORIRECO.stationActions.open(best);
+    }
   });
 }
 

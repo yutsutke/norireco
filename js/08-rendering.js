@@ -800,28 +800,9 @@ function drawStationsLayer() {
     attachStationDotClickV2(dot, ms);
     dotLayerRef.addLayer(dot);
 
-    // v303: Canvas circleMarker は環境によって click 判定が効かない場合がある
-    //   (Leaflet バージョン差・タッチ操作との相性等)。確実な click を担保するため、
-    //   circleMarker の上に透明な DOM hit area marker (divIcon) を重ねる。
-    //   divIcon は extraDot (パイマーカー) や large marker (level>=2) では既に click 取れて
-    //   いるので、circleMarker (= L.CircleMarker instance) の場合のみ追加。
-    if (dot instanceof L.CircleMarker) {
-      const hitArea = L.marker([ms.lat, ms.lon], {
-        icon: L.divIcon({
-          className: 'station-hit-area',
-          html: '',
-          iconSize: [22, 22],
-          iconAnchor: [11, 11],
-        }),
-        interactive: true,
-        keyboard: false,
-      });
-      hitArea.bindTooltip(buildFullTooltip(), {className:'norireco-tooltip', offset:[8,0]});
-      hitArea.on('tooltipopen', () => { hitArea.getTooltip()?.setContent(buildFullTooltip()); });
-      hitArea._station_tier = tier;
-      attachStationDotClickV2(hitArea, ms);
-      dotLayerRef.addLayer(hitArea);
-    }
+    // v303 で circleMarker に DOM hit area を全駅追加したが、約 9000 個増えて重くなった。
+    // v304 で 06-map-leaflet.js の map.click delegate (ピクセル距離 30px 以内で
+    // 最寄駅検索 → openStationActionSheet) に切り替え、hit area は撤回。
 
     // パイチャート用の追加マーカー (多系統駅 × 平常時のみ)
     if (extraDot) {
