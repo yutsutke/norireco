@@ -27,6 +27,53 @@
 
 ---
 
+## 156. v308 — 小さい駅のクリック問題 残課題: polyline click が delegate を奪う件を修正 (2026-05-24)
+
+### 背景
+
+v304〜v306 で `map.click` delegate (40px 円内の最寄 MS を駅アクションに) を入れて「Canvas tolerance 不発環境」を救ったが、ユスケから **まだクリックが効かない駅がある** との報告。
+
+### 原因
+
+[`js/08-rendering.js`](js/08-rendering.js) `attachLineClick` (v283 で導入された路線 polyline クリックハンドラ) が、クリック直後に **無条件で `L.DomEvent.stopPropagation(e)`** してから路線アクションシートを開いていた。
+
+その結果、
+
+1. ユーザーが「小さい駅 (circleMarker) の上に重なる路線 polyline」をタップ
+2. Canvas tolerance (v301 で 16/12 まで拡張) を超えて circleMarker は反応せず
+3. polyline (SVG) が click を拾う → `stopPropagation` で `map.click` delegate (40px) に到達しない
+4. **駅は選ばれず、路線アクションシートだけが開く**
+
+= ユーザー体感としては「小さい駅をタップしたのに開かない / 路線シートだけ出る」。
+
+### 対処
+
+`attachLineClick` の handler 先頭でも `06-map-leaflet.js` の delegate と同じ「40px 円内最寄 MS」検索を行い、
+
+- 近傍駅があれば → **駅アクションシート** を開いて `return`
+- 無ければ → 従来通り **路線アクションシート**
+
+これで「polyline の上に重なる小さい駅」もタップで開けるようになる。
+
+### 設計判断
+
+- **案 A (採用): polyline click 側で同じ近傍検索を最初に実行**
+  - メリット: 既存の map.click delegate と同じロジックで一貫。9000 駅ループは click 時のみで実害なし
+  - デメリット: 同じ検索が 2 箇所に存在 (delegate と polyline) → 後日 helper に括る余地あり
+- **案 B: polyline click で stopPropagation を外す**
+  - メリット: コード変更が小さい
+  - デメリット: map.click delegate が必ず発火するため、近傍駅が無い場合に「ただ路線をタップしたのに駅検索だけ走る」副作用が出る
+- **案 C: polyline の interactive を false** にする
+  - 路線アクションシートが完全に死ぬので不可
+
+A を採用。後で `findNearestStation(containerPoint, hitPx)` のような共通関数に括れば DRY 化できるが、現時点では 2 箇所なので展開のまま許容。
+
+### 残課題
+
+- v305 のように発火を console.log で確認するフェーズは省略 (v304 → v306 で delegate 自体は動作確認済み、今回は「polyline が delegate を奪う」のロジック問題のみ)。ユスケ側で動作確認後、問題なければそのまま閉じる。
+
+---
+
 ## 155. v307 — セッション締め: TODO.md + STATUS.md 整理、Phase 2/3 を 🔥 に追加 (2026-05-24)
 
 ### 背景

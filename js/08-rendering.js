@@ -483,6 +483,27 @@ function attachLineClick(layer, sl) {
     // 記録モード中は線アクションシートを開かない (駅選択を妨げないため)
     if (window.NORIRECO && NORIRECO.record && NORIRECO.record.mode) return;
     L.DomEvent.stopPropagation(e);
+    // v308: polyline click が stopPropagation するため、06-map-leaflet.js の
+    //   map.click delegate (40px 内 最寄 MS を駅アクション) が発火しない。
+    //   結果、circleMarker (Canvas tolerance 外) + polyline 上 = 駅クリック不発。
+    //   → polyline 側でも同じ近傍駅検索を最初に実行し、近傍駅があればそちらを優先。
+    const MS = window.NORIRECO?.data?.MERGED_STATIONS;
+    const map = window.NORIRECO?.map?.instance;
+    if (Array.isArray(MS) && MS.length > 0 && map && e && e.containerPoint) {
+      const cp = e.containerPoint;
+      const HIT_PX = 40;
+      let best = null, bestPx = HIT_PX;
+      for (const ms of MS) {
+        const pt = map.latLngToContainerPoint([ms.lat, ms.lon]);
+        const dx = pt.x - cp.x, dy = pt.y - cp.y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < bestPx) { bestPx = d; best = ms; }
+      }
+      if (best && window.NORIRECO?.stationActions?.open) {
+        window.NORIRECO.stationActions.open(best);
+        return;
+      }
+    }
     // v283: 路線アクションシート (フォールバック: 旧色変更直呼び)
     if (window.NORIRECO && NORIRECO.stationActions && NORIRECO.stationActions.openLine) {
       NORIRECO.stationActions.openLine(sl);
