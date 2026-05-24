@@ -186,17 +186,13 @@ export async function loadCharacters() {
         const m = txt.match(/<svg[^>]*>([\s\S]*?)<\/svg>/i);
         const inner = m ? m[1] : '';
         D.CHARACTERS[c.id] = { meta: c, innerSvg: inner };
-        // v313 (Phase 3-a): stationCharMap を「駅 id」と「駅名」両方をキーにする dual map に。
-        //   schema_v2 の station_ids は s_NNNNN 配列、station_names は旧駅名配列。
-        //   消費側 (`stationCharMap.get(ms.id)` / `.get(ms.name)`) は両経路で同じキャラリストに届く。
+        // v324 (Phase 3): stationCharMap は駅 id (s_NNNNN) のみのキー。
+        //   characters_master.json schema_v3 で station_names を撤去した。
+        //   表示用駅名は MERGED_STATIONS から逆引き。
         const charObj = D.CHARACTERS[c.id];
         for (const sid of (c.station_ids || [])) {
           if (!D.stationCharMap.has(sid)) D.stationCharMap.set(sid, []);
           D.stationCharMap.get(sid).push(charObj);
-        }
-        for (const sname of (c.station_names || [])) {
-          if (!D.stationCharMap.has(sname)) D.stationCharMap.set(sname, []);
-          D.stationCharMap.get(sname).push(charObj);
         }
       } catch(e) {
         console.warn(`[キャラ] ${c.id} 読込失敗:`, e.message);

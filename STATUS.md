@@ -28,7 +28,7 @@
 
 ## Service Worker
 
-**`CACHE_VERSION = 'v323'`** · デプロイ回数 = バージョン番号の不変式
+**`CACHE_VERSION = 'v324'`** · デプロイ回数 = バージョン番号の不変式
 
 ---
 
@@ -83,7 +83,8 @@
 | **駅 id 体系 Phase 3-e 仕上げ: 駅名検索 id 解決層 + slVisitCount SERVICE_LINES + id 化** (v317) | ✅ 完成 — `resolveStationQueryIds(q)` を 13-mypage-common に新設 (MERGED_STATIONS から候補 id Set)、マイページ旅程/メモの駅名検索を「id 比較 + name fallback」predicate に。slVisitCount を SERVICE_LINES ベース集計 + 駅 id キーに移行、08-rendering / キャラモーダルの参照側も ms.id ベースに。CHANGELOG §165 |
 | **マイページ駅名+都道府県検索** (v318/v320/v321) | ✅ 完成 — 「八王子 東京」のように空白区切りで駅名 + 都道府県 AND 検索。v321 で根本バグ修正: prefOfStation の bbox 重複時のロジックを「centroid 最近接」→「面積最小の県を優先」に変更。八王子 (東京都/神奈川県の bbox 両方に入る) が神奈川県判定になっていた問題が解消。pref モードは id 厳密 (fallback off) を維持。CHANGELOG §166-§169 |
 | **駅 id 体系 Phase 3-f: slStopType を駅 id キー化** (v323) | ✅ 完成 — `slStopType[駅名]` → `slStopType[駅 id]` に切替。同名異所駅 (高松 香川/石川/多摩 等) の stop_type 判定混線を解消。SERVICE_LINES.stations[].id (v293〜) を素直に引く。CHANGELOG §173 |
-| **駅 id 体系 Phase 3 残り (name 列廃止 + LINES の id 付与)** | 🚧 進行中 — Supabase の `from_station` / `to_station` / `memos.station` 列廃止 + `characters_master.json` の `station_names` 撤去が残り。LINES (lines-p?.json) の id 付与は直接参照箇所なしのため見送り判断 |
+| **駅 id 体系 Phase 3-g: characters_master station_names 撤去 + stationCharMap id 化** (v324) | ✅ 完成 — schema_v3 で `station_names` / `obtainable_at_names` 撤去、stationCharMap は駅 id のみのキー化、`getStationCharacter` / `getStationCharacterChoice` / `pickStationCharacter` / `pickCharacterForStation` の signature を id ベースに統一。同名異所駅の取り違え解消。CHANGELOG §174 |
+| **駅 id 体系 Phase 3 残り (Supabase name 列廃止)** | 🚧 進行中 — `norireco_trips.from_station` / `to_station` / `norireco_memos.station` 列廃止が残り。LINES (lines-p?.json) の id 付与は直接参照箇所なしのため見送り |
 | **旅程カード「✏️ 編集」拡張** (v226〜v227) | ✅ 完成 — 編集モーダル 5 セクション化、手動記録は時刻フル編集可、GPS 記録はロック。📍 区間フル編集は積み残し。CHANGELOG §75-76 |
 | **ログアウトセキュリティ + 静的デモ撤去 + 完乗率ユニーク駅統一 + LOD シンプル化** (v228〜v235) | ✅ 完成 — SIGNED_OUT で localStorage/RIDDEN_SEGS/mypage キャッシュ purge、地図 LOD 圧縮、user_id フィルタ漏れ修正、静的デモ撤去、完乗率をユニーク駅単位に統一。CHANGELOG §77-84 |
 | **DELETE_MARKER_4 (13-mypage 4 分割)** (v190) | ✅ 完成 — common/stats/trips/lines に分割、`NORIRECO.mypage.xxx` 名前空間登録 |
@@ -109,5 +110,5 @@
 - **Phase 3.5** (v95〜v108): 現在地表示 + 最寄駅 + GPS 認証 trip
 - **Phase 3.6** (v109〜v131): 安定化・列車種別・コード分割
 - **Phase 3.7** (v132〜v157): 不正検知・ログイン・マイページ
-- **Phase 3.8** (v158〜): データ補修 + 期間フィルタ拡充 + 記録 UX 磨き込み (v158〜v194, CHANGELOG_PHASE3.8-early.md) → **ES Modules 全面化** (v195〜v225, CHANGELOG_PHASE3.8-modules.md) → 旅程編集拡張 (v226〜v227) → ログアウトセキュリティ + 静的デモ撤去 + LOD シンプル化 (v228〜v235) → OGP シェア MVP (v236〜v237) → 完乗率統合 + リージョン中央駅 (v238〜v242) → 系統色カスタマイズ (v243〜v247) → onclick bridge 修正 (v248) → Cloudflare Pages + norireco.app (v249) → R2/Workers + 写真添付 (v256〜v269) → マイページ即時反映 + 駅/路線アクションシート + 駅名検索 + memoMode 撤廃 (v279〜v289) → 駅 id 体系 Phase 1 + 完駅率用語整理 + slRiddenSt 修正 + 駅クリック確実化 (v290〜v306) → polyline click が delegate を奪う件の修正 (v308) → 駅シート「この駅を含む旅程」を lazy fetch 化 (v309) → 駅 id 体系 Phase 2-a (trip データに id 列追加 + 並行書き込み開始) (v310) → Phase 2-b 既存 trip バックフィル dev ヘルパー (v311) → Phase 2-c 完全一致経路の id 優先化 (v312) → Phase 3-a/3-b キャラを id 化 (v313) → Phase 3-c GPS 後追い認証 id 対応 (v314) → Phase 3-d メモに station_id 列追加 + 並行書き込み + 読み込み id 優先化 (v315) → Phase 3-e 部分 cleanup (visitCount id 化 + dev-backfill 撤去) (v316) → Phase 3-e 仕上げ (駅名検索 id 解決層 + slVisitCount を SERVICE_LINES + id 化) (v317) → 駅名+都道府県検索 (v318) → 駅名+都道府県検索 fallback バグ修正試行 (v319) → 厳密モードに戻す (v320) → prefOfStation の bbox 重複時バグ修正 (v321) → 地図 FAB 並び順を 📍📝🎭🌙 に変更 (v322) → 駅 id 体系 Phase 3-f slStopType を id キー化 (v323) ← **今ここ**
+- **Phase 3.8** (v158〜): データ補修 + 期間フィルタ拡充 + 記録 UX 磨き込み (v158〜v194, CHANGELOG_PHASE3.8-early.md) → **ES Modules 全面化** (v195〜v225, CHANGELOG_PHASE3.8-modules.md) → 旅程編集拡張 (v226〜v227) → ログアウトセキュリティ + 静的デモ撤去 + LOD シンプル化 (v228〜v235) → OGP シェア MVP (v236〜v237) → 完乗率統合 + リージョン中央駅 (v238〜v242) → 系統色カスタマイズ (v243〜v247) → onclick bridge 修正 (v248) → Cloudflare Pages + norireco.app (v249) → R2/Workers + 写真添付 (v256〜v269) → マイページ即時反映 + 駅/路線アクションシート + 駅名検索 + memoMode 撤廃 (v279〜v289) → 駅 id 体系 Phase 1 + 完駅率用語整理 + slRiddenSt 修正 + 駅クリック確実化 (v290〜v306) → polyline click が delegate を奪う件の修正 (v308) → 駅シート「この駅を含む旅程」を lazy fetch 化 (v309) → 駅 id 体系 Phase 2-a (trip データに id 列追加 + 並行書き込み開始) (v310) → Phase 2-b 既存 trip バックフィル dev ヘルパー (v311) → Phase 2-c 完全一致経路の id 優先化 (v312) → Phase 3-a/3-b キャラを id 化 (v313) → Phase 3-c GPS 後追い認証 id 対応 (v314) → Phase 3-d メモに station_id 列追加 + 並行書き込み + 読み込み id 優先化 (v315) → Phase 3-e 部分 cleanup (visitCount id 化 + dev-backfill 撤去) (v316) → Phase 3-e 仕上げ (駅名検索 id 解決層 + slVisitCount を SERVICE_LINES + id 化) (v317) → 駅名+都道府県検索 (v318) → 駅名+都道府県検索 fallback バグ修正試行 (v319) → 厳密モードに戻す (v320) → prefOfStation の bbox 重複時バグ修正 (v321) → 地図 FAB 並び順を 📍📝🎭🌙 に変更 (v322) → 駅 id 体系 Phase 3-f slStopType を id キー化 (v323) → Phase 3-g characters_master station_names 撤去 + stationCharMap id 化 (v324) ← **今ここ**
 - **ドキュメント整理** (2026-05-20): CHANGELOG.md 4 ファイル分割 / (2026-05-23): §0.1 を本ファイル `STATUS.md` に分離・git 管轄化（Stop フック対象に） / (2026-05-25): CLAUDE.md セッション開始時手順を強化 — Notion §0 fetch を毎セッション必須化 + 完了報告 3 行を強制（v322 §172）

@@ -326,11 +326,10 @@ export function updateLocationButton() {
 }
 
 // この駅で獲得可能なキャラ一覧 (locked + 期間内 + obtainable_at 一致)
-// v313 (Phase 3-b): 引数を ms オブジェクトに変更。obtainable_at が id 配列の場合 ms.id と、
-//   obtainable_at_names が name 配列の場合 ms.name と比較する dual 経路。
+// v324 (Phase 3): ms.id のみで判定。schema_v3 で station_names 撤去済。
 export function getObtainableCharactersAt(ms) {
   if (!NORIRECO.data.charModeOn) return [];
-  if (!ms) return [];
+  if (!ms || !ms.id) return [];
   const result = [];
   for (const id in NORIRECO.data.CHARACTERS) {
     const char = NORIRECO.data.CHARACTERS[id];
@@ -338,10 +337,7 @@ export function getObtainableCharactersAt(ms) {
     if (isCharacterOwned(id)) continue;
     if (!isCharacterAvailable(char.meta)) continue;
     const obtainAtIds = char.meta.obtainable_at || char.meta.station_ids || [];
-    const obtainAtNames = char.meta.obtainable_at_names || char.meta.station_names || [];
-    if ((ms.id && obtainAtIds.includes(ms.id)) || (ms.name && obtainAtNames.includes(ms.name))) {
-      result.push(char);
-    }
+    if (obtainAtIds.includes(ms.id)) result.push(char);
   }
   return result;
 }
@@ -395,7 +391,7 @@ export function drawObtainableIndicators() {
     marker.on('click', (e) => {
       L.DomEvent.stopPropagation(e);
       // 既存所持キャラがあればそれを優先、なければ locked preview として開く
-      const ownedChar = getStationCharacter(ms.name);
+      const ownedChar = getStationCharacter(ms);
       openCharModal(ms, ownedChar || chars[0]);
     });
 
@@ -407,46 +403,53 @@ export function drawObtainableIndicators() {
 }
 
 // 駅ごとのキャラ選択 (localStorage 永続化)
+// v324 (Phase 3): キーを駅名 → 駅 id (s_NNNNN) に切替。古いキー (駅名) のデータは
+//   そのまま残置するが lookup されないので孤児になる (同名異所駅で誤マッチを避けるため
+//   migration はしない — 八王子/立川の 6 キャラだけ、再選択コスト極小)。
 const STATION_CHAR_PICK_KEY = 'norireco_station_char_pick';
-export function getStationCharacterChoice(stationName) {
+export function getStationCharacterChoice(stationId) {
+  if (!stationId) return null;
   try {
     const data = JSON.parse(localStorage.getItem(STATION_CHAR_PICK_KEY) || '{}');
-    return data[stationName] || null;
+    return data[stationId] || null;
   } catch(e) { return null; }
 }
-function setStationCharacterChoice(stationName, charId) {
+function setStationCharacterChoice(stationId, charId) {
+  if (!stationId) return;
   try {
     const data = JSON.parse(localStorage.getItem(STATION_CHAR_PICK_KEY) || '{}');
-    if (charId) data[stationName] = charId; else delete data[stationName];
+    if (charId) data[stationId] = charId; else delete data[stationId];
     localStorage.setItem(STATION_CHAR_PICK_KEY, JSON.stringify(data));
   } catch(e) {}
 }
 
 // 駅の代表キャラを取得 (所持済み中からユーザー選択優先)
-export function getStationCharacter(stationName) {
+// v324 (Phase 3): 引数を ms オブジェクトに変更 (stationCharMap が駅 id キーのみになったため)。
+export function getStationCharacter(ms) {
   if (!NORIRECO.data.charModeOn) return null;
-  const list = NORIRECO.data.stationCharMap.get(stationName);
+  if (!ms || !ms.id) return null;
+  const list = NORIRECO.data.stationCharMap.get(ms.id);
   if (!list || !list.length) return null;
-  // 所持済みキャラのみに絞る (default_unlocked or owned_characters)
   const ownedList = list.filter(c => isCharacterOwned(c.meta.id));
   if (!ownedList.length) return null;
-  const choice = getStationCharacterChoice(stationName);
+  const choice = getStationCharacterChoice(ms.id);
   if (choice) {
     const chosen = ownedList.find(c => c.meta.id === choice);
     if (chosen) return chosen;
   }
-  return ownedList[0]; // デフォルト: 所持済みリスト先頭
+  return ownedList[0];
 }
 
 // キャラ選択を変更してマップ + キャラモーダルを再描画
 // v255: モーダルを閉じてしまうと「切り替わった」のが見えないので、
 //       モーダルを開いたまま新しいキャラで再 render するように変更。
-function pickStationCharacter(stationName, charId) {
-  setStationCharacterChoice(stationName, charId);
+// v324 (Phase 3): 引数を stationName → stationId (s_NNNNN) に変更。HTML 文字列内 onclick で
+//   pickStationCharacter('${ms.id}', ...) と呼び出される。
+function pickStationCharacter(stationId, charId) {
+  setStationCharacterChoice(stationId, charId);
   redrawAllLinesAfterTripChange();
-  // モーダル内のヒーロー画像・名前・active 表示を新しいキャラで再構築
-  const ms = (NORIRECO.data.MERGED_STATIONS || []).find(s => s.name === stationName);
-  const character = (NORIRECO.data.stationCharMap?.get(stationName) || [])
+  const ms = (NORIRECO.data.MERGED_STATIONS || []).find(s => s.id === stationId);
+  const character = (NORIRECO.data.stationCharMap?.get(stationId) || [])
     .find(c => c.meta?.id === charId);
   if (ms && character) {
     openCharModal(ms, character);

@@ -27,6 +27,52 @@
 
 ---
 
+## 174. v324 — 駅 ID 体系 Phase 3-g: characters_master station_names 撤去 + stationCharMap id 化 (2026-05-25)
+
+### 背景
+
+Phase 3-a/3-b (v313) で characters_master.json は schema_v2 化し `station_ids` (s_NNNNN 配列) を追加したが、旧 `station_names` も「name fallback 用」として並行保持していた。Phase 3 完了 (name 列廃止 + 駅 id ベース完全統一) に向けて以下を撤去:
+
+- characters_master.json: `station_names` / `obtainable_at_names`
+- js 全体: name → id fallback パス (`stationCharMap` の name キー、`getStationCharacter(ms.name)` 等)
+
+### 動機
+
+- 同名異所駅 (例: 高松 香川/石川/多摩) でキャラ獲得・選択 UI が name 経由だと取り違える可能性
+- v324 時点でキャラは 6 体・対象駅 2 駅 (八王子・立川) で同名異所が現実問題化していないが、将来 (主要ターミナル展開・地域文化キャラ) で必ず爆発する。今のうちに id 一本化が安全
+
+### 変更
+
+- **characters_master.json**: schema_v2 → schema_v3。`station_names` / `obtainable_at_names` を全 6 キャラから削除。
+- **js/02-data-loaders.js (loadCharacters)**: stationCharMap への name キー二重登録を撤去。駅 id (s_NNNNN) のみのキーに統一。
+- **js/03-characters.js**:
+  - `checkAndGrantCharacters`: trip の `from_station`/`to_station` (name) を MERGED_STATIONS で id に変換してから集約。obtainable_at の id 配列とだけ照合。Supabase 記録時は id → name 逆引きで表示用駅名を取得。
+  - `tryGrantByGPS`: obtainAtNames fallback ループを撤去、id 経路のみ。
+- **js/04-gps-location.js**:
+  - `getObtainableCharactersAt(ms)`: name 経由判定を撤去、`ms.id` で `obtainable_at` 配列を直接 includes。
+  - `getStationCharacter(ms)`: 引数を stationName → ms オブジェクトに変更。内部で `stationCharMap.get(ms.id)`。
+  - `getStationCharacterChoice(stationId)` / `setStationCharacterChoice(stationId, charId)`: 引数を駅 id に。localStorage キー名 (`norireco_station_char_pick`) は維持するが、保存値は駅 id ベースに切替 (旧 name キーのレコードは孤児化する。八王子/立川の 6 キャラ分のユーザー再選択コストは極小なので migration はしない)。
+  - `pickStationCharacter(stationId, charId)`: 引数を stationName → stationId に。HTML 文字列内 onclick 呼出 (`08-rendering.js:963`) も `'${ms.id}'` 化。
+- **js/08-rendering.js**: `getStationCharacter(ms.name)` 2 箇所 → `(ms)`、`stationCharMap.get(ms.name)` → `(ms.id)`、`getStationCharacterChoice(ms.name)` → `(ms.id)`、`pickStationCharacter('${ms.name}', ...)` → `('${ms.id}', ...)`。
+- **js/17-station-actions.js**: `pickCharacterForStation(stationName)` → `(stationId)`、`stationCharMap.get(stationName)` → `(stationId)`。caller (`openStationActionSheet`) は `ms.id` を渡す。
+
+### リスク・検証
+
+- HTML 文字列内 onclick (`pickStationCharacter`) は ms.id を直接渡す形にしたので、駅名にシングルクォート等が含まれた場合の XSS は元から心配不要 (s_NNNNN のみ)
+- 旧 localStorage キー (駅名キー) のデータは残置 → 孤児になるが lookup されないので無害
+- syntax check 25/25 OK
+- name → id 変換は MERGED_STATIONS から 1 回構築する nameToId Map で O(1) lookup、checkAndGrantCharacters の処理コストは無視できる範囲
+
+### CACHE_VERSION
+
+v323 → v324
+
+### 変更ファイル
+
+`git diff --name-only HEAD` で確認 (characters_master.json / js/02-data-loaders.js / js/03-characters.js / js/04-gps-location.js / js/08-rendering.js / js/17-station-actions.js / sw.js / CHANGELOG.md / STATUS.md / TODO.md)
+
+---
+
 ## 173. v323 — 駅 ID 体系 Phase 3-f: slStopType を駅 id キー化 (2026-05-25)
 
 ### 背景

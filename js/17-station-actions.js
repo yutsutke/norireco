@@ -58,8 +58,10 @@ function escapeHtml(s) {
 //   2. 未獲得だが期間内・obtainable (locked obtainable)
 //   3. 未獲得 + 期間外 (= シーズン外でも、お客さんが「あれ?」と
 //      なる前にキャラ情報を見られるよう露出)
-function pickCharacterForStation(stationName) {
-  const list = NORIRECO.data?.stationCharMap?.get(stationName) || [];
+// v324 (Phase 3): 引数を stationName → stationId (s_NNNNN)。stationCharMap は駅 id キー化済。
+function pickCharacterForStation(stationId) {
+  if (!stationId) return { character: null, locked: false };
+  const list = NORIRECO.data?.stationCharMap?.get(stationId) || [];
   if (list.length === 0) return { character: null, locked: false };
 
   // 1. 獲得済みを優先
@@ -91,7 +93,7 @@ export function openStationActionSheet(ms, options) {
     S.currentChar = options.character;
     S.currentCharLocked = !!options.characterLocked;
   } else {
-    const picked = pickCharacterForStation(ms.name);
+    const picked = pickCharacterForStation(ms.id);
     S.currentChar = picked.character;
     S.currentCharLocked = picked.locked;
   }

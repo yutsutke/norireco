@@ -708,8 +708,8 @@ function drawStationsLayer() {
     const visits = (ms.id ? slVisitCount[ms.id] : 0) || 0;
     const level = getStationLevel(visits);
 
-    // 駅キャラ (訪問1回以上の駅にのみ表示)
-    const character = (visits > 0) ? getStationCharacter(ms.name) : null;
+    // 駅キャラ (訪問1回以上の駅にのみ表示) — v324: ms オブジェクト渡し
+    const character = (visits > 0) ? getStationCharacter(ms) : null;
 
     // 色: SERVICE_LINES から動的に取得 (v243 で系統色のユーザーカスタマイズに対応した際、
     //      merged_stations.json の事前計算キャッシュ ms.colors が override に追従しなかったため、
@@ -865,7 +865,7 @@ function attachStationDotClickV2(dot, ms) {
         L.DomEvent.stopPropagation(e);
       } else {
         // フォールバック (17 未ロードの極端ケース) — 旧挙動
-        const character = getStationCharacter(ms.name);
+        const character = getStationCharacter(ms);
         if (character) {
           openCharModal(ms, character);
           L.DomEvent.stopPropagation(e);
@@ -946,13 +946,13 @@ export function openCharModal(ms, character) {
     ${character.meta.description ? `<div class="char-modal-desc">${character.meta.description}</div>` : ''}
     ${slRows ? `<div class="char-modal-lines">乗り入れ系統 (${(ms.lines || []).length})</div>${slRows}` : ''}
     ${(() => {
-      // キャラ選択セクション (所持済みのみ表示)
-      const allChars = NORIRECO.data.stationCharMap.get(ms.name) || [];
+      // キャラ選択セクション (所持済みのみ表示) — v324: stationCharMap は駅 id キー
+      const allChars = NORIRECO.data.stationCharMap.get(ms.id) || [];
       const ownedChars = allChars.filter(c => isCharacterOwned(c.meta.id));
       const lockedChars = allChars.filter(c => !isCharacterOwned(c.meta.id));
       let html = '';
       if (ownedChars.length >= 2) {
-        const choiceId = getStationCharacterChoice(ms.name) || ownedChars[0].meta.id;
+        const choiceId = getStationCharacterChoice(ms.id) || ownedChars[0].meta.id;
         html += `
           <div class="char-modal-section-title">🎭 キャラを切り替え (${ownedChars.length}体)</div>
           <div class="char-modal-thumbs">
@@ -960,7 +960,7 @@ export function openCharModal(ms, character) {
               const rarityBadge = renderRarityBadge(c.meta);
               return `
                 <button class="char-modal-thumb ${c.meta.id === choiceId ? 'active' : ''}"
-                        onclick="pickStationCharacter('${ms.name}', '${c.meta.id}')"
+                        onclick="pickStationCharacter('${ms.id}', '${c.meta.id}')"
                         title="${c.meta.name}">
                   <svg viewBox="0 0 64 64">${c.innerSvg}</svg>
                   <div class="char-modal-thumb-name">${c.meta.name}</div>

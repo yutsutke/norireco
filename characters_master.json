@@ -1,6 +1,6 @@
 {
-  "schema_version": 2,
-  "comment": "駅キャラクター管理マスター。v313 で station_ids / obtainable_at を駅名 → s_NNNNN id 配列に移行。station_names / obtainable_at_names は表示用 + name fallback として残置。SVG ファイルは characters/ 配下。1駅に複数キャラ紐付け可能。期間限定・季節キャラなども含む。",
+  "schema_version": 3,
+  "comment": "駅キャラクター管理マスター。v324 (Phase 3) で station_names / obtainable_at_names を撤去し station_ids / obtainable_at (s_NNNNN) のみに統一。表示用駅名は MERGED_STATIONS から逆引き。SVG ファイルは characters/ 配下。1駅に複数キャラ紐付け可能。",
   "characters": [
     {
       "id": "kuwaten",
@@ -8,7 +8,6 @@
       "subtitle": "八王子市",
       "description": "桑×天狗。八王子の養蚕業と高尾山天狗の融合。繭の形の鼻と桑の葉の帽子、頭襟（ときん）が特徴。",
       "station_ids": ["s_00060"],
-      "station_names": ["八王子"],
       "svg_path": "characters/kuwaten.svg",
       "rarity": "common",
       "default_unlocked": true,
@@ -22,7 +21,6 @@
       "subtitle": "八王子市・夜の繭",
       "description": "八王子の養蚕業のもう一つの側面 — 繭の中の静寂と幽玄を司る精。紫の繭から漏れ出す光と、絹糸の重なり、内に宿る視線が特徴。",
       "station_ids": ["s_00060"],
-      "station_names": ["八王子"],
       "svg_path": "characters/youmayu.svg",
       "rarity": "common",
       "default_unlocked": true,
@@ -36,7 +34,6 @@
       "subtitle": "八王子市・夜祭繭 (期間限定)",
       "description": "ヨウマユが祭礼の夜にまとう姿。御札に封じられた繭から漏れる桃色の光と、金灯・提灯に守られた神事の繭。八王子の絹織物まつり期間中のみ獲得可能。",
       "station_ids": ["s_00060"],
-      "station_names": ["八王子"],
       "svg_path": "characters/yomatsuri-mayu.svg",
       "rarity": "limited",
       "default_unlocked": false,
@@ -44,7 +41,6 @@
       "available_from": "2026-05-10",
       "available_until": "2026-08-15",
       "obtainable_at": ["s_00060"],
-      "obtainable_at_names": ["八王子"],
       "colorable": false,
       "default_color": null
     },
@@ -54,7 +50,6 @@
       "subtitle": "立川市",
       "description": "ファーレ立川の飛翔する彫刻群モチーフ。ドット柄の上翼と太陽のようなプロペラが特徴。",
       "station_ids": ["s_00084"],
-      "station_names": ["立川"],
       "svg_path": "characters/r-plane.svg",
       "rarity": "common",
       "default_unlocked": true,
@@ -68,7 +63,6 @@
       "subtitle": "立川市・夏花火 (期間限定)",
       "description": "昭和記念公園の花火大会の精。T字のボディは「立川」の T、頭の8弁の黄色花火と中央の赤い火球は昭和記念公園の夜空を彩る大輪。立川まつり期間中のみ獲得可能。",
       "station_ids": ["s_00084"],
-      "station_names": ["立川"],
       "svg_path": "characters/tachi-hanabi.svg",
       "rarity": "limited",
       "default_unlocked": false,
@@ -76,7 +70,6 @@
       "available_from": "2026-05-10",
       "available_until": "2026-08-31",
       "obtainable_at": ["s_00084"],
-      "obtainable_at_names": ["立川"],
       "colorable": false,
       "default_color": null
     },
@@ -86,7 +79,6 @@
       "subtitle": "立川市・冬イルミ (期間限定)",
       "description": "多摩都市モノレールと雪だるまの融合精。立川ブルーのマフラーと頭の星イルミは、国営昭和記念公園の冬イルミネーションのきらめきを表現。冬季イベント期間中のみ獲得可能。",
       "station_ids": ["s_00084"],
-      "station_names": ["立川"],
       "svg_path": "characters/tachi-yuki.svg",
       "rarity": "limited",
       "default_unlocked": false,
@@ -94,7 +86,6 @@
       "available_from": "2026-05-10",
       "available_until": "2027-02-15",
       "obtainable_at": ["s_00084"],
-      "obtainable_at_names": ["立川"],
       "colorable": false,
       "default_color": null
     }

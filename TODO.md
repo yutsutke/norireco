@@ -61,9 +61,9 @@ git log --oneline -20
   - **Phase 3-e 部分完成 (v316)**: 13a-stats の visitCount を id 化、`js/20-dev-backfill.js` 撤去
   - **Phase 3-e 仕上げ完成 (v317)**: マイページ駅名検索を id 解決層経由 (resolveStationQueryIds) に、slVisitCount を SERVICE_LINES + 駅 id キーに統一、08-rendering / キャラモーダルの参照側も ms.id ベースに
   - **Phase 3-f 完成 (v323)**: slStopType を駅名 → 駅 id キーに切替 (同名異所駅の stop_type 判定混線を解消)
-  - **残** (Phase 4 / name 列廃止):
+  - **Phase 3-g 完成 (v324)**: characters_master schema_v3 で `station_names` / `obtainable_at_names` 撤去、stationCharMap / `getStationCharacter` 系 API を駅 id ベースに統一
+  - **残** (Phase 4 / Supabase name 列廃止):
     - `norireco_trips` の `from_station` / `to_station` 列廃止 (id 列のみで動く確認後)
-    - `characters_master.json` の `station_names` 廃止 (id 列のみで動く確認後)
     - `norireco_memos` の `station` 列廃止 (既存メモ 3 件のバックフィル必要、または fallback 廃止判断)
     - LINES (lines-p1〜p4.json) の stations[].id 付与: 直接参照する処理が現状なし → 必要になってから (低優先・棚上げ)
 
