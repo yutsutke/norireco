@@ -137,6 +137,16 @@ function buildTripFilterBar() {
       <input type="search" class="mp-filter-input" id="mp-fil-station" placeholder="例: 八王子" value="${escapeAttr(NORIRECO.mypage.state.mpTripFilter.station || '')}" oninput="updateMpFilter('station',this.value)">
     </div>
     <div class="mp-filter-row">
+      <label class="mp-filter-lbl">🎯 範囲</label>
+      <div class="mp-scope-chips" id="mp-scope-chips">
+        ${['from','end','transfer','pass'].map(k => {
+          const labels = { from:'始点', end:'終点', transfer:'乗換', pass:'通過' };
+          const on = NORIRECO.mypage.state.mpTripFilter.stationScope?.[k] !== false;
+          return `<button class="mp-scope-chip ${on ? 'on' : ''}" onclick="toggleMpStationScope('${k}')" title="${labels[k]}を検索対象に含む">${labels[k]}</button>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="mp-filter-row">
       <label class="mp-filter-lbl">⇅ 並び替え</label>
       <select class="mp-filter-sel" id="mp-fil-sort" onchange="updateMpFilter('sort',this.value)">
         <option value="date_desc" ${NORIRECO.mypage.state.mpTripFilter.sort==='date_desc'?'selected':''}>📅 乗車日 (新しい順)</option>
@@ -162,8 +172,24 @@ function updateMpFilter(key, value) {
 window.updateMpFilter = updateMpFilter;
 NORIRECO.mypage.updateMpFilter = updateMpFilter;
 
+// v289: 駅名検索のマッチ範囲 (始点/終点/乗換/通過) を 1 chip ずつトグル
+function toggleMpStationScope(key) {
+  const f = NORIRECO.mypage.state.mpTripFilter;
+  f.stationScope = f.stationScope || { from:true, end:true, transfer:true, pass:true };
+  f.stationScope[key] = !f.stationScope[key];
+  // chip の見た目を即時更新 (input は触らないので IME 安全)
+  const btn = document.querySelector(`#mp-scope-chips .mp-scope-chip[onclick*="'${key}'"]`);
+  if (btn) btn.classList.toggle('on', f.stationScope[key]);
+  renderMpTripsResultOnly();
+}
+window.toggleMpStationScope = toggleMpStationScope;
+NORIRECO.mypage.toggleMpStationScope = toggleMpStationScope;
+
 function resetMpFilter() {
-  NORIRECO.mypage.state.mpTripFilter = { auth: 'all', period: 'all', category: 'all', sort: 'date_desc', station: '' };
+  NORIRECO.mypage.state.mpTripFilter = {
+    auth: 'all', period: 'all', category: 'all', sort: 'date_desc', station: '',
+    stationScope: { from:true, end:true, transfer:true, pass:true },
+  };
   // reset は select の選択状態と input の表示値を初期に戻すため全体再描画
   renderMpTripsSection();
 }
@@ -208,10 +234,12 @@ function applyTripFilters(trips) {
         if (t.train_category !== NORIRECO.mypage.state.mpTripFilter.category) return false;
       }
     }
-    // v285/v287.1: 駅名 substring 検索 — 始点/終点/乗換駅 + 通過駅まで含めて判定
-    //   (v287.1 で tripMatchesAnyStation に共通化、地図駅クリックと同じ駅順展開ロジック)
+    // v285/v288/v289: 駅名 substring 検索 — マッチ範囲は stationScope (始点/終点/乗換/通過) で切替
     const q = (NORIRECO.mypage.state.mpTripFilter.station || '').trim();
-    if (q && !tripMatchesAnyStation(t, n => n && n.includes(q))) return false;
+    if (q) {
+      const scope = NORIRECO.mypage.state.mpTripFilter.stationScope || { from:true, end:true, transfer:true, pass:true };
+      if (!tripMatchesAnyStation(t, n => n && n.includes(q), scope)) return false;
+    }
     return true;
   });
   // v182: ソート (デフォルト date_desc)

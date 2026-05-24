@@ -27,6 +27,49 @@
 
 ---
 
+## 137. v289 — 駅名検索のマッチ範囲を 4 チップ (始点/終点/乗換/通過) で個別 ON/OFF (2026-05-24)
+
+### 背景
+
+v288 で通過駅まで拾うようにしたら、ユスケから「始点/終点/乗換/通過 をそれぞれ ON/OFF できるともっと便利」との追加要望。
+
+例:
+- 「終点だけ」→ 「目的地が八王子だった旅程」を探す
+- 「通過だけ」→ 「単に通り抜けただけの旅程」を探す
+- 「乗換のみ OFF」→ 「乗換で経由しただけの駅は除外」(やや特殊用途)
+
+### 設計
+
+`tripMatchesAnyStation` に scope 引数を追加:
+
+```js
+tripMatchesAnyStation(trip, predicate, scope)
+// scope = { from, end, transfer, pass } の object、未指定 (undefined) なら全 ON
+```
+
+scope 未指定の呼出 (v282 駅クリック側) は全 ON 互換動作。マイページ側のみ UI 連動。
+
+state は `mpTripFilter.stationScope = { from, end, transfer, pass }` (default 全 true) を追加。
+
+### UI
+
+駅名 input の下に「🎯 範囲」ラベル + 4 チップ。チップは ON で金色 (`var(--gold)`)、OFF で灰色。タップで個別トグル。
+
+トグル時は chip 単体の `.on` クラスだけ即時更新 + 結果領域だけ再描画 — 全フィルタバー再構築はしない (input の IME 安全性 v287 と同じ理由)。
+
+### 主な変更
+
+- [js/13-mypage-common.js](js/13-mypage-common.js): `tripMatchesAnyStation` に scope 引数追加、`mpTripFilter.stationScope` デフォルト追加。
+- [js/13b-trips.js](js/13b-trips.js): フィルタバーに `.mp-scope-chips` 行追加、`toggleMpStationScope(key)` handler 追加、`applyTripFilters` で scope を渡す、`resetMpFilter` で stationScope も全 ON にリセット。
+- [noritetsu-map.html](noritetsu-map.html): `.mp-scope-chip` CSS 追加 (ON で金色、OFF で灰色)。
+
+### 残課題
+
+- 全 OFF にすると駅名検索結果が空になる (当然)。エラーは出ないが「全部 OFF だと何も出ません」の案内は出していない。
+- メモタブには適用しない (memo は `m.station` 単体しかフィールドが無く scope 概念がそもそも不要)。
+
+---
+
 ## 136. v288 — マイページ駅名検索を通過駅まで含めて判定 (v282 と共通化) (2026-05-24)
 
 ### 背景

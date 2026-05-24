@@ -49,35 +49,48 @@ NORIRECO.mypage.state = NORIRECO.mypage.state || {
     period: 'all',   // all | thisYear | lastYear | custom (日付フィルタは _tripDateFilter と独立)
     category: 'all', // all | shinkansen | limited_express | ...
     sort: 'date_desc', // v182: 旅程タブの並び替え (date_desc/asc, stations_desc, minutes_desc, recorded_desc, delay_desc)
-    station: '',     // v285: 駅名検索 (from/to/segments の部分一致)
+    station: '',     // v285: 駅名 substring 検索
+    stationScope: {  // v289: 駅名検索のマッチ範囲を ON/OFF
+      from: true,    //   始点 (trip.from_station)
+      end: true,     //   終点 (trip.to_station)
+      transfer: true,//   乗換 (segments[].from / to)
+      pass: true,    //   通過 (segments の駅順展開、中間駅)
+    },
   },
 };
 const MP = NORIRECO.mypage.state;
 
 // v287.1: trip が「ある駅マッチ条件 (predicate) に一致する駅を含むか」を判定する
-// 高階関数。判定対象は:
-//   - 始点/終点 (trip.from_station / to_station)
-//   - segments[].from / to (乗換駅)
-//   - segments[].lineId から SERVICE_LINES の駅順を辿った通過駅
+// 高階関数。判定対象は scope で切替:
+//   - from     (始点 = trip.from_station)
+//   - end      (終点 = trip.to_station)
+//   - transfer (乗換 = segments[].from / to。始点/終点と重複しても OK)
+//   - pass     (通過 = segments[].lineId → SERVICE_LINES 駅順展開の中間駅)
+//
+// scope を省略 (undefined) すると全 ON 扱い — v282 / v288 互換。
 //
 // SERVICE_LINES 未構築 (起動直後) や lineId が SERVICE_LINES.id にも
 // candidateN02Ids にも無いケースは通過駅判定を諦め、from/to の直接判定に
 // フォールバックする。
 //
 // 使い分け:
-//   - 地図駅クリック「この駅を含む旅程」(v282): 完全一致 predicate
-//   - マイページ駅名検索 (v287.1): substring predicate
-export function tripMatchesAnyStation(trip, predicate) {
+//   - 地図駅クリック「この駅を含む旅程」(v282): 完全一致 predicate / scope 全 ON
+//   - マイページ駅名検索 (v288): substring predicate / scope はユーザー UI 連動 (v289)
+export function tripMatchesAnyStation(trip, predicate, scope) {
   if (!trip || typeof predicate !== 'function') return false;
-  if (predicate(trip.from_station)) return true;
-  if (predicate(trip.to_station)) return true;
+  const sc = scope || { from: true, end: true, transfer: true, pass: true };
+  if (sc.from && predicate(trip.from_station)) return true;
+  if (sc.end && predicate(trip.to_station)) return true;
+  if (!sc.transfer && !sc.pass) return false; // segments を走らせる必要なし
   const segs = Array.isArray(trip.segments) ? trip.segments : [];
   const SL = NORIRECO.data?.SERVICE_LINES || [];
   for (const seg of segs) {
     if (!seg) continue;
-    if (predicate(seg.from)) return true;
-    if (predicate(seg.to)) return true;
-    if (!seg.lineId || SL.length === 0) continue;
+    if (sc.transfer) {
+      if (predicate(seg.from)) return true;
+      if (predicate(seg.to)) return true;
+    }
+    if (!sc.pass || !seg.lineId || SL.length === 0) continue;
     let sl = SL.find(s => s.id === seg.lineId);
     if (!sl) sl = SL.find(s => Array.isArray(s.candidateN02Ids) && s.candidateN02Ids.includes(seg.lineId));
     if (!sl || !Array.isArray(sl.stations)) continue;

@@ -408,6 +408,15 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mp-filter-input{flex:1;padding:5px 7px;background:var(--navy);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:11px;font-family:inherit;outline:none;min-width:0;}
 .mp-filter-input:focus{border-color:var(--red);}
 .mp-filter-input::placeholder{color:var(--silver);opacity:.55;}
+/* v289: 駅名検索のマッチ範囲チップ (始点/終点/乗換/通過 を個別 ON/OFF) */
+.mp-scope-chips{display:flex;gap:4px;flex-wrap:wrap;flex:1;}
+.mp-scope-chip{
+  padding:4px 9px;background:var(--navy);color:var(--silver);
+  border:1px solid var(--track);border-radius:12px;
+  font-size:11px;font-family:inherit;cursor:pointer;transition:all .15s;
+}
+.mp-scope-chip:hover{border-color:rgba(255,255,255,.3);}
+.mp-scope-chip.on{background:rgba(242,169,0,.18);color:var(--gold);border-color:var(--gold);}
 .mp-filter-reset{width:30px;height:30px;background:rgba(140,160,179,.1);color:var(--silver);border:1px solid var(--track);border-radius:6px;font-size:14px;cursor:pointer;font-family:inherit;flex-shrink:0;}
 .mp-filter-reset:hover{background:rgba(140,160,179,.2);color:var(--white);}
 
