@@ -27,6 +27,27 @@
 
 ---
 
+## 150. v302 — 最小駅 circleMarker の radius を 5px で底上げ (タップ性確保) (2026-05-24)
+
+### 背景
+
+v290 → v301 で Canvas tolerance を増やしたが、ユスケ環境 (PC) で「最小ドットの駅だけタップできない、大きいドット駅は OK」とのこと。tolerance 12 が効くはずだが Leaflet バージョン依存か他の要因で不発の可能性。
+
+### 修正
+
+`circleMarker.radius` の最小値を 5px (= 直径 10px) で底上げ — tolerance より radius そのものを増やすほうが確実:
+
+- 多系統 baseDot (line 718): `(ridden ? 5.5 : 4) * Math.min(1.4, mScale) * stypeMul` → `Math.max(5, ...)`
+- 単系統/fallback (line 747): `(ridden ? 6 : 4) * mScale * stypeMul` → `Math.max(5, ...)`
+
+stypeMul (passed=0.8) で 4 → 3.2px に縮む通過駅も最小 5px 保証。
+
+### Trade-off
+
+混雑エリアで微妙にマーカー密度が上がる可能性。ただし元々 4px と 5px の見分けは付かないレベルなので体感差は小さいはず。tolerance 12 はそのまま残置 (radius + tolerance で 17px の判定範囲)。
+
+---
+
 ## 149. v301 — 小さい駅の click 判定範囲を更に拡大 (タッチ +16 / PC +12) (2026-05-24)
 
 ### 背景

@@ -715,7 +715,8 @@ function drawStationsLayer() {
       } else {
         // 平常多系統駅: ベースの単色ドット + パイマーカーを重ねる (v232 で出現タイミング統一)
         const c = colors[0] || '#888';
-        const radius = (ridden ? 5.5 : 4) * Math.min(1.4, mScale) * stypeMul;
+        // v302: 最小 5px (直径 10px) でタップ性確保 — tolerance 12 が不発な環境もあるため radius 自体を底上げ
+        const radius = Math.max(5, (ridden ? 5.5 : 4) * Math.min(1.4, mScale) * stypeMul);
         dot = L.circleMarker([ms.lat, ms.lon], {
           radius,
           fillColor: c,
@@ -744,7 +745,8 @@ function drawStationsLayer() {
       });
     } else {
       const c = colors[0] || '#888';
-      const radius = (ridden ? 6 : 4) * mScale * stypeMul;
+      // v302: 最小 5px (直径 10px) でタップ性確保 — 単系統 + low LOD の最小ドットでも触れるように
+      const radius = Math.max(5, (ridden ? 6 : 4) * mScale * stypeMul);
       dot = L.circleMarker([ms.lat, ms.lon], {
         radius,
         fillColor: c,
