@@ -27,6 +27,37 @@
 
 ---
 
+## 130. v282 — 地図駅クリックで「この駅を含む旅程」一覧を表示 (2026-05-24)
+
+### 背景
+
+ユスケから「地図で駅をクリックしたら関連するトリップデータを確認したい」との要望。TODO の「🟡 駅 UI の情報ハブ化（4 領域パネル）」の自分の記録領域に該当する機能。
+
+### 設計
+
+駅アクションシート ([js/17-station-actions.js](js/17-station-actions.js)) に「🚃 この駅を含む旅程 (N件)」ボタンを追加。押すと既存の「🎨 色変更」と同じパターンでシート内が一覧表示に差し替わり、「← 戻る」でメインアクションに戻る。
+
+「関連する」の判定基準 (ユスケ確認):
+
+1. `trip.from_station` または `trip.to_station` 直接一致
+2. `trip.segments[].from` または `to` 直接一致 (乗換駅)
+3. `seg.lineId` を `NORIRECO.data.SERVICE_LINES` から引いて駅順を辿り、`seg.from` 〜 `seg.to` の間にあれば一致 (通過駅)
+
+3 の通過駅判定は `02b-service-lines-builder.js:191` の `seg.lineId → SERVICE_LINES.id` マッチと同じパターンを採用。`candidateN02Ids` フォールバックも追加して旧 ID 形式に対応。
+
+### 表示
+
+`NORIRECO.mypage.tripCardHtml` (bridge 経由) を再利用してフルカード表示。`max-height: 60vh; overflow-y: auto` でシート内スクロール。新しい順 (recorded_at desc) に並べる。
+
+`_mypageCache` が null (マイページ未開封) の場合は「マイページを一度開くと旅程が読み込まれます」と案内するだけで、勝手に Supabase fetch はしない (体感優先 + 起動直後の地図表示を重くしない)。
+
+### 残課題
+
+- 一覧内で「🗑 削除」「📍 GPS で認証」「✏️ 編集」を押した時、`_mypageCache` は更新されるが**シート内の表示は再描画されない** (`applyMpSection` は mp-trip-section を対象にしているため)。シートを閉じて再度開けば反映される。深刻ではないが要改善。
+- `_mypageCache` 未初期化のときに自動 fetch する設計は将来検討。
+
+---
+
 ## 129. v281 — GPS 後追い認証も即時反映に修正 (renderMypage 未 import の同じ罠) (2026-05-24)
 
 ### 背景
