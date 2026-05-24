@@ -280,6 +280,7 @@ async function saveMemoFromModal() {
         line_id: ci.line?.id || null,
         line_name: ci.line?.name || null,
         station: ci.station?.n || null,
+        station_id: ci.station?.id || null,  // v315 (Phase 3-d): 駅 id 並行書き込み
         lat: ci.lat ? parseFloat(ci.lat) : null,
         lon: ci.lon ? parseFloat(ci.lon) : null,
       };
@@ -530,16 +531,22 @@ function memoCardHtml(memo) {
 // ── 駅メモ一覧モーダル (v251: 駅タップから「その駅のメモ」を閲覧) ──────
 
 // 駅マーカークリックから呼ばれる。args は station 情報を持つ。
+// v315 (Phase 3-d): args.station_id があれば id 優先で filter (同名駅取り違え回避)。
 function openStationMemoList(args) {
-  // args = { station, lineId, lineName, lat, lon }
+  // args = { station, station_id, lineId, lineName, lat, lon }
   M.stationContext = {
     station: args.station,
+    station_id: args.station_id || null,
     lineId: args.lineId || null,
     lineName: args.lineName || null,
     lat: typeof args.lat === 'number' ? args.lat : (parseFloat(args.lat) || null),
     lon: typeof args.lon === 'number' ? args.lon : (parseFloat(args.lon) || null),
   };
-  const memos = M.cache.filter(m => m.station === args.station);
+  // id 優先 + name fallback (id を持たない旧 memo は name で hit)
+  const memos = M.cache.filter(m => {
+    if (args.station_id && m.station_id) return m.station_id === args.station_id;
+    return m.station === args.station;
+  });
 
   document.getElementById('sm-title').textContent =
     `📸 ${args.station} のメモ (${memos.length} 件)`;
@@ -570,9 +577,10 @@ function addNewMemoForStation() {
   const ctx = M.stationContext;
   if (!ctx) return;
   // memo-modal の openMemo() は NORIRECO.map.clickInfo を読むので組み立て直す
+  // v315 (Phase 3-d): station.id を伝播し、保存時に memo.station_id に入る
   NORIRECO.map.clickInfo = {
     line: ctx.lineId ? { id: ctx.lineId, name: ctx.lineName } : { id: null, name: ctx.lineName || '' },
-    station: { n: ctx.station, lat: ctx.lat, lon: ctx.lon },
+    station: { n: ctx.station, id: ctx.station_id || null, lat: ctx.lat, lon: ctx.lon },
     lat: ctx.lat != null ? ctx.lat.toFixed(5) : '',
     lon: ctx.lon != null ? ctx.lon.toFixed(5) : '',
   };
@@ -655,8 +663,20 @@ NORIRECO.memos.clear = clearLocalMemos;
 NORIRECO.memos.renderMpMemosSection = renderMpMemosSection;
 // v251: 08-rendering の station マーカー click から呼ぶための公開 API
 NORIRECO.memos.openStationMemoList = openStationMemoList;
-NORIRECO.memos.hasMemosForStation = (stationName) =>
-  M.cache.some(m => m.station === stationName);
+// v315 (Phase 3-d): ms オブジェクト引数に拡張 (id 優先 + name fallback)。
+//   旧シグネチャ hasMemosForStation("駅名") 互換のため、引数が string でも動かす。
+NORIRECO.memos.hasMemosForStation = (msOrName) => {
+  if (!msOrName) return false;
+  if (typeof msOrName === 'string') {
+    return M.cache.some(m => m.station === msOrName);
+  }
+  const id = msOrName.id;
+  const name = msOrName.name;
+  return M.cache.some(m => {
+    if (id && m.station_id) return m.station_id === id;
+    return name && m.station === name;
+  });
+};
 
 // マイページ統合用 (13-mypage-common.applyMpSection から呼ばれる)
 NORIRECO.mypage = NORIRECO.mypage || {};

@@ -28,7 +28,7 @@
 
 ## Service Worker
 
-**`CACHE_VERSION = 'v314'`** · デプロイ回数 = バージョン番号の不変式
+**`CACHE_VERSION = 'v315'`** · デプロイ回数 = バージョン番号の不変式
 
 ---
 
@@ -78,7 +78,7 @@
 | **駅 id 体系 Phase 2-c: 完全一致経路の id 優先化** (v312) | ✅ 完成 — tripMatchesAnyStation の predicate を `(name, id)` 2 引数に拡張、tripVisitsStation/getTripsAtStation を ms オブジェクト引数に変更。地図駅クリックは id 比較で同名駅取り違えなく一意。通過駅展開も id 優先。マイページ駅名検索 (substring) は name のまま動く。CHANGELOG §160 |
 | **駅 id 体系 Phase 3-a/3-b: キャラを id 化** (v313) | ✅ 完成 — `characters_master.json` schema_v2 で `station_ids` を `s_NNNNN` 配列に、旧駅名は `station_names` に。stationCharMap を id/name dual キー化、checkAndGrantCharacters の verifiedStations も dual、tryGrantByGPS / getObtainableCharactersAt も id 優先 + name fallback に。CHANGELOG §161 |
 | **駅 id 体系 Phase 3-c: GPS 後追い認証 id 対応** (v314) | ✅ 完成 — `retroactivelyVerifyTrip` の `findStCoord(name)` を `(id, nameFallback)` に拡張、`trip.from_station_id` / `to_station_id` 優先で駅座標解決。CHANGELOG §162 |
-| **駅 id 体系 Phase 3-d (norireco_memos に station_id 列追加)** | ❌ 未着手 |
+| **駅 id 体系 Phase 3-d: norireco_memos に station_id 列追加 + 並行書き込み + 読み込み id 優先化** (v315) | 🟡 frontend 完成・SQL 実行待ち — SQL migration `v315_memo_station_id.sql` 作成、新規メモは station_id 並行書き込み、openStationMemoList / hasMemosForStation も id 優先 + name fallback。既存 3 件はバックフィルなし (ユスケ判断、fallback で動く)。⚠ Supabase Dashboard で SQL 実行が必要。CHANGELOG §163 |
 | **駅 id 体系 Phase 3-e / 最終 (集計 fallback 撤去 + name 列廃止 + dev-backfill 撤去)** | ❌ 未着手 |
 | **旅程カード「✏️ 編集」拡張** (v226〜v227) | ✅ 完成 — 編集モーダル 5 セクション化、手動記録は時刻フル編集可、GPS 記録はロック。📍 区間フル編集は積み残し。CHANGELOG §75-76 |
 | **ログアウトセキュリティ + 静的デモ撤去 + 完乗率ユニーク駅統一 + LOD シンプル化** (v228〜v235) | ✅ 完成 — SIGNED_OUT で localStorage/RIDDEN_SEGS/mypage キャッシュ purge、地図 LOD 圧縮、user_id フィルタ漏れ修正、静的デモ撤去、完乗率をユニーク駅単位に統一。CHANGELOG §77-84 |
@@ -105,5 +105,5 @@
 - **Phase 3.5** (v95〜v108): 現在地表示 + 最寄駅 + GPS 認証 trip
 - **Phase 3.6** (v109〜v131): 安定化・列車種別・コード分割
 - **Phase 3.7** (v132〜v157): 不正検知・ログイン・マイページ
-- **Phase 3.8** (v158〜): データ補修 + 期間フィルタ拡充 + 記録 UX 磨き込み (v158〜v194, CHANGELOG_PHASE3.8-early.md) → **ES Modules 全面化** (v195〜v225, CHANGELOG_PHASE3.8-modules.md) → 旅程編集拡張 (v226〜v227) → ログアウトセキュリティ + 静的デモ撤去 + LOD シンプル化 (v228〜v235) → OGP シェア MVP (v236〜v237) → 完乗率統合 + リージョン中央駅 (v238〜v242) → 系統色カスタマイズ (v243〜v247) → onclick bridge 修正 (v248) → Cloudflare Pages + norireco.app (v249) → R2/Workers + 写真添付 (v256〜v269) → マイページ即時反映 + 駅/路線アクションシート + 駅名検索 + memoMode 撤廃 (v279〜v289) → 駅 id 体系 Phase 1 + 完駅率用語整理 + slRiddenSt 修正 + 駅クリック確実化 (v290〜v306) → polyline click が delegate を奪う件の修正 (v308) → 駅シート「この駅を含む旅程」を lazy fetch 化 (v309) → 駅 id 体系 Phase 2-a (trip データに id 列追加 + 並行書き込み開始) (v310) → Phase 2-b 既存 trip バックフィル dev ヘルパー (v311) → Phase 2-c 完全一致経路の id 優先化 (v312) → Phase 3-a/3-b キャラを id 化 (v313) → Phase 3-c GPS 後追い認証 id 対応 (v314) ← **今ここ**
+- **Phase 3.8** (v158〜): データ補修 + 期間フィルタ拡充 + 記録 UX 磨き込み (v158〜v194, CHANGELOG_PHASE3.8-early.md) → **ES Modules 全面化** (v195〜v225, CHANGELOG_PHASE3.8-modules.md) → 旅程編集拡張 (v226〜v227) → ログアウトセキュリティ + 静的デモ撤去 + LOD シンプル化 (v228〜v235) → OGP シェア MVP (v236〜v237) → 完乗率統合 + リージョン中央駅 (v238〜v242) → 系統色カスタマイズ (v243〜v247) → onclick bridge 修正 (v248) → Cloudflare Pages + norireco.app (v249) → R2/Workers + 写真添付 (v256〜v269) → マイページ即時反映 + 駅/路線アクションシート + 駅名検索 + memoMode 撤廃 (v279〜v289) → 駅 id 体系 Phase 1 + 完駅率用語整理 + slRiddenSt 修正 + 駅クリック確実化 (v290〜v306) → polyline click が delegate を奪う件の修正 (v308) → 駅シート「この駅を含む旅程」を lazy fetch 化 (v309) → 駅 id 体系 Phase 2-a (trip データに id 列追加 + 並行書き込み開始) (v310) → Phase 2-b 既存 trip バックフィル dev ヘルパー (v311) → Phase 2-c 完全一致経路の id 優先化 (v312) → Phase 3-a/3-b キャラを id 化 (v313) → Phase 3-c GPS 後追い認証 id 対応 (v314) → Phase 3-d メモに station_id 列追加 + 並行書き込み + 読み込み id 優先化 (v315) ← **今ここ**
 - **ドキュメント整理** (2026-05-20): CHANGELOG.md 4 ファイル分割 / (2026-05-23): §0.1 を本ファイル `STATUS.md` に分離・git 管轄化（Stop フック対象に）

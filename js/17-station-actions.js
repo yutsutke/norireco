@@ -431,6 +431,7 @@ function onSaOpenMemos() {
     : null;
   window.NORIRECO?.memos?.openStationMemoList?.({
     station: ms.name,
+    station_id: ms.id || null,  // v315 (Phase 3-d): 駅 id も渡す
     lineId: sl?.id || null,
     lineName: sl?.name || null,
     lat: ms.lat,

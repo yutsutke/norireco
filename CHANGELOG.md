@@ -27,6 +27,50 @@
 
 ---
 
+## 163. v315 — 駅 ID 体系 Phase 3-d: メモに station_id 列追加 + 並行書き込み + 読み込み id 優先化 (2026-05-24)
+
+### 背景
+
+Phase 2 で trip、Phase 3-a/b でキャラ、Phase 3-c で GPS 後追い認証を id 化した。残るは **メモ (norireco_memos)**。
+
+ユスケから「メモは 3 件しかないのでバックフィル不要」との指示。新規メモから station_id を埋めていき、既存 3 件は name 列 fallback で動かす方針。
+
+### 対処
+
+**migration** [`supabase/migrations/v315_memo_station_id.sql`](supabase/migrations/v315_memo_station_id.sql):
+
+- `norireco_memos` に `station_id TEXT` を `ADD COLUMN IF NOT EXISTS` で追加 (NULL 許容)
+- 部分インデックス `idx_norireco_memos_user_station_id` (WHERE station_id IS NOT NULL)
+- `NOTIFY pgrst, 'reload schema';`
+
+**書き込みパス**:
+
+- [`js/17-station-actions.js:onSaOpenMemos`](js/17-station-actions.js): `openStationMemoList` に `station_id: ms.id` を追加で渡す
+- [`js/16-memos.js:openStationMemoList`](js/16-memos.js): args に station_id を受け取り `M.stationContext.station_id` に保存
+- [`js/16-memos.js:addNewMemoForStation`](js/16-memos.js): `clickInfo.station.id` に station_id 伝播
+- [`js/16-memos.js:saveMemoFromModal`](js/16-memos.js): newMemo に `station_id: ci.station?.id || null` を追加 (Supabase POST で並行書き込み)
+
+**読み込みパス**:
+
+- [`js/16-memos.js:openStationMemoList`](js/16-memos.js): `M.cache.filter` を「id があれば id 比較、無ければ name 比較」の fallback ロジックに
+- [`js/16-memos.js:hasMemosForStation`](js/16-memos.js): 引数を `ms` オブジェクトに拡張、id 優先 + name fallback。旧シグネチャ (string) も互換維持
+
+### 設計判断
+
+- **バックフィルなし**: 既存 3 件は station_id NULL のまま。fallback で動くので致命的でないし、3 件なら必要なら手動で Dashboard から PATCH 可能。Phase 2 のように一括 dev ヘルパーを作るほどではない。
+- **hasMemosForStation の旧シグネチャ互換**: 引数が string でも動くようにしてある。callsite が現状 grep で見つからなかった (v253 前後で駅シート統合により呼び出し元が消えた可能性) が、念のため。
+- **路線メモには station_id を入れない**: 路線アクションシートからの「+ 新しい路線メモ」は `clickInfo.station = { n: null, id: null, ... }` で開くので、保存される memo の station_id も null。これは仕様通り (路線メモは駅情報を持たない)。
+
+### 残作業
+
+- ⚠ Supabase Dashboard で `v315_memo_station_id.sql` 実行 (ユスケ)
+- 動作確認: 新規メモを駅から作成 → Supabase Dashboard で station_id 列が `s_NNNNN` に埋まっているか
+- Phase 3-e: 集計 (slRiddenSt 構築) の name fallback 撤去 (Phase 2-d と一括)
+- マイページ駅名検索 (v285〜v289) を id 解決層経由に
+- 最終: name 列の廃止 + `js/20-dev-backfill.js` 撤去
+
+---
+
 ## 162. v314 — 駅 ID 体系 Phase 3-c: GPS 後追い認証 (findStCoord) を id 対応に (2026-05-24)
 
 ### 背景
