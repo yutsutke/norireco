@@ -164,32 +164,32 @@ window.revokeCharacter = revokeCharacter;
 window.listOwnedCharacters = () => [...getOwnedCharacters()];
 
 // 認証済み trip の訪問駅から、該当キャラを自動獲得
+// v313 (Phase 3-b): verifiedStations は id と name 両方をキーに格納 (dual map)。
+//   characters_master.json v2 で obtainable_at が id 配列 / obtainable_at_names が name 配列に
+//   分かれているため、どちらでも hit するようにしておく。
 function checkAndGrantCharacters() {
   if (!NORIRECO.data.CHARACTERS || Object.keys(NORIRECO.data.CHARACTERS).length === 0) return [];
   let trips = [];
   try { trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]'); } catch(e) { return []; }
-  // verified === true の trip の駅を抽出 (駅名 → GPS データのマップ)
+  // verified === true の trip の駅を抽出 (駅 id / 駅名 → GPS データのマップ)
   // 1駅のみ「訪問」記録 (segments 空) にも対応するため trip.from_station / to_station もスキャン
-  const verifiedStationGps = new Map(); // station name → {lat, lon, accuracy} or null
+  const verifiedStations = new Map();
+  const setKey = (key, gps) => { if (key && !verifiedStations.has(key)) verifiedStations.set(key, gps); };
   for (const trip of trips) {
     if (!trip.verified) continue;
     const gps = (trip.gps_lat != null && trip.gps_lon != null)
       ? { lat: trip.gps_lat, lon: trip.gps_lon, accuracy: trip.gps_accuracy }
       : null;
-    // segments の from/to
+    // segments の from/to (id + name 両方)
     for (const seg of (trip.segments || [])) {
-      if (seg.from && !verifiedStationGps.has(seg.from)) verifiedStationGps.set(seg.from, gps);
-      if (seg.to && !verifiedStationGps.has(seg.to)) verifiedStationGps.set(seg.to, gps);
+      setKey(seg.from_id, gps); setKey(seg.from, gps);
+      setKey(seg.to_id, gps); setKey(seg.to, gps);
     }
-    // trip 本体の from_station/to_station (1駅訪問でも捕捉)
-    if (trip.from_station && !verifiedStationGps.has(trip.from_station)) {
-      verifiedStationGps.set(trip.from_station, gps);
-    }
-    if (trip.to_station && !verifiedStationGps.has(trip.to_station)) {
-      verifiedStationGps.set(trip.to_station, gps);
-    }
+    // trip 本体の from_station/to_station + id (1駅訪問でも捕捉)
+    setKey(trip.from_station_id, gps); setKey(trip.from_station, gps);
+    setKey(trip.to_station_id, gps); setKey(trip.to_station, gps);
   }
-  if (verifiedStationGps.size === 0) return [];
+  if (verifiedStations.size === 0) return [];
 
   const granted = [];
   const owned = getOwnedCharacters();
@@ -198,21 +198,29 @@ function checkAndGrantCharacters() {
     if (!char.meta || char.meta.default_unlocked) continue;
     if (owned.has(charId)) continue;
     if (!isCharacterAvailable(char.meta)) continue;
-    const obtainAt = char.meta.obtainable_at || char.meta.station_ids || [];
-    for (const stationName of obtainAt) {
-      if (verifiedStationGps.has(stationName)) {
-        owned.add(charId);
-        granted.push({ char, station: stationName, gps: verifiedStationGps.get(stationName) });
-        break;
-      }
+    // v313: id 優先で照合、無ければ駅名 fallback
+    const obtainAtIds = char.meta.obtainable_at || char.meta.station_ids || [];
+    const obtainAtNames = char.meta.obtainable_at_names || char.meta.station_names || [];
+    let hitKey = null;
+    for (const sid of obtainAtIds) { if (verifiedStations.has(sid)) { hitKey = sid; break; } }
+    if (!hitKey) {
+      for (const sname of obtainAtNames) { if (verifiedStations.has(sname)) { hitKey = sname; break; } }
+    }
+    if (hitKey) {
+      owned.add(charId);
+      granted.push({ char, station: hitKey, gps: verifiedStations.get(hitKey) });
     }
   }
   if (granted.length > 0) {
     setOwnedCharacters(owned);
     console.log(`[乗レコ] 🎉 自動獲得: ${granted.map(g => g.char.meta.name).join(', ')}`);
-    // Supabase に獲得履歴を記録 (各々独立に)
+    // Supabase に獲得履歴を記録 (各々独立に) — station_name 列は駅名で記録 (互換のため)
     for (const g of granted) {
-      saveCharacterGrantToSupabase(g.char.meta.id, g.station, 'trip_auto', g.gps);
+      // hitKey が id (s_NNNNN) の場合は station_names から最初の駅名を引いて記録
+      const stationName = String(g.station).startsWith('s_')
+        ? (g.char.meta.station_names || g.char.meta.obtainable_at_names || [g.station])[0]
+        : g.station;
+      saveCharacterGrantToSupabase(g.char.meta.id, stationName, 'trip_auto', g.gps);
     }
   }
   return granted.map(g => g.char);
@@ -282,14 +290,25 @@ function tryGrantByGPS(charId, ev) {
       const accuracy = pos.coords.accuracy;
       // 半径: テスト中は 1km まで緩める (本番は max(300, accuracy+100) に戻す)
       const radius = Math.max(1000, accuracy + 100);
-      const obtainAt = char.meta.obtainable_at || char.meta.station_ids || [];
+      // v313 (Phase 3-b): id 配列を優先、無ければ name fallback
+      const obtainAtIds = char.meta.obtainable_at || char.meta.station_ids || [];
+      const obtainAtNames = char.meta.obtainable_at_names || char.meta.station_names || [];
+      const MS = NORIRECO.data.MERGED_STATIONS;
       let nearestMs = null;
       let nearestDist = Infinity;
-      for (const stationName of obtainAt) {
-        const ms = NORIRECO.data.MERGED_STATIONS.find(m => m.name === stationName);
+      for (const sid of obtainAtIds) {
+        const ms = MS.find(m => m.id === sid);
         if (!ms) continue;
         const d = distMeters(userLat, userLon, ms.lat, ms.lon);
         if (d < nearestDist) { nearestDist = d; nearestMs = ms; }
+      }
+      if (!nearestMs) {
+        for (const sname of obtainAtNames) {
+          const ms = MS.find(m => m.name === sname);
+          if (!ms) continue;
+          const d = distMeters(userLat, userLon, ms.lat, ms.lon);
+          if (d < nearestDist) { nearestDist = d; nearestMs = ms; }
+        }
       }
       if (!nearestMs) {
         alert(`${char.meta.name} の対象駅座標が見つかりません`);

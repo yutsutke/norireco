@@ -27,6 +27,60 @@
 
 ---
 
+## 161. v313 — 駅 ID 体系 Phase 3-a/3-b: キャラデータと獲得判定の id 化 (2026-05-24)
+
+### 背景
+
+Phase 2 (v310〜v312) で trip データを id ベースに移行した。続いて駅キャラまわりも id 化する。
+
+現状の問題:
+- `characters_master.json` の `station_ids` フィールド名だが、中身は **駅名** (`["八王子"]`) — フィールド名と実体が不一致
+- `obtainable_at` も駅名配列
+- `stationCharMap` のキーが駅名
+- これでは Phase 2 の trip id 化と接続できない (verified trip の `from_station_id` でキャラ判定できない)
+
+### 対処
+
+**3-a: `characters_master.json` schema_v2** [`characters_master.json`](characters_master.json)
+
+- `station_ids` の中身を実 id (`["s_00060"]` 等) に置換。
+  - 八王子 → `s_00060`、立川 → `s_00084` (merged_stations.json から確認済)
+- 旧駅名は `station_names` フィールドに残置 (表示用 + name fallback 用)。
+- 期間限定キャラの `obtainable_at` も id 化、旧駅名は `obtainable_at_names` に。
+- `schema_version: 1 → 2` に bump。
+
+**3-b: 消費側を id 対応に**
+
+- [`js/02-data-loaders.js`](js/02-data-loaders.js): `stationCharMap` を **id と name の dual キー map** に。両方のキーから同じキャラ entry に到達 (消費側 `stationCharMap.get(ms.id)` / `.get(ms.name)` が両方動く)。
+- [`js/03-characters.js`](js/03-characters.js):
+  - `checkAndGrantCharacters` の `verifiedStations` を id + name の dual map 化 (trip.from_station_id / segments[].from_id も含めて格納)。
+  - obtainable_at は id 優先で照合、無ければ name fallback。
+  - Supabase `norireco_character_grants` の `station_name` 列は駅名で記録 (互換のため `station_names` の最初を引く)。
+  - `tryGrantByGPS` の MERGED_STATIONS 検索を id 優先 + name fallback に。
+- [`js/04-gps-location.js`](js/04-gps-location.js): `getObtainableCharactersAt(stationName)` → `getObtainableCharactersAt(ms)` に変更、`ms.id ∈ obtainable_at` または `ms.name ∈ obtainable_at_names` で判定。
+- [`js/08-rendering.js`](js/08-rendering.js): `getObtainableCharactersAt(ms.name)` → `getObtainableCharactersAt(ms)` に。
+
+### 設計判断
+
+- **dual キー map 採用**: stationCharMap を id 単一キーにすると消費側 4 箇所すべてを `ms.id` 渡しに書き換える必要がある (`getStationCharacter(name)` 等の関数引数も)。dual map は entry が同じオブジェクト参照なので余分なメモリは数バイト、消費側互換性が保てる。
+- **station_names フィールドを残す理由**: (1) Supabase の `norireco_character_grants.station_name` カラムが name ベース、(2) UI 表示 (「八王子駅で獲得」等)、(3) name fallback。Phase 3 全完了時に整理予定。
+- **localStorage の駅選択 (`STATION_CHAR_PICK_KEY`) は name キーのまま**: dual map で hit するので変更不要。UI 個人化と「駅マスター id 体系」を分離。
+
+### 動作確認
+
+- 八王子・立川駅マーカーをタップ → アクションシートが今まで通り出る (stationCharMap dual map)
+- 期間限定キャラの「📍 今ここ！」ボタンが MERGED_STATIONS 検索で動く (id 優先)
+- 新規 verified trip 記録 → 自動キャラ獲得トーストが正しく出る
+
+### 残作業
+
+- 3-c: GPS 後追い認証 `findStCoord` を id 対応に
+- 3-d: `norireco_memos` に `station_id` 列追加 + バックフィル + 書き込みパス
+- 3-e: 集計 (slRiddenSt 構築) の name fallback 撤去
+- 最終: `norireco_trips` / `characters_master.json` の name 列廃止、`js/20-dev-backfill.js` 撤去
+
+---
+
 ## 160. v312 — 駅 ID 体系 Phase 2-c: 完全一致経路 (駅シート/地図駅クリック) の id 優先化 (2026-05-24)
 
 ### 背景

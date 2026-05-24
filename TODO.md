@@ -55,10 +55,14 @@ git log --oneline -20
   - 動機: 同名異所駅 (例: 高松 香川 / 石川 / 多摩) を trip データレベルで厳密に区別。Phase 1 では SERVICE_LINE 経由で間接解決していたが、trip データそのものが name しか持たないと将来 (グローバル展開・AI 自動列車判定) で破綻する
 
 - [ ] **駅 ID 体系 Phase 3: memo / characters_master / 駅名検索の id 化**
-  - Supabase `norireco_memos` に `station_id` 列追加 + 既存データ移行
-  - `characters_master.json` の `station_ids` を `s_NNNNN` 形式に (現状は駅名配列)
-  - マイページ駅名検索 (v285〜v289) を id 解決層経由に (表示は name)
-  - 13a-stats.js の `visitCount` を name キー → id キーに移行 (Phase 1 で残置した最後の name キー)
+  - **Phase 3-a/3-b 完成 (v313)**: `characters_master.json` schema_v2 で id 化、キャラ獲得判定 / GPS 獲得 / 駅シート連携 を id 優先 + name fallback に
+  - **残**:
+    - 3-c: GPS 後追い認証 `findStCoord` を id 対応に
+    - 3-d: Supabase `norireco_memos` に `station_id` 列追加 + 既存データ移行 + 書き込みパス
+    - 3-e: 集計 (slRiddenSt 構築) の name fallback 撤去 (Phase 2-d と一括)
+    - マイページ駅名検索 (v285〜v289) を id 解決層経由に (表示は name)
+    - 13a-stats.js の `visitCount` を name キー → id キーに移行
+    - 最終: `norireco_trips` / `characters_master.json` の name 列廃止 + `js/20-dev-backfill.js` 撤去
 
 ## 🟡 体験向上（コア層の継続率を上げる）
 

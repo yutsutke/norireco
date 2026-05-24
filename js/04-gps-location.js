@@ -326,16 +326,22 @@ export function updateLocationButton() {
 }
 
 // この駅で獲得可能なキャラ一覧 (locked + 期間内 + obtainable_at 一致)
-export function getObtainableCharactersAt(stationName) {
+// v313 (Phase 3-b): 引数を ms オブジェクトに変更。obtainable_at が id 配列の場合 ms.id と、
+//   obtainable_at_names が name 配列の場合 ms.name と比較する dual 経路。
+export function getObtainableCharactersAt(ms) {
   if (!NORIRECO.data.charModeOn) return [];
+  if (!ms) return [];
   const result = [];
   for (const id in NORIRECO.data.CHARACTERS) {
     const char = NORIRECO.data.CHARACTERS[id];
     if (!char.meta || char.meta.default_unlocked) continue;
     if (isCharacterOwned(id)) continue;
     if (!isCharacterAvailable(char.meta)) continue;
-    const obtainAt = char.meta.obtainable_at || char.meta.station_ids || [];
-    if (obtainAt.includes(stationName)) result.push(char);
+    const obtainAtIds = char.meta.obtainable_at || char.meta.station_ids || [];
+    const obtainAtNames = char.meta.obtainable_at_names || char.meta.station_names || [];
+    if ((ms.id && obtainAtIds.includes(ms.id)) || (ms.name && obtainAtNames.includes(ms.name))) {
+      result.push(char);
+    }
   }
   return result;
 }
@@ -359,7 +365,7 @@ export function drawObtainableIndicators() {
   const _mapMode = window._mapDisplayMode || 'both';
   let count = 0;
   for (const ms of NORIRECO.data.MERGED_STATIONS) {
-    const chars = getObtainableCharactersAt(ms.name);
+    const chars = getObtainableCharactersAt(ms);  // v313: ms オブジェクト
     if (chars.length === 0) continue;
 
     // マップ表示モードに応じて駅単位で skip (v293: slRiddenSt は駅 id Set)

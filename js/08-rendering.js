@@ -905,7 +905,7 @@ export function openCharModal(ms, character) {
     </div>`;
   }).join('');
   // ─ ここで獲得できるキャラを集計（モーダル冒頭の Call-to-Action 用）─
-  const obtainableHere = getObtainableCharactersAt(ms.name);
+  const obtainableHere = getObtainableCharactersAt(ms);  // v313: ms オブジェクト引数
   const getPromptHtml = obtainableHere.length > 0 ? `
     <div class="char-modal-get-prompt">
       <div class="char-modal-get-prompt-icon">
