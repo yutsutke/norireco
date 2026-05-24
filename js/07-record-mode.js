@@ -762,7 +762,15 @@ async function saveMultiSegmentTrip() {
       if (fromIdx < 0 || toIdx < 0) continue;
       totalStations += Math.abs(toIdx - fromIdx) + 1;
       if (lineNames[lineNames.length - 1] !== seg.line.name) lineNames.push(seg.line.name);
-      tripSegments.push({lineId: seg.line.id, from: seg.from.name, to: seg.to.name});
+      // v310 (Phase 2-a): seg.line.stations[].id は v293 で付与済み。
+      // seg.line が特定済みなので同名駅問題に当たらず一意に id 化できる。
+      const fromStId = seg.line.stations[fromIdx].id || null;
+      const toStId = seg.line.stations[toIdx].id || null;
+      tripSegments.push({
+        lineId: seg.line.id,
+        from: seg.from.name, to: seg.to.name,
+        from_id: fromStId, to_id: toStId,
+      });
     }
     if (tripSegments.length === 0) { alert('保存できる区間がありません'); return; }
   } else {
@@ -771,6 +779,24 @@ async function saveMultiSegmentTrip() {
 
   const fromStation = R.selection[0].name;
   const toStation = R.selection[R.selection.length - 1].name;
+  // v310 (Phase 2-a): trip 全体の始終駅 id
+  //   - 通常 (segments あり): 最初/最後の segment の id を使う (同名駅問題回避)
+  //   - isVisitOnly: R.selection[0] の lat/lon + name で MERGED_STATIONS を絞り込む
+  let fromStationId = null;
+  let toStationId = null;
+  if (!isVisitOnly && tripSegments.length > 0) {
+    fromStationId = tripSegments[0].from_id || null;
+    toStationId = tripSegments[tripSegments.length - 1].to_id || null;
+  } else if (isVisitOnly) {
+    const s0 = R.selection[0];
+    const MS = NORIRECO.data?.MERGED_STATIONS;
+    if (Array.isArray(MS) && s0) {
+      const ms = MS.find(m => m.name === s0.name
+        && Math.abs(m.lat - s0.lat) < 1e-5 && Math.abs(m.lon - s0.lon) < 1e-5);
+      fromStationId = ms?.id || null;
+      toStationId = fromStationId;
+    }
+  }
   const lineList = lineNames.join(' ▸ ');
   const tripName = isVisitOnly
     ? `${fromStation} 訪問`
@@ -887,6 +913,8 @@ async function saveMultiSegmentTrip() {
     id: tripId, date: tripDate, name: tripName,
     photos: tripPhotos,
     from_station: fromStation, to_station: toStation,
+    // v310 (Phase 2-a): 並行書き込み。読み込み側はまだ name 優先 (2-c で id 優先化)。
+    from_station_id: fromStationId, to_station_id: toStationId,
     total_stations: totalStations,
     transfers: Math.max(0, tripSegments.length - 1),
     line_list: lineList,

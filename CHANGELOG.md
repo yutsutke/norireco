@@ -27,6 +27,59 @@
 
 ---
 
+## 158. v310 — 駅 ID 体系 Phase 2-a: trip データに `*_station_id` 列追加 + 並行書き込み開始 (2026-05-24)
+
+### 背景
+
+Phase 1 (v290〜v306) で `merged_stations.json` 全 9,017 駅に `s_NNNNN` id を付与し、SERVICE_LINES の `stations[]` にも伝播、集計・描画判定 (slRiddenSt 等) は id ベース化した。
+
+しかし **trip データ本体 (Supabase `norireco_trips`)** はまだ name 文字列ベース。すなわち:
+
+- `trip.from_station` / `trip.to_station` — 駅名文字列
+- `trip.segments[].from` / `.to` — 駅名文字列
+
+これでは同名駅 (例: 「府中」=東京/広島) の取り違えや、駅名表記揺れの保守が脆い。Phase 2 で trip も id ベースに移行する。
+
+### Phase 2 の段階分け
+
+| 段階 | 内容 |
+|------|------|
+| 2-a (本セッション) | 列追加 + 並行書き込み (新規 trip は name + id 両方書く、読み込みは name 優先のまま) |
+| 2-b | 既存 trip のバックフィル (SQL or 一度限り js スクリプト) |
+| 2-c | 読み込み (tripMatchesAnyStation / キャラ獲得 / GPS 後追い認証) を id 優先 + name fallback に |
+| 2-d / Phase 3 | name 列の最終撤去 |
+
+### 対処 (2-a)
+
+1. **SQL migration** [`supabase/migrations/v310_trip_station_ids.sql`](supabase/migrations/v310_trip_station_ids.sql) を新規追加。
+   - `norireco_trips` に `from_station_id` (TEXT) / `to_station_id` (TEXT) を `ADD COLUMN IF NOT EXISTS` で追加 (NOT NULL 制約なし — バックフィルまで NULL 許容)。
+   - 部分インデックス (`WHERE IS NOT NULL`) を 2 本作成。
+   - `segments` JSONB は schema 変更不要 — 各要素に `from_id` / `to_id` を JSON 側で同居させる。
+   - 末尾に `NOTIFY pgrst, 'reload schema';`。
+2. **書き込み修正** [`js/07-record-mode.js:saveMultiSegmentTrip`](js/07-record-mode.js):
+   - tripSegments 構築時、`seg.line.stations[fromIdx].id` / `[toIdx].id` を取り出して `from_id` / `to_id` として埋める (seg.line が特定済みなので同名駅問題に当たらず一意に id 化できる)。
+   - trip 全体の `from_station_id` / `to_station_id`:
+     - 通常: 最初の segment の `from_id` / 最後の segment の `to_id`
+     - isVisitOnly: `R.selection[0]` の lat/lon + name で MERGED_STATIONS を絞り込んで id を引く
+   - `tripForSupabase()` は notes / delay_minutes だけ除外する仕様なので、新列は自動的に Supabase に送られる。
+
+### 設計判断
+
+- **同名駅問題の回避**: trip 全体の始終駅 id を「最初/最後の segment の id」から取ることで、lineId 経由で一意に解決できる。MERGED_STATIONS 全体から name 検索するアプローチだと「府中」「中野」など同名駅で誤マッチするため避けた。
+- **NOT NULL 制約を付けない**: バックフィル前は既存 trip が NULL を持つため。2-b バックフィル完了後に NOT NULL に昇格させる予定。
+- **読み込み側は触らない**: 2-a の責務は「並行書き込みを始める」だけ。既存 trip の name 経路は壊さない。
+
+### 残作業
+
+- ⚠ **Supabase Dashboard で `v310_trip_station_ids.sql` を実行する** (ユスケ作業)。実行しないと Supabase POST 時に存在しない列を送ることになるが、PostgREST は不明な列を黙って捨てる挙動なので致命的ではない (が、id が保存されないだけ)。
+- Phase 2-b (バックフィル) / 2-c (読み込み id 優先化) は別セッションで。
+
+### saveTripEdit (旅程編集) との関係
+
+`13b-trips.js:saveTripEdit` は segments / from_station / to_station を編集しないため、既存 trip の `from_station_id` / `to_station_id` も触らない。バックフィル後は値が保たれる。
+
+---
+
 ## 157. v309 — 駅シート「この駅を含む旅程 (マイページ未読込)」を lazy fetch 化 (2026-05-24)
 
 ### 背景
