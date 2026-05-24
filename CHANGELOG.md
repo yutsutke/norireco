@@ -27,6 +27,41 @@
 
 ---
 
+## 151. v303 — Canvas circleMarker に透明な DOM hit area を重ねて click を確実に (2026-05-24)
+
+### 背景
+
+ユスケ決定的な観察: 「複数路線乗り入れている駅や何度も訪問している駅はクリックできる、最小ドット駅だけクリックできない」。
+
+これらの大型マーカーは `L.marker({ icon: L.divIcon(...) })` (DOM 要素ベース) で描画されており click が効く一方、最小ドット駅は `L.circleMarker({ renderer: CANVAS })` (Canvas) で描画されており **環境によって Canvas tolerance が効かない** ことが原因と特定。
+
+v290 → v301 → v302 で Canvas tolerance 拡大・radius 底上げを試したが、Canvas tolerance がそもそも効いていないので根本解決にならず。
+
+### 修正
+
+`L.CircleMarker` インスタンスの場合に限り、同じ座標に **透明な DOM hit area marker (divIcon, 22x22px)** を重ねて click を担保:
+
+```js
+if (dot instanceof L.CircleMarker) {
+  const hitArea = L.marker([ms.lat, ms.lon], {
+    icon: L.divIcon({ className: 'station-hit-area', html: '', iconSize: [22,22], iconAnchor: [11,11] }),
+    interactive: true,
+  });
+  attachStationDotClickV2(hitArea, ms);
+  dotLayerRef.addLayer(hitArea);
+}
+```
+
+CSS: `.station-hit-area { cursor: pointer; background: transparent; }`
+
+DOM 要素なので click が確実に取れる。divIcon は内容空でも 22x22 の click 範囲を持つ。
+
+### Trade-off
+
+マーカー数が circleMarker 駅の分だけ倍増 (約 9000 → 多めに見て 1〜2 万)。divIcon は HTML 空要素なので軽量だが、描画パフォーマンスへの影響を要観察。重ければ未乗車かつ最小サイズの駅だけに絞る等の追加最適化を検討。
+
+---
+
 ## 150. v302 — 最小駅 circleMarker の radius を 5px で底上げ (タップ性確保) (2026-05-24)
 
 ### 背景
