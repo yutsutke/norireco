@@ -27,6 +27,30 @@
 
 ---
 
+## 170. v322 — 地図 FAB アイコン並び順を 📍📝🎭🌙 に変更 (2026-05-25)
+
+### 背景
+
+ユスケの希望で、地図右下の FAB スタック (縦並び) の並び順を変更したい。
+
+### 旧並び (top→bottom)
+- 📍 location (bottom:225px)
+- 🎭 char (bottom:170px)
+- 📝 record (bottom:115px)
+- 🌙/🗺️/🌐 map-mode (bottom:60px)
+
+### 新並び (top→bottom)
+- 📍 location (bottom:225px) — 変更なし
+- 📝 record (bottom:170px) — 🎭 と入れ替え
+- 🎭 char (bottom:115px) — 📝 と入れ替え
+- 🌙/🗺️/🌐 map-mode (bottom:60px) — 変更なし
+
+### 変更ファイル
+- noritetsu-map.html: `.record-fab` と `.char-fab` の bottom 値を入れ替え
+- sw.js: CACHE_VERSION v321 → v322
+
+---
+
 ## 169. v321 — prefOfStation の bbox 重複時バグ修正 (「八王子 東京」が 0 件落ちしていた真の原因) (2026-05-24)
 
 ### 背景
