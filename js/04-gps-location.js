@@ -362,12 +362,12 @@ export function drawObtainableIndicators() {
     const chars = getObtainableCharactersAt(ms.name);
     if (chars.length === 0) continue;
 
-    // マップ表示モードに応じて駅単位で skip
+    // マップ表示モードに応じて駅単位で skip (v293: slRiddenSt は駅 id Set)
     if (_mapMode !== 'both' && typeof slRiddenSt === 'object') {
       let ridden = false;
       for (const slId of (ms.lines || [])) {
         const rs = slRiddenSt[slId];
-        if (rs && rs.has(ms.name)) { ridden = true; break; }
+        if (rs && ms.id && rs.has(ms.id)) { ridden = true; break; }
       }
       if (_mapMode === 'ridden' && !ridden) continue;
       if (_mapMode === 'unridden' && ridden) continue;

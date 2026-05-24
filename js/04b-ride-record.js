@@ -297,6 +297,9 @@
       }
     });
     // Phase 2: 営業系統別 ridden 状態を riddenSt から導出
+    // v293: slRiddenSt は駅 id Set に変更 (同名異所の駅を別物として扱うため)。
+    //   構築元の riddenSt (N02 keyed) は引き続き name ベース — N02 側は同名異所が
+    //   別 N02 路線に分かれているので、駅名一致で問題なし。
     Object.keys(slRiddenSt).forEach(k => delete slRiddenSt[k]);
     if (NORIRECO.data.SERVICE_LINES && NORIRECO.data.SERVICE_LINES.length > 0) {
       for (const sl of NORIRECO.data.SERVICE_LINES) {
@@ -309,7 +312,8 @@
         if (allRidden.size === 0) continue;
         const slSet = new Set();
         for (const s of sl.stations) {
-          if (allRidden.has(s.name)) slSet.add(s.name);
+          // v293: name でマッチ → id を Set に入れる (id が無い駅は除外)
+          if (allRidden.has(s.name) && s.id) slSet.add(s.id);
         }
         if (slSet.size > 0) slRiddenSt[sl.id] = slSet;
       }

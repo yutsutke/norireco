@@ -27,6 +27,46 @@
 
 ---
 
+## 141. v293 — 駅 id 体系を導入 Phase 1 (集計・描画を駅名→駅 id 化、同名異所を正しく区別) (2026-05-24)
+
+### 背景
+
+ユスケ気づき: 「高松」が 3 駅 (香川県 JR / 石川県 JR / 多摩都市モノレール) あるのに `name` Set で集約されていて 1 駅扱いになっていた。同様の同名異所が約 526 駅あり、完乗率分母が 8,491 (本来 9,017) と過小。グローバル展開・廃線・AI 自動列車判定など将来要件すべてに影響する根本問題。
+
+ユスケ「将来的に考えると駅 ID ベース化が一番いい」「今やる」の判断で着手。
+
+### Phase 分割
+
+- **Phase 1 (本コミット)**: 駅マスター + 集計 + 描画判定を id 化。trip / memo データ層には触らない (既存 trip データは `seg.lineId + from/to` 経由で id 解決される互換構造)。
+- **Phase 2 (次セッション以降)**: trip データに `from_station_id` / `to_station_id` / `segments[].from_id` / `to_id` 列追加 + Supabase 移行 + 新規記録パスで id 付与。
+- **Phase 3**: memo + キャラ + 駅名検索周りの id 化。
+
+### Phase 1 の変更
+
+ID 形式: `s_NNNNN` (5 桁ゼロパディング連番、ユスケ承認)。
+
+- [merged_stations.json](merged_stations.json): 全 9,017 駅エントリに `id: "s_NNNNN"` を順序ベースで付与 (Node script で一括)。新規駅は末尾に append、削除は deprecated フラグで id 永続化。
+- [js/02b-service-lines-builder.js](js/02b-service-lines-builder.js):
+  - `build()` 内で merged_stations から (name → \[駅 entry\]) の逆引き map を作り、SERVICE_LINES の各 stations[i] に `.id` を付与。同名異所 (高松 3 駅等) は座標で最近接の id を選ぶ。
+  - `globalStats()` の `allStations` / `riddenStations` / `slSet[sl.id]` を name Set → id Set に切替。id が無い駅 (極稀) は集計から除外。
+- [js/04b-ride-record.js](js/04b-ride-record.js): `slRiddenSt[sl.id]` を name Set → id Set に変更 (構築元の `riddenSt` (N02 keyed) は引き続き name ベース)。
+- [js/08-rendering.js](js/08-rendering.js): 駅マーカー描画の ridden 判定 3 箇所 (`attachStationDotClickV2` 前段の乗車判定 / tooltip ✓ / キャラモーダルの「✓ 乗車」表示) を `rs.has(ms.name)` → `rs.has(ms.id)` に切替。
+- [js/04-gps-location.js](js/04-gps-location.js): `drawObtainableIndicators` のマップ表示モード判定も同様に id ベース化。
+- [STATUS.md](STATUS.md): カバレッジ表「駅（ユニーク） 8,491」→「駅（国土地理院 N02 ベース） 9,017」。
+
+### 期待される動作変化
+
+- 完乗率の **分母が 8,491 → 9,017** に増える (本来の駅数)。ユーザーの ridden 駅数は当面ほぼ変わらないので、完乗率の数字は微妙に下がる可能性あり (これが正しい値)。
+- 同名異所駅 (例: 香川の高松だけ踏破) で他の同名駅マーカーが誤って ridden 色になる現象が解消される。
+
+### 残課題 / 既知の制約 (Phase 2/3 で解決予定)
+
+- trip データ (`from_station` / `to_station` / `segments[].from` / `to`) は引き続き name 保存。集計は seg.lineId 経由で id 解決するため動くが、`trip.from_station = "高松"` だけ見ても香川か多摩か判別不能。
+- memo の `m.station` も name のまま。マイページ駅名検索 (v285〜v289) でも 3 つの高松を区別できない。
+- characters_master.json の `station_ids` も name 配列。今は影響なし (id 化したらキャラ獲得対象を駅単位に厳密化できる)。
+
+---
+
 ## 140. v292 — STATUS.md カバレッジ表の駅数を実値に更新 + ユニーク 1 行に整理 (2026-05-24)
 
 ### 背景

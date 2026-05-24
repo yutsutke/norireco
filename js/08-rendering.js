@@ -654,11 +654,11 @@ function drawStationsLayer() {
     const tier = (baseTier === 7) ? 7 : Math.min(6, baseTier + isolationBonus);
     const mScale = nLines === 1 ? 1.0 : Math.min(2.5, 1.0 + Math.log2(nLines) * 0.5);
 
-    // 乗車判定: ms.lines のどれかでこの駅が ridden か
+    // 乗車判定: ms.lines のどれかでこの駅が ridden か (v293: slRiddenSt は id Set)
     let ridden = false;
     for (const slId of ms.lines) {
       const rs = slRiddenSt[slId];
-      if (rs && rs.has(ms.name)) { ridden = true; break; }
+      if (rs && ms.id && rs.has(ms.id)) { ridden = true; break; }
     }
 
     // マップ表示モードに応じて駅もフィルタ
@@ -756,7 +756,7 @@ function drawStationsLayer() {
       const c = colors[idx] || (sl && sl.color) || '#888';
       const nm = sl ? sl.name : lid;
       const rs = slRiddenSt[lid];
-      const mark = (rs && rs.has(ms.name)) ? '✓' : '';
+      const mark = (rs && ms.id && rs.has(ms.id)) ? '✓' : '';
       return `<span style="color:${c}">●</span> ${nm} ${mark}`;
     }).join('<br>');
     const linesText = nLines > 1
@@ -865,7 +865,7 @@ export function openCharModal(ms, character) {
     const color = (sl && sl.color) || '#888';
     const name = sl ? sl.name : lid;
     const rs = slRiddenSt[lid];
-    const ridden = rs && rs.has(ms.name);
+    const ridden = rs && ms.id && rs.has(ms.id);
     return `<div class="char-modal-line-row">
       <span class="char-modal-line-dot" style="background:${color}"></span>
       <span class="char-modal-line-name">${name}</span>

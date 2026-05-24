@@ -104,6 +104,26 @@ import { loadServiceLinesMaster, loadLines } from './02-data-loaders.js';
     if (NORIRECO.data.serviceLinesBuilt) return;
     const perLineMap = buildPerLineCoordMap();
     NORIRECO.data.SERVICE_LINES = [];
+
+    // v293: merged_stations の駅 id を SERVICE_LINES.stations[].id に伝播するための逆引き。
+    //   同名異所 (例: 高松 3 駅) は座標で最近接の id を選ぶ。
+    const MS = NORIRECO.data.MERGED_STATIONS || [];
+    const msByName = new Map();
+    for (const ms of MS) {
+      if (!msByName.has(ms.name)) msByName.set(ms.name, []);
+      msByName.get(ms.name).push(ms);
+    }
+    function resolveStationId(name, lat, lon) {
+      const cands = msByName.get(name);
+      if (!cands || cands.length === 0) return null;
+      if (cands.length === 1) return cands[0].id;
+      let best = null, bestD = Infinity;
+      for (const c of cands) {
+        const d = (c.lat - lat) ** 2 + (c.lon - lon) ** 2;
+        if (d < bestD) { bestD = d; best = c.id; }
+      }
+      return best;
+    }
     for (const sl of (NORIRECO.data.SERVICE_LINES_MASTER || [])) {
       const sourceN02Id = deriveN02IdFromAutoId(sl.id);
       const masterNames = new Set((sl.stations || []).map(s => s.name));
@@ -124,7 +144,11 @@ import { loadServiceLinesMaster, loadLines } from './02-data-loaders.js';
         for (const c of candidates) {
           if (c.info.stations.has(s.name)) { coord = c.info.stations.get(s.name); break; }
         }
-        if (coord) stations.push({ name: s.name, lat: coord[0], lon: coord[1] });
+        if (coord) {
+          // v293: merged_stations の駅 id を解決して同時にぶら下げる
+          const id = resolveStationId(s.name, coord[0], coord[1]);
+          stations.push({ name: s.name, lat: coord[0], lon: coord[1], id });
+        }
       }
       if (stations.length < 2) continue;
       const group = detectServiceLineGroup(stations, sl.name, sl.operator_id);
@@ -181,11 +205,13 @@ import { loadServiceLinesMaster, loadLines } from './02-data-loaders.js';
   function globalStats() {
     const SL = NORIRECO.data.SERVICE_LINES;
     const segs = (window.RIDDEN_SEGS) || [];
+    // v293: ユニーク判定を駅 id ベースに変更 — 同名異所 (例: 高松 3 駅) を別駅として正しく数える。
+    //   id が無い駅 (merged_stations 由来でない極稀ケース) は集計から除外。
     const allStations = new Set();
-    for (const sl of SL) for (const s of sl.stations) allStations.add(s.name);
+    for (const sl of SL) for (const s of sl.stations) if (s.id) allStations.add(s.id);
 
-    const slSet = {};                // sl.id → Set<駅名>
-    const riddenStations = new Set();// 全乗車駅のユニーク Set
+    const slSet = {};                // sl.id → Set<駅id>
+    const riddenStations = new Set();// 全乗車駅のユニーク Set (id)
     for (const seg of segs) {
       // 1. SERVICE_LINE.id への直接 match (新形式 trip)
       let sl = SL.find(l => l.id === seg.lineId);
@@ -199,9 +225,10 @@ import { loadServiceLinesMaster, loadLines } from './02-data-loaders.js';
       const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
       if (!slSet[sl.id]) slSet[sl.id] = new Set();
       for (let i = a; i <= b; i++) {
-        const name = sl.stations[i].name;
-        slSet[sl.id].add(name);
-        riddenStations.add(name);
+        const stid = sl.stations[i].id;
+        if (!stid) continue;
+        slSet[sl.id].add(stid);
+        riddenStations.add(stid);
       }
     }
 
