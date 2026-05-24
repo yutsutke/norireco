@@ -27,6 +27,34 @@
 
 ---
 
+## 127. v279 — 旅程削除が即時 UI 反映されないバグを修正 (2026-05-24)
+
+### 背景
+
+ユスケから「旅程データを削除後、すぐに反映されない。ホームページを更新する必要がある」との報告。
+
+### 原因
+
+`deleteTripFromMypage()` ([js/13b-trips.js:566](js/13b-trips.js)) で:
+
+1. Supabase DELETE 成功 → `setTimeout(() => renderMypage(), 500)` で再描画
+2. `_mypageCache` を即時更新していない（楽観的更新なし）
+3. `renderMypage()` は async で Supabase から再 fetch するが、その完了まで完乗率カードは「📊 完乗率を計算中…」スピナーのまま
+4. 500ms の遅延が「反映されない」感を増幅
+
+### 修正
+
+- 削除成功直後に `NORIRECO.mypage.state._mypageCache` から該当 trip を即座に除去（楽観的更新）
+- `setTimeout(500)` 撤去し、即座に `renderMypage()` を呼び出し
+
+これにより Supabase の再 fetch を待たずに UI 側のカウントや一覧が即座に反映される。
+
+### 残課題
+
+- 完乗率カードの再計算スピナー（数百 ms）は残る。気になるなら完乗率カードも楽観更新する余地あり（今回はスコープ外）。
+
+---
+
 ## 126. v278 — SessionStart hook の手順 2 を v276 移行後の文面に追従 (2026-05-23)
 
 ### 背景

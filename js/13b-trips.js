@@ -590,6 +590,14 @@ async function deleteTripFromMypage(tripId) {
     localStorage.setItem('norireco_trips', JSON.stringify(next));
   } catch(e) {}
 
+  // v279: 楽観的更新 — _mypageCache からも即座に除去して、
+  // renderMypage() の Supabase 再 fetch 完了を待たずに UI へ反映する。
+  try {
+    if (Array.isArray(NORIRECO.mypage.state._mypageCache)) {
+      NORIRECO.mypage.state._mypageCache = NORIRECO.mypage.state._mypageCache.filter(t => t.id !== tripId);
+    }
+  } catch(e) {}
+
   // v267+: trip 削除成功後に R2 オブジェクトも削除 (非同期 fire-and-forget)
   if (photosToDelete.length > 0) {
     Promise.all(photosToDelete.map(p => deletePhotoByUrl(p.url)))
@@ -597,7 +605,7 @@ async function deleteTripFromMypage(tripId) {
   }
 
   showMypageToast('🗑 削除しました', 'success');
-  setTimeout(() => renderMypage(), 500);
+  renderMypage();
 }
 window.deleteTripFromMypage = deleteTripFromMypage;
 NORIRECO.mypage.deleteTripFromMypage = deleteTripFromMypage;
