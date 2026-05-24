@@ -27,6 +27,65 @@
 
 ---
 
+## 166. v318 — マイページ駅名検索を「駅名 都道府県」AND 検索に拡張 (2026-05-24)
+
+### 背景
+
+v317 で駅名検索を id 解決層経由にしたが、ユスケから「同名異所駅 (高松 香川/石川/多摩 など) を都道府県で絞れると便利」との要望。
+
+UI 制約として、駅名フィルタの入力欄を 2 つに分ける (駅名 + 都道府県セレクト) と画面が重くなる。1 つの入力欄でモード切替できる方が直感的:
+- "八王子" → 駅名のみ (北八王子・京王八王子・香川の八王子 等すべて)
+- "八王子 東京" → 駅名 AND 都道府県
+
+### 対処
+
+**13-mypage-common.js**
+
+- `PREFECTURES` / `prefOfStation(lat, lon)` を 13a-stats.js から本ファイルに移動 (駅名+都道府県検索と 13a 統計タブ「未訪問都道府県」両方で使うため共通化)。
+- `parseStationQueryTokens(q)` を新規追加 — 半角/全角空白で分解し `{ nameToken, prefTokens, hasPrefFilter }` を返す。
+- `resolveStationQueryIds(q)` を都道府県トークン対応に拡張:
+  - 駅名トークンで name.includes() → 候補駅
+  - 都道府県トークンが ≥1 個あれば `prefOfStation(ms.lat, ms.lon)` で県名解決 → 全 prefToken が含まれる駅のみ採用 (AND)
+  - 結果は id Set。
+
+**13b-trips.js / 16-memos.js**
+
+- `parseStationQueryTokens` を import、predicate を以下のロジックに:
+  - `id && idSet.has(id)` → ヒット
+  - 都道府県トークン有 → そこで終了 (fallback off、厳密モード)
+  - 都道府県トークン無 → `name.includes(nameToken)` に fallback (id 列なしの旧データ救済)
+
+**UI**
+
+- 旅程タブ / メモタブの駅名 input の placeholder を「例: 八王子 / 八王子 東京」に、title 属性で「駅名のみ / 駅名 都道府県 (空白区切り、AND 検索)」のヒント追加。
+
+**13a-stats.js**
+
+- PREFECTURES / prefOfStation の自前定義を削除し、13-mypage-common から import に変更。
+
+### 設計判断
+
+- **入力欄 1 つ案 vs 2 つ案**: 都道府県専用 select を別途置く設計も検討したが、UI 縦幅が増える + 47 + 「すべて」の 48 オプションがダルい + マイページの IME composition 安全 (v286.1) を保ちたい → 1 input + 空白区切りに。"八王子 東京都" でも "八王子 東京" でも `prefToken.every(t => pref.includes(t))` で動く (substring AND)。
+
+- **fallback off の根拠**: prefecture 判定は lat/lon ベース、trip / memo 側の name 列だけでは pref が分からない。pref 指定時に name fallback を残すと「trip の id 列が無い & name match」のレガシーが pref 無視で漏れてしまう。Phase 2-b で trip 125 件全バックフィル済 / Phase 3-d で memo は新規のみ id 並行書き込み (既存 3 件は NULL fallback 想定) という現状では、pref 指定時に fallback を切るデメリットは limited (既存 3 件のみ)。
+
+- **PREFECTURES 移動の影響**: 13a-stats.js のローカル import に変えただけなので機能影響なし。13-mypage-common は他多数から import されているので循環参照リスクをチェック (13a → 13-common は既存方向、逆方向は無し) → OK。
+
+- **同名 substring の落とし穴**: 「香川県」と「香川」の関係 — pref トークンが "香川" でも `pref.includes("香川")` で `香川県` がマッチする。「東京」でも `東京都` がマッチする。OK。逆に "京" だけ入力すると `東京都` / `京都府` 両方ヒット (AND マッチなので 1 県だけほしいなら "東京" or "京都" と入力)。
+
+### 動作確認
+
+- マイページ → 🚃 旅程 → 駅名フィルタに「八王子 東京」入力 → 東京の八王子の trip だけ残る (香川の八王子は除外)
+- 「八王子」だけ入力 → 全国の八王子含む駅 (北八王子・京王八王子 等) で trip が引ける
+- マイページ → 📸 メモ → 同様に動く
+- npm run check: 25/25 OK
+
+### 残作業
+
+- Phase 4 (name 列廃止) の計画と SQL migration 設計
+
+---
+
 ## 165. v317 — 駅 ID 体系 Phase 3-e 仕上げ: 駅名検索 id 解決層 + slVisitCount を SERVICE_LINES + id ベース化 (2026-05-24)
 
 ### 背景
