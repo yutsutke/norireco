@@ -475,20 +475,16 @@ function applyMemoFilters(memos) {
   // v317 (Phase 3-e): 駅名検索を id 解決層経由に。m.station_id があれば idSet 比較で
   //   同名異所駅を厳密区別、無ければ name.includes(q) に fallback (v315 以前のレガシーメモ)。
   // v318: 空白区切りで「駅名 都道府県」検索 (例: "八王子 東京")。
-  // v318.1: pref モードでも name fallback を残す (pref を満たす names Set で絞り込み)。
-  //   resolveStationQuery が ids / names / nameToken / hasPrefFilter を返すので 1 回呼ぶだけ。
+  // v320: pref モード時は id 厳密 (v318 と同じ挙動)。fallback で混入する同名異所駅を排除。
   const res = q ? resolveStationQuery(q) : null;
   return memos.filter(m => {
     if (M.filter.line_id !== 'all' && m.line_id !== M.filter.line_id) return false;
     if (M.filter.memo_type !== 'all' && m.memo_type !== M.filter.memo_type) return false;
     if (M.filter.mood !== 'all' && m.mood !== M.filter.mood) return false;
     if (res) {
-      const { ids, names, nameToken, hasPrefFilter } = res;
+      const { ids, nameToken, hasPrefFilter } = res;
       const idHit = m.station_id && ids.has(m.station_id);
-      let nameHit = false;
-      if (!idHit && m.station && m.station.includes(nameToken)) {
-        nameHit = hasPrefFilter ? names.has(m.station) : true;
-      }
+      const nameHit = !hasPrefFilter && !!m.station && m.station.includes(nameToken);
       if (!idHit && !nameHit) return false;
     }
     return true;

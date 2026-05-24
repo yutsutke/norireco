@@ -27,7 +27,53 @@
 
 ---
 
-## 167. v319 — 駅名+都道府県検索の fallback バグ修正 (「八王子 東京」が 0 件になる問題) (2026-05-24)
+## 168. v320 — 駅名+都道府県検索を v318 の厳密モードに戻す (v319 で混入した同名異所駅を排除) (2026-05-24)
+
+### 背景
+
+v319 で pref モード時にも name fallback を有効化した結果:
+- ユスケの実機で「高松 香川」検索: 香川の高松 (予讃線) ・石川の高松 (七尾線) ・東京の高松 (多摩モノレールの通過駅) すべてヒット
+- v318 では「予讃線 高松→宇多津」だけが綺麗に出ていた (id ベース厳密判定だったため)
+
+「八王子 東京」が v318 で 0 件落ちした真の原因は、name fallback off ではなく **trip 側の `from_station_id` / `to_station_id` / `seg.from_id` / `seg.to_id` が NULL のままバックフィル漏れしていた** こと。fallback を緩めたことで他の同名異所駅まで巻き込んでしまったため revert。
+
+### 対処
+
+predicate を v318 と同じ厳密モードに戻す:
+
+```js
+(name, id) => {
+  if (id && ids.has(id)) return true;
+  if (hasPrefFilter) return false;  // pref モード時は id only
+  return !!name && name.includes(nameToken);
+}
+```
+
+13b-trips.js / 16-memos.js 両方で同じ修正。resolveStationQuery (v319 で新設) のシグネチャは維持。`names` Set は今後 fallback を再検討する余地のために残すか撤去するか、Phase 4 (name 列廃止) と一緒に判断。
+
+### 設計判断
+
+- **同名異所駅の混入 vs 一部 trip の脱落** のトレードオフで、ユスケは「混入を嫌う」方を選択 (ユスケ確認済)。Phase 2/3 完成形の姿に近い挙動。
+- **データ補修の段取り**: ユスケに以下を確認してもらう:
+  1. 駅名フィルタを「八王子」だけにして何件出るか (= name fallback でヒットする trip 数)
+  2. Supabase Table Editor で `norireco_trips` を開き、`from_station='八王子'` または `to_station='八王子'` の行で `from_station_id` / `to_station_id` 列が NULL になっているレコードを特定
+  3. seg.from_id / to_id (jsonb 内部) はもっと深いので、必要なら別の SQL クエリで調査
+- **将来の根本対応**: Phase 4 (name 列廃止) と同時に、id 列のバックフィルを完璧に完了 → fallback 自体が不要になる。
+
+### 動作確認
+
+- マイページ → 🚃 旅程 → 「高松 香川」入力 → 予讃線の trip だけ残ることを確認 (v318 と同じ挙動)
+- 「八王子」だけ → name fallback で全国の八王子含む trip がヒット (v318/v319 と同じ)
+- npm run check: 25/25 OK
+
+### 残作業
+
+- ユスケが Supabase で id 列 NULL の trip を特定 → SQL で補修 (例: `UPDATE norireco_trips SET from_station_id = 's_NNNNN' WHERE id = '...'`) もしくは frontend 経由のリスキャン
+- それが完了すれば「八王子 東京」も id ベース厳密でヒットするはず
+
+---
+
+## 167. v319 — 駅名+都道府県検索の fallback バグ修正試行 (「八王子 東京」が 0 件になる問題) (2026-05-24)
 
 ### 背景
 

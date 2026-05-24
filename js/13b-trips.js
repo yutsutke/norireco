@@ -247,16 +247,16 @@ function applyTripFilters(trips) {
     // v285/v288/v289: 駅名 substring 検索 — マッチ範囲は stationScope (始点/終点/乗換/通過) で切替
     // v317 (Phase 3-e): id 解決層経由化。_stResult.ids と trip 側 *_station_id を比較。
     // v318: 都道府県トークン対応。
-    // v318.1: pref モード時の fallback を「pref を満たす name 候補集合」で絞り込む形に。
-    //   id 列 NULL のレガシー trip でも pref 検索が動く (同名異所駅の厳密区別は犠牲)。
+    // v320: v319 で fallback を緩めたら同名異所駅 (石川の高松等) も混入したため
+    //   v318 の挙動 (pref モード時は id 厳密、fallback off) に戻す。
+    //   pref 指定時に 0 件落ちする trip は「from_station_id / to_station_id / seg.from_id / to_id
+    //   が NULL のままバックフィル漏れ」が原因。Supabase で確認 → 手動補修 SQL で対応する。
     if (_stq && _stResult) {
       const { ids, names, nameToken, hasPrefFilter } = _stResult;
       const predicate = (name, id) => {
         if (id && ids.has(id)) return true;
-        if (!name) return false;
-        if (!name.includes(nameToken)) return false;
-        if (hasPrefFilter) return names.has(name);
-        return true;
+        if (hasPrefFilter) return false;  // pref モード時は id 厳密
+        return !!name && name.includes(nameToken);
       };
       if (!tripMatchesAnyStation(t, predicate, _stScope)) return false;
     }
