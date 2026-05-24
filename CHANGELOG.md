@@ -27,6 +27,32 @@
 
 ---
 
+## 138. v290 — 小さい未乗車駅マーカーをタップしやすく (Canvas tolerance) (2026-05-24)
+
+### 背景
+
+ユスケから「小さい駅だとクリックできないね」(スクショ: 青梅線の未乗車駅 ○ がタップ困難)。
+
+### 原因
+
+08-rendering.js は駅マーカーを Canvas renderer (`L.canvas`) で描画している。Canvas renderer は SVG と違い click 判定が **circle の半径そのまま** = 数 px しかない。未乗車の駅は `radius = (ridden ? 6 : 4) * mScale * stypeMul` で、ズームによっては 2〜4 px。指のタッチサイズ (40〜44 px) に比べて極端に小さく、ほぼ当たらない。
+
+### 修正
+
+Leaflet 1.7+ の `L.canvas({ tolerance })` オプションで click 判定半径を全体に拡張:
+
+- タッチデバイス: +10px
+- PC マウス: +6px
+
+`CANVAS` 定義を `IS_TOUCH` 判定の後に移動 (旧位置だと `window.IS_TOUCH` がまだ未定義で常に false 扱いだった)。`let CANVAS;` で先行宣言 + `IS_TOUCH` 決定後に代入。
+
+### 副作用検討
+
+- 近い 2 駅で判定範囲が重なるケース → Leaflet は「後から add したマーカー」を優先するので、ridden / マルチ系統の派手な divIcon マーカーが基本的に勝つ。未乗車円同士の隣接でも体感ほぼ問題なし。
+- polyline click と被るケース → 既に polyline 側は `L.DomEvent.stopPropagation` 済みで、駅 click が先に発火するならそちらが取られる (Leaflet の z-order)。
+
+---
+
 ## 137. v289 — 駅名検索のマッチ範囲を 4 チップ (始点/終点/乗換/通過) で個別 ON/OFF (2026-05-24)
 
 ### 背景
