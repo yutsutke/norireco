@@ -54,6 +54,52 @@ NORIRECO.mypage.state = NORIRECO.mypage.state || {
 };
 const MP = NORIRECO.mypage.state;
 
+// v287.1: trip が「ある駅マッチ条件 (predicate) に一致する駅を含むか」を判定する
+// 高階関数。判定対象は:
+//   - 始点/終点 (trip.from_station / to_station)
+//   - segments[].from / to (乗換駅)
+//   - segments[].lineId から SERVICE_LINES の駅順を辿った通過駅
+//
+// SERVICE_LINES 未構築 (起動直後) や lineId が SERVICE_LINES.id にも
+// candidateN02Ids にも無いケースは通過駅判定を諦め、from/to の直接判定に
+// フォールバックする。
+//
+// 使い分け:
+//   - 地図駅クリック「この駅を含む旅程」(v282): 完全一致 predicate
+//   - マイページ駅名検索 (v287.1): substring predicate
+export function tripMatchesAnyStation(trip, predicate) {
+  if (!trip || typeof predicate !== 'function') return false;
+  if (predicate(trip.from_station)) return true;
+  if (predicate(trip.to_station)) return true;
+  const segs = Array.isArray(trip.segments) ? trip.segments : [];
+  const SL = NORIRECO.data?.SERVICE_LINES || [];
+  for (const seg of segs) {
+    if (!seg) continue;
+    if (predicate(seg.from)) return true;
+    if (predicate(seg.to)) return true;
+    if (!seg.lineId || SL.length === 0) continue;
+    let sl = SL.find(s => s.id === seg.lineId);
+    if (!sl) sl = SL.find(s => Array.isArray(s.candidateN02Ids) && s.candidateN02Ids.includes(seg.lineId));
+    if (!sl || !Array.isArray(sl.stations)) continue;
+    const fi = sl.stations.findIndex(s => s.name === seg.from);
+    const ti = sl.stations.findIndex(s => s.name === seg.to);
+    if (fi < 0 || ti < 0) continue;
+    const lo = Math.min(fi, ti), hi = Math.max(fi, ti);
+    for (let i = lo + 1; i < hi; i++) {
+      if (predicate(sl.stations[i].name)) return true;
+    }
+  }
+  return false;
+}
+
+// 完全一致版 (v282 互換) — 駅クリック時の旅程絞り込みに使う
+export function tripVisitsStation(trip, stationName) {
+  if (!stationName) return false;
+  return tripMatchesAnyStation(trip, n => n === stationName);
+}
+NORIRECO.mypage.tripMatchesAnyStation = tripMatchesAnyStation;
+NORIRECO.mypage.tripVisitsStation = tripVisitsStation;
+
 export async function renderMypage() {
   const c = document.getElementById('mypage-content');
   if (!c) return;

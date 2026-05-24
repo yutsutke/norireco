@@ -26,6 +26,8 @@ import { openCharModal } from './08-rendering.js';
 import { isCharacterOwned } from './03-characters.js';
 // v283: 路線アクションシート「+ 新しい路線メモを残す」から呼ぶ
 import { openMemo } from './16-memos.js';
+// v287.1: tripVisitsStation は 13-mypage-common に共通化済 (マイページの駅名検索も同じロジックを使う)
+import { tripVisitsStation } from './13-mypage-common.js';
 
 window.NORIRECO = window.NORIRECO || {};
 NORIRECO.stationActions = NORIRECO.stationActions || {
@@ -67,36 +69,7 @@ function pickCharacterForStation(stationName) {
   return { character: list[0], locked: true };
 }
 
-// v282: ある trip がこの駅を「訪問した」かを判定。
-// - 始点/終点 (trip.from_station / to_station) 直接一致
-// - segments[].from / to 直接一致 (乗換駅)
-// - segments[].lineId が SERVICE_LINES.id にあれば、その駅順を辿って通過駅も判定
-//
-// SERVICE_LINES が未構築のタイミング (起動直後) でも from/to 直接一致だけは
-// 効くので、データ揃ってない段階では「乗降・乗換のみ」にフォールバックする。
-function tripVisitsStation(trip, stationName) {
-  if (!trip || !stationName) return false;
-  if (trip.from_station === stationName || trip.to_station === stationName) return true;
-  const segs = Array.isArray(trip.segments) ? trip.segments : [];
-  const SL = NORIRECO.data?.SERVICE_LINES || [];
-  for (const seg of segs) {
-    if (!seg) continue;
-    if (seg.from === stationName || seg.to === stationName) return true;
-    if (!seg.lineId || SL.length === 0) continue;
-    let sl = SL.find(s => s.id === seg.lineId);
-    // 02b-service-lines-builder.js と同じ candidateN02Ids フォールバック
-    if (!sl) sl = SL.find(s => Array.isArray(s.candidateN02Ids) && s.candidateN02Ids.includes(seg.lineId));
-    if (!sl || !Array.isArray(sl.stations)) continue;
-    const fi = sl.stations.findIndex(s => s.name === seg.from);
-    const ti = sl.stations.findIndex(s => s.name === seg.to);
-    if (fi < 0 || ti < 0) continue;
-    const lo = Math.min(fi, ti), hi = Math.max(fi, ti);
-    for (let i = lo + 1; i < hi; i++) {
-      if (sl.stations[i].name === stationName) return true;
-    }
-  }
-  return false;
-}
+// v287.1: tripVisitsStation 本体は 13-mypage-common.js へ移動 (マイページ駅名検索と共通化)。
 
 function getTripsAtStation(stationName) {
   const trips = NORIRECO.mypage?.state?._mypageCache;

@@ -28,6 +28,7 @@ import {
   showMypageToast,
   applyMpSection,
   _MP_SORT_COMPARATORS,
+  tripMatchesAnyStation,
 } from './13-mypage-common.js';
 import { filterTripsByDate } from './05-supabase-data.js';
 // v258: 旅程の写真添付 (memo と共通の写真エリアコンポーネント)
@@ -207,18 +208,10 @@ function applyTripFilters(trips) {
         if (t.train_category !== NORIRECO.mypage.state.mpTripFilter.category) return false;
       }
     }
-    // v285: 駅名検索 (from_station / to_station / segments[].from/to の部分一致)
+    // v285/v287.1: 駅名 substring 検索 — 始点/終点/乗換駅 + 通過駅まで含めて判定
+    //   (v287.1 で tripMatchesAnyStation に共通化、地図駅クリックと同じ駅順展開ロジック)
     const q = (NORIRECO.mypage.state.mpTripFilter.station || '').trim();
-    if (q) {
-      const hasMatch = (
-        (t.from_station && t.from_station.includes(q)) ||
-        (t.to_station && t.to_station.includes(q)) ||
-        (Array.isArray(t.segments) && t.segments.some(s =>
-          (s?.from && s.from.includes(q)) || (s?.to && s.to.includes(q))
-        ))
-      );
-      if (!hasMatch) return false;
-    }
+    if (q && !tripMatchesAnyStation(t, n => n && n.includes(q))) return false;
     return true;
   });
   // v182: ソート (デフォルト date_desc)

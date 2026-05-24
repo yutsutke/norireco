@@ -27,6 +27,36 @@
 
 ---
 
+## 136. v288 — マイページ駅名検索を通過駅まで含めて判定 (v282 と共通化) (2026-05-24)
+
+### 背景
+
+ユスケから「通過の場合は拾ってこない？」と指摘。v285 で実装したマイページの駅名検索は実装複雑性を避けて「始点・終点・乗換駅」だけの判定にしていたが、v282 の地図駅クリック側「この駅を含む旅程」は通過駅まで拾うようになっており、挙動が一貫していなかった。
+
+### 修正
+
+判定ロジックを `13-mypage-common.js` に共通化し、両者を統一:
+
+- `tripMatchesAnyStation(trip, predicate)` — 高階関数。trip の関連駅すべて (始点/終点 + segments[].from/to + `seg.lineId` → `SERVICE_LINES` の駅順を辿った通過駅) を順に predicate で判定。
+- `tripVisitsStation(trip, stationName)` — `tripMatchesAnyStation` の完全一致 wrapper (v282 互換)。
+
+使い分け:
+
+- **地図駅クリック (v282)**: 完全一致 — 駅「八王子」だけマッチ
+- **マイページ検索 (v288)**: substring — 「八王子」入力で「八王子」「八王子みなみ野」両方マッチ
+
+両者とも通過駅まで判定対象なので、ユスケの「東京駅で検索すれば東京駅を通過した新幹線旅程も出る」期待にマッチ。
+
+### 主な変更
+
+- [js/13-mypage-common.js](js/13-mypage-common.js): `tripMatchesAnyStation` / `tripVisitsStation` を新規 export + `NORIRECO.mypage` 名前空間にも登録。
+- [js/17-station-actions.js](js/17-station-actions.js): local `tripVisitsStation` を削除し共通版を import。
+- [js/13b-trips.js](js/13b-trips.js): `applyTripFilters` の駅名フィルタを `tripMatchesAnyStation(t, n => n && n.includes(q))` に置換。
+
+メモタブの駅名検索は `m.station` 単体しかフィールドが無いので変更なし (substring 直接マッチのまま)。
+
+---
+
 ## 135. v287 — v286 で直りきらなかった IME 問題を構造的に解決 (フィルタバー固定化) (2026-05-24)
 
 ### 背景
