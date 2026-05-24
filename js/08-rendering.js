@@ -703,7 +703,8 @@ function drawStationsLayer() {
     const stypeMul = stype === 'alighted' ? 1.25 : stype === 'passed' ? 0.8 : 1.0;
 
     // 訪問回数 → 個人化レベル (1-4回:Lv1, 5-9:Lv2, 10-49:Lv3, 50+:Lv4)
-    const visits = slVisitCount[ms.name] || 0;
+    // v317 (Phase 3-e): slVisitCount は駅 id キーに移行 (SERVICE_LINES ベース集計)。
+    const visits = (ms.id ? slVisitCount[ms.id] : 0) || 0;
     const level = getStationLevel(visits);
 
     // 駅キャラ (訪問1回以上の駅にのみ表示)
@@ -887,7 +888,8 @@ export function openCharModal(ms, character) {
   const modal = document.getElementById('char-modal');
   const body = document.getElementById('char-modal-body');
   if (!body || !modal) return;
-  const visits = slVisitCount[ms.name] || 0;
+  // v317 (Phase 3-e): slVisitCount は駅 id キーに移行
+  const visits = (ms.id ? slVisitCount[ms.id] : 0) || 0;
   const level = getStationLevel(visits);
   const levelStars = level >= 4 ? '⭐⭐⭐' : level >= 3 ? '⭐⭐' : level >= 2 ? '⭐' : level >= 1 ? '✓' : '';
   // 乗り入れ系統リスト

@@ -2,9 +2,9 @@
 // v194 で 04-gps-location.js から切り出し (v192 02b と同じ案 D = ドメイン分割パターン)。
 //
 // 状態 (top-level const、外部スクリプトから lexical scope 経由で参照される):
-//   slRiddenSt[sl.id]    — 営業系統 id → 乗車済み駅名 Set (Phase 2 主索引)
+//   slRiddenSt[sl.id]    — 営業系統 id → 乗車済み駅 id Set (Phase 2 主索引)
 //   slStopType[駅名]      — 'alighted' | 'boarded' | 'passed' (v186 自動派生)
-//   slVisitCount[駅名]    — 駅名 → 訪問回数 (個人化 Lv1-4 判定用)
+//   slVisitCount[駅 id]  — 駅 id → 訪問 seg 数 (個人化 Lv1-4 判定用、v317 で id 化)
 //   riddenServiceIds     — 旧運行系統 (running_services.json) の乗車済み set
 //
 // 公開 API (window.NORIRECO.rideRecord):
@@ -292,9 +292,11 @@
         for (let i = Math.min(fi,ti); i <= Math.max(fi,ti); i++) {
           const stName = line.stations[i].n;
           riddenSt[line.id].add(stName);
-          slVisitCount[stName] = (slVisitCount[stName] || 0) + 1;
         }
       }
+      // v317 (Phase 3-e): slVisitCount は SERVICE_LINES ベース集計に移行 (下のループ内)。
+      //   N02 LINES.stations[].n キーでの集計は撤去 — 個人化 Lv1-4 / キャラモーダルの参照側
+      //   (08-rendering) も ms.id キーに切替済。
     });
     // Phase 2: 営業系統別 ridden 状態を RIDDEN_SEGS から直接構築
     // v298: ばらまき方式 (旧) を撤廃し、seg.lineId が示す 1 SL のみに add する方針。
@@ -334,13 +336,17 @@
 
         // targetSl 内で seg.from/to が見つかれば駅順展開、見つからなければ
         // resolve 結果の駅名で照合 (旧 N02 形式 trip のための救済)
+        // v317 (Phase 3-e): 同じループ内で slVisitCount[st.id] も +1 (個人化 Lv 用)。
         const fromIdx = targetSl.stations.findIndex(s => s.name === seg.from);
         const toIdx = targetSl.stations.findIndex(s => s.name === seg.to);
         if (fromIdx >= 0 && toIdx >= 0) {
           const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
           for (let i = a; i <= b; i++) {
             const st = targetSl.stations[i];
-            if (st.id) slRiddenSt[targetSl.id].add(st.id);
+            if (st.id) {
+              slRiddenSt[targetSl.id].add(st.id);
+              slVisitCount[st.id] = (slVisitCount[st.id] || 0) + 1;
+            }
           }
         } else {
           // resolve 結果の駅名を targetSl の駅と照合 (1 SL に限定)
@@ -355,7 +361,10 @@
               for (let i = Math.min(fi, ti); i <= Math.max(fi, ti); i++) {
                 const stName = line.stations[i].n;
                 const slSt = targetSl.stations.find(s => s.name === stName);
-                if (slSt && slSt.id) slRiddenSt[targetSl.id].add(slSt.id);
+                if (slSt && slSt.id) {
+                  slRiddenSt[targetSl.id].add(slSt.id);
+                  slVisitCount[slSt.id] = (slVisitCount[slSt.id] || 0) + 1;
+                }
               }
             }
           }

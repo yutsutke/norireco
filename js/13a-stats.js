@@ -49,10 +49,10 @@ function buildCompletionCards(trips) {
   const totalLines = NORIRECO.data.SERVICE_LINES.length;
 
   // ── 共通の集計 (verifiedOnly / 全記録) ────────────────────────────
-  // v316 (Phase 3-e): visitCount を駅 id キーに移行 (v293/v316 で SERVICE_LINES の
+  // v316/v317 (Phase 3-e): visitCount を駅 id キーに移行 (v293/v316 で SERVICE_LINES の
   //   stations[].id が確定済)。表示時 (buildTopStations) は MERGED_STATIONS で id → name 解決。
-  //   注: 04b-ride-record.js の slVisitCount は LINES (旧 N02) ベースで stations[].id が
-  //   付与されていないため名前キーのまま据え置き (08-rendering / 08 キャラモーダルの個人化レベル用)。
+  //   v317: 04b-ride-record.js の slVisitCount も SERVICE_LINES ベース + 駅 id キーに統一済
+  //   (08-rendering / 08 キャラモーダルの個人化レベル用)。
   function collect(verifiedOnly) {
     const slSet = {};
     const visitedUnique = new Set();

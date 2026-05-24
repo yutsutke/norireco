@@ -29,6 +29,7 @@ import {
   applyMpSection,
   _MP_SORT_COMPARATORS,
   tripMatchesAnyStation,
+  resolveStationQueryIds,
 } from './13-mypage-common.js';
 import { filterTripsByDate } from './05-supabase-data.js';
 // v258: 旅程の写真添付 (memo と共通の写真エリアコンポーネント)
@@ -201,6 +202,12 @@ function applyTripFilters(trips) {
   {
     trips = filterTripsByDate(trips);
   }
+  // v317 (Phase 3-e): 駅名検索の id Set を filter() の外で 1 回だけ解決。
+  //   filter callback 内で resolveStationQueryIds を呼ぶと trip 毎に
+  //   MERGED_STATIONS 9,017 駅をループしてしまい O(N*M) になる。
+  const _stq = (NORIRECO.mypage.state.mpTripFilter.station || '').trim();
+  const _stIdSet = _stq ? resolveStationQueryIds(_stq) : null;
+  const _stScope = NORIRECO.mypage.state.mpTripFilter.stationScope || { from:true, end:true, transfer:true, pass:true };
   const filtered = trips.filter(t => {
     // 認証
     if (NORIRECO.mypage.state.mpTripFilter.auth === 'verified' && !t.verified) return false;
@@ -235,10 +242,14 @@ function applyTripFilters(trips) {
       }
     }
     // v285/v288/v289: 駅名 substring 検索 — マッチ範囲は stationScope (始点/終点/乗換/通過) で切替
-    const q = (NORIRECO.mypage.state.mpTripFilter.station || '').trim();
-    if (q) {
-      const scope = NORIRECO.mypage.state.mpTripFilter.stationScope || { from:true, end:true, transfer:true, pass:true };
-      if (!tripMatchesAnyStation(t, n => n && n.includes(q), scope)) return false;
+    // v317 (Phase 3-e): id 解決層経由化。_stIdSet (関数冒頭で 1 回算出) と
+    //   trip 側 *_station_id を比較 (同名異所駅で厳密区別)、無ければ name.includes(q) に fallback。
+    if (_stq) {
+      const predicate = (name, id) => {
+        if (id && _stIdSet && _stIdSet.has(id)) return true;
+        return !!name && name.includes(_stq);
+      };
+      if (!tripMatchesAnyStation(t, predicate, _stScope)) return false;
     }
     return true;
   });

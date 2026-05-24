@@ -59,10 +59,13 @@ git log --oneline -20
   - **Phase 3-c 完成 (v314)**: GPS 後追い認証 `findStCoord` を id 対応に
   - **Phase 3-d 完成 (v315)**: メモに station_id 列追加 + 並行書き込み + 読み込み id 優先化 (バックフィル省略、既存 3 件は name fallback)
   - **Phase 3-e 部分完成 (v316)**: 13a-stats の visitCount を id 化、`js/20-dev-backfill.js` 撤去
-  - **残**:
-    - マイページ駅名検索 (v285〜v289) を id 解決層経由に (substring 入力 → 候補 id[] 経由)
-    - `04b-ride-record.js` の slVisitCount を SERVICE_LINES ベースに統一 (LINES 側に id がないので別 refactor)
-    - 最終: `norireco_trips` / `characters_master.json` の name 列廃止
+  - **Phase 3-e 仕上げ完成 (v317)**: マイページ駅名検索を id 解決層経由 (resolveStationQueryIds) に、slVisitCount を SERVICE_LINES + 駅 id キーに統一、08-rendering / キャラモーダルの参照側も ms.id ベースに
+  - **残** (Phase 4 / name 列廃止):
+    - `norireco_trips` の `from_station` / `to_station` 列廃止 (id 列のみで動く確認後)
+    - `characters_master.json` の `station_names` 廃止 (id 列のみで動く確認後)
+    - `norireco_memos` の `station` 列廃止 (既存メモ 3 件のバックフィル必要、または fallback 廃止判断)
+    - `slStopType` を駅 id キー化 (現在 name 経由、Lv 判定とは独立で機能しているため低優先)
+    - LINES (lines-p1〜p4.json) の stations[].id 付与 (N02 路線レベル id 統一が必要になれば)
 
 ## 🟡 体験向上（コア層の継続率を上げる）
 

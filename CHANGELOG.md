@@ -27,6 +27,56 @@
 
 ---
 
+## 165. v317 — 駅 ID 体系 Phase 3-e 仕上げ: 駅名検索 id 解決層 + slVisitCount を SERVICE_LINES + id ベース化 (2026-05-24)
+
+### 背景
+
+v316 で 13a-stats の visitCount を id 化したが、Phase 3-e の残作業として:
+- マイページ駅名検索 (`13b-trips.js` / `16-memos.js`) の substring → trip/memo の name 列だけを見る経路
+- `04b-ride-record.js` の slVisitCount が LINES (旧 N02) ベース駅名キー集計
+
+がまだ Phase 1〜2 の id 体系から外れていた。同名異所駅 (高松 香川/石川/多摩 等) や、08-rendering / キャラモーダルの個人化 Lv 判定が name 経由なので、同名駅で偶発ヒット・カウント混入の余地が残る。
+
+### 対処
+
+**マイページ駅名検索を id 解決層経由に**
+
+- [`js/13-mypage-common.js`](js/13-mypage-common.js): `resolveStationQueryIds(q)` を新規 export 追加 (MERGED_STATIONS の name.includes(q) で駅 id Set を返す)。
+- [`js/13b-trips.js:applyTripFilters`](js/13b-trips.js): `_stIdSet` を filter() の外で 1 回だけ計算 (毎 trip で 9,017 駅ループを避ける)、predicate を `(name, id) => (id && idSet.has(id)) || (name && name.includes(q))` に変更。trip 側の `*_station_id` があれば id 比較、無ければ name fallback。
+- [`js/16-memos.js:applyMemoFilters`](js/16-memos.js): 同じパターン。`m.station_id` (v315〜) があれば idSet、無ければ name fallback。
+
+**slVisitCount を SERVICE_LINES + 駅 id ベースに**
+
+- [`js/04b-ride-record.js:rebuild`](js/04b-ride-record.js): 旧 N02 LINES ベースの `slVisitCount[stName]++` を撤去。v298 の SERVICE_LINES 駅順展開ループ内で `slVisitCount[st.id]++` を追加 (slRiddenSt と同じ駅集合で +1)。
+- [`js/08-rendering.js`](js/08-rendering.js): 駅 marker と `openCharModal` の `slVisitCount[ms.name]` → `slVisitCount[ms.id]` に変更 (2 箇所)。
+- [`js/13a-stats.js`](js/13a-stats.js): v316 のコメント (「slVisitCount は LINES ベース据え置き」) を v317 状態に更新。
+
+### 設計判断
+
+- **id Set 計算は filter ループ外に出す**: `resolveStationQueryIds` は MERGED_STATIONS 9,017 駅を走査する O(N)。filter callback 内で trip 毎に呼ぶと O(N*M) (trip 125 件 × 9,017 = 1.1M 比較) になる。`applyTripFilters` 関数冒頭で 1 回だけ計算する形に。
+
+- **predicate の fallback 順序**: `id && idSet.has(id)` を先にチェック → name.includes() に fallback。これで「id 列があるが name 列が NULL」のエッジケースでも拾える (現状はほぼ無いが、Phase 3 完了に向けて name 列廃止する伏線)。
+
+- **slVisitCount は seg 単位の重複カウント**: 旧 N02 ベースは「1 seg を resolve した path 上の全駅で +1」(ジャンクション介在で 2 N02 路線にまたがると重複 +1 することあり)。新 SL ベースは「1 seg = 1 SL の駅順展開で +1」(seg.lineId が指す 1 SL に限定済 v298 と同じ方針)。結果として **同じ trip でジャンクション駅が +2 されていた挙動が +1 に正規化**。個人化 Lv 判定は閾値ベース (1/5/10/50回) なので軽微にレベルダウンする駅が稀に出る可能性あり (実用上問題なし)。
+
+- **slStopType は name キーのまま**: v186 の自動派生 (alighted/boarded/passed) は name で十分機能していて、08-rendering の参照も `slStopType[ms.name]` ベース。id 化するメリットが薄いので touching せず据え置き。Phase 3 完了 (name 列廃止) と一緒にやる方が効率的。
+
+### 動作確認
+
+- マイページ → 🚃 旅程 → 駅名検索に「八王子」入力 → 始点/終点/乗換/通過で旅程が引ける
+- マイページ → 📸 メモ → 駅名検索が機能する
+- 地図 → ズームインで駅 marker が個人化 Lv 表示 (visits バッジ / キャラ) が出る
+- キャラモーダルの「N回訪問」表示が正しい
+- npm run check: 25/25 OK
+
+### 残作業 (Phase 3 全完了まで)
+
+- `norireco_trips` / `characters_master.json` / `norireco_memos` の name 列を最終撤去 (id 列だけで動くと確認後)
+- slStopType の id 化 (name 列廃止と同時)
+- LINES (lines-p1〜p4.json) の stations[].id 付与 (将来 N02 路線レベルの id 統一が必要になれば)
+
+---
+
 ## 164. v316 — 駅 ID 体系 Phase 3-e 部分: 13a-stats visitCount を id 化 + dev-backfill 撤去 (2026-05-24)
 
 ### 背景

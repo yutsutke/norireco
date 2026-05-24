@@ -130,6 +130,26 @@ export function tripVisitsStation(trip, ms) {
 NORIRECO.mypage.tripMatchesAnyStation = tripMatchesAnyStation;
 NORIRECO.mypage.tripVisitsStation = tripVisitsStation;
 
+// v317 (Phase 3-e): 駅名 substring クエリ → 候補駅 id Set 解決層。
+// MERGED_STATIONS (9,017 駅) の name に対し q を含むものの id を集める。
+// 同名異所駅 (高松 香川/石川/多摩 等) は全 id が候補入りするため、id 比較で
+// trip / memo の station_id を厳密に絞り込める。
+// 呼び出し側は (name, id) predicate 内で `id && idSet.has(id)` を優先し、
+// id 不在データ (backfill 前) は name.includes(q) に fallback する。
+export function resolveStationQueryIds(q) {
+  if (!q || typeof q !== 'string') return null;
+  const norm = q.trim();
+  if (!norm) return null;
+  const MS = NORIRECO.data?.MERGED_STATIONS;
+  if (!Array.isArray(MS) || MS.length === 0) return null;
+  const ids = new Set();
+  for (const ms of MS) {
+    if (ms && ms.id && ms.name && ms.name.includes(norm)) ids.add(ms.id);
+  }
+  return ids;
+}
+NORIRECO.mypage.resolveStationQueryIds = resolveStationQueryIds;
+
 export async function renderMypage() {
   const c = document.getElementById('mypage-content');
   if (!c) return;

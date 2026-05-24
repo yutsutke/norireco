@@ -25,6 +25,8 @@ import { authBearerToken, currentUserId } from './12-auth.js';
 import { createPhotoArea, deletePhotoByUrl } from './18-photo-area.js';
 // v263+: マイページ memo カード / 駅メモ一覧モーダル上で写真をドラッグ&ドロップ並び替え
 import { enableDragSort } from './19-drag-sort.js';
+// v317 (Phase 3-e): 駅名検索を id 解決層経由に
+import { resolveStationQueryIds } from './13-mypage-common.js';
 
 window.NORIRECO = window.NORIRECO || {};
 NORIRECO.memos = NORIRECO.memos || {
@@ -469,12 +471,19 @@ function buildMemoFilterBar() {
 
 function applyMemoFilters(memos) {
   const q = (M.filter.station || '').trim();
+  // v317 (Phase 3-e): 駅名検索を id 解決層経由に。m.station_id があれば idSet 比較で
+  //   同名異所駅を厳密区別、無ければ name.includes(q) に fallback (v315 以前のレガシーメモ)。
+  //   idSet は filter ループの外で 1 回だけ計算 (MERGED_STATIONS 9,017 駅走査)。
+  const idSet = q ? resolveStationQueryIds(q) : null;
   return memos.filter(m => {
     if (M.filter.line_id !== 'all' && m.line_id !== M.filter.line_id) return false;
     if (M.filter.memo_type !== 'all' && m.memo_type !== M.filter.memo_type) return false;
     if (M.filter.mood !== 'all' && m.mood !== M.filter.mood) return false;
-    // v285: 駅名部分一致 (m.station のみ — memo は trip と違い segments を持たない)
-    if (q && !(m.station && m.station.includes(q))) return false;
+    if (q) {
+      const hit = (m.station_id && idSet && idSet.has(m.station_id))
+        || (!!m.station && m.station.includes(q));
+      if (!hit) return false;
+    }
     return true;
   });
 }
