@@ -27,6 +27,43 @@
 
 ---
 
+## 135. v287 — v286 で直りきらなかった IME 問題を構造的に解決 (フィルタバー固定化) (2026-05-24)
+
+### 背景
+
+v286 で `compositionstart` / `compositionend` ガードを入れたが、ユスケから「改善しないね」のスクショ。フィルタ input に `hあ` のような合成途中文字列が残ったまま、結果は「合致するメモがありません」と表示されていた。
+
+### 真の原因
+
+ガード方式は本質的に脆い:
+
+- `oninput` は composition 中も発火 → `M.filter[key] = value` が合成途中の文字列で更新される
+- ブラウザ間で composition イベントの発火順序が微妙に違う (Firefox は `input → compositionend`、Chrome は `compositionstart → input`) — どこかでガードのタイミングがずれ得る
+- たとえ render を skip できても、別の経路 (タブ切替・他フィルタ操作) で `renderMpMemosSection` が走った瞬間に input 要素ごと差し替わって IME 破壊
+
+つまり「input 要素が DOM から消えない」ことが構造的に保証されない限り、IME と oninput の組合せは安全にならない。
+
+### 修正
+
+フィルタバー (input を含む) と結果領域を分離し、フィルタ変更時は結果領域だけを再描画する形に変更:
+
+```
+mp-trip-section
+├─ .mp-filter-bar     ← 1 回だけ生成、以降触らない
+└─ #mp-trip-result    ← フィルタ変更で毎回書き換え
+```
+
+- [js/13b-trips.js](js/13b-trips.js): `renderMpTripsSection` から結果生成部分を `renderMpTripsResultOnly` に切り出し。`updateMpFilter` は `renderMpTripsResultOnly` だけ呼ぶ。`resetMpFilter` のみ select の選択状態と input 値を初期化するため全体再描画 (`renderMpTripsSection`)。
+- [js/16-memos.js](js/16-memos.js): 同様に `renderMpMemosResultOnly` を切り出し。
+- 駅名 input から `oncompositionstart` / `oncompositionend` 属性を撤去 (もう不要)。v286 で入れた caret 保持 helper (`_rememberCaret` / `_restoreCaret`) も使わなくなったので削除。
+
+### 学び
+
+- 「全体を innerHTML で書き換える」UI は確かに簡単だが、テキスト入力との相性が悪い。最初から「ヘッダ・フィルタ・結果」を別 div に分離するのが王道。
+- IME 周りはガード方式 (composition 検知 + skip) より「要素を消さない」構造の方が確実。
+
+---
+
 ## 134. v286 — v285 駅名検索の IME 変換中フォーカス飛び問題を修正 (2026-05-24)
 
 ### 背景

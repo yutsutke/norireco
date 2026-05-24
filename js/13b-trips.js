@@ -47,39 +47,51 @@ function escapeAttr(s) {
 }
 
 // ── 🚃 旅程セクション ──────────────────────────────────────────
+// v286.1: 構造を [フィルタバー固定領域] + [結果領域] に分離。
+//   フィルタ変更時は renderMpTripsResultOnly() で結果領域だけ書き換え、
+//   input 要素 (駅名検索) は DOM から消えない → IME composition が壊れない。
 function renderMpTripsSection() {
   const sec = document.getElementById('mp-trip-section');
   if (!sec) return;
   sec.innerHTML = '';
 
-  // フィルタバー
+  // フィルタバー (1 回だけ生成、以降は触らない)
   sec.appendChild(buildTripFilterBar());
 
-  // フィルタ適用
+  // 結果領域 (フィルタ変更で毎回書き換わる)
+  const result = document.createElement('div');
+  result.id = 'mp-trip-result';
+  sec.appendChild(result);
+
+  renderMpTripsResultOnly();
+}
+NORIRECO.mypage.renderMpTripsSection = renderMpTripsSection;
+
+function renderMpTripsResultOnly() {
+  const result = document.getElementById('mp-trip-result');
+  if (!result) return;
+  result.innerHTML = '';
+
   const filtered = applyTripFilters(NORIRECO.mypage.state._mypageCache || []);
 
-  // 件数表示
   const head = document.createElement('div');
   head.className = 'sec-lbl';
   head.innerHTML = `自分の旅程 (${filtered.length} / ${(NORIRECO.mypage.state._mypageCache||[]).length} 件)`;
-  sec.appendChild(head);
+  result.appendChild(head);
 
   if (filtered.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'mp-empty-s';
     empty.style.padding = '20px';
     empty.textContent = 'フィルタ条件に合致する旅程がありません';
-    sec.appendChild(empty);
+    result.appendChild(empty);
     return;
   }
 
-  // trip list
-  sec.appendChild(buildTripList(filtered));
-
-  // v263+: 各カードの写真サムネ並びに D&D を attach
-  attachPhotoDragSortToTripCards(sec);
+  result.appendChild(buildTripList(filtered));
+  attachPhotoDragSortToTripCards(result);
 }
-NORIRECO.mypage.renderMpTripsSection = renderMpTripsSection;
+NORIRECO.mypage.renderMpTripsResultOnly = renderMpTripsResultOnly;
 
 function buildTripFilterBar() {
   const bar = document.createElement('div');
@@ -121,10 +133,7 @@ function buildTripFilterBar() {
     </div>
     <div class="mp-filter-row">
       <label class="mp-filter-lbl">🚉 駅名</label>
-      <input type="search" class="mp-filter-input" id="mp-fil-station" placeholder="例: 八王子" value="${escapeAttr(NORIRECO.mypage.state.mpTripFilter.station || '')}"
-        oninput="updateMpFilter('station',this.value)"
-        oncompositionstart="window._mpStationComposing=true"
-        oncompositionend="window._mpStationComposing=false;updateMpFilter('station',this.value)">
+      <input type="search" class="mp-filter-input" id="mp-fil-station" placeholder="例: 八王子" value="${escapeAttr(NORIRECO.mypage.state.mpTripFilter.station || '')}" oninput="updateMpFilter('station',this.value)">
     </div>
     <div class="mp-filter-row">
       <label class="mp-filter-lbl">⇅ 並び替え</label>
@@ -145,33 +154,16 @@ NORIRECO.mypage.buildTripFilterBar = buildTripFilterBar;
 
 function updateMpFilter(key, value) {
   NORIRECO.mypage.state.mpTripFilter[key] = value;
-  // v285.1: IME 変換中 (compositionstart 〜 end) は再描画を skip。
-  //   再描画すると input 要素ごと作り直されて変換セッションが壊れる。
-  //   compositionend で確定値が来たときだけ render が走る。
-  if (key === 'station' && window._mpStationComposing) return;
-  // v285: station 入力中は再描画でフォーカスが外れないよう caret を復元
-  const sel = (key === 'station') ? _rememberCaret('mp-fil-station') : null;
-  renderMpTripsSection();
-  if (sel) _restoreCaret('mp-fil-station', sel);
-}
-
-// v285: 駅名 input 等、oninput → 全 sec 再構築 で焦点が飛ぶ問題への対策
-function _rememberCaret(id) {
-  const el = document.getElementById(id);
-  if (!el || document.activeElement !== el) return null;
-  return { start: el.selectionStart, end: el.selectionEnd };
-}
-function _restoreCaret(id, sel) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.focus();
-  try { el.setSelectionRange(sel.start, sel.end); } catch(e) {}
+  // v286.1: フィルタバー (input 含む) は触らず、結果領域だけ更新。
+  //   これで駅名 input は DOM に残り続け、IME composition が壊れない。
+  renderMpTripsResultOnly();
 }
 window.updateMpFilter = updateMpFilter;
 NORIRECO.mypage.updateMpFilter = updateMpFilter;
 
 function resetMpFilter() {
   NORIRECO.mypage.state.mpTripFilter = { auth: 'all', period: 'all', category: 'all', sort: 'date_desc', station: '' };
+  // reset は select の選択状態と input の表示値を初期に戻すため全体再描画
   renderMpTripsSection();
 }
 window.resetMpFilter = resetMpFilter;

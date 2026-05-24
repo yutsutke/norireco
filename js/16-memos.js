@@ -356,6 +356,7 @@ function rerenderMemosIfVisible() {
 
 // ── マイページ「📸 メモ」サブタブ ─────────────────────────────
 
+// v286.1: 駅名検索 input の IME 互換のため、フィルタバー固定 + 結果領域だけ更新する構造へ。
 function renderMpMemosSection() {
   const sec = document.getElementById('mp-memo-section');
   if (!sec) return;
@@ -375,32 +376,43 @@ function renderMpMemosSection() {
       <div class="mp-empty">
         <div class="mp-empty-ic">📸</div>
         <div class="mp-empty-t">メモがまだありません</div>
-        <div class="mp-empty-s">地図画面の右下「📸」を押してから駅をタップすると、メモを残せます</div>
+        <div class="mp-empty-s">地図上の駅 / 路線をタップして「📸 メモ」から残せます</div>
       </div>`;
     return;
   }
 
   sec.appendChild(buildMemoFilterBar());
 
+  const result = document.createElement('div');
+  result.id = 'mp-memo-result';
+  sec.appendChild(result);
+
+  renderMpMemosResultOnly();
+}
+
+function renderMpMemosResultOnly() {
+  const result = document.getElementById('mp-memo-result');
+  if (!result) return;
+  result.innerHTML = '';
+
   const filtered = applyMemoFilters(M.cache);
 
   const head = document.createElement('div');
   head.className = 'sec-lbl';
   head.innerHTML = `自分の駅メモ (${filtered.length} / ${M.cache.length} 件)`;
-  sec.appendChild(head);
+  result.appendChild(head);
 
   if (filtered.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'mp-empty-s';
     empty.style.padding = '20px';
     empty.textContent = 'フィルタ条件に合致するメモがありません';
-    sec.appendChild(empty);
+    result.appendChild(empty);
     return;
   }
 
-  sec.appendChild(buildMemoList(filtered));
-  // v263+: マイページ memo カードに写真の D&D を attach
-  attachPhotoDragSortToMemoCards(sec);
+  result.appendChild(buildMemoList(filtered));
+  attachPhotoDragSortToMemoCards(result);
 }
 
 function buildMemoFilterBar() {
@@ -448,10 +460,7 @@ function buildMemoFilterBar() {
     </div>
     <div class="mp-filter-row">
       <label class="mp-filter-lbl">🚉 駅名</label>
-      <input type="search" class="mp-filter-input" id="mp-memo-fil-station" placeholder="例: 八王子" value="${escapeHtml(M.filter.station || '')}"
-        oninput="updateMemoFilter('station',this.value)"
-        oncompositionstart="window._mpMemoStationComposing=true"
-        oncompositionend="window._mpMemoStationComposing=false;updateMemoFilter('station',this.value)">
+      <input type="search" class="mp-filter-input" id="mp-memo-fil-station" placeholder="例: 八王子" value="${escapeHtml(M.filter.station || '')}" oninput="updateMemoFilter('station',this.value)">
     </div>
   `;
   return bar;
@@ -471,21 +480,8 @@ function applyMemoFilters(memos) {
 
 function updateMemoFilter(key, value) {
   M.filter[key] = value;
-  // v285.1: IME 変換中は再描画 skip (input が作り直されて変換セッションが壊れるため)
-  if (key === 'station' && window._mpMemoStationComposing) return;
-  // v285: station 入力中は再描画でフォーカスが外れないよう caret を復元
-  const el = (key === 'station') ? document.getElementById('mp-memo-fil-station') : null;
-  const sel = (el && document.activeElement === el)
-    ? { start: el.selectionStart, end: el.selectionEnd }
-    : null;
-  renderMpMemosSection();
-  if (sel) {
-    const newEl = document.getElementById('mp-memo-fil-station');
-    if (newEl) {
-      newEl.focus();
-      try { newEl.setSelectionRange(sel.start, sel.end); } catch(e) {}
-    }
-  }
+  // v286.1: フィルタバーは触らず、結果領域だけ更新 → input は DOM 残り続け IME 安全
+  renderMpMemosResultOnly();
 }
 
 function buildMemoList(memos) {
