@@ -636,7 +636,8 @@ function buildStationTimeline(trips) {
   const stData = {};
 
   for (const trip of sorted) {
-    const tripStations = new Set();  // この trip で訪問した駅 (1 trip で同じ駅を複数回カウントしない)
+    // v295: 駅 id キーに変更 (同名異所を別駅としてカウント)。表示用 name も保持。
+    const tripStations = new Map();  // id → name
     for (const seg of trip.segments) {
       const sl = NORIRECO.data.SERVICE_LINES.find(l => l.id === seg.lineId);
       if (!sl) continue;
@@ -644,17 +645,20 @@ function buildStationTimeline(trips) {
       const toIdx = sl.stations.findIndex(s => s.name === seg.to);
       if (fromIdx < 0 || toIdx < 0) continue;
       const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
-      for (let i = a; i <= b; i++) tripStations.add(sl.stations[i].name);
+      for (let i = a; i <= b; i++) {
+        const st = sl.stations[i];
+        if (st.id && !tripStations.has(st.id)) tripStations.set(st.id, st.name);
+      }
     }
-    for (const name of tripStations) {
-      if (!stData[name]) stData[name] = { firstDate: trip.date, lastDate: trip.date, count: 0 };
-      stData[name].lastDate = trip.date;
-      stData[name].count++;
+    for (const [stid, name] of tripStations) {
+      if (!stData[stid]) stData[stid] = { name, firstDate: trip.date, lastDate: trip.date, count: 0 };
+      stData[stid].lastDate = trip.date;
+      stData[stid].count++;
     }
   }
 
   const rows = Object.entries(stData)
-    .map(([name, d]) => ({ name, ...d }))
+    .map(([stid, d]) => ({ stid, ...d }))
     .sort((a, b) => b.count - a.count || a.firstDate.localeCompare(b.firstDate))
     .slice(0, 50);
 
@@ -707,9 +711,13 @@ function buildLineTimeline(trips) {
       if (fromIdx < 0 || toIdx < 0) continue;
       const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
       if (!lineData[sl.id]) {
+        // v295: stations は駅 id Set
         lineData[sl.id] = { firstDate: trip.date, lastDate: trip.date, completeDate: null, rides: 0, stations: new Set() };
       }
-      for (let i = a; i <= b; i++) lineData[sl.id].stations.add(sl.stations[i].name);
+      for (let i = a; i <= b; i++) {
+        const st = sl.stations[i];
+        if (st.id) lineData[sl.id].stations.add(st.id); // v295: id Set
+      }
       lineData[sl.id].lastDate = trip.date;
       if (!lineData[sl.id].completeDate &&
           lineData[sl.id].stations.size === sl.stations.length &&
@@ -848,7 +856,10 @@ function buildPersonalRecords(trips) {
         const toIdx = sl.stations.findIndex(s => s.name === seg.to);
         if (fromIdx < 0 || toIdx < 0) continue;
         const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
-        for (let i = a; i <= b; i++) stationsByDate[t.date].add(sl.stations[i].name);
+        for (let i = a; i <= b; i++) {
+          const st = sl.stations[i];
+          if (st.id) stationsByDate[t.date].add(st.id); // v295: id Set
+        }
       }
     }
   }
@@ -1025,17 +1036,18 @@ function prefOfStation(lat, lon) {
 NORIRECO.mypage.prefOfStation = prefOfStation;
 
 // 全駅を都道府県別に集計 (1 回だけ計算してキャッシュ)
-let _prefMasterCache = null;  // { byPref: { 県: Set<駅名> }, totalByPref: { 県: 駅数 } }
+// v295: byPref の中身は駅 id Set (同名異所を別駅としてカウント)。
+let _prefMasterCache = null;  // { byPref: { 県: Set<駅id> } }
 function buildPrefectureMaster() {
   if (_prefMasterCache) return _prefMasterCache;
   const byPref = {};
   for (const sl of (NORIRECO.data.SERVICE_LINES || [])) {
     for (const s of sl.stations) {
-      if (s.lat == null) continue;
+      if (s.lat == null || !s.id) continue;
       const pref = prefOfStation(s.lat, s.lon);
       if (!pref) continue;
       if (!byPref[pref]) byPref[pref] = new Set();
-      byPref[pref].add(s.name);
+      byPref[pref].add(s.id);
     }
   }
   _prefMasterCache = { byPref };
@@ -1047,17 +1059,18 @@ NORIRECO.mypage.buildPrefectureMaster = buildPrefectureMaster;
 function buildPrefectureChart(snap) {
   const master = buildPrefectureMaster();
   // 自分が訪問した駅 (snap.slSet) から都道府県別に集計
+  // v295: snap.slSet[sl.id] は id Set。sl.stations から id でマッチして都道府県解決。
   const visitedByPref = {};
   for (const sl of (NORIRECO.data.SERVICE_LINES || [])) {
     const set = snap.slSet[sl.id];
     if (!set) continue;
-    for (const name of set) {
-      const station = sl.stations.find(s => s.name === name);
+    for (const stid of set) {
+      const station = sl.stations.find(s => s.id === stid);
       if (!station || station.lat == null) continue;
       const pref = prefOfStation(station.lat, station.lon);
       if (!pref) continue;
       if (!visitedByPref[pref]) visitedByPref[pref] = new Set();
-      visitedByPref[pref].add(name);
+      visitedByPref[pref].add(stid);
     }
   }
 
@@ -1234,15 +1247,15 @@ function detailCard(title, contentHtml, infoHtml) {
 }
 NORIRECO.mypage.detailCard = detailCard;
 
-// 運営会社別
+// 運営会社別 — v295: unique / ridden ともに駅 id Set。同名異所を別駅としてカウント。
 function buildByOperator(snap) {
   const byOp = {};
   for (const sl of NORIRECO.data.SERVICE_LINES) {
     const op = sl.operator || '不明';
     if (!byOp[op]) byOp[op] = { unique: new Set(), ridden: new Set() };
-    for (const s of sl.stations) byOp[op].unique.add(s.name);
+    for (const s of sl.stations) if (s.id) byOp[op].unique.add(s.id);
     const r = snap.slSet[sl.id];
-    if (r) for (const n of r) byOp[op].ridden.add(n);
+    if (r) for (const id of r) byOp[op].ridden.add(id);
   }
   const rows = Object.entries(byOp)
     .map(([op, v]) => ({ op, total: v.unique.size, ridden: v.ridden.size }))
@@ -1261,15 +1274,15 @@ function buildByOperator(snap) {
 }
 NORIRECO.mypage.buildByOperator = buildByOperator;
 
-// 地域別
+// 地域別 — v295: unique / ridden ともに駅 id Set。
 function buildByGroup(snap) {
   const byGroup = {};
   for (const sl of NORIRECO.data.SERVICE_LINES) {
     const g = sl.group || 'その他';
     if (!byGroup[g]) byGroup[g] = { unique: new Set(), ridden: new Set() };
-    for (const s of sl.stations) byGroup[g].unique.add(s.name);
+    for (const s of sl.stations) if (s.id) byGroup[g].unique.add(s.id);
     const r = snap.slSet[sl.id];
-    if (r) for (const n of r) byGroup[g].ridden.add(n);
+    if (r) for (const id of r) byGroup[g].ridden.add(id);
   }
   const order = ['首都圏・JR','東京メトロ・都営','首都圏・私鉄（東・北）','首都圏・私鉄（南・西）','首都圏・ローカル','関西','東海・中部','東北','九州','北海道','四国','中国・山陰','新幹線','その他'];
   const sortedGroups = Object.keys(byGroup).sort((a,b) => (order.indexOf(a) === -1 ? 999 : order.indexOf(a)) - (order.indexOf(b) === -1 ? 999 : order.indexOf(b)));

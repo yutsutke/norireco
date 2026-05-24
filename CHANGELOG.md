@@ -27,6 +27,46 @@
 
 ---
 
+## 143. v295 — 13a-stats.js の残り 6 箇所も駅 id ベース化 (Phase 1 完結) (2026-05-24)
+
+### 背景
+
+v294 で `buildCompletionCards` の `collect()` を id Set 化したが、これにより `snap.slSet[sl.id]` の中身が id Set に切り替わった結果、それを参照する **下流関数 6 箇所が整合性崩壊**していた:
+
+- `buildByOperator` ([js/13a-stats.js:1238](js/13a-stats.js#L1238)): `unique` (name Set) と `ridden` (v294 で id Set 化) を比較 → 数字がデタラメ
+- `buildByGroup` ([js/13a-stats.js:1265](js/13a-stats.js#L1265)): 同様
+- `buildPrefectureChart` ([js/13a-stats.js:1047](js/13a-stats.js#L1047)): `for (const name of set) sl.stations.find(s => s.name === name)` → `set` の中身が id なので find が失敗、ridden 数が常に 0
+
+ユスケのスクショで「東日本旅客鉄道 4/1534」が表示されたのはこの状態。
+
+### 修正
+
+13a-stats.js の駅集計箇所 6 件すべてを id Set 化:
+
+| 場所 | 関数 | 変更 |
+|---|---|---|
+| line 641 | 訪問駅履歴 stData | `tripStations` を Map<id, name> 化、stData のキーを id に。表示用 name は value に保持 |
+| line 706 | 路線別 lineData | `lineData[sl.id].stations` を id Set 化 |
+| line 845 | 日付別駅数 stationsByDate | `stationsByDate[date]` を id Set 化 |
+| line 1032 | 都道府県マスター byPref | `byPref[pref]` を id Set 化 |
+| line 1054 | 都道府県チャート visitedByPref | `snap.slSet` (id Set) を id でループ、`sl.stations.find(s => s.id === stid)` に変更 |
+| line 1237 | 運営会社別 byOp | `unique` も id Set 化 |
+| line 1264 | 地域別 byGroup | `unique` も id Set 化 |
+
+### 効果
+
+すべての統計カードで:
+- 分母 (全駅 / 運営会社別駅数 / 都道府県別駅数 等) が同名異所を別駅としてカウントするようになり、正確値に
+- 分子 (ridden) と分母 (unique) が同じ id 空間で比較されるようになり、整合性が回復
+
+### 残課題 (Phase 2 / Phase 3)
+
+- trip データ自体 (`from_station` / `to_station` / `segments[].from` / `to`) は引き続き name 保存 — Phase 2 で id 化 + Supabase 移行
+- memo の `m.station` も name のまま — Phase 3
+- characters_master.json の `station_ids` も name 配列 — Phase 3
+
+---
+
 ## 142. v294 — v293 抜け修正: マイページ完乗率カードも id ベース化 (2026-05-24)
 
 ### 背景
