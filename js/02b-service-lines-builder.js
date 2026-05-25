@@ -166,6 +166,27 @@ import { loadServiceLinesMaster, loadLines } from './02-data-loaders.js';
         through_lines: Array.isArray(sl.through_lines) ? sl.through_lines.slice() : [],
       });
     }
+    // v342: s0/s1 セグメント分割路線対応 — 同じ operator+name の系統を sibling として
+    //   互いに参照可能にする。through_lines は s0 側にしか書かれていないことが多いが、
+    //   ユーザーが s1 polyline をクリックしても直通先を見せたいため、UI 側で sibling
+    //   から fallback できるよう、各 sl に siblingIds を持たせる。
+    //   (N02 polyline 由来で 大阪メトロ中央線/けいはんな/北大阪急行/富山地鉄本線/福井鉄道
+    //    /六甲アイランド/ポートアイランド/広島新交通/富山港線/ニュートラム 等が分割)
+    {
+      const SL = NORIRECO.data.SERVICE_LINES;
+      const groupMap = new Map();
+      for (const sl of SL) {
+        const k = (sl.operator || '') + '|' + (sl.name || '');
+        if (!groupMap.has(k)) groupMap.set(k, []);
+        groupMap.get(k).push(sl);
+      }
+      for (const sl of SL) {
+        const k = (sl.operator || '') + '|' + (sl.name || '');
+        const group = groupMap.get(k) || [];
+        sl.siblingIds = group.filter(s => s.id !== sl.id).map(s => s.id);
+      }
+    }
+
     NORIRECO.data.serviceLinesBuilt = true;
     console.log(`[乗レコ] NORIRECO.data.SERVICE_LINES built: ${NORIRECO.data.SERVICE_LINES.length} 系統`);
 

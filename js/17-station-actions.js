@@ -282,8 +282,24 @@ function renderLineActionList(sl) {
   `);
 
   // 🔀 直通先 (v334) — through_lines に挙がっている系統へ遷移
-  const through = Array.isArray(sl.through_lines) ? sl.through_lines : [];
+  // v342: s0/s1 セグメント分割路線対応 — sibling (同 operator+name 別 segment) の
+  //   through_lines も merge (例: 大阪メトロ中央線_s1 をクリックしても s0 側に
+  //   書かれた近鉄けいはんな線への直通先が表示される)
   const SL = NORIRECO.data.SERVICE_LINES || [];
+  const through = [];
+  const seen = new Set();
+  const collect = (l) => {
+    for (const t of (l.through_lines || [])) {
+      if (t === sl.id || seen.has(t)) continue;  // 自己参照と重複は除外
+      seen.add(t);
+      through.push(t);
+    }
+  };
+  collect(sl);
+  for (const sibId of (sl.siblingIds || [])) {
+    const sib = SL.find(l => l.id === sibId);
+    if (sib) collect(sib);
+  }
   for (const refId of through) {
     const refSl = SL.find(l => l.id === refId);
     if (!refSl) continue;
