@@ -1,10 +1,10 @@
 // ══════════════════════════════════════════════════════════════
 // マイページ 🚃 旅程サブタブ (v190 分割)
-// - 旅程フィルタバー (期間 / 認証 / 種別 / 並び替え)
+// - 旅程フィルタバー (期間 / 種類 / 種別 / 並び替え)
 // - 旅程リスト描画 (tripCardHtml は 13-mypage-common.js)
 // - Trip 編集モーダル (メモ・遅延の後追い編集) v184/v185
-// - GPS 後追い認証 (半径 500m 以内で verified=true に昇格) v138
 // - 旅程削除
+// v346: GPS 後追い認証 (retroactivelyVerifyTrip) を撤去 (loose な実装 + 新方針整合性)
 //
 // 共通レイヤー (13-mypage-common.js) の以下を使用:
 //   - NORIRECO.mypage.state._mypageCache / NORIRECO.mypage.state.mpTripFilter / _MP_SORT_COMPARATORS
@@ -21,7 +21,7 @@
 // v224: 12-auth.authBearerToken を import 化。
 // v345: 不正検知撤回に伴い 11-fraud-detection の import を撤去。
 // ══════════════════════════════════════════════════════════════
-import { distMeters, runCharacterGrantCheck } from './03-characters.js';
+// v346: distMeters / runCharacterGrantCheck import 撤去 (retroactivelyVerifyTrip 削除に伴い未使用化)
 import { authBearerToken } from './12-auth.js';
 import {
   tripCardHtml,
@@ -562,126 +562,11 @@ function buildTripList(trips) {
 }
 NORIRECO.mypage.buildTripList = buildTripList;
 
-// ── GPS 後追い認証 ─────────────────────────────────────────────
-async function retroactivelyVerifyTrip(tripId) {
-  const trip = (NORIRECO.mypage.state._mypageCache || []).find(t => t.id === tripId);
-  if (!trip) { alert('旅程が見つかりません'); return; }
-  if (!navigator.geolocation) { alert('このブラウザは GPS 非対応です'); return; }
-
-  showMypageToast('📍 現在地を取得中…');
-  let pos;
-  try {
-    pos = await new Promise((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
-    });
-  } catch (e) {
-    alert('GPS 取得失敗: ' + (e.message || 'permission denied'));
-    return;
-  }
-  const myLat = pos.coords.latitude, myLon = pos.coords.longitude, acc = pos.coords.accuracy;
-
-  // v314 (Phase 3-c): id 優先 + name fallback。Phase 2 で trip に *_station_id が入ったので
-  //   同名駅取り違えを防ぐ意味で id を先に試す。バックフィル前の trip (id NULL) は name で救う。
-  const findStCoord = (id, nameFallback) => {
-    const MS = NORIRECO.data?.MERGED_STATIONS;
-    if (Array.isArray(MS)) {
-      if (id) {
-        const m = MS.find(s => s.id === id);
-        if (m && m.lat != null) return [m.lat, m.lon];
-      }
-      if (nameFallback) {
-        const m = MS.find(s => s.name === nameFallback);
-        if (m && m.lat != null) return [m.lat, m.lon];
-      }
-    }
-    for (const sl of (NORIRECO.data.SERVICE_LINES || [])) {
-      if (!sl.stations) continue;
-      if (id) {
-        const s = sl.stations.find(x => x.id === id);
-        if (s && s.lat != null) return [s.lat, s.lon];
-      }
-      if (nameFallback) {
-        const s = sl.stations.find(x => x.name === nameFallback);
-        if (s && s.lat != null) return [s.lat, s.lon];
-      }
-    }
-    return null;
-  };
-  // v326 (Phase 3): id 優先で座標解決、表示名は MERGED_STATIONS から逆引き
-  const fromName = getTripStationName(trip, 'from');
-  const toName = getTripStationName(trip, 'to');
-  const fromCoord = findStCoord(trip.from_station_id, fromName);
-  const toCoord = findStCoord(trip.to_station_id, toName);
-  if (!fromCoord && !toCoord) {
-    alert(`駅座標が見つかりません: ${fromName} / ${toName}`);
-    return;
-  }
-
-  const dFrom = fromCoord ? distMeters(myLat, myLon, fromCoord[0], fromCoord[1]) : Infinity;
-  const dTo = toCoord ? distMeters(myLat, myLon, toCoord[0], toCoord[1]) : Infinity;
-  const minDist = Math.min(dFrom, dTo);
-  const VERIFY_RADIUS_M = 500;
-
-  if (minDist > VERIFY_RADIUS_M) {
-    const nearer = dFrom < dTo ? fromName : toName;
-    alert(`現在地が遠すぎます (最寄 "${nearer}" まで ${Math.round(minDist)}m)\nこの旅程の駅から半径 ${VERIFY_RADIUS_M}m 以内で再試行してください。`);
-    return;
-  }
-
-  const nearStation = dFrom < dTo ? fromName : toName;
-  if (!confirm(`✅ "${nearStation}" の近く (${Math.round(minDist)}m) で認証します。よろしいですか?`)) return;
-
-  try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_trips?id=eq.${tripId}`, {
-      method: 'PATCH',
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${authBearerToken()}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal',
-      },
-      body: JSON.stringify({ verified: true, gps_lat: myLat, gps_lon: myLon, gps_accuracy: acc }),
-    });
-    if (!res.ok) {
-      const err = await res.text();
-      alert('Supabase 更新失敗: ' + err.slice(0, 200));
-      return;
-    }
-  } catch (e) {
-    alert('通信エラー: ' + e.message);
-    return;
-  }
-
-  showMypageToast(`✅ "${nearStation}" で認証完了!`, 'success');
-  setTimeout(() => runCharacterGrantCheck(), 600);
-
-  // v281: deleteTripFromMypage と同じく renderMypage() は未 import で ReferenceError。
-  //       _mypageCache 内の該当 trip を PATCH と同じ値で楽観更新し、
-  //       旅程セクション + 完乗率カードを client 側で即時再描画する。
-  try {
-    if (Array.isArray(NORIRECO.mypage.state._mypageCache)) {
-      const t = NORIRECO.mypage.state._mypageCache.find(t => t.id === tripId);
-      if (t) {
-        t.verified = true;
-        t.gps_lat = myLat;
-        t.gps_lon = myLon;
-        t.gps_accuracy = acc;
-      }
-    }
-  } catch(e) {}
-
-  try { applyMpSection(); } catch(e) {}
-  try {
-    const pinned = document.getElementById('mp-completion-pinned');
-    if (pinned && Array.isArray(NORIRECO.data?.SERVICE_LINES) && NORIRECO.data.SERVICE_LINES.length > 0) {
-      const tripsForCards = filterTripsByDate(NORIRECO.mypage.state._mypageCache || []);
-      pinned.innerHTML = '';
-      pinned.appendChild(NORIRECO.mypage.buildCompletionCards(tripsForCards));
-    }
-  } catch(e) {}
-}
-window.retroactivelyVerifyTrip = retroactivelyVerifyTrip;
-NORIRECO.mypage.retroactivelyVerifyTrip = retroactivelyVerifyTrip;
+// v346: GPS 後追い認証 (retroactivelyVerifyTrip) を撤去
+// 旅程は片端 500m 以内で全区間 verified 化する loose な実装で、
+// キャラ獲得が中間駅にも波及する副作用があった。新方針「GPS = 手間省略」
+// で「GPS に変換」自体に意味がなくなり、撤去。
+// GPS 記録は記録モードでのみ生成される。手動 trip は手動のまま。
 
 // ── 削除 ───────────────────────────────────────────────────────
 async function deleteTripFromMypage(tripId) {

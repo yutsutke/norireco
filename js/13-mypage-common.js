@@ -289,7 +289,7 @@ export async function renderMypage() {
       <div class="mp-empty">
         <div class="mp-empty-ic">🔑</div>
         <div class="mp-empty-t">ログインしてください</div>
-        <div class="mp-empty-s">マイページではあなたの旅程・GPS 完駅率・GPS 変換が使えます</div>
+        <div class="mp-empty-s">マイページではあなたの旅程・GPS 完駅率が使えます</div>
         <button class="mp-empty-btn" onclick="openAuthModal()">🔑 ログイン / 会員登録</button>
       </div>`;
     return;
@@ -599,10 +599,6 @@ export function tripCardHtml(trip) {
     ).join('')}</div>`;
   }
 
-  const verifyBtn = !trip.verified
-    ? `<button class="mp-act-btn verify" onclick="retroactivelyVerifyTrip('${trip.id}')">📍 GPS に変換</button>`
-    : '';
-
   // v184/v226: 既存旅程の編集ボタン (v226 で時刻・列車種別まで編集対象拡大)
   const editBtn = `<button class="mp-act-btn edit-memo" onclick="openTripEditModal('${trip.id}')">✏️ 編集</button>`;
 
@@ -623,7 +619,6 @@ export function tripCardHtml(trip) {
       ${photosLine}
       ${recordedAtLine}
       <div class="mp-tcard-actions">
-        ${verifyBtn}
         ${editBtn}
         <button class="mp-act-btn delete" onclick="deleteTripFromMypage('${trip.id}')">🗑 削除</button>
       </div>

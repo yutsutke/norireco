@@ -27,6 +27,35 @@
 
 ---
 
+## 196. v346 — 「GPS に変換」ボタン (retroactivelyVerifyTrip) を撤去 (2026-05-25)
+
+### 背景
+v345 で「📍 GPSで認証」→「📍 GPS に変換」と文言変更したが、ユスケから「旅程 (複数駅) の GPS 変換ってどういう仕組み?」と指摘。実装を読み返すと:
+
+- 仕様: 現在地が **出発駅 OR 終着駅** のどちらかと 500m 以内なら、旅程全体を `verified=true` に昇格
+- 副作用: キャラ獲得チェック ([js/03-characters.js:170](js/03-characters.js#L170) `checkAndGrantCharacters`) は `verified` trip の **segments[].from/to / from_station_id / to_station_id すべて** をスキャンするため、中間駅にもキャラ自動付与が波及
+
+つまり「東京→博多」の手動 trip を作って博多で GPS 変換すれば、東京駅含む中間全駅のキャラが取れてしまう loose な実装だった。旧方針 (証明) の下でもこの抜けは放置されていた。
+
+### 設計判断
+- 新方針「GPS = 手動の手間省略、世間への証明不要」(v345) に照らせば「GPS に変換」自体の意味付けが薄い
+- キャラ獲得を `verified` 限定 (v345 Q1) で残す前提では、loose な変換は「実際に来た駅」セマンティクスを壊す
+- → ボタン + 関数 (`retroactivelyVerifyTrip`) ごと撤去するのがクリーン
+- GPS 記録は記録モードでのみ生成される (📍 → 「ここから記録開始」フロー)。手動 trip は手動のまま
+
+### 変更
+- **削除**: [js/13b-trips.js](js/13b-trips.js) の `retroactivelyVerifyTrip` 関数 (118 行) + `window.retroactivelyVerifyTrip` / `NORIRECO.mypage.retroactivelyVerifyTrip` bridge
+- **import 撤去**: 13b-trips から `distMeters` / `runCharacterGrantCheck` (関数削除に伴い未使用化)
+- **撤去**: [js/13-mypage-common.js:602-604](js/13-mypage-common.js#L602) の `verifyBtn` (「📍 GPS に変換」ボタン生成 + tripCardHtml 配置)
+- **案内文**: 「マイページではあなたの旅程・GPS 完駅率・GPS 変換が使えます」→ 「GPS 変換」削除
+- **CSS**: noritetsu-map.html の `.mp-act-btn.verify` (green) 削除
+- **コメント**: 13b-trips.js ファイルヘッダから「GPS 後追い認証」記述削除、フィルタバー「認証」→「種類」、撤去メモ追記
+
+### 残り
+- Phase 3-c (v314) `findStCoord(id, nameFallback)` も道連れで撤去された。CHANGELOG §162 / STATUS の Phase 3-c 行は履歴として残置 (機能は消えたが当時の id 化作業の事実は残る)
+
+---
+
 ## 195. v345 — GPS 記録の位置づけ変更 + 不正検知撤回 + バッジ中立化 (2026-05-25)
 
 ### 背景・方針転換 (重要)
