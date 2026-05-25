@@ -46,7 +46,8 @@ const M = NORIRECO.memos.state;
 
 // v325 (Phase 3): memo.station_id から駅名を逆引き。memo.station 列が DROP された後の
 //   display 用 fallback。station 列がまだ残っている過渡期は memo.station をそのまま使う。
-function getMemoStationName(memo) {
+// v331 (Phase 3): 他モジュール (17-station-actions / 13-mypage-common) から共用するため export。
+export function getMemoStationName(memo) {
   if (!memo) return '';
   if (memo.station) return memo.station;
   if (memo.station_id) {

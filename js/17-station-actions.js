@@ -25,7 +25,7 @@ import { toggleRecordMode, onRecordStationClick } from './07-record-mode.js';
 import { openCharModal } from './08-rendering.js';
 import { isCharacterOwned } from './03-characters.js';
 // v283: 路線アクションシート「+ 新しい路線メモを残す」から呼ぶ
-import { openMemo } from './16-memos.js';
+import { openMemo, getMemoStationName } from './16-memos.js';
 // v287.1: tripVisitsStation は 13-mypage-common に共通化済 (マイページの駅名検索も同じロジックを使う)
 // v309: loadMypageTripsIfNeeded — タブ未開封時の lazy fetch
 import { tripVisitsStation, loadMypageTripsIfNeeded } from './13-mypage-common.js';
@@ -349,7 +349,9 @@ function memoCardHtmlMini(memo) {
   const dateStr = (memo.created_at || '').slice(0, 10) || '日時不明';
   const typeIc = TYPE_ICON[memo.memo_type] || '📍';
   const moodIc = MOOD_ICON[memo.mood] || '';
-  const station = memo.station ? `🚉 ${escapeHtml(memo.station)}` : '';
+  // v331 (Phase 3): memo.station 列 DROP 後は getMemoStationName 経由で id → name 逆引き
+  const stName = getMemoStationName(memo);
+  const station = stName ? `🚉 ${escapeHtml(stName)}` : '';
   const photos = (Array.isArray(memo.photos) ? memo.photos : []).filter(p => p && p.url);
   const photosHtml = photos.length > 0
     ? `<div class="sa-memo-thumbs">${photos.map(p =>

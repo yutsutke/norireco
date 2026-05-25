@@ -27,6 +27,61 @@
 
 ---
 
+## 181. v331 — 駅 ID 体系 Phase 3-h/3-i 仕上げ準備: 駅名検索 + メモシート display を getter 経由に (DROP COLUMN 前事前修正) (2026-05-25)
+
+### 背景
+
+v325/v326 で memo.station / trip.from_station/to_station 列の **書き込み側** は撤去済 (INSERT/UPDATE で id 列のみ送信)。display 側も `getMemoStationName` / `getTripStationName` ヘルパーで「id 優先 + name fallback」化済。
+
+しかし grep で残漏れを確認したところ、**2 箇所で `memo.station` / `trip.from_station` を直接参照** していた:
+- [13-mypage-common.js:86-87](js/13-mypage-common.js#L86) `tripMatchesAnyStation` の `predicate(trip.from_station, trip.from_station_id)` — 駅名検索 (substring) で name 必須。DROP 後は undefined になり 0 件落ちする
+- [17-station-actions.js:352](js/17-station-actions.js#L352) `memoCardHtmlMini` の `memo.station ? '🚉 ${memo.station}' : ''` — 駅シート内のメモカード駅名表示。DROP 後は空文字に
+
+このまま SQL DROP COLUMN を実行すると上記 2 箇所が壊れる。事前に getter 経由に直してから DROP を走らせるのが安全。
+
+### 動機
+
+- DROP COLUMN を「動作影響ゼロ」で実行できる状態にする (2 段階デプロイの 1 段目)
+- 駅名検索 + メモシート表示は乗レコの主要 UX なので壊せない
+- getter (`getMemoStationName` / `getTripStationName`) は既に存在するので、callsite を直すだけの最小修正
+
+### 変更
+
+- **js/16-memos.js**: `getMemoStationName` を `function` → `export function` に変更 (他モジュールから import 可能に)
+- **js/13b-trips.js**: `getTripStationName` を `function` → `export function` に変更
+- **js/13-mypage-common.js**:
+  - 冒頭で `import { getTripStationName } from './13b-trips.js'` 追加 (13-mypage-common ↔ 13b-trips は循環するが ES Modules の live binding + 関数のみ参照で安全)
+  - `tripMatchesAnyStation` 内の `predicate(trip.from_station, ...)` → `predicate(getTripStationName(trip, 'from'), ...)` / 同 'to'
+- **js/17-station-actions.js**:
+  - import に `getMemoStationName` を追加
+  - `memoCardHtmlMini` 内の `memo.station` → `getMemoStationName(memo)`
+- **sw.js**: CACHE_VERSION v330 → v331
+
+### 設計判断 — 循環 import を許容
+
+13-mypage-common.js は既に 13b-trips から `tripCardHtml` などをインポートされる「common 層」だが、`getTripStationName` は trip 固有のヘルパーなので 13b-trips に置きたい。常識的には共通モジュールに置くべきだが、移動するとさらに広範囲の変更になる。
+
+ES Modules の循環 import は **関数バインディングのみ参照 + top-level で参照しない** 条件で動作する。本ケースは両条件を満たすので許容。
+
+代替案として `getTripStationName` を 13-mypage-common.js に移動も検討したが、`getMemoStationName` (16-memos に残る) との対称性が崩れる + 13b-trips 内の他関数からも使うため、現状の trip 側に置く方が一貫している。
+
+### 検証
+
+- syntax check 25/25 OK
+- 循環 import チェック: 13-mypage-common ↔ 13b-trips のみ (16-memos は 17-station-actions と相互依存なし)
+- 既存の DROP 後動作シナリオを想定: `trip.from_station = undefined` で `getTripStationName(trip, 'from')` が MERGED_STATIONS 経由で name を返すこと
+
+### 残課題 (次ステップ)
+
+1. **ユスケ手動作業**: v331 デプロイ確認 → ブラウザコンソールで backfill 2 関数実行 → Supabase で NULL チェック → `v325_memo_station_drop.sql` / `v326_trip_station_drop.sql` を順に Run
+2. **v332 cleanup**: DROP 完了 + 動作確認後、getter 内の `if (memo.station)` / `if (trip[nameKey])` fallback 分岐を撤去、backfill 関数 + 03-characters.js の `setByName` dead code を撤去
+
+### 変更ファイル
+
+`git diff --name-only HEAD` (js/16-memos.js / js/13b-trips.js / js/13-mypage-common.js / js/17-station-actions.js / sw.js / CHANGELOG.md / STATUS.md / TODO.md)
+
+---
+
 ## 180. v330 — 修正: 陸前山王 を利府支線から東北本線本線に移動 (v329 の誤配属修正) (2026-05-25)
 
 ### 背景

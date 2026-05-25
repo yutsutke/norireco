@@ -44,7 +44,8 @@ let _tripEditPhotoArea = null;
 // v326 (Phase 3): trip.from_station_id / to_station_id から駅名を逆引き。
 //   trip.from_station / to_station 列が DROP された後の display 用 fallback。
 //   過渡期 (DROP 未実行) は trip.from_station をそのまま使う。
-function getTripStationName(trip, which) {
+// v331 (Phase 3): 13-mypage-common.tripMatchesAnyStation の駅名検索で使うため export。
+export function getTripStationName(trip, which) {
   if (!trip) return '';
   const nameKey = which === 'to' ? 'to_station' : 'from_station';
   const idKey = which === 'to' ? 'to_station_id' : 'from_station_id';

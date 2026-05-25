@@ -21,6 +21,9 @@ import { fraudIsDowngraded } from './11-fraud-detection.js';
 import { currentUserId, authBearerToken } from './12-auth.js';
 import { renderList } from './09-tabs-stats.js';
 import { filterTripsByDate } from './05-supabase-data.js';
+// v331 (Phase 3): trip.from_station / to_station 列 DROP 後の name 解決ヘルパー。
+//   駅名検索 (substring) は name が必須なので id → MERGED_STATIONS 逆引きで補う。
+import { getTripStationName } from './13b-trips.js';
 
 // ── NORIRECO 名前空間の初期化 ──────────────────────────────────
 window.NORIRECO = window.NORIRECO || {};
@@ -83,8 +86,10 @@ const MP = NORIRECO.mypage.state;
 export function tripMatchesAnyStation(trip, predicate, scope) {
   if (!trip || typeof predicate !== 'function') return false;
   const sc = scope || { from: true, end: true, transfer: true, pass: true };
-  if (sc.from && predicate(trip.from_station, trip.from_station_id)) return true;
-  if (sc.end && predicate(trip.to_station, trip.to_station_id)) return true;
+  // v331 (Phase 3): name は getTripStationName で id → MERGED_STATIONS 逆引きを通す。
+  //   DROP 後は trip.from_station が undefined になるため、駅名検索が壊れる回避。
+  if (sc.from && predicate(getTripStationName(trip, 'from'), trip.from_station_id)) return true;
+  if (sc.end && predicate(getTripStationName(trip, 'to'), trip.to_station_id)) return true;
   if (!sc.transfer && !sc.pass) return false; // segments を走らせる必要なし
   const segs = Array.isArray(trip.segments) ? trip.segments : [];
   const SL = NORIRECO.data?.SERVICE_LINES || [];
