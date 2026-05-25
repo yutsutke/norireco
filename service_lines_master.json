@@ -1113,7 +1113,8 @@
       ],
       "through_lines": [
         "jr_yamatoji_line",
-        "jr_hanwa_line"
+        "jr_hanwa_line",
+        "auto_桜島線_西日本旅客鉄道"
       ],
       "is_circular": true,
       "start_station": "大阪",
@@ -7670,7 +7671,9 @@
       "color": "hsl(213, 60%, 55%)",
       "official_line": "関西空港線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "jr_hanwa_line"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -9330,7 +9333,9 @@
       "alias": [
         "JRゆめ咲線"
       ],
-      "through_lines": [],
+      "through_lines": [
+        "osaka_loop_line"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -25464,7 +25469,9 @@
       "color": "hsl(7, 60%, 55%)",
       "official_line": "宇治線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_京阪本線_京阪電気鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -25521,7 +25528,9 @@
       "color": "hsl(269, 60%, 55%)",
       "official_line": "鴨東線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_京阪本線_京阪電気鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -25553,7 +25562,12 @@
       "color": "hsl(35, 60%, 55%)",
       "official_line": "京阪本線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_鴨東線_京阪電気鉄道",
+        "auto_中之島線_京阪電気鉄道",
+        "auto_交野線_京阪電気鉄道",
+        "auto_宇治線_京阪電気鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -25770,7 +25784,9 @@
       "color": "hsl(54, 60%, 55%)",
       "official_line": "京津線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_東西線_京都市"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -25822,7 +25838,9 @@
       "color": "hsl(243, 60%, 55%)",
       "official_line": "交野線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_京阪本線_京阪電気鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -26576,7 +26594,9 @@
       "color": "hsl(89, 60%, 55%)",
       "official_line": "東西線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_京津線_京阪電気鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -27328,7 +27348,9 @@
       "color": "hsl(218, 60%, 55%)",
       "official_line": "橿原線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_京都線_近畿日本鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -27430,7 +27452,9 @@
       "color": "hsl(231, 60%, 55%)",
       "official_line": "吉野線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_南大阪線_近畿日本鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -27527,7 +27551,10 @@
       "color": "hsl(3, 60%, 55%)",
       "official_line": "京都線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_奈良線_近畿日本鉄道",
+        "auto_橿原線_近畿日本鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -28073,7 +28100,9 @@
       "color": "hsl(41, 60%, 55%)",
       "official_line": "大阪線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_難波線_近畿日本鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -28622,7 +28651,11 @@
       "color": "hsl(235, 60%, 55%)",
       "official_line": "奈良線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_阪神なんば線_阪神電気鉄道",
+        "auto_難波線_近畿日本鉄道",
+        "auto_京都線_近畿日本鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -28734,7 +28767,9 @@
       "color": "hsl(271, 60%, 55%)",
       "official_line": "南大阪線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_吉野線_近畿日本鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -28891,7 +28926,10 @@
       "color": "hsl(13, 60%, 55%)",
       "official_line": "難波線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_奈良線_近畿日本鉄道",
+        "auto_大阪線_近畿日本鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -28923,7 +28961,10 @@
       "color": "hsl(34, 60%, 55%)",
       "official_line": "阪神なんば線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_奈良線_近畿日本鉄道",
+        "auto_本線_阪神電気鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -29311,7 +29352,11 @@
       "color": "hsl(3, 60%, 55%)",
       "official_line": "京都線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_6号線(堺筋線)_大阪市高速電気軌道",
+        "auto_千里線_阪急電鉄",
+        "auto_嵐山線_阪急電鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -29562,7 +29607,11 @@
       "color": "hsl(88, 60%, 55%)",
       "official_line": "神戸高速線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_神戸線_阪急電鉄",
+        "auto_神戸高速線_阪神電気鉄道",
+        "auto_神戸高速線_神戸電鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -29599,7 +29648,9 @@
       "color": "hsl(144, 60%, 55%)",
       "official_line": "神戸線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_神戸高速線_阪急電鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -29696,7 +29747,10 @@
       "color": "hsl(14, 60%, 55%)",
       "official_line": "千里線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_6号線(堺筋線)_大阪市高速電気軌道",
+        "auto_京都線_阪急電鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -29917,7 +29971,9 @@
       "color": "hsl(22, 60%, 55%)",
       "official_line": "嵐山線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_京都線_阪急電鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -29954,7 +30010,11 @@
       "color": "hsl(88, 60%, 55%)",
       "official_line": "神戸高速線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_本線_阪神電気鉄道",
+        "auto_神戸高速線_阪急電鉄",
+        "auto_神戸高速線_神戸電鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -30043,7 +30103,10 @@
       "color": "hsl(45, 60%, 55%)",
       "official_line": "本線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_阪神なんば線_阪神電気鉄道",
+        "auto_神戸高速線_阪神電気鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -31758,7 +31821,10 @@
       "color": "hsl(88, 60%, 55%)",
       "official_line": "神戸高速線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_神戸高速線_阪急電鉄",
+        "auto_神戸高速線_阪神電気鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -33564,7 +33630,9 @@
       "color": "hsl(75, 60%, 55%)",
       "official_line": "1号線(御堂筋線)",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_南北線_北大阪急行電鉄_s0"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -33900,7 +33968,9 @@
       "color": "hsl(290, 60%, 55%)",
       "official_line": "4号線(中央線)",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_けいはんな線_近畿日本鉄道_s0"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -34096,7 +34166,10 @@
       "color": "hsl(70, 60%, 55%)",
       "official_line": "6号線(堺筋線)",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_京都線_阪急電鉄",
+        "auto_千里線_阪急電鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -34349,7 +34422,9 @@
       "color": "hsl(145, 60%, 55%)",
       "official_line": "泉北線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_高野線_南海電気鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -38530,7 +38605,9 @@
       "color": "hsl(148, 60%, 55%)",
       "official_line": "空港線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_南海本線_南海電気鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -38621,7 +38698,9 @@
       "color": "hsl(167, 60%, 55%)",
       "official_line": "高野線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_泉北線_南海電気鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -38907,7 +38986,9 @@
       "color": "hsl(163, 60%, 55%)",
       "official_line": "南海本線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_空港線_南海電気鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -39528,7 +39609,9 @@
       "color": "hsl(276, 60%, 55%)",
       "official_line": "南北線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_1号線(御堂筋線)_大阪市高速電気軌道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -42178,7 +42261,9 @@
       "color": "hsl(239, 60%, 55%)",
       "official_line": "けいはんな線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_4号線(中央線)_大阪市高速電気軌道_s0"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -42324,7 +42409,9 @@
       "color": "hsl(52, 60%, 55%)",
       "official_line": "中之島線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_京阪本線_京阪電気鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -63587,7 +63674,8 @@
       "official_line": "阪和線",
       "alias": [],
       "through_lines": [
-        "osaka_loop_line"
+        "osaka_loop_line",
+        "auto_関西空港線_西日本旅客鉄道"
       ],
       "is_circular": false,
       "parent_id": null,
