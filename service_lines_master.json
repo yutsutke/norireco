@@ -59911,7 +59911,10 @@
       "alias": [
         "東北本線"
       ],
-      "through_lines": [],
+      "through_lines": [
+        "jr_ueno_tokyo_line",
+        "jr_shonan_shinjuku_line"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -60092,7 +60095,10 @@
       "color": "#FF8C00",
       "official_line": "高崎線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "jr_ueno_tokyo_line",
+        "jr_shonan_shinjuku_line"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -60228,7 +60234,9 @@
       "color": "#0072BC",
       "official_line": "横須賀線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "jr_shonan_shinjuku_line"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -60918,7 +60926,9 @@
       "color": "#2DA9DF",
       "official_line": "常磐線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "jr_ueno_tokyo_line"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -61304,7 +61314,9 @@
       "color": "#0072BC",
       "official_line": "東海道線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "jr_kyoto_line"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -61422,7 +61434,9 @@
       "alias": [
         "山陽本線"
       ],
-      "through_lines": [],
+      "through_lines": [
+        "jr_kobe_line"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,

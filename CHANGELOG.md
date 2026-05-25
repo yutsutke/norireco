@@ -27,6 +27,54 @@
 
 ---
 
+## 188. v338 — through_lines 双方向化バグ修正 (v334 由来の片方向参照 8 件) (2026-05-25)
+
+### バグ報告
+
+ユスケが v337 verify 中に発見:
+- 「JR京都線 → 琵琶湖線 へは飛べるが、琵琶湖線シートには直通先が出ず JR京都線 に戻れない」
+- 「JR神戸線 → 山陽本線 も同じ症状」
+
+### 原因
+
+v334 で 6 つの broken refs を直したとき、参照元側 (`jr_kyoto_line.through_lines = [jr_kobe_line, jr_biwako_line]` 等) は正しく書いたが、**参照先側 (`jr_biwako_line.through_lines`) に逆方向 ref を追加していなかった**。同様に v334 で書いた `jr_ueno_tokyo_line` / `jr_shonan_shinjuku_line` も派生路線 (宇都宮/高崎/常磐中距離/横須賀) への片方向 ref のまま。
+
+Phase A〜C (v335〜v337) の新規追加は `addRef(a,b)` + `addRef(b,a)` で常に双方向にしていたが、v334 由来の既存 ref は監査漏れ。
+
+### 監査結果と修正
+
+`tools/fix_bidirectional_through_lines.js` を新規作成。全 through_lines を走査して片方向参照を検出 → 自動修正。
+
+検出された 8 件:
+- jr_utsunomiya_line ← jr_ueno_tokyo_line
+- jr_takasaki_line ← jr_ueno_tokyo_line
+- jr_joban_medium ← jr_ueno_tokyo_line
+- jr_utsunomiya_line ← jr_shonan_shinjuku_line
+- jr_takasaki_line ← jr_shonan_shinjuku_line
+- jr_yokosuka_line ← jr_shonan_shinjuku_line
+- jr_biwako_line ← jr_kyoto_line (ユスケ報告)
+- jr_sanyo_main ← jr_kobe_line (ユスケ報告)
+
+修正後の `jr_utsunomiya_line.through_lines` = `[jr_ueno_tokyo_line, jr_shonan_shinjuku_line]` のように、宇都宮/高崎線は両ハブからの直通を持つ正しい状態に。
+
+### スクリプトの assert
+
+修正後に再監査して `unidirectional refs: 0` + `broken refs: 0` の両方を assert してから write。今後 v339 以降で新規追加した時の網羅監査ツールとしても使える。
+
+### 変更
+
+- **tools/fix_bidirectional_through_lines.js**: 新規 (汎用片方向参照検出 + 自動双方向化 + assert)
+- **service_lines_master.json**: 8 ref 追加 (`updated_at: 2026-05-25`、640 系統のまま)
+- **sw.js**: CACHE_VERSION v337 → v338
+
+### 教訓
+
+v334 で broken refs を直したとき「ref を書く」だけで満足し、「逆方向 ref も書く」ことを忘れていた。through_lines は本質的に **対称関係** (A が B に直通するなら B も A に直通する) なので、データ操作スクリプトは常に双方向で書くべきだった。Phase A〜C のスクリプトでは `addRef(a, b)` と `addRef(b, a)` を必ずペアで呼んでいたが、v334 のスクリプト (add_3_through_lines.js) では「broken ref の文字列を rename」する操作だったので双方向化のことが頭から抜けた。
+
+今後の予防策: `fix_bidirectional_through_lines.js` を CI 的に through_lines 編集後に必ず通す運用にすれば、片方向参照は機械的に検出できる。
+
+---
+
 ## 187. v337 — Phase C: 関西主要 27 直通ペア (54 ref) を through_lines に追加 (2026-05-25)
 
 ### 背景
