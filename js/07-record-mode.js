@@ -912,8 +912,8 @@ async function saveMultiSegmentTrip() {
   const trip = {
     id: tripId, date: tripDate, name: tripName,
     photos: tripPhotos,
-    from_station: fromStation, to_station: toStation,
-    // v310 (Phase 2-a): 並行書き込み。読み込み側はまだ name 優先 (2-c で id 優先化)。
+    // v326 (Phase 3): from_station / to_station (name) への並行書き込みを撤去、id のみ。
+    //   既存 trip の name 列は v326 SQL DROP で除去予定。表示は MERGED_STATIONS から逆引き。
     from_station_id: fromStationId, to_station_id: toStationId,
     total_stations: totalStations,
     transfers: Math.max(0, tripSegments.length - 1),

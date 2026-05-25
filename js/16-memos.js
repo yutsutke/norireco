@@ -44,6 +44,18 @@ NORIRECO.memos = NORIRECO.memos || {
 };
 const M = NORIRECO.memos.state;
 
+// v325 (Phase 3): memo.station_id から駅名を逆引き。memo.station 列が DROP された後の
+//   display 用 fallback。station 列がまだ残っている過渡期は memo.station をそのまま使う。
+function getMemoStationName(memo) {
+  if (!memo) return '';
+  if (memo.station) return memo.station;
+  if (memo.station_id) {
+    const ms = (NORIRECO.data?.MERGED_STATIONS || []).find(m => m.id === memo.station_id);
+    return ms ? ms.name : '';
+  }
+  return '';
+}
+
 const MOOD_EMOJI = { '最高': '🤩', '良い': '😊', '普通': '😐', '微妙': '😕', '最悪': '😤' };
 const TYPE_EMOJI = { '駅': '🚉', '車内': '🪟', '路線': '🚃', 'その他': '📍' };
 
@@ -197,7 +209,7 @@ function openMemoForEdit(memoId) {
   M.editingId = memoId;
   fillModal({
     title: '✏️ メモを編集',
-    sub: [memo.line_name, memo.station].filter(Boolean).join('  ·  '),
+    sub: [memo.line_name, getMemoStationName(memo)].filter(Boolean).join('  ·  '),
     memo: memo,
   });
   document.getElementById('memo-modal').classList.add('open');
@@ -276,14 +288,15 @@ async function saveMemoFromModal() {
       if (idx >= 0) M.cache[idx] = result;
     } else {
       const ci = NORIRECO.map.clickInfo || {};
+      // v325 (Phase 3): station 列 (駅名) への並行書き込みを撤去、station_id のみ。
+      //   既存メモの station 列は v325 SQL DROP で除去予定 (backfill 済みであれば安全)。
       const newMemo = {
         id: memoId,
         ...fields,
         photos,
         line_id: ci.line?.id || null,
         line_name: ci.line?.name || null,
-        station: ci.station?.n || null,
-        station_id: ci.station?.id || null,  // v315 (Phase 3-d): 駅 id 並行書き込み
+        station_id: ci.station?.id || null,
         lat: ci.lat ? parseFloat(ci.lat) : null,
         lon: ci.lon ? parseFloat(ci.lon) : null,
       };
@@ -515,8 +528,10 @@ function memoCardHtml(memo) {
         `<div class="mp-photo-cell"><a href="${escapeHtml(p.url)}" target="_blank" rel="noopener" draggable="false"><img class="mp-memo-thumb" src="${escapeHtml(p.url)}" loading="lazy" alt="メモの写真 ${i + 1}" draggable="false"></a></div>`
       ).join('')}</div>`
     : '';
+  // v325 (Phase 3): station 列 DROP 後は station_id → MERGED_STATIONS で名前を逆引き
+  const stationName = getMemoStationName(memo);
   const where = [
-    memo.station ? `🚉 ${escapeHtml(memo.station)}` : '',
+    stationName ? `🚉 ${escapeHtml(stationName)}` : '',
     memo.line_name ? `🚃 ${escapeHtml(memo.line_name)}` : '',
   ].filter(Boolean).join(' · ');
   const updatedNote = (memo.updated_at && memo.created_at && memo.updated_at !== memo.created_at)
@@ -544,6 +559,8 @@ function memoCardHtml(memo) {
 
 // 駅マーカークリックから呼ばれる。args は station 情報を持つ。
 // v315 (Phase 3-d): args.station_id があれば id 優先で filter (同名駅取り違え回避)。
+// v325 (Phase 3): station 列 DROP 後は name fallback はほぼ no-op (memo.station = undefined)。
+//   過渡期 (SQL 未実行 + backfill 未完了の状態) を救済するため fallback は残置。
 function openStationMemoList(args) {
   // args = { station, station_id, lineId, lineName, lat, lon }
   M.stationContext = {
@@ -677,6 +694,8 @@ NORIRECO.memos.renderMpMemosSection = renderMpMemosSection;
 NORIRECO.memos.openStationMemoList = openStationMemoList;
 // v315 (Phase 3-d): ms オブジェクト引数に拡張 (id 優先 + name fallback)。
 //   旧シグネチャ hasMemosForStation("駅名") 互換のため、引数が string でも動かす。
+// v325 (Phase 3): station 列 DROP 後 m.station = undefined になるので name fallback は no-op。
+//   過渡期救済のため残置。
 NORIRECO.memos.hasMemosForStation = (msOrName) => {
   if (!msOrName) return false;
   if (typeof msOrName === 'string') {
@@ -688,6 +707,68 @@ NORIRECO.memos.hasMemosForStation = (msOrName) => {
     if (id && m.station_id) return m.station_id === id;
     return name && m.station === name;
   });
+};
+
+// v325 (Phase 3): 「この駅のメモは何件か」を id 優先で集計 (17-station-actions の memoCount 用)。
+NORIRECO.memos.countMemosForStation = (ms) => {
+  if (!ms) return 0;
+  return M.cache.filter(m => {
+    if (ms.id && m.station_id) return m.station_id === ms.id;
+    return ms.name && m.station === ms.name;
+  }).length;
+};
+
+// v325 (Phase 3): 既存 memo の station_id を MERGED_STATIONS から逆引きして backfill。
+//   v315 デプロイ後に作成された memo は既に station_id 入り。v315 以前のレガシーメモ
+//   (3 件 + α) を id 化するための一回限りのヘルパー。
+//   実行: ブラウザコンソールで `await norirecoBackfillMemoStationIds()` を呼ぶ。
+//   同名異所駅は memo.lat/lon を使って最近接 ms を選ぶ。
+window.norirecoBackfillMemoStationIds = async function backfillMemoStationIds() {
+  if (!currentUserId()) { console.warn('[Backfill] ログインしてください'); return; }
+  const MS = NORIRECO.data?.MERGED_STATIONS || [];
+  if (MS.length === 0) { console.warn('[Backfill] MERGED_STATIONS 未ロード'); return; }
+
+  const targets = M.cache.filter(m => !m.station_id && m.station);
+  if (targets.length === 0) {
+    console.log('[Backfill] 対象メモなし (全て station_id 入り済 or station なし)');
+    return;
+  }
+  console.log(`[Backfill] 対象 ${targets.length} 件:`, targets.map(m => `${m.station} (${m.id})`));
+
+  const dist2 = (lat1, lon1, lat2, lon2) => {
+    const dLat = lat1 - lat2, dLon = lon1 - lon2;
+    return dLat * dLat + dLon * dLon;  // 平面近似で十分 (同名駅の選別だけなので)
+  };
+
+  let ok = 0, fail = 0, skip = 0;
+  for (const memo of targets) {
+    const cands = MS.filter(m => m.name === memo.station);
+    if (cands.length === 0) {
+      console.warn(`[Backfill] スキップ: ${memo.id} (${memo.station}) — MERGED_STATIONS に該当駅なし`);
+      skip++;
+      continue;
+    }
+    let chosen = cands[0];
+    if (cands.length > 1 && typeof memo.lat === 'number' && typeof memo.lon === 'number') {
+      chosen = cands.reduce((best, c) =>
+        dist2(c.lat, c.lon, memo.lat, memo.lon) < dist2(best.lat, best.lon, memo.lat, memo.lon) ? c : best,
+        cands[0]
+      );
+    }
+    try {
+      const updated = await updateMemoOnServer(memo.id, { station_id: chosen.id });
+      const idx = M.cache.findIndex(m => m.id === memo.id);
+      if (idx >= 0) M.cache[idx] = updated;
+      console.log(`[Backfill] ✓ ${memo.id} → ${chosen.id} (${chosen.name})`);
+      ok++;
+    } catch (e) {
+      console.warn(`[Backfill] ✗ ${memo.id}: ${e.message}`);
+      fail++;
+    }
+  }
+  try { localStorage.setItem('norireco_memos', JSON.stringify(M.cache)); } catch (e) {}
+  console.log(`[Backfill] 完了: OK ${ok} / FAIL ${fail} / SKIP ${skip}`);
+  return { ok, fail, skip };
 };
 
 // マイページ統合用 (13-mypage-common.applyMpSection から呼ばれる)

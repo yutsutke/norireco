@@ -27,6 +27,95 @@
 
 ---
 
+## 176. v326 — 駅 ID 体系 Phase 3-i: norireco_trips.from_station/to_station 列廃止準備 (JS) (2026-05-25)
+
+### 背景
+
+Phase 2-a (v310) で `from_station_id` / `to_station_id` 列追加 + 並行書き込み開始、Phase 2-b (v311) で既存 125 件を backfill 完遂、Phase 2-c (v312) で読み込みパスを id 優先化済。Phase 3 完了として name 列 (`from_station` / `to_station`) を Supabase からも撤去する。
+
+### 動機
+
+- 同名異所駅 (高松 香川/石川/多摩 等) を trip データレベルで厳密区別
+- 将来 (グローバル展開・AI 自動列車判定) で name 依存があると破綻
+- v323/v324/v325 で「データ全体を id 一本化」する流れを完成させる
+
+### 変更 (JS のみ — Supabase SQL DROP はユスケが Dashboard で実行)
+
+- **supabase/migrations/v326_trip_station_drop.sql** (新規): `ALTER TABLE norireco_trips DROP COLUMN from_station, DROP COLUMN to_station;` + `NOTIFY pgrst, 'reload schema'`
+- **js/07-record-mode.js**: 新規 trip 保存時の `from_station: fromStation, to_station: toStation` 並行書き込みを撤去。id 列のみ書く
+- **js/13b-trips.js**:
+  - `getTripStationName(trip, 'from'|'to')` ヘルパー追加: `trip.from_station_id` から MERGED_STATIONS で名前を逆引き。過渡期 (DROP 未実行) は `trip.from_station` をそのまま返す
+  - 旅程編集モーダルの segments 折り畳み表示 (line 299) を helper 経由に
+  - retroactivelyVerifyTrip の findStCoord / alert メッセージ (line 611-629) を helper 経由に
+  - `window.norirecoBackfillTripStationIds()` 追加: `_mypageCache` をスキャンして `from_station_id` または `to_station_id` が NULL の trip を MERGED_STATIONS から逆引き backfill する dev ヘルパー (gps_lat/gps_lon があれば最近接 ms を選ぶ)
+- **CACHE_VERSION**: v325 → v326
+
+### リスク・検証
+
+- v311 で 125 件 backfill 完遂 + v310 並行書き込みで新規 trip も id 入り → 全 trip が *_station_id NOT NULL になっているはず。SQL DROP 前に backfill ヘルパーで再確認推奨
+- trip カード本体は `trip.name` (フォーマット済) を表示しているので、name 列 DROP の display 影響は edit modal + verify alert の 2 箇所のみ
+- syntax check 25/25 OK
+
+### 残り手順 (ユスケ)
+
+1. Cloudflare Pages デプロイ完了後、`https://norireco.app` をリロード (PWA キャッシュ更新)
+2. マイページタブを 1 度開いて `_mypageCache` を満たす
+3. ブラウザコンソールで `await norirecoBackfillTripStationIds()` を実行 → `OK ... / FAIL ...` を確認
+4. Supabase Dashboard → SQL Editor で `SELECT COUNT(*) FROM norireco_trips WHERE from_station_id IS NULL OR to_station_id IS NULL;` が 0 件を確認
+5. `supabase/migrations/v326_trip_station_drop.sql` を貼り付け Run
+6. 旅程の表示・編集・GPS 認証が壊れていないか確認
+
+### 変更ファイル
+
+`git diff --name-only HEAD` (supabase/migrations/v326_trip_station_drop.sql / js/07-record-mode.js / js/13b-trips.js / sw.js / CHANGELOG.md / STATUS.md / TODO.md)
+
+---
+
+## 175. v325 — 駅 ID 体系 Phase 3-h: norireco_memos.station 列廃止準備 (JS + backfill) (2026-05-25)
+
+### 背景
+
+Phase 3-d (v315) で `station_id` 列追加 + 並行書き込み + 読み込み id 優先化済。既存メモ 3 件は `station_id = NULL` のまま name fallback で動いていた。Phase 3 完了として name 列を Supabase からも撤去する。
+
+### 動機
+
+- v324 で characters_master を name 撤去したのと同じ流れで、Supabase 側も name 列を一掃して駅 id 一本化を完成させる
+- 同名異所駅対応 (例: 高松 香川/石川/多摩でメモ取り違え) を根絶
+
+### 変更 (JS のみ — Supabase SQL DROP はユスケが Dashboard で実行)
+
+- **supabase/migrations/v325_memo_station_drop.sql** (新規): `ALTER TABLE norireco_memos DROP COLUMN station;` + `NOTIFY pgrst`
+- **js/16-memos.js**:
+  - `getMemoStationName(memo)` ヘルパー追加: `memo.station_id` から MERGED_STATIONS で名前を逆引き。過渡期 (DROP 未実行) は `memo.station` をそのまま返す
+  - createMemoOnServer に渡す newMemo から `station: ci.station?.n` を撤去 (id-only writes)
+  - 編集モーダル sub 行 (line 200) / マイページ memo カード where 行 (line 519) を helper 経由に
+  - openStationMemoList のフィルタ (line 558-561) は id 優先 + name fallback のまま (DROP 後は name fallback が no-op になる)
+  - `NORIRECO.memos.countMemosForStation(ms)` 追加: 17-station-actions の memoCount 用 id 優先カウント
+  - `window.norirecoBackfillMemoStationIds()` 追加: `M.cache` をスキャンして `station_id` NULL のメモを MERGED_STATIONS から逆引き backfill (lat/lon があれば最近接で同名異所駅を選別)
+- **js/17-station-actions.js**: memoCount フィルタ (line 109, 474) を `NORIRECO.memos.countMemosForStation(ms)` 経由に
+- **CACHE_VERSION**: v324 → v325
+
+### リスク・検証
+
+- 既存メモ 3 件が `station_id = NULL` のまま SQL DROP するとフィルタから消える → backfill 必須
+- name 列を fallback で残しているのは過渡期 (SQL DROP まで) のみ。DROP 後は `memo.station = undefined` で fallback が no-op に
+- syntax check 25/25 OK
+
+### 残り手順 (ユスケ)
+
+1. Cloudflare Pages デプロイ完了後、`https://norireco.app` をリロード (PWA キャッシュ更新)
+2. マイページ「📸 メモ」タブを 1 度開いて `M.cache` を満たす
+3. ブラウザコンソールで `await norirecoBackfillMemoStationIds()` を実行 → `OK ... / FAIL ...` を確認
+4. Supabase Dashboard → SQL Editor で `SELECT COUNT(*) FROM norireco_memos WHERE station_id IS NULL;` が 0 件を確認
+5. `supabase/migrations/v325_memo_station_drop.sql` を貼り付け Run
+6. メモの表示・フィルタ・駅メモ一覧モーダルが壊れていないか確認
+
+### 変更ファイル
+
+`git diff --name-only HEAD` (supabase/migrations/v325_memo_station_drop.sql / js/16-memos.js / js/17-station-actions.js / sw.js / CHANGELOG.md / STATUS.md / TODO.md)
+
+---
+
 ## 174. v324 — 駅 ID 体系 Phase 3-g: characters_master station_names 撤去 + stationCharMap id 化 (2026-05-25)
 
 ### 背景

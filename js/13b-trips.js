@@ -41,6 +41,21 @@ import { enableDragSort } from './19-drag-sort.js';
 // 旅程編集モーダル内の写真エリアコントローラ (createPhotoArea 戻り値、null = 未生成)
 let _tripEditPhotoArea = null;
 
+// v326 (Phase 3): trip.from_station_id / to_station_id から駅名を逆引き。
+//   trip.from_station / to_station 列が DROP された後の display 用 fallback。
+//   過渡期 (DROP 未実行) は trip.from_station をそのまま使う。
+function getTripStationName(trip, which) {
+  if (!trip) return '';
+  const nameKey = which === 'to' ? 'to_station' : 'from_station';
+  const idKey = which === 'to' ? 'to_station_id' : 'from_station_id';
+  if (trip[nameKey]) return trip[nameKey];
+  if (trip[idKey]) {
+    const ms = (NORIRECO.data?.MERGED_STATIONS || []).find(m => m.id === trip[idKey]);
+    return ms ? ms.name : '';
+  }
+  return '';
+}
+
 // v285: filter 入力値などユーザー由来文字列を value="..." に埋める用の最小エスケープ
 function escapeAttr(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
@@ -296,7 +311,8 @@ function openTripEditModal(tripId) {
   if (segEl) {
     const segs = Array.isArray(trip.segments) ? trip.segments : [];
     if (segs.length === 0) {
-      segEl.innerHTML = `<span style="color:var(--silver)">${trip.from_station || '?'} → ${trip.to_station || '?'}</span>`;
+      // v326: name 列 DROP 後は id → MERGED_STATIONS で逆引き
+      segEl.innerHTML = `<span style="color:var(--silver)">${getTripStationName(trip, 'from') || '?'} → ${getTripStationName(trip, 'to') || '?'}</span>`;
     } else {
       segEl.innerHTML = segs.map((s, i) => {
         const lineLabel = s.lineName || s.lineId || '?';
@@ -608,10 +624,13 @@ async function retroactivelyVerifyTrip(tripId) {
     }
     return null;
   };
-  const fromCoord = findStCoord(trip.from_station_id, trip.from_station);
-  const toCoord = findStCoord(trip.to_station_id, trip.to_station);
+  // v326 (Phase 3): id 優先で座標解決、表示名は MERGED_STATIONS から逆引き
+  const fromName = getTripStationName(trip, 'from');
+  const toName = getTripStationName(trip, 'to');
+  const fromCoord = findStCoord(trip.from_station_id, fromName);
+  const toCoord = findStCoord(trip.to_station_id, toName);
   if (!fromCoord && !toCoord) {
-    alert(`駅座標が見つかりません: ${trip.from_station} / ${trip.to_station}`);
+    alert(`駅座標が見つかりません: ${fromName} / ${toName}`);
     return;
   }
 
@@ -621,12 +640,12 @@ async function retroactivelyVerifyTrip(tripId) {
   const VERIFY_RADIUS_M = 500;
 
   if (minDist > VERIFY_RADIUS_M) {
-    const nearer = dFrom < dTo ? trip.from_station : trip.to_station;
+    const nearer = dFrom < dTo ? fromName : toName;
     alert(`現在地が遠すぎます (最寄 "${nearer}" まで ${Math.round(minDist)}m)\nこの旅程の駅から半径 ${VERIFY_RADIUS_M}m 以内で再試行してください。`);
     return;
   }
 
-  const nearStation = dFrom < dTo ? trip.from_station : trip.to_station;
+  const nearStation = dFrom < dTo ? fromName : toName;
   if (!confirm(`✅ "${nearStation}" の近く (${Math.round(minDist)}m) で認証します。よろしいですか?`)) return;
 
   try {
@@ -741,3 +760,80 @@ async function deleteTripFromMypage(tripId) {
 }
 window.deleteTripFromMypage = deleteTripFromMypage;
 NORIRECO.mypage.deleteTripFromMypage = deleteTripFromMypage;
+
+// v326 (Phase 3): from_station_id / to_station_id が NULL の trip を backfill する dev ヘルパー。
+//   v311 で 125 件は一括 backfill 済だが、v326 SQL DROP の前に念のため再確認する用途。
+//   実行: ブラウザコンソールで `await norirecoBackfillTripStationIds()` を呼ぶ。
+//   同名異所駅は trip.gps_lat/gps_lon があれば最近接 ms を選ぶ。GPS 無しは name で最初に
+//   見つかった ms を採用 (旧データなので妥協)。
+window.norirecoBackfillTripStationIds = async function backfillTripStationIds() {
+  const trips = NORIRECO.mypage?.state?._mypageCache;
+  if (!Array.isArray(trips)) { console.warn('[Backfill] マイページタブを一度開いてから再試行してください'); return; }
+  const MS = NORIRECO.data?.MERGED_STATIONS || [];
+  if (MS.length === 0) { console.warn('[Backfill] MERGED_STATIONS 未ロード'); return; }
+
+  const targets = trips.filter(t =>
+    (!t.from_station_id && t.from_station) || (!t.to_station_id && t.to_station)
+  );
+  if (targets.length === 0) {
+    console.log('[Backfill] 対象 trip なし (全て *_station_id 入り済)');
+    return;
+  }
+  console.log(`[Backfill] trip 対象 ${targets.length} 件:`, targets.map(t => `${t.from_station}→${t.to_station} (${t.id})`));
+
+  const dist2 = (lat1, lon1, lat2, lon2) => {
+    const dLat = lat1 - lat2, dLon = lon1 - lon2;
+    return dLat * dLat + dLon * dLon;
+  };
+  const resolveId = (name, lat, lon) => {
+    if (!name) return null;
+    const cands = MS.filter(m => m.name === name);
+    if (cands.length === 0) return null;
+    if (cands.length === 1) return cands[0].id;
+    if (typeof lat === 'number' && typeof lon === 'number') {
+      return cands.reduce((best, c) =>
+        dist2(c.lat, c.lon, lat, lon) < dist2(best.lat, best.lon, lat, lon) ? c : best,
+        cands[0]
+      ).id;
+    }
+    return cands[0].id;
+  };
+
+  let ok = 0, fail = 0;
+  for (const trip of targets) {
+    const patch = {};
+    if (!trip.from_station_id && trip.from_station) {
+      const sid = resolveId(trip.from_station, trip.gps_lat, trip.gps_lon);
+      if (sid) patch.from_station_id = sid;
+    }
+    if (!trip.to_station_id && trip.to_station) {
+      const sid = resolveId(trip.to_station, trip.gps_lat, trip.gps_lon);
+      if (sid) patch.to_station_id = sid;
+    }
+    if (Object.keys(patch).length === 0) {
+      console.warn(`[Backfill] スキップ: ${trip.id} — MERGED_STATIONS 解決失敗`);
+      fail++;
+      continue;
+    }
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_trips?id=eq.${encodeURIComponent(trip.id)}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${authBearerToken()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      Object.assign(trip, patch);
+      console.log(`[Backfill] ✓ ${trip.id} ←`, patch);
+      ok++;
+    } catch (e) {
+      console.warn(`[Backfill] ✗ ${trip.id}: ${(e.message || e).slice(0, 200)}`);
+      fail++;
+    }
+  }
+  console.log(`[Backfill] trip 完了: OK ${ok} / FAIL ${fail}`);
+  return { ok, fail };
+};

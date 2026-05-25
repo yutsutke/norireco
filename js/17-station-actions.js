@@ -105,8 +105,10 @@ export function openStationActionSheet(ms, options) {
     .filter(Boolean);
 
   // メモ件数
-  const memoCount = (window.NORIRECO?.memos?.state?.cache || [])
-    .filter(m => m.station === ms.name).length;
+  // v325 (Phase 3): 同名異所駅対応のため id 優先カウントに統一
+  const memoCount = window.NORIRECO?.memos?.countMemosForStation
+    ? window.NORIRECO.memos.countMemosForStation(ms)
+    : (window.NORIRECO?.memos?.state?.cache || []).filter(m => m.station === ms.name).length;
 
   // 見出し
   document.getElementById('sa-title').textContent = `🚉 ${ms.name}`;
@@ -470,8 +472,10 @@ function onSaBackToMain() {
   const lines = (ms.lines || [])
     .map(lid => (NORIRECO.data?.SERVICE_LINES || []).find(x => x.id === lid))
     .filter(Boolean);
-  const memoCount = (window.NORIRECO?.memos?.state?.cache || [])
-    .filter(m => m.station === ms.name).length;
+  // v325 (Phase 3): 同名異所駅対応のため id 優先カウントに統一
+  const memoCount = window.NORIRECO?.memos?.countMemosForStation
+    ? window.NORIRECO.memos.countMemosForStation(ms)
+    : (window.NORIRECO?.memos?.state?.cache || []).filter(m => m.station === ms.name).length;
   renderActionList({ ms, lines, memoCount });
   S.colorPickLines = null;
 }
