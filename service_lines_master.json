@@ -13969,7 +13969,9 @@
       "color": "#F08030",
       "official_line": "東海道本線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_武豊線_東海旅客鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -14903,7 +14905,9 @@
       "color": "hsl(356, 60%, 55%)",
       "official_line": "武豊線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_東海道線_東海旅客鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -39907,7 +39911,10 @@
       "color": "hsl(33, 60%, 55%)",
       "official_line": "3号線鶴舞線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_犬山線_名古屋鉄道",
+        "auto_豊田線_名古屋鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -40253,7 +40260,9 @@
       "color": "hsl(117, 60%, 55%)",
       "official_line": "上飯田線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_小牧線_名古屋鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -40280,7 +40289,9 @@
       "color": "hsl(346, 60%, 55%)",
       "official_line": "羽島線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_竹鼻線_名古屋鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -40307,7 +40318,10 @@
       "color": "hsl(102, 60%, 55%)",
       "official_line": "河和線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_常滑線_名古屋鉄道",
+        "auto_知多新線_名古屋鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -40424,7 +40438,9 @@
       "color": "hsl(9, 60%, 55%)",
       "official_line": "各務原線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_犬山線_名古屋鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -40531,7 +40547,9 @@
       "color": "hsl(315, 60%, 55%)",
       "official_line": "蒲郡線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_西尾線_名古屋鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -40598,7 +40616,9 @@
       "color": "hsl(148, 60%, 55%)",
       "official_line": "空港線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_常滑線_名古屋鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -40630,7 +40650,12 @@
       "color": "hsl(29, 60%, 55%)",
       "official_line": "犬山線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_名古屋本線_名古屋鉄道",
+        "auto_各務原線_名古屋鉄道",
+        "auto_広見線_名古屋鉄道",
+        "auto_3号線鶴舞線_名古屋市"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -40732,7 +40757,9 @@
       "color": "hsl(29, 60%, 55%)",
       "official_line": "広見線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_犬山線_名古屋鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -40804,7 +40831,9 @@
       "color": "hsl(233, 60%, 55%)",
       "official_line": "三河線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_名古屋本線_名古屋鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -40936,7 +40965,9 @@
       "color": "hsl(103, 60%, 55%)",
       "official_line": "小牧線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_上飯田線_名古屋市"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -41023,7 +41054,11 @@
       "color": "hsl(88, 60%, 55%)",
       "official_line": "常滑線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_名古屋本線_名古屋鉄道",
+        "auto_空港線_名古屋鉄道",
+        "auto_河和線_名古屋鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -41272,7 +41307,10 @@
       "color": "hsl(195, 60%, 55%)",
       "official_line": "西尾線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_名古屋本線_名古屋鉄道",
+        "auto_蒲郡線_名古屋鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -41359,7 +41397,9 @@
       "color": "hsl(242, 60%, 55%)",
       "official_line": "知多新線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_河和線_名古屋鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -41433,7 +41473,10 @@
       "color": "hsl(85, 60%, 55%)",
       "official_line": "竹鼻線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_名古屋本線_名古屋鉄道",
+        "auto_羽島線_名古屋鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -41495,7 +41538,10 @@
       "color": "hsl(314, 60%, 55%)",
       "official_line": "津島線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_名古屋本線_名古屋鉄道",
+        "auto_尾西線_名古屋鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -41552,7 +41598,9 @@
       "color": "hsl(265, 60%, 55%)",
       "official_line": "尾西線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_津島線_名古屋鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -41679,7 +41727,9 @@
       "color": "hsl(228, 60%, 55%)",
       "official_line": "豊川線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_名古屋本線_名古屋鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -41721,7 +41771,9 @@
       "color": "hsl(97, 60%, 55%)",
       "official_line": "豊田線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_3号線鶴舞線_名古屋市"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -41778,7 +41830,15 @@
       "color": "hsl(157, 60%, 55%)",
       "official_line": "名古屋本線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_犬山線_名古屋鉄道",
+        "auto_常滑線_名古屋鉄道",
+        "auto_西尾線_名古屋鉄道",
+        "auto_三河線_名古屋鉄道",
+        "auto_豊川線_名古屋鉄道",
+        "auto_津島線_名古屋鉄道",
+        "auto_竹鼻線_名古屋鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
