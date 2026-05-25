@@ -231,6 +231,32 @@ export async function loadTrains() {
   }
 }
 
+// ── 営業系統×車両形式 (service_line_vehicles.json) ──
+// v347 新規。Notion DB「営業系統×車両形式 DB」からエクスポートされた SL × 車両 索引。
+// 記録モードの「車両形式を区間から候補に出す」UI で参照。
+NORIRECO.serviceLineVehicles = NORIRECO.serviceLineVehicles || {
+  bySlId: {},   // sl_id → [{vehicle, company, status, ...}]
+  freight: [],  // JR貨物 (営業系統紐付け対象外)
+  meta: null,
+  loaded: false,
+};
+
+export async function loadServiceLineVehicles() {
+  try {
+    const res = await fetch('service_line_vehicles.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    NORIRECO.serviceLineVehicles.bySlId = data.by_sl_id || {};
+    NORIRECO.serviceLineVehicles.freight = data.freight || [];
+    NORIRECO.serviceLineVehicles.meta = data._meta || null;
+    NORIRECO.serviceLineVehicles.loaded = true;
+    const slCount = Object.keys(NORIRECO.serviceLineVehicles.bySlId).length;
+    console.log(`[乗レコ] 営業系統×車両形式 読込: ${slCount} SLs / ${data._meta?.matched_records ?? '?'} records`);
+  } catch (e) {
+    console.warn('[乗レコ] service_line_vehicles.json 読込失敗:', e.message);
+  }
+}
+
 // 列車セレクタ初期化 — 確認モーダルを開く時に呼ぶ
 export function resetTrainSelector() {
   T.selectedTrainId = null;

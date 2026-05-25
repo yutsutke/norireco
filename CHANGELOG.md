@@ -27,6 +27,54 @@
 
 ---
 
+## 198. v348 — 営業系統×車両形式 DB Phase 3: 記録モード UI (C' 案・マニアトグル + 区間→候補車両) (2026-05-25)
+
+### 背景
+v347 で `service_line_vehicles.json` (176 records → 197 SLs / 292 links) のデータ層が完成。これを記録モードの確認モーダルに繋いで「区間から現役車両形式を候補に出す」UI を実装する Phase 3。
+
+設計討議でユスケから「素人で車両形式に興味ない人が記録時に負担がなくなるよう、車両形式なしのチェックボタンみたいなのがあると便利」との提案。これは 5大原則 ② 同心円ターゲティング (Lv0〜3 同時に満たす、コアは詳細・マニアモードに隠す) に直結する観察 → 当初の C 案 (常時表示) を **C' 案** に改訂: デフォは UI 自体を非表示、マニアトグル ON 時のみ展開。
+
+### 設計判断
+- **トグル 1 個で「列車種別」「車両形式」両方の任意項目を一括 hide/show**: 単に dropdown に「(任意)」と書くだけでは Lv0/1 に「埋めないとダメ？」の心理負荷が残る (フィードバックメモ参照 → 自動メモリに保存)
+- **localStorage 永続化** (`norireco.prefs.showTrainSelector`): 一度 ON にしたコア層は次回開いた時も展開状態
+- **新 UI (区間→候補車両) と既存 UI (カテゴリ→列車→車両形式) を排他**: 新 UI で選択時は `train_id` / `train_name` / `train_category` を null クリア (普通電車パターン: 系統だけ確定して列車種別は無関係)
+- **既存 UI は `<details>` 内に格納** (「📝 特急・観光列車など別の列車として記録」): マニアレーンとして温存
+- **chip の active 状態は gold 背景 + 黒文字**: 既存の系統色テーマと一貫
+
+### 変更
+- **新規 loader** ([js/02-data-loaders.js:243-269](js/02-data-loaders.js#L243)): `loadServiceLineVehicles()` で `service_line_vehicles.json` を読み、`NORIRECO.serviceLineVehicles.bySlId` に格納。06-map-leaflet.js の初期 Promise.all に追加
+- **HTML 改修** ([noritetsu-map.html:1332-1372](noritetsu-map.html#L1332)): `#rec-train-picker` 全体を `display:none` + 上に `<input type="checkbox" id="rec-train-toggle">` トグル設置。中に新 `#rec-sl-chips` / `#rec-sl-vehicle-select` / `#rec-sl-vehicle-empty` 追加、既存 cascading は `<details>` 内へ
+- **新規 JS 関数** ([js/07-record-mode.js](js/07-record-mode.js) 末尾):
+  - `initRecTrainToggle()`: モーダル開く時に localStorage から復元 + populate
+  - `onRecTrainToggle()` (window 公開): toggle 切替 → localStorage 保存 + populate or クリア
+  - `populateSlVehiclePicker()`: `R.segments` から unique sl_id を chip 化、最初を active で dropdown 描画
+  - `selectSlChip(slId)`: chip の active 切替 + dropdown 再生成 (現役主力/導入/導入予定 を先頭ソート、状態 tag `★新` `🆕` `(引退)` 等付与)
+  - `onSlVehicleChange()` (window 公開): `T.selectedCarModel` セット + 列車種別フィールドを null クリア
+- **openRecConfirm** に `initRecTrainToggle()` 呼出追加 ([js/07-record-mode.js:456](js/07-record-mode.js#L456))
+
+### 動作検証 (Claude Preview)
+- 山手線 + 京浜東北 2 区間 → chip 2 個、山手線 active、E235系0番台 候補表示 → 京浜東北 chip クリック → E233系 候補に切替 → E233系 選択 → `T.selectedCarModel = 'E233系'` / `T.selectedTrainId = null` 確認
+- toggle OFF → picker `display:none` + 選択クリア + `localStorage='0'` 永続化 確認
+- 候補ゼロ系統 (九州新幹線) → chip 表示 + dropdown 空 + 「データ未登録」案内表示 確認
+- visit-only (segments 空) → 「区間情報がないため候補車両を表示できません」+ dropdown 隠す 確認
+
+### ファイル
+- 更新: [sw.js](sw.js) v347 → v348, [STATUS.md](STATUS.md), [TODO.md](TODO.md), [CHANGELOG.md](CHANGELOG.md)
+- 更新: [js/02-data-loaders.js](js/02-data-loaders.js) +28 行 (loadServiceLineVehicles)
+- 更新: [js/06-map-leaflet.js](js/06-map-leaflet.js) +1 行 (import + Promise.all)
+- 更新: [js/07-record-mode.js](js/07-record-mode.js) +98 行 (UI 関数群)
+- 更新: [noritetsu-map.html](noritetsu-map.html) `#rec-train-picker` 全面改修
+- 新規: [.claude/launch.json](.claude/launch.json) (Claude Preview 用 python http.server 設定)
+
+### 残課題 (Phase 2 へ)
+- Notion DB の表記揺れ 17 件 (他社直通記述・「名阪特急」等) を実機で実際に乗ったときに不便かどうかで優先度判断
+- 候補車両 dropdown の選択肢が多すぎる系統 (引退含む) で UI 改善 (将来)
+
+### フィードバック反映
+ユスケ提案「車両形式なしのチェックボタン」が実質本実装の出発点。自動メモリ [feedback_optional_field_visibility.md](C:\Users\yutsu\.claude\projects\C--Users-yutsu-Documents-GitHub-norireco\memory\feedback_optional_field_visibility.md) に「任意項目はトグルで UI ごと hide/show」原則として保存。
+
+---
+
 ## 197. v347 — 営業系統×車両形式 DB Phase 1: Notion → JSON exporter + service_line_vehicles.json (2026-05-25)
 
 ### 背景

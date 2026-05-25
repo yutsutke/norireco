@@ -1329,25 +1329,51 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
       </div>
       <div style="font-size:9px;color:var(--silver);opacity:.7;line-height:1.5;margin-top:6px">記録時刻 (recorded_at) は常に「保存ボタン押下時」が保存されます。</div>
     </div>
-    <!-- 列車選択 (任意) — カテゴリ → 列車 → 車両形式 の Cascading + 手入力 -->
-    <div id="rec-train-picker" style="margin-top:14px;border-top:1px solid var(--track);padding-top:12px">
-      <div style="font-size:11px;color:var(--silver);margin-bottom:6px">🚆 列車種別 (任意)</div>
-      <select id="rec-train-category" onchange="onTrainCategoryChange()"
-              style="width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;margin-bottom:6px">
-        <option value="">指定しない</option>
-      </select>
-      <select id="rec-train-id" onchange="onTrainChange()"
-              style="display:none;width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;margin-bottom:6px">
-        <option value="">列車を選ぶ...</option>
-      </select>
-      <input id="rec-train-custom" type="text" oninput="onTrainCustomInput()" placeholder="例: 湘南ライナー、北越急行スーパー特急 など"
-              style="display:none;width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--gold);border-radius:6px;font-size:12px;margin-bottom:6px;box-sizing:border-box" />
-      <select id="rec-car-model" onchange="onCarModelChange()"
-              style="display:none;width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;margin-bottom:6px">
-        <option value="">車両形式を選ぶ (任意)...</option>
-      </select>
-      <input id="rec-car-model-custom" type="text" oninput="onCarModelCustomInput()" placeholder="例: 209系2000番台、ED75、キハ110系 など"
-              style="display:none;width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--gold);border-radius:6px;font-size:12px;margin-bottom:6px;box-sizing:border-box" />
+    <!-- 列車・車両形式 (任意・マニア向け) — v347 で toggle 化。
+         Lv0/1 (素人) には UI が見えないようデフォ非表示、トグル ON 時のみ展開。
+         localStorage `norireco.prefs.showTrainSelector` に状態保存。 -->
+    <div style="margin-top:14px;border-top:1px solid var(--track);padding-top:12px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver);cursor:pointer;user-select:none">
+        <input type="checkbox" id="rec-train-toggle" onchange="onRecTrainToggle()"
+               style="margin:0;cursor:pointer">
+        <span>📋 列車・車両形式も記録する <span style="opacity:.7;font-size:10px">(マニア向け)</span></span>
+      </label>
+      <div id="rec-train-picker" style="display:none;margin-top:10px">
+        <!-- 区間 → 候補車両 (新 / v347) — 区間チップで系統選択 → 現役車両 dropdown -->
+        <div id="rec-sl-vehicle-block">
+          <div style="font-size:11px;color:var(--silver);margin-bottom:6px">🚆 この区間の車両形式</div>
+          <div id="rec-sl-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
+          <select id="rec-sl-vehicle-select" onchange="onSlVehicleChange()"
+                  style="width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px">
+            <option value="">車両形式を選ぶ (任意)...</option>
+          </select>
+          <div id="rec-sl-vehicle-empty" style="display:none;font-size:10px;color:var(--silver);opacity:.7;margin-top:6px;line-height:1.5">
+            この系統の車両データはまだ未登録です。下の「特急/観光列車などを選ぶ」から手入力できます。
+          </div>
+        </div>
+        <!-- マニアレーン: 既存の カテゴリ → 列車 → 車両形式 cascading (特急/観光列車向け) -->
+        <details style="margin-top:10px;border-top:1px dashed var(--track);padding-top:10px">
+          <summary style="font-size:11px;color:var(--silver);cursor:pointer;user-select:none">📝 特急・観光列車など別の列車として記録</summary>
+          <div style="margin-top:8px">
+            <select id="rec-train-category" onchange="onTrainCategoryChange()"
+                    style="width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;margin-bottom:6px">
+              <option value="">指定しない</option>
+            </select>
+            <select id="rec-train-id" onchange="onTrainChange()"
+                    style="display:none;width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;margin-bottom:6px">
+              <option value="">列車を選ぶ...</option>
+            </select>
+            <input id="rec-train-custom" type="text" oninput="onTrainCustomInput()" placeholder="例: 湘南ライナー、北越急行スーパー特急 など"
+                    style="display:none;width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--gold);border-radius:6px;font-size:12px;margin-bottom:6px;box-sizing:border-box" />
+            <select id="rec-car-model" onchange="onCarModelChange()"
+                    style="display:none;width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;margin-bottom:6px">
+              <option value="">車両形式を選ぶ (任意)...</option>
+            </select>
+            <input id="rec-car-model-custom" type="text" oninput="onCarModelCustomInput()" placeholder="例: 209系2000番台、ED75、キハ110系 など"
+                    style="display:none;width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--gold);border-radius:6px;font-size:12px;margin-bottom:6px;box-sizing:border-box" />
+          </div>
+        </details>
+      </div>
     </div>
     <!-- 📝 メモ・遅延 (任意) — 後追い記録・GPS 記録どちらでも入力可 -->
     <div id="rec-memo-section" style="margin-top:14px;border-top:1px solid var(--track);padding-top:12px">

@@ -453,6 +453,8 @@ function openRecConfirm() {
   document.getElementById('rec-confirm-modal')?.classList.add('open');
   // 列車セレクタをリセット (前回の選択を持ち越さない)
   resetTrainSelector();
+  // v347: 「列車・車両形式」トグルを localStorage から復元 + 区間→候補車両ピッカー初期化
+  initRecTrainToggle();
   // メモ・遅延もリセット (前回値を持ち越さない) — v185: 時間+分の 2 input
   const delayHInp = document.getElementById('rec-edit-delay-h');
   const delayMInp = document.getElementById('rec-edit-delay-m');
@@ -1075,3 +1077,133 @@ export function fitToRiddenLines(){
 // onRecordStationClick は 07 内の HTML 文字列 onclick (line 252) で呼ばれるため window 維持。
 window.toggleRecordMode = toggleRecordMode;
 window.onRecordStationClick = onRecordStationClick;
+
+// ════════════════════════════════════════════════════════════════
+// v347: 「列車・車両形式」トグル + 区間→候補車両ピッカー (C' 案)
+//   5大原則 ② 同心円ターゲティング: Lv0/1 はデフォ非表示、Lv2/3 のみ展開
+//   localStorage key: 'norireco.prefs.showTrainSelector' ('1' or '0')
+// ════════════════════════════════════════════════════════════════
+const PREF_SHOW_TRAIN_SELECTOR = 'norireco.prefs.showTrainSelector';
+
+function initRecTrainToggle() {
+  const toggle = document.getElementById('rec-train-toggle');
+  const picker = document.getElementById('rec-train-picker');
+  if (!toggle || !picker) return;
+  const saved = localStorage.getItem(PREF_SHOW_TRAIN_SELECTOR) === '1';
+  toggle.checked = saved;
+  picker.style.display = saved ? 'block' : 'none';
+  if (saved) populateSlVehiclePicker();
+}
+
+function onRecTrainToggle() {
+  const toggle = document.getElementById('rec-train-toggle');
+  const picker = document.getElementById('rec-train-picker');
+  if (!toggle || !picker) return;
+  const on = toggle.checked;
+  localStorage.setItem(PREF_SHOW_TRAIN_SELECTOR, on ? '1' : '0');
+  picker.style.display = on ? 'block' : 'none';
+  if (on) {
+    populateSlVehiclePicker();
+  } else {
+    // OFF にしたら車両形式選択をクリア (隠れた state を残さない)
+    const T = NORIRECO.trains;
+    T.selectedCarModel = null;
+    T.selectedTrainId = null;
+    T.selectedTrainName = null;
+    T.selectedTrainCategory = null;
+  }
+}
+window.onRecTrainToggle = onRecTrainToggle;
+
+// 区間 chip + 候補車両 dropdown を生成
+function populateSlVehiclePicker() {
+  const chipsEl = document.getElementById('rec-sl-chips');
+  const selectEl = document.getElementById('rec-sl-vehicle-select');
+  const emptyEl = document.getElementById('rec-sl-vehicle-empty');
+  if (!chipsEl || !selectEl) return;
+
+  // R.segments から unique sl_id を収集 (重複系統は 1 度だけ)
+  const slIds = [];
+  const seen = new Set();
+  for (const seg of (R.segments || [])) {
+    const id = seg.line?.id;
+    if (id && !seen.has(id)) { seen.add(id); slIds.push({ id, name: seg.line.name }); }
+  }
+
+  // chip 描画
+  chipsEl.innerHTML = '';
+  if (slIds.length === 0) {
+    // 区間情報なし (visit only 等)
+    chipsEl.innerHTML = '<div style="font-size:10px;color:var(--silver);opacity:.7">区間情報がないため候補車両を表示できません</div>';
+    selectEl.style.display = 'none';
+    if (emptyEl) emptyEl.style.display = 'none';
+    return;
+  }
+  selectEl.style.display = 'block';
+
+  const bySlId = NORIRECO.serviceLineVehicles?.bySlId || {};
+  for (const { id, name } of slIds) {
+    const count = (bySlId[id] || []).length;
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.id = `rec-sl-chip-${id}`;
+    chip.textContent = `${name}${count > 0 ? ` (${count})` : ''}`;
+    chip.style.cssText = 'padding:5px 10px;background:rgba(20,32,46,.8);color:var(--silver);border:1px solid var(--track);border-radius:14px;font-size:11px;cursor:pointer;transition:all .15s';
+    chip.onclick = () => selectSlChip(id);
+    chipsEl.appendChild(chip);
+  }
+  // 1 つ目を選択
+  selectSlChip(slIds[0].id);
+}
+
+function selectSlChip(slId) {
+  const bySlId = NORIRECO.serviceLineVehicles?.bySlId || {};
+  // chip の active 切替
+  document.querySelectorAll('[id^="rec-sl-chip-"]').forEach(el => {
+    const isActive = el.id === `rec-sl-chip-${slId}`;
+    el.style.background = isActive ? 'var(--gold)' : 'rgba(20,32,46,.8)';
+    el.style.color = isActive ? '#000' : 'var(--silver)';
+    el.style.borderColor = isActive ? 'var(--gold)' : 'var(--track)';
+  });
+  // dropdown 再生成: 現役主力 / 導入 / 導入予定 を先頭、引退などは末尾
+  const selectEl = document.getElementById('rec-sl-vehicle-select');
+  const emptyEl = document.getElementById('rec-sl-vehicle-empty');
+  if (!selectEl) return;
+  const vehicles = (bySlId[slId] || []).slice().sort((a, b) => {
+    const order = { '導入予定': 0, '導入': 1, '現役主力': 2, '譲受': 3, '組織再編': 4, '譲渡': 5, '引退': 6 };
+    return (order[a.status] ?? 9) - (order[b.status] ?? 9);
+  });
+  let html = '<option value="">車両形式を選ぶ (任意)...</option>';
+  for (const v of vehicles) {
+    const tag = v.status === '導入予定' ? ' ★新' :
+                v.status === '導入'     ? ' 🆕' :
+                v.status === '引退'     ? ' (引退)' :
+                v.status === '譲受'     ? ' (譲受)' :
+                v.status === '譲渡'     ? ' (譲渡)' : '';
+    html += `<option value="${v.vehicle.replace(/"/g, '&quot;')}">${v.vehicle}${tag}</option>`;
+  }
+  selectEl.innerHTML = html;
+  // 候補ゼロのときは説明文を出す
+  if (emptyEl) emptyEl.style.display = (vehicles.length === 0) ? 'block' : 'none';
+  // 既存の T.selectedCarModel が新しい候補にあれば維持、なければクリア
+  const T = NORIRECO.trains;
+  if (T.selectedCarModel && !vehicles.some(v => v.vehicle === T.selectedCarModel)) {
+    T.selectedCarModel = null;
+  }
+  selectEl.value = T.selectedCarModel || '';
+}
+
+function onSlVehicleChange() {
+  const selectEl = document.getElementById('rec-sl-vehicle-select');
+  if (!selectEl) return;
+  const T = NORIRECO.trains;
+  T.selectedCarModel = selectEl.value || null;
+  // この新 UI で選んだ場合、列車種別 (train_id/name/category) はクリア
+  //   (普通電車パターン: 系統だけ確定、列車種別は無関係)
+  if (T.selectedCarModel) {
+    T.selectedTrainId = null;
+    T.selectedTrainName = null;
+    T.selectedTrainCategory = null;
+  }
+}
+window.onSlVehicleChange = onSlVehicleChange;
