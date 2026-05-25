@@ -27,6 +27,55 @@
 
 ---
 
+## 189. v339 — 山形/秋田 ミニ新幹線を独立系統として新設 + 東北新幹線と through_lines 接続 (2026-05-25)
+
+### 背景
+
+Phase A (v335) で「新幹線網の through_lines」を扱った時、山形・秋田新幹線はミニ新幹線で奥羽本線/田沢湖線の在来線軌道を走るため、service_lines_master に独立 ID が無く対象外とした。TODO で「v334 青梅線方式で `yamagata_shinkansen` / `akita_shinkansen` を新設」を予告していたものを完遂。
+
+### 設計
+
+採用案 B: **独立系統新設 (青梅線方式)**。実体としては在来線 (奥羽本線・田沢湖線) を改軌してミニ新幹線車両が走るが、ユーザー体験的に「つばさ/こまち乗車を奥羽線として記録」されるのは違和感。同じ駅が複数系統に所属する (`福島` が東北新幹線・奥羽線・山形新幹線の 3 系統など) が、完駅率は駅 id ベース (v293〜) なのでダブルカウントしない。
+
+### 追加した 2 系統
+
+| ID | 名前 | 区間 | 駅数 | 色 | 接続 |
+|---|---|---|---|---|---|
+| yamagata_shinkansen | 山形新幹線 (つばさ) | 福島〜新庄 | 11 | #B11283 (E3/E8系紫) | 東北新幹線 (福島で併結) |
+| akita_shinkansen | 秋田新幹線 (こまち) | 盛岡〜秋田 | 6 | #BE0028 (E6系ルージュ) | 東北新幹線 (盛岡で併結) |
+
+through_lines は双方向 (yamagata ↔ 東北 / akita ↔ 東北)。これで新幹線網は東海道↔山陽↔九州 + 東北↔北海道 + 東北↔山形/秋田 の全直通が出揃った。
+
+### 変更
+
+- **tools/add_mini_shinkansen.js**: 新規。冪等な新規系統追加 + 東北新幹線への双方向 ref 追加 + assert (broken refs 0, unidirectional refs 0)
+- **service_lines_master.json**: 2 系統追加 (640 → 642)、through_lines 4 ref 追加 (双方向 2 ペア)
+- **sw.js**: CACHE_VERSION v338 → v339
+
+### 設計判断 — official_line の選び方
+
+`02b-service-lines-builder.js` は SERVICE_LINES_MASTER の駅順から実座標を解決するとき、N02 LINES (lines-p?.json) の candidate を `officialMatch` (LINES.name.startsWith(official_line)) または `overlap >= 2` で紐づける。
+
+- yamagata_shinkansen.official_line = `'奥羽線'` (LINES の name は「奥羽線」、当初「奥羽本線」と書いて修正)
+- akita_shinkansen.official_line = `'田沢湖線'` (実体は田沢湖線 + 奥羽本線だが、田沢湖線で 5/6 駅 overlap、残りの「秋田」も奥羽線 candidate (overlap>=2 で自動採用) から座標解決される)
+
+教訓: 新規手動キュレーション系統の `official_line` は **N02 LINES.name と完全一致するもの** にする必要がある。startsWith なので途中までは OK だが、`'奥羽本線'` のように LINES の name 'プレフィックス' でないものは hit しない。
+
+### 検証
+
+- node tools/add_mini_shinkansen.js: 2 系統追加 + 4 ref 追加, broken refs 0, unidirectional refs 0
+- node tools/fix_bidirectional_through_lines.js: 片方向参照 0 件検出 (双方向化完璧)
+- through_lines 持ち系統 80 → 82 (山形/秋田/東北新幹線 が +1 ずつ更新)
+
+### 残り
+
+- 名古屋エリア (名鉄/JR東海/名古屋市営)
+- 北陸新幹線↔IRいしかわ/あいの風とやま/ハピライン (第三セクター転換系)
+- s0/s1 セグメント分割路線の統合改善
+- 山陽電鉄本線の service_lines_master 追加
+
+---
+
 ## 188. v338 — through_lines 双方向化バグ修正 (v334 由来の片方向参照 8 件) (2026-05-25)
 
 ### バグ報告

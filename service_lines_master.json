@@ -1593,7 +1593,9 @@
       "official_line": "東北新幹線",
       "alias": [],
       "through_lines": [
-        "auto_北海道新幹線_北海道旅客鉄道"
+        "auto_北海道新幹線_北海道旅客鉄道",
+        "yamagata_shinkansen",
+        "akita_shinkansen"
       ],
       "is_circular": false,
       "parent_id": null,
@@ -63869,6 +63871,133 @@
         {
           "order": 35,
           "name": "和歌山",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "yamagata_shinkansen",
+      "name": "山形新幹線",
+      "name_kana": "やまがたしんかんせん",
+      "operator": "JR東日本",
+      "operator_id": "jr_east",
+      "color": "#B11283",
+      "official_line": "奥羽線",
+      "alias": [
+        "つばさ"
+      ],
+      "through_lines": [
+        "auto_東北新幹線_東日本旅客鉄道"
+      ],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "stations": [
+        {
+          "order": 1,
+          "name": "福島",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "米沢",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "高畠",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "赤湯",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "かみのやま温泉",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "山形",
+          "n02_match": true
+        },
+        {
+          "order": 7,
+          "name": "天童",
+          "n02_match": true
+        },
+        {
+          "order": 8,
+          "name": "さくらんぼ東根",
+          "n02_match": true
+        },
+        {
+          "order": 9,
+          "name": "村山",
+          "n02_match": true
+        },
+        {
+          "order": 10,
+          "name": "大石田",
+          "n02_match": true
+        },
+        {
+          "order": 11,
+          "name": "新庄",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "akita_shinkansen",
+      "name": "秋田新幹線",
+      "name_kana": "あきたしんかんせん",
+      "operator": "JR東日本",
+      "operator_id": "jr_east",
+      "color": "#BE0028",
+      "official_line": "田沢湖線",
+      "alias": [
+        "こまち"
+      ],
+      "through_lines": [
+        "auto_東北新幹線_東日本旅客鉄道"
+      ],
+      "is_circular": false,
+      "parent_id": null,
+      "branch_from": null,
+      "branch_to": null,
+      "stations": [
+        {
+          "order": 1,
+          "name": "盛岡",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "雫石",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "田沢湖",
+          "n02_match": true
+        },
+        {
+          "order": 4,
+          "name": "角館",
+          "n02_match": true
+        },
+        {
+          "order": 5,
+          "name": "大曲",
+          "n02_match": true
+        },
+        {
+          "order": 6,
+          "name": "秋田",
           "n02_match": true
         }
       ]
