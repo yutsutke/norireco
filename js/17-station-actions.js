@@ -281,7 +281,33 @@ function renderLineActionList(sl) {
     </button>
   `);
 
+  // 🔀 直通先 (v334) — through_lines に挙がっている系統へ遷移
+  const through = Array.isArray(sl.through_lines) ? sl.through_lines : [];
+  const SL = NORIRECO.data.SERVICE_LINES || [];
+  for (const refId of through) {
+    const refSl = SL.find(l => l.id === refId);
+    if (!refSl) continue;
+    const swatch = refSl.color
+      ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle;background:${escapeHtml(refSl.color)};"></span>`
+      : '';
+    buttons.push(`
+      <button class="sa-btn" onclick="onSlJumpThrough('${escapeHtml(refSl.id)}')">
+        <span class="sa-btn-ic">🔀</span>
+        <span class="sa-btn-tx">直通先: ${swatch}${escapeHtml(refSl.name || refSl.id)}</span>
+        <span class="sa-btn-arrow">›</span>
+      </button>
+    `);
+  }
+
   container.innerHTML = buttons.join('');
+}
+
+// v334: 直通先の路線アクションシートに飛ぶ (同シートを開き直す)
+function onSlJumpThrough(refId) {
+  const SL = NORIRECO.data.SERVICE_LINES || [];
+  const refSl = SL.find(l => l.id === refId);
+  if (!refSl) return;
+  openLineActionSheet(refSl);
 }
 
 function onSlChangeColor() {
@@ -564,6 +590,8 @@ window.onSlOpenMemos = onSlOpenMemos;
 window.onSlChangeColor = onSlChangeColor;
 window.onSlAddMemo = onSlAddMemo;
 window.onSlBackToMain = onSlBackToMain;
+// v334: 直通先ジャンプ
+window.onSlJumpThrough = onSlJumpThrough;
 
 NORIRECO.stationActions.open = openStationActionSheet;
 // v283: 路線アクションシートの公開 API

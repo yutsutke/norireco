@@ -162,6 +162,8 @@ import { loadServiceLinesMaster, loadLines } from './02-data-loaders.js';
         stations,
         candidateN02Ids: candidates.map(c => c.n02Id),
         circular: sl.is_circular || false,
+        // v334: 路線アクションシートの「直通先」表示で参照
+        through_lines: Array.isArray(sl.through_lines) ? sl.through_lines.slice() : [],
       });
     }
     NORIRECO.data.serviceLinesBuilt = true;

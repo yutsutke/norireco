@@ -27,6 +27,54 @@
 
 ---
 
+## 184. v334 — through_lines (直通系統) を本格運用化: 3 系統追加 + broken refs 修正 + UI (2026-05-25)
+
+### 背景
+
+ユスケから「営業系統は ID 化されている？」と確認 → 系統そのもの・駅・operator は ID 化済 (`jr_yamanote_line` 形式 + `s_NNNNN`)。`through_lines` も既に line.id 形式で書かれていたが、**13 件の参照中 6 件が壊れていた**ことが判明。さらに `through_lines` を消費する JS は 0 件だったため、データ整備と簡易 UI を同時に入れる。
+
+### broken refs の内訳
+
+| 参照元 | 元 | 状態 |
+|---|---|---|
+| jr_kyoto_line | `biwako_line` | ID 表記揺れ → `jr_biwako_line` に修正 |
+| jr_kobe_line | `sanyo_honsen` | ID 表記揺れ → `jr_sanyo_main` に修正 |
+| jr_ueno_tokyo_line | `jr_joban_line` | 参照先 ID 不在 → `jr_joban_medium` (中距離) に修正 |
+| jr_chuo_rapid | `jr_ome_line` | 手動キュレーション系統が未追加 → **新規追加** |
+| osaka_loop_line | `jr_yamatoji_line` | 同上 → **新規追加** |
+| osaka_loop_line | `jr_hanwa_line` | 同上 → **新規追加** |
+
+### 新規追加した 3 手動キュレーション系統
+
+すべて auto_* 系統 (N02 由来) を駅順データとして流用、色は JR ラインカラー準拠。
+
+- **jr_ome_line** (青梅線, 立川〜奥多摩, 25 駅, `#F15A22` 中央線同色) — `through_lines: ["jr_chuo_rapid"]` で双方向化
+- **jr_yamatoji_line** (大和路線, JR難波〜加茂, 22 駅, `#58B947`) — `through_lines: ["osaka_loop_line"]`
+- **jr_hanwa_line** (阪和線, 天王寺〜和歌山, 35 駅, `#EA5520`) — `through_lines: ["osaka_loop_line"]`
+
+合計 637 → **640 系統**。
+
+### 変更
+
+- **service_lines_master.json**: 3 系統追加 + 表記揺れ 3 件修正 (`updated_at: 2026-05-25`)
+- **tools/add_3_through_lines.js**: 新規。冪等な追加 + 表記揺れ修正 + 整合性チェック (broken refs == 0 を assert してから write)
+- **js/02b-service-lines-builder.js**: runtime SERVICE_LINES オブジェクトに `through_lines` を伝播 (今までは捨てていた)
+- **js/17-station-actions.js**: 路線アクションシートに「🔀 直通先: ●系統名」ボタンを追加。クリックで直通先の路線シートに再オープン (双方向 navigable)。色は 10px の丸スウォッチで先頭表示
+- **sw.js**: CACHE_VERSION v333 → v334
+
+### 設計判断
+
+- **broken refs 修正 vs 新規系統追加**: ユーザーに 3 択 (表記揺れ修正のみ / auto_* を暫定参照 / 手動系統追加) で確認 → 「手動系統追加」を選択。auto_* 参照は将来同 ID 重複が発生して再差し替えが必要なので、根本対応を選んだ
+- **runtime through_lines を伝播するか**: 系統オブジェクトに 1 行 (`through_lines: sl.through_lines || []`) 増やすだけなので、UI 側で master を再読込せずに済む方を選択
+- **UI 配置**: 路線アクションシートに「直通先」セクションを置くのが自然 (📸メモ・🎨色変更と同列の操作)。深い navigation 階層は作らず、直通先の路線シートを開き直すだけのシンプルな遷移にした
+
+### 検証
+
+- node tools/add_3_through_lines.js: `through_lines broken refs: 0` を確認
+- syntax check: 02b-service-lines-builder.js / 17-station-actions.js OK
+
+---
+
 ## 183. v333 — Supabase migration Applied 規約導入 + Phase 3-h/3-i 完全クロージング (2026-05-25)
 
 ### 事故の発見と原因分析

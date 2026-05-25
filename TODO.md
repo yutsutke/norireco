@@ -159,7 +159,9 @@ git log --oneline -20
   - 影響: `detectServiceLineGroup` が地域グループを正しく付けられず「首都圏・ローカル」「その他」にフォールバックしている
   - 西武池袋線駅順 / 箱根登山系 / 伊豆箱根 の 4 件は v173 で対応済
 
-- [ ] **直通系統の追加**（service_lines_master.json）
+- [ ] **直通系統の追加**（service_lines_master.json の `through_lines`）
+  - **v334 で土台完成**: through_lines は line.id 形式で整備、broken refs 0、路線アクションシートで「🔀 直通先」UI 動作中、双方向 navigable
+  - 残: 関東/関西の主要直通系統を埋める
   - F ライナー（元町中華街〜小川町/小手指）
   - 半蔵門線↔田園都市線↔東武スカイツリーライン
   - 東急目黒線↔南北線/三田線↔埼玉高速
