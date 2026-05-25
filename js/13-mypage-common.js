@@ -21,9 +21,23 @@ import { fraudIsDowngraded } from './11-fraud-detection.js';
 import { currentUserId, authBearerToken } from './12-auth.js';
 import { renderList } from './09-tabs-stats.js';
 import { filterTripsByDate } from './05-supabase-data.js';
-// v331 (Phase 3): trip.from_station / to_station 列 DROP 後の name 解決ヘルパー。
-//   駅名検索 (substring) は name が必須なので id → MERGED_STATIONS 逆引きで補う。
-import { getTripStationName } from './13b-trips.js';
+
+// v332 (Phase 3): trip.from_station / to_station 列 DROP 後の name 解決ヘルパー。
+//   元 13b-trips.js に置いていたが、13-mypage-common ↔ 13b-trips の循環 import で
+//   13b の top-level `NORIRECO.mypage.xxx = ...` が NORIRECO.mypage 未初期化のまま
+//   走り画面が落ちる事故 (v331 → v332) を防ぐため common に移動。
+//   過渡期 (DROP 未実行) は trip.from_station をそのまま使い、DROP 後は id → MERGED_STATIONS 逆引き。
+export function getTripStationName(trip, which) {
+  if (!trip) return '';
+  const nameKey = which === 'to' ? 'to_station' : 'from_station';
+  const idKey = which === 'to' ? 'to_station_id' : 'from_station_id';
+  if (trip[nameKey]) return trip[nameKey];
+  if (trip[idKey]) {
+    const ms = (NORIRECO.data?.MERGED_STATIONS || []).find(m => m.id === trip[idKey]);
+    return ms ? ms.name : '';
+  }
+  return '';
+}
 
 // ── NORIRECO 名前空間の初期化 ──────────────────────────────────
 window.NORIRECO = window.NORIRECO || {};

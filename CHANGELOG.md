@@ -27,6 +27,59 @@
 
 ---
 
+## 182. v332 — 緊急修正: 循環 import で 13b-trips.js top-level が落ちて画面真っ黒 (v331 事故) (2026-05-25)
+
+### 事故概要
+
+v331 で `import { getTripStationName } from './13b-trips.js'` を 13-mypage-common.js に追加したが、13b-trips.js は既に `import { ..., tripMatchesAnyStation, ... } from './13-mypage-common.js'` していたため **循環 import** が成立。
+
+ES Modules の循環 import は **関数バインディング (live binding) は安全** だが、**top-level の副作用が依存順序を持つ場合** に壊れる。今回は:
+
+1. 13-mypage-common.js が評価開始
+2. import 解決中に 13b-trips.js が評価開始
+3. 13b-trips.js は 13-mypage-common.js を import (循環検出、partial namespace 返却)
+4. 13b-trips.js の top-level が走る: `NORIRECO.mypage.deleteTripFromMypage = deleteTripFromMypage`
+5. しかし `NORIRECO.mypage = NORIRECO.mypage || {}` は 13-mypage-common.js 内で **まだ実行されていない**
+6. `NORIRECO.mypage` が undefined → TypeError → 全モジュールロード失敗 → 画面真っ黒
+
+v331 push 後ユスケから「急に画面が画像のようになってしまった」「メニューだけ表示 / 完駅率 0% / local」のスクショ報告で発覚。
+
+### v331 で「安全」と判断したのは誤り
+
+v331 の CHANGELOG で「ES Modules の循環 import は関数バインディングのみ参照 + top-level で参照しない 条件で動作する。本ケースは両条件を満たすので許容」と書いたが、見落としていたのは **13b-trips.js が top-level で `NORIRECO.mypage` 名前空間に依存している** という点。
+
+`NORIRECO.mypage` の初期化は 13-mypage-common.js の top-level で `NORIRECO.mypage = NORIRECO.mypage || {}` で行われるが、これは 13-mypage-common.js の import 解決の **後** に実行される。循環で 13b-trips の top-level が先に走ると未初期化。
+
+### 修正
+
+- **js/13-mypage-common.js**: `getTripStationName` 関数定義を 13b-trips.js から本ファイルに移動 (export)
+- **js/13b-trips.js**:
+  - 関数定義を削除
+  - import 文の `from './13-mypage-common.js'` に `getTripStationName` を追加
+  - 過去場所には「v332 で common に移動」コメントだけ残置
+- **sw.js**: CACHE_VERSION v331 → v332
+
+これで循環は解消 (13-mypage-common は何も 13b- から import しない、一方向のみ)。
+
+### 検証
+
+- syntax check 25/25 OK
+- 13-mypage-common.js は外部依存なし (11-fraud / 12-auth / 09-tabs / 05-supabase のみ import、13b- から import なし)
+- 13b-trips.js は 13-mypage-common.js から getTripStationName + 既存の 6 関数を import
+- 17-station-actions.js は 16-memos.js から getMemoStationName を import (こちらは循環なしで安全)
+
+### 教訓
+
+ES Modules の循環 import は「関数だけなら安全」では不十分。**循環の片方が top-level で名前空間 (window.NORIRECO.mypage 等) に副作用を持つ場合、初期化順序が壊れる**。常識的に「common 層への一方向 import」を維持すべきだった。
+
+判断基準: 循環を作りそうになったら、関数を common 層に移動する (本件で言えば `getTripStationName` は trip 固有でも common に置く)。
+
+### 変更ファイル
+
+`git diff --name-only HEAD` (js/13-mypage-common.js / js/13b-trips.js / sw.js / CHANGELOG.md / STATUS.md)
+
+---
+
 ## 181. v331 — 駅 ID 体系 Phase 3-h/3-i 仕上げ準備: 駅名検索 + メモシート display を getter 経由に (DROP COLUMN 前事前修正) (2026-05-25)
 
 ### 背景

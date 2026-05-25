@@ -30,6 +30,7 @@ import {
   _MP_SORT_COMPARATORS,
   tripMatchesAnyStation,
   resolveStationQuery,
+  getTripStationName,
 } from './13-mypage-common.js';
 import { filterTripsByDate } from './05-supabase-data.js';
 // v258: 旅程の写真添付 (memo と共通の写真エリアコンポーネント)
@@ -41,21 +42,8 @@ import { enableDragSort } from './19-drag-sort.js';
 // 旅程編集モーダル内の写真エリアコントローラ (createPhotoArea 戻り値、null = 未生成)
 let _tripEditPhotoArea = null;
 
-// v326 (Phase 3): trip.from_station_id / to_station_id から駅名を逆引き。
-//   trip.from_station / to_station 列が DROP された後の display 用 fallback。
-//   過渡期 (DROP 未実行) は trip.from_station をそのまま使う。
-// v331 (Phase 3): 13-mypage-common.tripMatchesAnyStation の駅名検索で使うため export。
-export function getTripStationName(trip, which) {
-  if (!trip) return '';
-  const nameKey = which === 'to' ? 'to_station' : 'from_station';
-  const idKey = which === 'to' ? 'to_station_id' : 'from_station_id';
-  if (trip[nameKey]) return trip[nameKey];
-  if (trip[idKey]) {
-    const ms = (NORIRECO.data?.MERGED_STATIONS || []).find(m => m.id === trip[idKey]);
-    return ms ? ms.name : '';
-  }
-  return '';
-}
+// v332 (Phase 3): getTripStationName は循環 import 回避のため 13-mypage-common.js に移動。
+//   import 経由で参照する (v331 で 13b に置いて 13-common から循環 import → 初期化事故、v332 解消)。
 
 // v285: filter 入力値などユーザー由来文字列を value="..." に埋める用の最小エスケープ
 function escapeAttr(s) {
