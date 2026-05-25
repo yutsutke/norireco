@@ -27,6 +27,53 @@
 
 ---
 
+## 180. v330 — 修正: 陸前山王 を利府支線から東北本線本線に移動 (v329 の誤配属修正) (2026-05-25)
+
+### 背景
+
+v329 で陸前山王 (s_09030) を `jr_tohoku_main_rifu` (東北本線利府支線) に配属したが、ユスケから地図スクリーンショットで「**陸前山王は本線のようですね**」と指摘あり。
+
+確認:
+- N02 polyline (`lines-p2.json` の 東北線_東日本旅客鉄道) で並びを確認すると `... 岩切(branch:0) → 陸前山王(branch:0) → 国府多賀城(branch:0) ...` で、本線 (`branch:0`)
+- 利府支線 (branch:1) は `利府 → 新利府` で別系統 (岩切 から分岐)
+- Wikipedia でも 陸前山王駅 は 東北本線本線 (岩切〜国府多賀城) で確認
+
+v329 で「`jr_tohoku_main_rifu` という支線 SERVICE_LINE が既存だったので、そこに収録するのが正しい」と判断したのは誤り。利府支線は本線の旧線跡 (1962 廃止) ではなく、現代の独立支線で、本線とは異なるルート。
+
+### 動機
+
+- 駅の路線所属の正確性 (鉄道オタクが見て違和感を持たない最低限のデータ品質)
+- 利府支線駅数 4 → 3 に戻すことで「岩切起点の支線 3 駅」という実態に整合
+- 隣接駅距離が改善 (利府支線では新利府 2.0km、本線では岩切 1.3km が最近接) → isolation_rank 3 → 2 に正常化
+
+### 変更
+
+- **tools/fix_rikuzen_sannou.js** (新規): idempotent な修正スクリプト
+- **service_lines_master.json**:
+  - `jr_tohoku_main_rifu`: 陸前山王を除去、4 駅 → 3 駅 (岩切 → 新利府 → 利府)
+  - `jr_tohoku_main_north`: 陸前山王を 岩切 (order 45) と 国府多賀城 (order 46) の間に挿入、82 駅 → 83 駅 (国府多賀城以降 order +1 シフト)
+- **merged_stations.json**:
+  - 陸前山王 (s_09030): `lines: ["jr_tohoku_main_rifu"]` → `["jr_tohoku_main_north"]` (color は両線とも #F4A300 で同じ → 不変)
+  - isolation_rank: 3 → 2、nearest_km: 2.0 → 1.3 (compute_isolation_rank.js 再実行)
+- **sw.js**: CACHE_VERSION v329 → v330
+
+### 教訓
+
+利府支線 (`jr_tohoku_main_rifu`) の駅名に「利府」が入っているからといって周辺駅も支線とは限らない (陸前山王のように本線の駅もある)。SERVICE_LINE 配属判定は **N02 polyline の branch 値** か **公式路線図** で確認すべき。v329 では既存 SERVICE_LINE 名から推測してしまった。
+
+### 検証
+
+- syntax check 25/25 OK (JSON のみ変更)
+- 陸前山王の周辺 (岩切→陸前山王→国府多賀城) が jr_tohoku_main_north に order 45/46/47 で並ぶこと確認
+- jr_tohoku_main_rifu が 岩切→新利府→利府 の 3 駅に戻ること確認
+- isolation_rank 全体分布: rank 3 が 1625 → 1624、rank 2 が 2959 → 2960 (陸前山王 1 駅のみ移動、他は不変)
+
+### 変更ファイル
+
+`git diff --name-only HEAD` (tools/fix_rikuzen_sannou.js / service_lines_master.json / merged_stations.json / sw.js / CHANGELOG.md / STATUS.md)
+
+---
+
 ## 179. v329 — データ充実: v328 で補完した 13 駅を 3 SERVICE_LINES に収録 + isolation_rank 再計算 (2026-05-25)
 
 ### 背景

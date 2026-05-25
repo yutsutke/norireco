@@ -56832,7 +56832,7 @@
         "東北線_東日本旅客鉄道"
       ],
       "isolation_rank": 2,
-      "nearest_km": 1.6
+      "nearest_km": 1.3
     },
     {
       "id": "s_03110",
@@ -157482,7 +157482,7 @@
       "lat": 38.29959,
       "lon": 140.97948,
       "lines": [
-        "jr_tohoku_main_rifu"
+        "jr_tohoku_main_north"
       ],
       "colors": [
         "#F4A300"
@@ -157490,8 +157490,8 @@
       "n02_lines": [
         "東北線_東日本旅客鉄道"
       ],
-      "isolation_rank": 3,
-      "nearest_km": 2
+      "isolation_rank": 2,
+      "nearest_km": 1.3
     }
   ]
 }
