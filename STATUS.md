@@ -28,7 +28,7 @@
 
 ## Service Worker
 
-**`CACHE_VERSION = 'v350'`** · デプロイ回数 = バージョン番号の不変式
+**`CACHE_VERSION = 'v351'`** · デプロイ回数 = バージョン番号の不変式
 
 ---
 
@@ -71,7 +71,7 @@
 | **Phase 3.8 駅メモ + R2/写真期** (v250〜v278) | ✅ 完成 — 駅メモ本格化 (Supabase CRUD + マイページ「📸 メモ」タブ) / 駅アクションシート / R2/Workers ゲートウェイ (api.norireco.app + cdn.norireco.app、presigned PUT URL、JWT ES256 JWKS verify) / 写真添付フル機能 (memo/trip 最大 5 枚、Canvas 圧縮、D&D 並び替え、削除時 R2 cleanup) / Notion ドキュメント整理 (STATUS.md 分離 + 役割分担再集約)。詳細 → [`CHANGELOG_PHASE3.8-photo.md`](CHANGELOG_PHASE3.8-photo.md) |
 | **Phase 3.8 マイページ強化期** (v279〜v289) | ✅ 完成 — 削除/GPS 認証の即時 UI 反映 (renderMypage) / 地図駅クリックで「この駅を含む旅程」一覧 (v282) / 路線アクションシート + 旧 📸 memoMode 撤去 / マイページ旅程・メモに駅名検索 (4 chip 始点/終点/乗換/通過 + IME 変換安定化)。詳細 → [`CHANGELOG_PHASE3.8-mypage.md`](CHANGELOG_PHASE3.8-mypage.md) |
 | **Phase 3.8 駅 ID 体系期: Phase 1〜3 完結 + ドキュメント整理** (v290〜v333) | ✅ 完成 — `merged_stations.json` 全 9,030 駅に `s_NNNNN` id 付与、SERVICE_LINES / LINES / trip / memo / キャラ全層を id ベース化、同名異所駅の判定混線を全面解消。SQL DROP COLUMN (memo.station / trip.from_station/to_station) も Applied 規約 (migration ファイル末尾の `-- Applied:` を真実の源) 導入で完了。駅クリック確実化 (map.click delegate + polyline 近傍駅検索) / 駅名+都道府県検索 / FAB 並び 📍📝🎭🌙 / startup 着手前手順を hook → CLAUDE.md へ移管。詳細 → [`CHANGELOG_PHASE3.8-station-id.md`](CHANGELOG_PHASE3.8-station-id.md) |
-| **Phase 3.8 through_lines + GPS 位置づけ変更 + 車両形式 DB + 記録モーダル整理** (v334〜v350) | ✅ 進行中 — through_lines 本格運用化 (v334 で 3 手動キュレーション系統 + UI / v335-v343 で新幹線 3 ペア + 関東 26 + 関西 27 + 名古屋 19 + 第三セクター+細支線 23、through 持ち系統 14→142/642 で 22.1% カバー)。v344-v346 で GPS 記録の位置づけを「世間への証明」→「手動の手間省略」に方針転換 (`11-fraud-detection.js` 削除・バッジ中立化・`retroactivelyVerifyTrip` 撤去)。v347-v348 で営業系統×車両形式 DB を Notion 連携で構築 (`service_line_vehicles.json` / 記録モード UI に「マニア向けトグル」+ 区間→候補車両 dropdown)。v350 で記録モーダルを整理: ⏱ 遅延入力を独立トグル化 (デフォ非表示) + 普通電車/特急 ラジオで車両形式 UI を排他表示。CHANGELOG.md 現本体参照 |
+| **Phase 3.8 through_lines + GPS 位置づけ変更 + 車両形式 DB + 記録モーダル整理** (v334〜v351) | ✅ 進行中 — through_lines 本格運用化 (v334 で 3 手動キュレーション系統 + UI / v335-v343 で新幹線 3 ペア + 関東 26 + 関西 27 + 名古屋 19 + 第三セクター+細支線 23、through 持ち系統 14→142/642 で 22.1% カバー)。v344-v346 で GPS 記録の位置づけを「世間への証明」→「手動の手間省略」に方針転換 (`11-fraud-detection.js` 削除・バッジ中立化・`retroactivelyVerifyTrip` 撤去)。v347-v348 で営業系統×車両形式 DB を Notion 連携で構築 (`service_line_vehicles.json` / 記録モード UI にトグル + 区間→候補車両 dropdown)。v350 で記録モーダルを整理: ⏱ 遅延入力を独立トグル化 (デフォ非表示) + 普通電車/特急 ラジオで車両形式 UI を排他表示。v351 で「(マニア向け)」文言削除 + 普通電車レーン dropdown 末尾に「✏️ 別形式を入力」option 追加 (選択肢に無い車両を自由記述、データ未登録系統でも入力可)。CHANGELOG.md 現本体参照 |
 | Supabase RLS 強化 (user_id = auth.uid() 必須) | ❌ 未着手（🔥 v233 残課題）— SUPABASE_KEY は frontend 露出 anon key、REST 直叩きで他人生データを取れる。UI 防御は v233 で済 |
 | **Phase 1.5: Map × Claude チャット統合 MVP** | ❌ 未着手（🔥 新規 / 2026-05-19）— 地図画面横にチャットパネル + Claude API + 乗レコ MCP server。最小 1 ヶ月。Notion §3.3 参照 |
 | 駅 UI 情報ハブ化（4 領域パネル） | ❌ 未着手 |

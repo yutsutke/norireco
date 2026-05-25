@@ -1156,6 +1156,8 @@ function clearAllTrainSelections() {
   T.selectedTrainCategory  = null;
   const sel = document.getElementById('rec-sl-vehicle-select');
   if (sel) sel.value = '';
+  const customEl = document.getElementById('rec-sl-vehicle-custom');
+  if (customEl) { customEl.style.display = 'none'; customEl.value = ''; }
 }
 
 // v350: 遅延入力トグル
@@ -1252,24 +1254,50 @@ function selectSlChip(slId) {
                 v.status === '譲渡'     ? ' (譲渡)' : '';
     html += `<option value="${v.vehicle.replace(/"/g, '&quot;')}">${v.vehicle}${tag}</option>`;
   }
+  // v351: 末尾に「自由入力」option (vehicles 有無に関わらず常時表示)
+  if (vehicles.length > 0) {
+    html += '<option value="" disabled>──────</option>';
+  }
+  html += '<option value="__custom__">✏️ 別形式を入力...</option>';
   selectEl.innerHTML = html;
   // 候補ゼロのときは説明文を出す
   if (emptyEl) emptyEl.style.display = (vehicles.length === 0) ? 'block' : 'none';
-  // 既存の T.selectedCarModel が新しい候補にあれば維持、なければクリア
+  // 既存の T.selectedCarModel が新しい候補にあれば維持、無ければ custom input の値か null
   const T = NORIRECO.trains;
-  if (T.selectedCarModel && !vehicles.some(v => v.vehicle === T.selectedCarModel)) {
-    T.selectedCarModel = null;
+  const customEl = document.getElementById('rec-sl-vehicle-custom');
+  const inDropdown = vehicles.some(v => v.vehicle === T.selectedCarModel);
+  if (T.selectedCarModel && inDropdown) {
+    selectEl.value = T.selectedCarModel;
+    if (customEl) { customEl.style.display = 'none'; customEl.value = ''; }
+  } else if (T.selectedCarModel) {
+    // 自由入力済の値が残っていれば custom モードに復元
+    selectEl.value = '__custom__';
+    if (customEl) { customEl.style.display = 'block'; customEl.value = T.selectedCarModel; }
+  } else {
+    selectEl.value = '';
+    if (customEl) { customEl.style.display = 'none'; customEl.value = ''; }
   }
-  selectEl.value = T.selectedCarModel || '';
 }
 
 function onSlVehicleChange() {
   const selectEl = document.getElementById('rec-sl-vehicle-select');
+  const customEl = document.getElementById('rec-sl-vehicle-custom');
   if (!selectEl) return;
   const T = NORIRECO.trains;
-  T.selectedCarModel = selectEl.value || null;
-  // この新 UI で選んだ場合、列車種別 (train_id/name/category) はクリア
-  //   (普通電車パターン: 系統だけ確定、列車種別は無関係)
+  const v = selectEl.value;
+  if (v === '__custom__') {
+    // 自由入力モードに切替: input を表示 + focus、T.selectedCarModel は input の値で上書き (まずは現在値を保つ)
+    if (customEl) {
+      customEl.style.display = 'block';
+      customEl.value = T.selectedCarModel && !isInDropdown(T.selectedCarModel, selectEl) ? T.selectedCarModel : '';
+      T.selectedCarModel = customEl.value || null;
+      customEl.focus();
+    }
+  } else {
+    if (customEl) { customEl.style.display = 'none'; customEl.value = ''; }
+    T.selectedCarModel = v || null;
+  }
+  // 新 UI で選んだら列車種別はクリア (普通電車パターン)
   if (T.selectedCarModel) {
     T.selectedTrainId = null;
     T.selectedTrainName = null;
@@ -1277,3 +1305,21 @@ function onSlVehicleChange() {
   }
 }
 window.onSlVehicleChange = onSlVehicleChange;
+
+function isInDropdown(value, selectEl) {
+  return Array.from(selectEl.options).some(o => o.value === value && o.value !== '__custom__' && o.value !== '');
+}
+
+// v351: 自由入力 input の oninput
+function onSlVehicleCustomInput() {
+  const customEl = document.getElementById('rec-sl-vehicle-custom');
+  if (!customEl) return;
+  const T = NORIRECO.trains;
+  T.selectedCarModel = customEl.value.trim() || null;
+  if (T.selectedCarModel) {
+    T.selectedTrainId = null;
+    T.selectedTrainName = null;
+    T.selectedTrainCategory = null;
+  }
+}
+window.onSlVehicleCustomInput = onSlVehicleCustomInput;

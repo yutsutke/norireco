@@ -40,6 +40,52 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 201. v351 — 記録モーダル: 「(マニア向け)」文言削除 + 普通電車レーンに「✏️ 別形式を入力」自由記述 option (2026-05-26)
+
+### 背景
+
+v350 push 後ユスケから 2 点フィードバック: (1) トグル右の「(マニア向け)」が排他的ニュアンスで Lv2 (記録に多少興味あるライト層) を遠ざける、削除したい。(2) 普通電車レーンの dropdown で `service_line_vehicles.json` に該当車両が登録されていないケース (例: 新形式・短期投入・データ未登録系統) で自由入力ができない。「あとから車両形式で検索もできるようにしたい、どういう形がいい?」と相談。
+
+### 設計判断
+
+- **(マニア向け) 削除**: 単純削除。文言だけの問題で構造は変えない
+- **データ層は既に「自由文字列」対応済**: `norireco_trips.car_model` (TEXT) は v122 から存在、特急 cascade の `#rec-car-model-custom` で自由入力するパス、13a-stats / 09-tabs-stats も `t.car_model` 値で集計済。後から検索追加も技術的に軽量 (substring 検索 1 つ)
+- **UI 案 A 採用 (dropdown 末尾の `__custom__` option + input 展開)**: 既存特急 cascade の同パターンと一貫、Lv0/1 は dropdown だけで完結、Lv2/3 は最後の option として発見可能。案 B (常時 input フォールバック) は UI スッキリしない、案 C (データ未登録時のみ input) は「データはあるけど自分が乗った車両がリストにない」ケースを拾えない
+- **dropdown と input の整合**: 既存 T.selectedCarModel が dropdown の値に含まれていれば dropdown 表示、含まれない (自由入力済) 値なら `__custom__` 選択 + input に値を復元。chip 切替 / マニア OFF / ラジオ切替で input も hide + clear
+- **検索 UI は別タスク**: ユスケ確認で「実機運用してから N=1 で設計」。データだけは v351 時点で揃った状態にする
+
+### 変更
+
+- **HTML** ([noritetsu-map.html:1340](noritetsu-map.html#L1340), [noritetsu-map.html:1356-1361](noritetsu-map.html#L1356)):
+  - `<span>📋 列車・車両形式も記録する <span>(マニア向け)</span></span>` → `<span>📋 列車・車両形式も記録する</span>`
+  - `#rec-sl-vehicle-select` の直下に `<input id="rec-sl-vehicle-custom" type="text" oninput="onSlVehicleCustomInput()" placeholder="例: E235系1500番台、外部車両など" style="display:none">` を追加
+  - 「データ未登録」案内文を「dropdown 末尾の『✏️ 別形式を入力』から自由記述できます」に書き換え
+- **JS** ([js/07-record-mode.js](js/07-record-mode.js)):
+  - `selectSlChip()` の dropdown 生成: vehicles 0 件でも常に `<option value="__custom__">✏️ 別形式を入力...</option>` を末尾追加。vehicles 1 件以上なら separator (`<option disabled>──────</option>`) も
+  - dropdown 選択値復元ロジック: T.selectedCarModel が options に存在 → dropdown 選択、存在しない (自由入力済の値) → `__custom__` 選択 + custom input に値復元
+  - `onSlVehicleChange()` 改修: value === '__custom__' → custom input show + focus + 既存値を input に移行 / その他 → custom input hide + clear + T.selectedCarModel = value
+  - `onSlVehicleCustomInput()` (新, window 公開): input.value.trim() を T.selectedCarModel に保存 + 列車種別 (train_id/name/category) クリア
+  - `isInDropdown(value, selectEl)` (内部 helper): options 配列で実車両 option を検索
+  - `clearAllTrainSelections()` に custom input の hide + clear も追加
+- **sw.js**: CACHE_VERSION 'v350' → 'v351'
+
+### 検証 (Claude Preview)
+
+mock データ (山手線: E235系0番台/1000番台 / 京浜東北線: データ無し) で:
+- 山手線 chip active: options = `[(任意) / E235系1000 🆕 / E235系0番台 / ──────(disabled) / ✏️ 別形式を入力]` 末尾に option 配置
+- 京浜東北線 chip (データ無し): options = `[(任意) / ✏️ 別形式を入力]` separator 無し + empty 案内表示
+- `__custom__` 選択 → custom input display='block' + focus
+- input に `キハ E130系500番台` 入力 → T.selectedCarModel = 'キハ E130系500番台'
+- 山手線 chip に戻す → dropdown の value が `__custom__` のまま、input value 維持 (dropdown に無い値なので custom モード継続)
+- 普通の `E235系0番台` を dropdown から選ぶ → custom hide + clear、T.selectedCarModel='E235系0番台'
+- 特急ラジオ ON → custom hide + clear、T.selectedCarModel=null (`clearAllTrainSelections` 経由)
+
+### 残課題
+
+- 車両形式検索 UI (マイページ旅程タブに「🚆 車両形式」検索 input を追加、`t.car_model` substring 検索)。データは v351 で揃った、実機運用後に N=1 設計
+
+---
+
 ## 200. v350 — 記録モーダル整理: 遅延入力を独立トグル化 + 普通/特急 ラジオで車両形式 UI を排他表示 (2026-05-26)
 
 ### 背景

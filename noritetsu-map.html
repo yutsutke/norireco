@@ -1336,7 +1336,7 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
       <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver);cursor:pointer;user-select:none">
         <input type="checkbox" id="rec-train-toggle" onchange="onRecTrainToggle()"
                style="margin:0;cursor:pointer">
-        <span>📋 列車・車両形式も記録する <span style="opacity:.7;font-size:10px">(マニア向け)</span></span>
+        <span>📋 列車・車両形式も記録する</span>
       </label>
       <div id="rec-train-picker" style="display:none;margin-top:10px">
         <!-- v350: 普通電車 / 特急・観光列車のラジオ排他選択 -->
@@ -1358,8 +1358,10 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
                   style="width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px">
             <option value="">車両形式を選ぶ (任意)...</option>
           </select>
+          <input id="rec-sl-vehicle-custom" type="text" oninput="onSlVehicleCustomInput()" placeholder="例: E235系1500番台、外部車両など"
+                  style="display:none;width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--gold);border-radius:6px;font-size:12px;margin-top:6px;box-sizing:border-box" />
           <div id="rec-sl-vehicle-empty" style="display:none;font-size:10px;color:var(--silver);opacity:.7;margin-top:6px;line-height:1.5">
-            この系統の車両データはまだ未登録です。「特急・観光列車」に切り替えて手入力できます。
+            この系統の車両データはまだ未登録です。dropdown 末尾の「✏️ 別形式を入力」から自由記述できます。
           </div>
         </div>
         <!-- 特急・観光列車レーン: 既存の カテゴリ → 列車 → 車両形式 cascading -->
