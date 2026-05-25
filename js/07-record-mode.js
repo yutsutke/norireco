@@ -12,7 +12,7 @@
 // v223 ES Modules stage 3: 11-fraud-detection と 03-characters を import 化。
 // v224: 12-auth.currentUserId を import 化。
 // v225: 04-gps-location の 6 関数を import 化。
-import { fraudAssessTrip } from './11-fraud-detection.js';
+// v345: 不正検知を撤回 (GPS 記録 = 手間省略の位置づけに変更、世間への証明不要)
 import { runCharacterGrantCheck } from './03-characters.js';
 import { currentUserId } from './12-auth.js';
 // v258: 記録モード保存時の写真添付 (memo / trip 共通の PhotoArea)
@@ -336,8 +336,8 @@ function openRecConfirm() {
   const body = document.getElementById('rec-confirm-body');
   if (!body) return;
   const verifiedBadge = NORIRECO.gps.recordStartedViaGPS
-    ? '<span class="rec-confirm-verified-badge">🟢 GPS 記録</span>'
-    : '<span class="rec-confirm-verified-badge" style="background:rgba(140,160,179,.15);color:var(--silver);border-color:var(--track)">⚪ 手動記録</span>';
+    ? '<span class="rec-confirm-verified-badge">📍 GPS</span>'
+    : '<span class="rec-confirm-verified-badge" style="background:rgba(140,160,179,.15);color:var(--silver);border-color:var(--track)">📝 手動</span>';
 
   // 時刻情報行 (depart_time / arrive_time / total_minutes プレビュー)
   // GPS 経由なら NORIRECO.gps.recordStartGPS.timestamp、それ以外は手動入力の精度に応じて更新される
@@ -411,8 +411,8 @@ function openRecConfirm() {
   const saveBtn = document.getElementById('rec-confirm-save-btn');
   if (saveBtn) {
     saveBtn.textContent = NORIRECO.gps.recordStartedViaGPS
-      ? '💾 GPS 記録で保存する'
-      : '💾 手動記録で保存する';
+      ? '💾 GPS で保存する'
+      : '💾 手動で保存する';
   }
   // 時刻編集セクション: 手動記録のときだけ表示、初期値は記録モード突入時刻
   const timeSec = document.getElementById('rec-time-edit-section');
@@ -812,7 +812,6 @@ async function saveMultiSegmentTrip() {
   let departTime = '';
   let arriveTime = '';
   let totalMinutes = 0;
-  let elapsedSec = 0;  // 不正検知用に秒精度の経過時間を保持
   let tripDate = today; // 既定: 今日 (ローカル)
   if (startTs) {
     const startDate = new Date(startTs);
@@ -825,7 +824,6 @@ async function saveMultiSegmentTrip() {
     arriveTime = endDate.toTimeString().slice(0, 8);
     if (startTs) {
       const startDate = new Date(startTs);
-      elapsedSec = Math.max(0, Math.round((endDate - startDate) / 1000));
       totalMinutes = Math.max(0, Math.round((endDate - startDate) / 60000));
     }
   }
@@ -849,33 +847,32 @@ async function saveMultiSegmentTrip() {
         let diff = (ah*60+am) - (dh*60+dm);
         if (diff < 0) diff += 24*60;
         totalMinutes = diff;
-        elapsedSec = diff * 60;
       }
     } else if (prec === 'day') {
       const editDate = document.getElementById('rec-edit-date')?.value;
       if (editDate) tripDate = editDate;
-      departTime = ''; arriveTime = ''; totalMinutes = 0; elapsedSec = 0;
+      departTime = ''; arriveTime = ''; totalMinutes = 0;
       datePrecision = 'day';
     } else if (prec === 'month') {
       const y = document.getElementById('rec-edit-year-m')?.value;
       const m = document.getElementById('rec-edit-month-m')?.value;
       if (y && m) {
         tripDate = `${y}-${m}-01`;
-        departTime = ''; arriveTime = ''; totalMinutes = 0; elapsedSec = 0;
+        departTime = ''; arriveTime = ''; totalMinutes = 0;
         datePrecision = 'month';
       }
     } else if (prec === 'year') {
       const y = document.getElementById('rec-edit-year-y')?.value;
       if (y) {
         tripDate = `${y}-01-01`;
-        departTime = ''; arriveTime = ''; totalMinutes = 0; elapsedSec = 0;
+        departTime = ''; arriveTime = ''; totalMinutes = 0;
         datePrecision = 'year';
       }
     } else if (prec === 'unknown') {
       // 日時不明: date を null にすると Supabase の NOT NULL 制約で失敗するため、
       // 保存日 (recorded_at の日付) を入れておく。フィルタは date_precision='unknown' で別途除外
       tripDate = today;
-      departTime = ''; arriveTime = ''; totalMinutes = 0; elapsedSec = 0;
+      departTime = ''; arriveTime = ''; totalMinutes = 0;
       datePrecision = 'unknown';
     }
   }
@@ -945,18 +942,6 @@ async function saveMultiSegmentTrip() {
     user_id: currentUserId(),
   };
 
-  // 不正検知: GPS 認証 trip の所要時間が想定の半分未満なら verified=false に降格
-  // (Supabase 列追加なし: source='gps_button' && verified===false が降格マーカー)
-  // 秒精度の経過時間を一時フィールドで渡す (Supabase には送らない)
-  let fraud = { suspicious: false, reason: null };
-  if (trip.source === 'gps_button') {
-    try { fraud = fraudAssessTrip({ ...trip, _elapsed_sec: elapsedSec }); } catch (e) { console.warn('[乗レコ] 不正検知エラー:', e); }
-    if (fraud.suspicious) {
-      trip.verified = false;
-      console.warn('[乗レコ] suspicious 降格:', fraud.reason);
-    }
-  }
-
   let saved = false;
   let errInfo = '';
   try {
@@ -995,17 +980,12 @@ async function saveMultiSegmentTrip() {
   updateOverlays();
 
   if (saved) {
-    // 認証バッジ: GPS 認証=🟢 / 降格=🟡 / 手動=なし
-    let verifiedTag = '';
-    if (trip.verified) verifiedTag = ' 🟢';
-    else if (fraud.suspicious) verifiedTag = ' 🟡';
+    // 記録バッジ: GPS=📍 / 手動=📝
+    const recTag = trip.verified ? ' 📍' : ' 📝';
     const summary = isVisitOnly
       ? `${fromStation} に立ち寄り`
       : `${tripSegments.length}区間 ${totalStations}駅`;
-    showRecordToast(`✅ 記録${verifiedTag}: ${summary}`);
-    if (fraud.suspicious) {
-      showRecordToast(`🟡 GPS 認証を取り消しました (要確認)\n${fraud.reason}`, 'warn', 8000);
-    }
+    showRecordToast(`✅ 記録${recTag}: ${summary}`);
   } else {
     showRecordToast(`⚠️ ローカル保存のみ (Supabase 失敗)\n${errInfo}`, 'warn', 9000);
   }

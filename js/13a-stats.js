@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════════════════════════
 // マイページ 📊 統計サブタブ (v190 分割)
-// - 完乗率カード (🟢 GPS 記録 / ⚪ 全記録)
+// - 完乗率カード (📍 GPS / 📝 全記録)
 // - 詳細統計 16 種 (運営会社別 / 三大都市圏 / Top10 / 都道府県 / 時間帯ヒートマップ ...)
 // - 詳細セクション ⓘ 解説トグル
 //
@@ -16,8 +16,8 @@
 // renderMpStatsSection) は同 commit で `NORIRECO.mypage.X` 経由に書き換え (2 箇所)。
 //
 // v223 ES Modules stage 3: 11-fraud-detection と 03-characters.distMeters を import 化。
+// v345: 不正検知撤回に伴い 11-fraud-detection の import を撤去。
 // ══════════════════════════════════════════════════════════════
-import { fraudIsDowngraded } from './11-fraud-detection.js';
 import { distMeters } from './03-characters.js';
 import { renderStats } from './09-tabs-stats.js';
 // v318: PREFECTURES / prefOfStation を 13-mypage-common から import
@@ -125,15 +125,15 @@ function buildCompletionCards(trips) {
   cards.className = 'mp-stat-grid';
   cards.innerHTML = `
     <div class="mp-scard verified">
-      <div class="mp-sc-h">🟢 GPS 記録 完駅率</div>
-      <div class="mp-sc-sub">GPS 認証された乗車記録のみ</div>
+      <div class="mp-sc-h">📍 GPS 完駅率</div>
+      <div class="mp-sc-sub">GPS で記録した旅程のみ</div>
       <div class="mp-sc-pct">${sv.uniquePct}<span>%</span></div>
       <div class="mp-sc-detail">${sv.uniqueRidden.toLocaleString()} / ${totalUnique.toLocaleString()} 駅</div>
       <div class="mp-sc-detail">${sv.lines} / ${totalLines} 系統 (完乗 ${sv.complete})</div>
     </div>
     <div class="mp-scard all">
-      <div class="mp-sc-h">⚪ 全記録 完駅率</div>
-      <div class="mp-sc-sub">手動記録も含む全ての乗車</div>
+      <div class="mp-sc-h">📝 全記録 完駅率</div>
+      <div class="mp-sc-sub">手動も含む全ての乗車</div>
       <div class="mp-sc-pct">${all.uniquePct}<span>%</span></div>
       <div class="mp-sc-detail">${all.uniqueRidden.toLocaleString()} / ${totalUnique.toLocaleString()} 駅</div>
       <div class="mp-sc-detail">${all.lines} / ${totalLines} 系統 (完乗 ${all.complete})</div>
@@ -209,15 +209,15 @@ function buildDetailContent(pane, sv, all, trips, totalUnique, totalLines) {
 
   // ① 集計方式 (系統単位)
   pane.appendChild(detailCard('集計方式の違い (系統単位)',
-    `<div class="mp-d-row"><span>🟢 GPS 記録</span><strong>${sv.lineUnitRidden.toLocaleString()} / ${sv.lineUnitTotal.toLocaleString()}</strong> 駅 <span class="mp-d-pct">(${sv.lineUnitPct}%)</span></div>
-     <div class="mp-d-row"><span>⚪ 全記録</span><strong>${all.lineUnitRidden.toLocaleString()} / ${all.lineUnitTotal.toLocaleString()}</strong> 駅 <span class="mp-d-pct">(${all.lineUnitPct}%)</span></div>`,
+    `<div class="mp-d-row"><span>📍 GPS</span><strong>${sv.lineUnitRidden.toLocaleString()} / ${sv.lineUnitTotal.toLocaleString()}</strong> 駅 <span class="mp-d-pct">(${sv.lineUnitPct}%)</span></div>
+     <div class="mp-d-row"><span>📝 全記録</span><strong>${all.lineUnitRidden.toLocaleString()} / ${all.lineUnitTotal.toLocaleString()}</strong> 駅 <span class="mp-d-pct">(${all.lineUnitPct}%)</span></div>`,
     `<strong>系統単位</strong>: 八王子駅 (横浜線・中央本線・中央本線快速・八高線 の 4 系統に属する) のように、複数路線に属する駅を「系統ごとに 1 駅」としてカウントする集計方法。<br>サマリ表示の「ユニーク駅」では八王子は 1 駅扱いだが、ここでは 4 駅枠としてカウントする。<em>「完乗 = 全系統の全駅乗車」を厳密に評価する指標</em>。`
   ));
 
   // ② 総走行距離
   pane.appendChild(detailCard('総走行距離 (推定)',
-    `<div class="mp-d-row"><span>🟢 GPS 記録</span><strong>${sv.totalDistanceKm.toLocaleString()}</strong> km</div>
-     <div class="mp-d-row"><span>⚪ 全記録</span><strong>${all.totalDistanceKm.toLocaleString()}</strong> km</div>`,
+    `<div class="mp-d-row"><span>📍 GPS</span><strong>${sv.totalDistanceKm.toLocaleString()}</strong> km</div>
+     <div class="mp-d-row"><span>📝 全記録</span><strong>${all.totalDistanceKm.toLocaleString()}</strong> km</div>`,
     `各旅程の区間 (出発駅〜到着駅) を service_lines_master の駅順で展開し、隣接駅間の Haversine 距離を累積。営業キロではなく直線距離なので、実際の運行距離より少し短めに出る。GPS 軌跡 (将来) で精度向上予定。`
   ));
 
@@ -248,7 +248,7 @@ function buildDetailContent(pane, sv, all, trips, totalUnique, totalLines) {
   // ⑦ 認証ステータス分布
   pane.appendChild(detailCard('認証ステータス分布',
     buildAuthBreakdown(trips),
-    `自分の全旅程を 🟢 GPS 記録 (GPS 認証) / 🟡 要確認 (不正検知で降格) / ⚪ 手動記録 (manual) で分類。シェア機能 (将来) は 🟢 GPS 記録のみ対象になる予定。`
+    `自分の全旅程を 📍 GPS (位置情報で記録) / 📝 手動 (手で入力) で分類。GPS は手で入力する手間を省くもので、どちらも対等な記録。`
   ));
 
   // ⑧ 累計駅数の推移 (月別)
@@ -1271,21 +1271,18 @@ NORIRECO.mypage.buildTopStations = buildTopStations;
 
 // 認証ステータス分布
 function buildAuthBreakdown(trips) {
-  let verified = 0, manual = 0, suspicious = 0;
+  let verified = 0, manual = 0;
   for (const t of trips) {
     if (t.verified) verified++;
-    else if (fraudIsDowngraded(t)) suspicious++;
     else manual++;
   }
   const total = trips.length;
   const pct = (n) => total > 0 ? Math.round(n/total*100) : 0;
   return `
-    <div class="mp-d-row"><span class="mp-d-l">🟢 GPS 記録 (verified)</span><strong>${verified}</strong> 件 <span class="mp-d-pct">(${pct(verified)}%)</span></div>
-    <div class="mp-d-row"><span class="mp-d-l">🟡 要確認 (降格)</span><strong>${suspicious}</strong> 件 <span class="mp-d-pct">(${pct(suspicious)}%)</span></div>
-    <div class="mp-d-row"><span class="mp-d-l">⚪ 手動記録 (manual)</span><strong>${manual}</strong> 件 <span class="mp-d-pct">(${pct(manual)}%)</span></div>
+    <div class="mp-d-row"><span class="mp-d-l">📍 GPS</span><strong>${verified}</strong> 件 <span class="mp-d-pct">(${pct(verified)}%)</span></div>
+    <div class="mp-d-row"><span class="mp-d-l">📝 手動</span><strong>${manual}</strong> 件 <span class="mp-d-pct">(${pct(manual)}%)</span></div>
     <div class="mp-d-bar">
       <div class="mp-d-bar-seg verified" style="width:${pct(verified)}%"></div>
-      <div class="mp-d-bar-seg suspicious" style="width:${pct(suspicious)}%"></div>
       <div class="mp-d-bar-seg manual" style="width:${pct(manual)}%"></div>
     </div>
   `;

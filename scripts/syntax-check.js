@@ -40,7 +40,6 @@ const FILES = [
   '08-rendering',
   '09-tabs-stats',
   '10-init',
-  '11-fraud-detection',
   '12-auth',
   '13-mypage-common',
   '13a-stats',

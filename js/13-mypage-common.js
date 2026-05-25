@@ -16,8 +16,8 @@
 //
 // v223 ES Modules stage 3: 11-fraud-detection を import 化。
 // v224: 12-auth から currentUserId / authBearerToken を import 化。
+// v345: 不正検知撤回に伴い 11-fraud-detection の import を撤去。
 // ══════════════════════════════════════════════════════════════
-import { fraudIsDowngraded } from './11-fraud-detection.js';
 import { currentUserId, authBearerToken } from './12-auth.js';
 import { renderList } from './09-tabs-stats.js';
 import { filterTripsByDate } from './05-supabase-data.js';
@@ -59,7 +59,7 @@ NORIRECO.mypage.state = NORIRECO.mypage.state || {
   _mypageCache: null,            // 取得した自分の trip[]
   mpActiveSection: 'stats',      // 'stats' | 'trips' | 'lines' | 'memos'
   mpTripFilter: {
-    auth: 'all',     // all | verified | manual | suspicious
+    auth: 'all',     // all | verified | manual
     period: 'all',   // all | thisYear | lastYear | custom (日付フィルタは _tripDateFilter と独立)
     category: 'all', // all | shinkansen | limited_express | ...
     sort: 'date_desc', // v182: 旅程タブの並び替え (date_desc/asc, stations_desc, minutes_desc, recorded_desc, delay_desc)
@@ -289,7 +289,7 @@ export async function renderMypage() {
       <div class="mp-empty">
         <div class="mp-empty-ic">🔑</div>
         <div class="mp-empty-t">ログインしてください</div>
-        <div class="mp-empty-s">マイページではあなたの旅程・GPS 記録 完駅率・GPS 後追い認証が使えます</div>
+        <div class="mp-empty-s">マイページではあなたの旅程・GPS 完駅率・GPS 変換が使えます</div>
         <button class="mp-empty-btn" onclick="openAuthModal()">🔑 ログイン / 会員登録</button>
       </div>`;
     return;
@@ -520,12 +520,10 @@ NORIRECO.mypage._MP_SORT_COMPARATORS = _MP_SORT_COMPARATORS;
 // 単一 trip カードの HTML を生成 (旅程タブ・統計タブ「直近の旅程」両方で使用)
 // v182: 「直近の旅程」表示のため buildTripList のループ本体をここに抽出
 export function tripCardHtml(trip) {
-  let badge = '<span class="mp-badge manual" title="手動記録 (自己申告)">⚪ 手動記録</span>';
-  if (trip.verified) {
-    badge = '<span class="mp-badge verified" title="GPS 記録 (認証済)">🟢 GPS 記録</span>';
-  } else if (fraudIsDowngraded(trip)) {
-    badge = '<span class="mp-badge suspicious" title="不正検知で降格">🟡 要確認</span>';
-  }
+  // v345: 「自己申告 / 認証済」表現を撤回し中立化。GPS は手動の手間を省くもの。
+  const badge = trip.verified
+    ? '<span class="mp-badge verified" title="GPS で記録">📍 GPS</span>'
+    : '<span class="mp-badge manual" title="手で入力した記録">📝 手動</span>';
 
   // 乗車日時を date_precision に応じて整形
   const prec = trip.date_precision || 'day';
@@ -602,7 +600,7 @@ export function tripCardHtml(trip) {
   }
 
   const verifyBtn = !trip.verified
-    ? `<button class="mp-act-btn verify" onclick="retroactivelyVerifyTrip('${trip.id}')">📍 GPSで認証</button>`
+    ? `<button class="mp-act-btn verify" onclick="retroactivelyVerifyTrip('${trip.id}')">📍 GPS に変換</button>`
     : '';
 
   // v184/v226: 既存旅程の編集ボタン (v226 で時刻・列車種別まで編集対象拡大)

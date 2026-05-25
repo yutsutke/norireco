@@ -476,8 +476,7 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mp-d-row .mp-d-pct{font-size:10px;opacity:.7;}
 .mp-d-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0;}
 .mp-d-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--navy);margin-top:6px;}
-.mp-d-bar-seg.verified{background:#48d597;}
-.mp-d-bar-seg.suspicious{background:var(--gold);}
+.mp-d-bar-seg.verified{background:#5fb5ff;}
 .mp-d-bar-seg.manual{background:var(--silver);opacity:.6;}
 
 /* 累計駅数推移チャート (月別・年別) */
@@ -587,8 +586,7 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mp-tcard-date{font-family:'DM Mono',monospace;font-size:11px;color:var(--silver);}
 .mp-tcard-time{font-family:'DM Mono',monospace;font-size:10px;color:var(--silver);opacity:.7;}
 .mp-badge{font-size:9px;padding:2px 7px;border-radius:10px;font-weight:600;margin-left:auto;}
-.mp-badge.verified{background:rgba(72,213,151,.15);color:#48d597;border:1px solid rgba(72,213,151,.4);}
-.mp-badge.suspicious{background:rgba(242,169,0,.15);color:var(--gold);border:1px solid rgba(242,169,0,.4);}
+.mp-badge.verified{background:rgba(95,181,255,.15);color:#5fb5ff;border:1px solid rgba(95,181,255,.4);}
 .mp-badge.manual{background:rgba(140,160,179,.1);color:var(--silver);border:1px solid var(--track);}
 .mp-badge.after-fact{background:rgba(95,181,255,.12);color:#5fb5ff;border:1px solid rgba(95,181,255,.4);}
 .mp-badge.fuzzy{background:rgba(199,125,255,.12);color:#c77dff;border:1px solid rgba(199,125,255,.4);font-size:10px;padding:1px 6px;}
@@ -1149,7 +1147,7 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
   <div class="logo">乗<em>レコ</em><small>NORITSUBU MAP</small></div>
   <span class="app-ver-badge checking" id="app-ver-badge" onclick="checkAppVersion(true)" title="バージョン確認中">⏳ …</span>
   <div class="header-stats">
-    <div class="hstat" title="完駅率 = 乗車駅 / 全駅 (駅 id ベース、全記録)。マイページで GPS 記録のみの完駅率も確認可"><div class="hstat-val" id="h-pct">0%</div><div class="hstat-lbl">完駅率</div></div>
+    <div class="hstat" title="完駅率 = 乗車駅 / 全駅 (駅 id ベース、全記録)。マイページで GPS のみの完駅率も確認可"><div class="hstat-val" id="h-pct">0%</div><div class="hstat-lbl">完駅率</div></div>
     <div class="hstat" title="乗車したことのある営業系統数"><div class="hstat-val" id="h-ln">0</div><div class="hstat-lbl">系統</div></div>
     <button class="auth-btn" id="auth-btn" title="ログイン">🔑 ログイン</button>
   </div>
@@ -1374,7 +1372,7 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
         <div id="rec-photo-container"></div>
       </div>
     </div>
-    <button class="btn-gen" id="rec-confirm-save-btn" onclick="confirmAndSaveRecord()">💾 手動記録で保存する</button>
+    <button class="btn-gen" id="rec-confirm-save-btn" onclick="confirmAndSaveRecord()">💾 手動で保存する</button>
     <button class="btn-cls" onclick="closeRecConfirm()">✏️ 戻って編集する</button>
     <button class="btn-discard" onclick="discardRecord()">❌ 破棄する</button>
   </div>
@@ -1407,12 +1405,10 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
       </div>
     </div>
 
-    <!-- 🕒 乗車時刻 (手動記録のみ編集可) -->
+    <!-- 🕒 乗車時刻 -->
     <div id="trip-edit-time-section" style="margin-bottom:12px;border-top:1px solid var(--track);padding-top:10px">
       <div style="font-size:11px;color:var(--gold);margin-bottom:6px">🕒 乗車時刻</div>
-      <div id="trip-edit-time-lock" style="display:none;font-size:11px;color:var(--silver);background:rgba(95,181,255,.08);border-left:3px solid #5fb5ff;border-radius:0 6px 6px 0;padding:8px 10px;line-height:1.5;margin-bottom:6px">
-        🟢 GPS 記録は時刻を編集できません (verified を守るため)。
-      </div>
+      <div id="trip-edit-time-lock" style="display:none"></div>
       <div id="trip-edit-time-inputs">
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
           <label style="font-size:10px;color:var(--silver);min-width:40px">📅 乗車日</label>
@@ -1596,7 +1592,6 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 <script type="module" src="js/06-map-leaflet.js"></script>
 <script type="module" src="js/07-record-mode.js"></script>
 <script type="module" src="js/08-rendering.js"></script>
-<script type="module" src="js/11-fraud-detection.js"></script>
 <script type="module" src="js/12-auth.js"></script>
 <script type="module" src="js/13-mypage-common.js"></script>
 <script type="module" src="js/13a-stats.js"></script>

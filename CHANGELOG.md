@@ -27,6 +27,48 @@
 
 ---
 
+## 195. v345 — GPS 記録の位置づけ変更 + 不正検知撤回 + バッジ中立化 (2026-05-25)
+
+### 背景・方針転換 (重要)
+従来「GPS 記録 (verified=true) = 認証済み = 世間に対して『この記録は正しい』と証明する手段」「手動記録 = 自己申告」という設計だった。これを以下のように変更する:
+
+- **新方針**: GPS 記録 = **手動記録の煩わしい手間を省く便利機能**。世間への「証明」は不要。
+- 結果として「不正検知 (速度チェック → suspicious 降格)」「🟡 要確認バッジ」「verified 限定シェアガード」「verified を守るための時刻ロック」など、証明を担保する周辺装置は全て不要になる。
+
+### 設計判断
+- verified 列は内部実装として残す (キャラ獲得が「実際に GPS で来た駅」を判定する目印、Phase 3-c 後追い認証、統計タブの GPS のみ完駅率カードで使用)。世間向けの「証明」表現だけ撤回。
+- 不正検知 (`js/11-fraud-detection.js`) は完全削除 (CLAUDE.md「backwards-compatibility shims を残さない」に従い、スタブ化ではなくクリーン削除)。
+- バッジは「📍 GPS」「📝 手動」の中立 2 値に統一。色は GPS=ブルー (情報的)、手動=シルバー (中立)。
+- 旅程編集の「GPS 記録は時刻を編集できません (verified を守るため)」を撤回。自分の記録なので自分で直せるべき。
+- キャラ獲得は引き続き verified 限定 (自分の達成感の担保として「実際に来た目印」は残す)。
+- 「📍 GPSで認証」ボタンは「📍 GPS に変換」へ文言変更 (機能は維持: 手動 trip を半径 500m 以内の GPS で verified に昇格させる)。
+- 垢BAN は保留 (発動条件から「不正検知連動」を撤回、スパム量・通報など別軸を将来検討)。
+- シェアの verified 限定ガードは TODO から撤回。
+
+### 変更ファイル
+- **削除**: [js/11-fraud-detection.js](js/11-fraud-detection.js) (177 行、`fraudAssessTrip` / `fraudIsDowngraded` / 速度マップ・定数すべて)
+- **削除参照**: [sw.js:31](sw.js#L31) / [scripts/syntax-check.js:43](scripts/syntax-check.js#L43) / [noritetsu-map.html:1599](noritetsu-map.html#L1599) (script tag)
+- **import 撤去**: [js/07-record-mode.js](js/07-record-mode.js) / [js/09-tabs-stats.js](js/09-tabs-stats.js) / [js/13-mypage-common.js](js/13-mypage-common.js) / [js/13a-stats.js](js/13a-stats.js) / [js/13b-trips.js](js/13b-trips.js) の `import { ... } from './11-fraud-detection.js'` 全削除
+- **fraud ブロック削除**: 07-record-mode.js の `fraudAssessTrip` 呼出 + `_elapsed_sec` ハンドリング + `elapsedSec` 変数 + 🟡 トースト 8 秒表示
+- **バッジ中立化**: 13-mypage-common (tripCardHtml) / 09-tabs-stats (直近の旅程行) / 07-record-mode (確認モーダルバッジ + 保存ボタン) / 13a-stats (完駅率カード + buildAuthBreakdown + 説明文 + ⑨ 認証グラデーション内訳)
+- **フィルタ option**: 13b-trips の「🛡 認証 (verified / manual / suspicious)」を「📋 種類 (GPS / 手動)」に
+- **時刻ロック撤回**: 13b-trips の `isVerifiedGps` 分岐削除 (openTripEditModal + saveTripEdit 両方)、noritetsu-map.html の `trip-edit-time-lock` 案内文撤去
+- **CSS**: noritetsu-map.html の `.mp-badge.suspicious` / `.mp-d-bar-seg.suspicious` 削除、`.mp-badge.verified` を green → blue に色変更
+- **TODO.md**: シェア 「verified 限定ガード」削除、垢BAN 発動条件改、布石 #6 改、AI 自動列車判定の不正検知統合注記改、用語行に v345 注記追加
+- **STATUS.md**: 領域別ステータスに v345 行追加、直近のフェーズ末尾に追記
+
+### 関連
+- v138 GPS 後追い認証 (CHANGELOG_PHASE3.8-early)
+- v344 後追いバッジ GPS 限定化 (CHANGELOG §194)
+- Notion §0.2 大方針 4「事業誘導も verified 認証中心に」「不正検知・認証グラデーションが骨格」 → セッション末手続きで Notion 更新が必要
+
+### 残り
+- Notion §0.2 大方針 4 の文言更新 (セッション末)
+- Notion §2.8 自動記録・乗車検知設計の「verified」周辺記述見直し
+- Notion §2.7 命名辞書に「verified の意味変更」エントリ追加 (意思決定ログ)
+
+---
+
 ## 194. v344 — 「📝 後追い」バッジ + 「📌 記録」行を GPS 記録 (verified) 限定に (2026-05-25)
 
 ### 背景

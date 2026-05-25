@@ -19,8 +19,8 @@
 //
 // v223 ES Modules stage 3: 11-fraud-detection と 03-characters を import 化。
 // v224: 12-auth.authBearerToken を import 化。
+// v345: 不正検知撤回に伴い 11-fraud-detection の import を撤去。
 // ══════════════════════════════════════════════════════════════
-import { fraudIsDowngraded } from './11-fraud-detection.js';
 import { distMeters, runCharacterGrantCheck } from './03-characters.js';
 import { authBearerToken } from './12-auth.js';
 import {
@@ -114,12 +114,11 @@ function buildTripFilterBar() {
       </select>
     </div>
     <div class="mp-filter-row">
-      <label class="mp-filter-lbl">🛡 認証</label>
+      <label class="mp-filter-lbl">📋 種類</label>
       <select class="mp-filter-sel" id="mp-fil-auth" onchange="updateMpFilter('auth',this.value)">
         <option value="all" ${NORIRECO.mypage.state.mpTripFilter.auth==='all'?'selected':''}>すべて</option>
-        <option value="verified" ${NORIRECO.mypage.state.mpTripFilter.auth==='verified'?'selected':''}>🟢 GPS 記録</option>
-        <option value="manual" ${NORIRECO.mypage.state.mpTripFilter.auth==='manual'?'selected':''}>⚪ 手動記録</option>
-        <option value="suspicious" ${NORIRECO.mypage.state.mpTripFilter.auth==='suspicious'?'selected':''}>🟡 要確認 (降格)</option>
+        <option value="verified" ${NORIRECO.mypage.state.mpTripFilter.auth==='verified'?'selected':''}>📍 GPS</option>
+        <option value="manual" ${NORIRECO.mypage.state.mpTripFilter.auth==='manual'?'selected':''}>📝 手動</option>
       </select>
     </div>
     <div class="mp-filter-row">
@@ -216,13 +215,9 @@ function applyTripFilters(trips) {
   const _stResult = _stq ? resolveStationQuery(_stq) : null;
   const _stScope = NORIRECO.mypage.state.mpTripFilter.stationScope || { from:true, end:true, transfer:true, pass:true };
   const filtered = trips.filter(t => {
-    // 認証
+    // 記録種別
     if (NORIRECO.mypage.state.mpTripFilter.auth === 'verified' && !t.verified) return false;
-    if (NORIRECO.mypage.state.mpTripFilter.auth === 'manual' && (t.verified || (t.source === 'gps_button' && !t.verified))) return false;
-    if (NORIRECO.mypage.state.mpTripFilter.auth === 'suspicious') {
-      const downgraded = fraudIsDowngraded(t);
-      if (!downgraded) return false;
-    }
+    if (NORIRECO.mypage.state.mpTripFilter.auth === 'manual' && t.verified) return false;
     // 期間
     const d = t.date || '';
     if (NORIRECO.mypage.state.mpTripFilter.period !== 'all' && d) {
@@ -274,8 +269,9 @@ NORIRECO.mypage.applyTripFilters = applyTripFilters;
 
 // v184/v226: 旅程カードからメモ・遅延・時刻・列車種別を後追い編集 ────
 // v184 はメモ・遅延のみ。v226 で 🕒 乗車時刻 (date/depart/arrive) ・🚆 列車種別 (category/name/car_model)
-// を編集可。📍 区間 は read-only 表示。GPS 記録 (verified=true) は時刻を編集不可にロックして
-// 認証性を守る。Supabase 列は全て既存なので localStorage と Supabase の双方に書き戻す。
+// を編集可。📍 区間 は read-only 表示。
+// v345: 旧来 GPS 記録は時刻ロックしていたが「世間への証明」位置づけ撤回に伴い解除。GPS 記録も時刻編集可。
+// Supabase 列は全て既存なので localStorage と Supabase の双方に書き戻す。
 function openTripEditModal(tripId) {
   const trip = (NORIRECO.mypage.state._mypageCache || []).find(t => t.id === tripId);
   if (!trip) { alert('旅程が見つかりません'); return; }
@@ -310,12 +306,11 @@ function openTripEditModal(tripId) {
     }
   }
 
-  // v226: 🕒 乗車時刻 — GPS 記録 (verified=true && source==='gps_button') はロック
-  const isVerifiedGps = !!trip.verified && trip.source === 'gps_button';
+  // v345: 「verified を守る」目的のロック撤回。GPS 記録も時刻編集可
   const timeLockEl = document.getElementById('trip-edit-time-lock');
   const timeInputsEl = document.getElementById('trip-edit-time-inputs');
-  if (timeLockEl) timeLockEl.style.display = isVerifiedGps ? 'block' : 'none';
-  if (timeInputsEl) timeInputsEl.style.display = isVerifiedGps ? 'none' : 'block';
+  if (timeLockEl) timeLockEl.style.display = 'none';
+  if (timeInputsEl) timeInputsEl.style.display = 'block';
   const dateInp = document.getElementById('trip-edit-date');
   const depInp = document.getElementById('trip-edit-depart');
   const arrInp = document.getElementById('trip-edit-arrive');
@@ -393,10 +388,9 @@ async function saveTripEdit() {
   const newDelay = (dTotal > 0) ? Math.min(5999, dTotal) : null;
   const newNotes = (notesRaw || '').trim() || null;
 
-  // v226: 🕒 乗車時刻 — GPS 記録は編集ロック、手動記録のみ反映
-  const isVerifiedGps = !!trip.verified && trip.source === 'gps_button';
+  // v345: 「verified を守る」目的のロック撤回。GPS 記録も時刻編集可
   const tripPatch = {};
-  if (!isVerifiedGps) {
+  {
     const dateRaw = document.getElementById('trip-edit-date')?.value || '';
     const depRaw = document.getElementById('trip-edit-depart')?.value || '';
     const arrRaw = document.getElementById('trip-edit-arrive')?.value || '';

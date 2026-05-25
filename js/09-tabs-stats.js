@@ -8,9 +8,9 @@
 //
 // v223 ES Modules stage 3: 11-fraud-detection を import 化。
 // v224: 12-auth から currentUserId / authBearerToken を import 化。
+// v345: 不正検知撤回に伴い 11-fraud-detection の import を撤去。
 // v225: 13-mypage-common.renderMypage を import 化。
 // ══════════════════════════════════════
-import { fraudAssessTrip, fraudIsDowngraded } from './11-fraud-detection.js';
 import { currentUserId, authBearerToken } from './12-auth.js';
 import { renderMypage } from './13-mypage-common.js';
 import { filterTripsByDate, lStats } from './05-supabase-data.js';
@@ -157,15 +157,10 @@ export async function renderStats(){
       [...trips].sort((a,b) => (b.recorded_at||b.date||'').localeCompare(a.recorded_at||a.date||'')).slice(0,10).forEach(t => {
         const row = document.createElement('div'); row.className='bc-r';
         row.style.flexWrap = 'wrap';
-        // 認証バッジ: 🟢 = GPS 認証 / 🟡 = 不正検知で降格 / なし = 手動
-        let verifiedBadge = '';
-        if (t.verified) {
-          verifiedBadge = '<span style="color:#48d597;font-size:10px;margin-left:4px" title="GPS 記録 (認証済)">🟢</span>';
-        } else if (fraudIsDowngraded(t)) {
-          let reasonTip = '不正検知で降格';
-          try { const f = fraudAssessTrip(t); if (f.reason) reasonTip = f.reason; } catch(e) {}
-          verifiedBadge = `<span style="color:#f2a900;font-size:10px;margin-left:4px" title="${reasonTip.replace(/"/g,'&quot;')}">🟡</span>`;
-        }
+        // 記録バッジ: 📍 = GPS / 📝 = 手動
+        const verifiedBadge = t.verified
+          ? '<span style="color:#5fb5ff;font-size:10px;margin-left:4px" title="GPS で記録">📍</span>'
+          : '<span style="color:var(--silver);font-size:10px;margin-left:4px" title="手で入力した記録">📝</span>';
         const timeStr = (t.depart_time && t.arrive_time)
           ? `${(t.depart_time||'').slice(0,5)}〜${(t.arrive_time||'').slice(0,5)}${t.total_minutes ? ` (${t.total_minutes}分)` : ''}`
           : '';
