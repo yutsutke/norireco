@@ -123,11 +123,11 @@ git log --oneline -20
 
 <!-- ✅ v247 で完了: 系統色のユーザーカスタマイズ機能 (Supabase 同期含む) — CHANGELOG §92, §93, §94, §95, §96 参照 -->
 
-- [ ] **普通電車の車両形式も記録できるように**
-  - 現在 `trains_master.json` は特急・新幹線中心、`car_model` 選択 UI も特急前提
-  - 普通列車も car_model（例: E233系・315系・東武50000系 等）を選べるように
-  - 記録モーダルで「普通列車」を選んだ後に車両形式リストが出る導線
-  - trains_master に普通列車エントリ追加 or car_model だけ別管理にするか要検討
+- [ ] **普通電車の車両形式も記録できるように** — Phase 1 着手済 (v347)
+  - ✅ Phase 1 (v347): Notion DB「営業系統×車両形式 DB」(256 件) を `service_line_vehicles.json` に書き出すフロー完成 (`tools/export_service_line_vehicles.js`)。176 records → 197 SLs / 292 links に紐付け (非対象除外 91% カバレッジ)
+  - **Phase 2** (未着手): unmatch クリーンアップ — no_line_match 17 件 (他社直通・短縮形 alias 不足) + Notion DB 側の表記揺れ修正 (「各線」を具体化)
+  - **Phase 3** (未着手): UI 統合 — C' 案。記録確認モーダルに「📋 列車・車両形式も記録する (マニア向け)」トグル、ON 時のみ区間 chip + 現役車両 dropdown 展開、状態を localStorage 永続化 (5大原則 ②同心円ターゲティング)
+  - **Phase 4** (未着手): ドキュメント整合 — Notion §2.1 に新データソース追記
 
 - [ ] **駅 UI の情報ハブ化（4領域パネル）**
   - 駅タップで以下を表示:

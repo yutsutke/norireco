@@ -1,0 +1,3495 @@
+{
+  "_meta": {
+    "generated_at": "2026-05-25T07:39:56.003Z",
+    "snapshot_records": 256,
+    "matched_records": 176,
+    "matched_sl_links": 292,
+    "unmatched_records": 65,
+    "freight_records": 15,
+    "matched_sl_ids": 197,
+    "note": "Generated from Notion DB \"営業系統×車両形式 DB\" snapshot via tools/export_service_line_vehicles.js. DB が真実の源、JSON は一方向で再生成 (手編集禁止)。"
+  },
+  "by_sl_id": {
+    "auto_室蘭線_北海道旅客鉄道": [
+      {
+        "vehicle": "キハ40形",
+        "company": "JR北海道",
+        "status": "引退",
+        "trend": "2026/3/14ダイヤ改正で定期運行終了・H100形で置換",
+        "period": "2026-03",
+        "memory": "国鉄型気動車",
+        "notes": "観光・イベント用に数両存続",
+        "source": "北海道新聞 https://www.hokkaido-np.co.jp/article/1251637/"
+      },
+      {
+        "vehicle": "737系",
+        "company": "JR北海道",
+        "status": "導入",
+        "trend": "2023デビュー・普通列車を置換",
+        "period": "2023",
+        "memory": "",
+        "notes": "交流2両ワンマン",
+        "source": ""
+      }
+    ],
+    "auto_日高線_北海道旅客鉄道": [
+      {
+        "vehicle": "キハ40形",
+        "company": "JR北海道",
+        "status": "引退",
+        "trend": "2026/3/14ダイヤ改正で定期運行終了・H100形で置換",
+        "period": "2026-03",
+        "memory": "国鉄型気動車",
+        "notes": "観光・イベント用に数両存続",
+        "source": "北海道新聞 https://www.hokkaido-np.co.jp/article/1251637/"
+      }
+    ],
+    "auto_釜石線_東日本旅客鉄道": [
+      {
+        "vehicle": "HB-E220系",
+        "company": "JR東日本",
+        "status": "導入",
+        "trend": "2026年1月営業本格化",
+        "period": "2026-01",
+        "memory": "新型ハイブリッド",
+        "notes": "ディーゼルハイブリッド一般気動車",
+        "source": ""
+      }
+    ],
+    "auto_八高線_東日本旅客鉄道": [
+      {
+        "vehicle": "HB-E220系",
+        "company": "JR東日本",
+        "status": "導入",
+        "trend": "2026年1月営業本格化",
+        "period": "2026-01",
+        "memory": "新型ハイブリッド",
+        "notes": "ディーゼルハイブリッド一般気動車",
+        "source": ""
+      }
+    ],
+    "auto_仙石線_東日本旅客鉄道": [
+      {
+        "vehicle": "E131系800番台",
+        "company": "JR東日本",
+        "status": "導入",
+        "trend": "2025/12/1配備開始・全列車統一",
+        "period": "2025-12-01",
+        "memory": "",
+        "notes": "全ワンマン化達成",
+        "source": ""
+      },
+      {
+        "vehicle": "205系3100番台",
+        "company": "JR東日本",
+        "status": "引退",
+        "trend": "E131系800番代に統一・2026/3/14改正で引退(E131-800は2025/12/1デビュー)",
+        "period": "2026-03",
+        "memory": "",
+        "notes": "首都圏からの転入通勤形",
+        "source": "鉄道プレスネット https://news.railway-pressnet.com/archives/84950"
+      }
+    ],
+    "auto_飯田線_東海旅客鉄道": [
+      {
+        "vehicle": "213系5000番台",
+        "company": "JR東海",
+        "status": "引退",
+        "trend": "2026/3/14定期運用終了・37年の歴史・313系で置換",
+        "period": "2026-03",
+        "memory": "2扉車",
+        "notes": "飯田線3扉統一・ワンマン全線化",
+        "source": "鉄道コム https://www.tetsudo.com/news/3948/"
+      }
+    ],
+    "auto_中央線_東海旅客鉄道": [
+      {
+        "vehicle": "213系5000番台",
+        "company": "JR東海",
+        "status": "引退",
+        "trend": "2026/3/14定期運用終了・37年の歴史・313系で置換",
+        "period": "2026-03",
+        "memory": "2扉車",
+        "notes": "飯田線3扉統一・ワンマン全線化",
+        "source": "鉄道コム https://www.tetsudo.com/news/3948/"
+      },
+      {
+        "vehicle": "315系",
+        "company": "JR東海",
+        "status": "導入",
+        "trend": "211/213/311系を置換中",
+        "period": "2022-",
+        "memory": "ロング8/4両",
+        "notes": "防犯カメラ標準",
+        "source": "設備投資計画"
+      },
+      {
+        "vehicle": "385系",
+        "company": "JR東海",
+        "status": "導入予定",
+        "trend": "383系置換へ(2023発表)",
+        "period": "2026?-",
+        "memory": "",
+        "notes": "次世代車上型振り子",
+        "source": "鉄道模型モール"
+      },
+      {
+        "vehicle": "313系",
+        "company": "JR東海",
+        "status": "現役主力",
+        "trend": "東海の標準近郊・多番台",
+        "period": "",
+        "memory": "東海の顔",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "211系(0/5000番台)",
+        "company": "JR東海",
+        "status": "引退",
+        "trend": "315系で置換進行",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "383系",
+        "company": "JR東海",
+        "status": "現役主力",
+        "trend": "385系で置換予定",
+        "period": "",
+        "memory": "しなの",
+        "notes": "振り子",
+        "source": ""
+      }
+    ],
+    "auto_伯備線_西日本旅客鉄道": [
+      {
+        "vehicle": "227系500番台",
+        "company": "JR西日本",
+        "status": "導入",
+        "trend": "本格投入・運用拡大",
+        "period": "2024-",
+        "memory": "Urara",
+        "notes": "岡山・山陰の次世代近郊形",
+        "source": ""
+      },
+      {
+        "vehicle": "115系(G編成等)",
+        "company": "JR西日本",
+        "status": "引退",
+        "trend": "2026/3/14改正でG編成引退・227系500番台Urara H編成(8本)で置換(他編成は当面残存)",
+        "period": "2026-03",
+        "memory": "食パン電車",
+        "notes": "",
+        "source": "鉄道ブログ岡山から https://railfromokayama2.com/2026/04/02/the-115-series-once-the-face-of-the-hakubi-line-faces-its-final-chapter-in-the-2026-schedule-revision/"
+      },
+      {
+        "vehicle": "273系",
+        "company": "JR西日本",
+        "status": "導入",
+        "trend": "2024/4/6デビュー、6/15全列車化",
+        "period": "2024-04-06",
+        "memory": "新やくも・揺れにくい",
+        "notes": "4両基本(最長8)",
+        "source": "JR西プレス https://prtimes.jp/main/html/rd/p/000000868.000095753.html"
+      },
+      {
+        "vehicle": "381系",
+        "company": "JR西日本",
+        "status": "引退",
+        "trend": "2024/6/15定期運用終了(夏臨あり)",
+        "period": "2024-06-15",
+        "memory": "国鉄やくも・揺れる振り子",
+        "notes": "最後の定期国鉄特急形",
+        "source": "鉄道コム https://www.tetsudo.com/event/47610/"
+      }
+    ],
+    "auto_山陰線_西日本旅客鉄道": [
+      {
+        "vehicle": "227系500番台",
+        "company": "JR西日本",
+        "status": "導入",
+        "trend": "本格投入・運用拡大",
+        "period": "2024-",
+        "memory": "Urara",
+        "notes": "岡山・山陰の次世代近郊形",
+        "source": ""
+      },
+      {
+        "vehicle": "115系(G編成等)",
+        "company": "JR西日本",
+        "status": "引退",
+        "trend": "2026/3/14改正でG編成引退・227系500番台Urara H編成(8本)で置換(他編成は当面残存)",
+        "period": "2026-03",
+        "memory": "食パン電車",
+        "notes": "",
+        "source": "鉄道ブログ岡山から https://railfromokayama2.com/2026/04/02/the-115-series-once-the-face-of-the-hakubi-line-faces-its-final-chapter-in-the-2026-schedule-revision/"
+      },
+      {
+        "vehicle": "WEST EXPRESS 銀河(117改)",
+        "company": "JR西日本",
+        "status": "現役主力",
+        "trend": "長距離観光",
+        "period": "",
+        "memory": "銀河",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "あめつち(キロ47改)",
+        "company": "JR西日本",
+        "status": "現役主力",
+        "trend": "観光気動車",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_赤穂線_西日本旅客鉄道": [
+      {
+        "vehicle": "227系500番台",
+        "company": "JR西日本",
+        "status": "導入",
+        "trend": "本格投入・運用拡大",
+        "period": "2024-",
+        "memory": "Urara",
+        "notes": "岡山・山陰の次世代近郊形",
+        "source": ""
+      }
+    ],
+    "auto_筑肥線_九州旅客鉄道": [
+      {
+        "vehicle": "103系1500番台",
+        "company": "JR九州",
+        "status": "引退",
+        "trend": "順次退役中",
+        "period": "",
+        "memory": "",
+        "notes": "6両地下鉄直通は退役済、3両編成が存続",
+        "source": ""
+      },
+      {
+        "vehicle": "70-000形(旧TWR)",
+        "company": "JR九州",
+        "status": "譲受",
+        "trend": "電装化等の改造工事中",
+        "period": "",
+        "memory": "元りんかい線",
+        "notes": "元東京臨海高速、103系を置換",
+        "source": ""
+      }
+    ],
+    "auto_日豊線_九州旅客鉄道": [
+      {
+        "vehicle": "E501系(元JR東日本)",
+        "company": "JR九州",
+        "status": "譲受",
+        "trend": "4両短縮・試運転中",
+        "period": "",
+        "memory": "元常磐線",
+        "notes": "415系を置換",
+        "source": ""
+      }
+    ],
+    "auto_久大線_九州旅客鉄道": [
+      {
+        "vehicle": "キハ185系(元JR四国)",
+        "company": "JR九州",
+        "status": "譲受",
+        "trend": "2026年1月譲受・増結用",
+        "period": "2026-01",
+        "memory": "",
+        "notes": "小倉工場でキハ186形(中間車化)へ",
+        "source": ""
+      },
+      {
+        "vehicle": "ゆふいんの森(キハ71/72系)",
+        "company": "JR九州",
+        "status": "現役主力",
+        "trend": "緑の観光特急",
+        "period": "",
+        "memory": "ゆふいんの森",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_しなの鉄道線_しなの鉄道": [
+      {
+        "vehicle": "115系(S1,S9等)",
+        "company": "しなの鉄道",
+        "status": "引退",
+        "trend": "2026年3月改正で引退",
+        "period": "2026-03",
+        "memory": "湘南色等",
+        "notes": "SR1系統一に伴う淘汰",
+        "source": ""
+      },
+      {
+        "vehicle": "SR1系",
+        "company": "しなの鉄道",
+        "status": "導入",
+        "trend": "115系を置換・統一進行",
+        "period": "",
+        "memory": "",
+        "notes": "ライナー/一般色",
+        "source": ""
+      },
+      {
+        "vehicle": "ろくもん(115系改)",
+        "company": "しなの鉄道",
+        "status": "現役主力",
+        "trend": "115改観光列車",
+        "period": "",
+        "memory": "ろくもん",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_北しなの線_しなの鉄道": [
+      {
+        "vehicle": "115系(S1,S9等)",
+        "company": "しなの鉄道",
+        "status": "引退",
+        "trend": "2026年3月改正で引退",
+        "period": "2026-03",
+        "memory": "湘南色等",
+        "notes": "SR1系統一に伴う淘汰",
+        "source": ""
+      },
+      {
+        "vehicle": "SR1系",
+        "company": "しなの鉄道",
+        "status": "導入",
+        "trend": "115系を置換・統一進行",
+        "period": "",
+        "memory": "",
+        "notes": "ライナー/一般色",
+        "source": ""
+      }
+    ],
+    "auto_宮津線_WILLER　TRAINS": [
+      {
+        "vehicle": "KTR8500形",
+        "company": "京都丹後鉄道",
+        "status": "譲受",
+        "trend": "JR東海キハ85系より譲受稼働",
+        "period": "",
+        "memory": "元ワイドビュー",
+        "notes": "KTR001引退の補完",
+        "source": ""
+      }
+    ],
+    "auto_臨海副都心線_東京臨海高速鉄道": [
+      {
+        "vehicle": "71-000形",
+        "company": "東京臨海高速",
+        "status": "導入",
+        "trend": "2025/10/1デビュー",
+        "period": "2025-10-01",
+        "memory": "新型",
+        "notes": "2027年上期までに80両",
+        "source": ""
+      }
+    ],
+    "auto_上高地線_アルピコ交通": [
+      {
+        "vehicle": "20100形",
+        "company": "アルピコ交通",
+        "status": "譲受",
+        "trend": "東武20000系より改造増備完了",
+        "period": "",
+        "memory": "",
+        "notes": "元東急5000系/京王3000系の名残を刷新",
+        "source": ""
+      }
+    ],
+    "auto_国分寺線_西武鉄道": [
+      {
+        "vehicle": "2000系/新2000系",
+        "company": "西武鉄道",
+        "status": "譲渡",
+        "trend": "近江鉄道等へ譲渡",
+        "period": "",
+        "memory": "4扉黄色電車",
+        "notes": "2417F等2両編成",
+        "source": ""
+      }
+    ],
+    "auto_新宿線_西武鉄道": [
+      {
+        "vehicle": "2000系/新2000系",
+        "company": "西武鉄道",
+        "status": "譲渡",
+        "trend": "近江鉄道等へ譲渡",
+        "period": "",
+        "memory": "4扉黄色電車",
+        "notes": "2417F等2両編成",
+        "source": ""
+      }
+    ],
+    "yamagata_shinkansen": [
+      {
+        "vehicle": "E8系",
+        "company": "JR東日本",
+        "status": "導入",
+        "trend": "2024/3/16デビュー・2026年春に全つばさ統一",
+        "period": "2024-2026",
+        "memory": "新つばさ・紫帯",
+        "notes": "最高300km/h",
+        "source": "JR東プレス https://www.jreast.co.jp/sendai/yamagata_e8_debut/"
+      },
+      {
+        "vehicle": "E3系2000番台",
+        "company": "JR東日本",
+        "status": "引退",
+        "trend": "E8系へ統一・2025/12/24定期運用終了",
+        "period": "2025-12",
+        "memory": "旧つばさ・銀緑",
+        "notes": "一部は荷物専用「はこビュン」化",
+        "source": "Wikipedia https://ja.wikipedia.org/wiki/新幹線E3系電車"
+      },
+      {
+        "vehicle": "E723系5000番台",
+        "company": "JR東日本",
+        "status": "導入",
+        "trend": "新型導入(発表)",
+        "period": "2026前後",
+        "memory": "",
+        "notes": "719/E721世代の置換",
+        "source": "鉄道コム"
+      }
+    ],
+    "auto_奥羽線_東日本旅客鉄道": [
+      {
+        "vehicle": "E723系5000番台",
+        "company": "JR東日本",
+        "status": "導入",
+        "trend": "新型導入(発表)",
+        "period": "2026前後",
+        "memory": "",
+        "notes": "719/E721世代の置換",
+        "source": "鉄道コム"
+      }
+    ],
+    "auto_関西線_東海旅客鉄道": [
+      {
+        "vehicle": "315系",
+        "company": "JR東海",
+        "status": "導入",
+        "trend": "211/213/311系を置換中",
+        "period": "2022-",
+        "memory": "ロング8/4両",
+        "notes": "防犯カメラ標準",
+        "source": "設備投資計画"
+      }
+    ],
+    "auto_東海道線_東海旅客鉄道": [
+      {
+        "vehicle": "315系",
+        "company": "JR東海",
+        "status": "導入",
+        "trend": "211/213/311系を置換中",
+        "period": "2022-",
+        "memory": "ロング8/4両",
+        "notes": "防犯カメラ標準",
+        "source": "設備投資計画"
+      },
+      {
+        "vehicle": "313系",
+        "company": "JR東海",
+        "status": "現役主力",
+        "trend": "東海の標準近郊・多番台",
+        "period": "",
+        "memory": "東海の顔",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "311系",
+        "company": "JR東海",
+        "status": "引退",
+        "trend": "2022/3引退(315/313で置換)",
+        "period": "2022-03",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "211系(0/5000番台)",
+        "company": "JR東海",
+        "status": "引退",
+        "trend": "315系で置換進行",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_徳島線_四国旅客鉄道": [
+      {
+        "vehicle": "3600系",
+        "company": "JR四国",
+        "status": "導入予定",
+        "trend": "2026年6月運行開始予定",
+        "period": "2026-06",
+        "memory": "四国初ハイブリッド",
+        "notes": "2030年度まで70両",
+        "source": "日経"
+      }
+    ],
+    "auto_高徳線_四国旅客鉄道": [
+      {
+        "vehicle": "3600系",
+        "company": "JR四国",
+        "status": "導入予定",
+        "trend": "2026年6月運行開始予定",
+        "period": "2026-06",
+        "memory": "四国初ハイブリッド",
+        "notes": "2030年度まで70両",
+        "source": "日経"
+      }
+    ],
+    "yosan_uchiko_route": [
+      {
+        "vehicle": "3600系",
+        "company": "JR四国",
+        "status": "導入予定",
+        "trend": "2026年6月運行開始予定",
+        "period": "2026-06",
+        "memory": "四国初ハイブリッド",
+        "notes": "2030年度まで70両",
+        "source": "日経"
+      },
+      {
+        "vehicle": "8600系",
+        "company": "JR四国",
+        "status": "現役主力",
+        "trend": "空気ばね車体傾斜",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "8000系",
+        "company": "JR四国",
+        "status": "現役主力",
+        "trend": "振り子特急",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "伊予灘ものがたり(キロ185改)",
+        "company": "JR四国",
+        "status": "現役主力",
+        "trend": "食・景観の観光列車",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_予讃線_四国旅客鉄道": [
+      {
+        "vehicle": "3600系",
+        "company": "JR四国",
+        "status": "導入予定",
+        "trend": "2026年6月運行開始予定",
+        "period": "2026-06",
+        "memory": "四国初ハイブリッド",
+        "notes": "2030年度まで70両",
+        "source": "日経"
+      },
+      {
+        "vehicle": "8600系",
+        "company": "JR四国",
+        "status": "現役主力",
+        "trend": "空気ばね車体傾斜",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "8000系",
+        "company": "JR四国",
+        "status": "現役主力",
+        "trend": "振り子特急",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "伊予灘ものがたり(キロ185改)",
+        "company": "JR四国",
+        "status": "現役主力",
+        "trend": "食・景観の観光列車",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_多摩川線_西武鉄道": [
+      {
+        "vehicle": "8000系(元小田急8000形)",
+        "company": "西武鉄道",
+        "status": "導入",
+        "trend": "2025/5/31運行開始(サステナ)",
+        "period": "2025-05-31",
+        "memory": "元小田急",
+        "notes": "サステナ車両第1弾",
+        "source": "西武/Wikipedia"
+      },
+      {
+        "vehicle": "7000系(元東急9000系)",
+        "company": "西武鉄道",
+        "status": "導入予定",
+        "trend": "2026年度運行開始予定(サステナ)",
+        "period": "2026年度",
+        "memory": "元東急",
+        "notes": "9020系由来車と計約60両",
+        "source": "鉄道コム https://www.tetsudo.com/report/491/"
+      }
+    ],
+    "auto_多摩湖線_西武鉄道": [
+      {
+        "vehicle": "8000系(元小田急8000形)",
+        "company": "西武鉄道",
+        "status": "導入",
+        "trend": "2025/5/31運行開始(サステナ)",
+        "period": "2025-05-31",
+        "memory": "元小田急",
+        "notes": "サステナ車両第1弾",
+        "source": "西武/Wikipedia"
+      },
+      {
+        "vehicle": "7000系(元東急9000系)",
+        "company": "西武鉄道",
+        "status": "導入予定",
+        "trend": "2026年度運行開始予定(サステナ)",
+        "period": "2026年度",
+        "memory": "元東急",
+        "notes": "9020系由来車と計約60両",
+        "source": "鉄道コム https://www.tetsudo.com/report/491/"
+      }
+    ],
+    "auto_西武秩父線_西武鉄道": [
+      {
+        "vehicle": "7000系(元東急9000系)",
+        "company": "西武鉄道",
+        "status": "導入予定",
+        "trend": "2026年度運行開始予定(サステナ)",
+        "period": "2026年度",
+        "memory": "元東急",
+        "notes": "9020系由来車と計約60両",
+        "source": "鉄道コム https://www.tetsudo.com/report/491/"
+      },
+      {
+        "vehicle": "52席の至福(4000系改)",
+        "company": "西武鉄道",
+        "status": "現役主力",
+        "trend": "レストラン列車",
+        "period": "",
+        "memory": "52席の至福",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_狭山線_西武鉄道": [
+      {
+        "vehicle": "7000系(元東急9000系)",
+        "company": "西武鉄道",
+        "status": "導入予定",
+        "trend": "2026年度運行開始予定(サステナ)",
+        "period": "2026年度",
+        "memory": "元東急",
+        "notes": "9020系由来車と計約60両",
+        "source": "鉄道コム https://www.tetsudo.com/report/491/"
+      }
+    ],
+    "auto_東上本線_東武鉄道": [
+      {
+        "vehicle": "90000系",
+        "company": "東武鉄道",
+        "status": "導入予定",
+        "trend": "2025年度製作、2026以降導入",
+        "period": "2026-",
+        "memory": "",
+        "notes": "東上線新型",
+        "source": "設備投資計画"
+      },
+      {
+        "vehicle": "50000系列(50050/50070/50090等)",
+        "company": "東武鉄道",
+        "status": "現役主力",
+        "trend": "50090=TJライナー、50050=半蔵門直通",
+        "period": "",
+        "memory": "TJライナー",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_野田線_東武鉄道": [
+      {
+        "vehicle": "80000系(80050型含む)",
+        "company": "東武鉄道",
+        "status": "導入",
+        "trend": "増備中(5両化)",
+        "period": "2024-",
+        "memory": "",
+        "notes": "野田線5両化対応",
+        "source": "設備投資計画"
+      },
+      {
+        "vehicle": "60000系",
+        "company": "東武鉄道",
+        "status": "現役主力",
+        "trend": "80000系と並行・5両化進行",
+        "period": "",
+        "memory": "野田線",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_京王線_京王電鉄": [
+      {
+        "vehicle": "2000系",
+        "company": "京王電鉄",
+        "status": "導入",
+        "trend": "2025年度デビュー",
+        "period": "2025年度",
+        "memory": "京王新型",
+        "notes": "8000/9000系更新と並行",
+        "source": "てつとお"
+      },
+      {
+        "vehicle": "5000系(2代)",
+        "company": "京王電鉄",
+        "status": "現役主力",
+        "trend": "座席指定「京王ライナー」",
+        "period": "",
+        "memory": "京王ライナー",
+        "notes": "デュアルシート",
+        "source": ""
+      },
+      {
+        "vehicle": "9000系",
+        "company": "京王電鉄",
+        "status": "現役主力",
+        "trend": "リニューアル進行",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "8000系",
+        "company": "京王電鉄",
+        "status": "現役主力",
+        "trend": "機器更新進行",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "7000系",
+        "company": "京王電鉄",
+        "status": "現役主力",
+        "trend": "2000系導入で置換開始",
+        "period": "",
+        "memory": "",
+        "notes": "廃車進行",
+        "source": ""
+      }
+    ],
+    "auto_大井町線_東急電鉄": [
+      {
+        "vehicle": "6020系",
+        "company": "東急電鉄",
+        "status": "導入",
+        "trend": "9000/9020系置換用、導入中",
+        "period": "2025-",
+        "memory": "",
+        "notes": "6151F落成済",
+        "source": "てつとお"
+      },
+      {
+        "vehicle": "9000系",
+        "company": "東急電鉄",
+        "status": "譲渡",
+        "trend": "6020系で置換進行・西武へサステナ譲渡",
+        "period": "2025-",
+        "memory": "大井町の古株",
+        "notes": "西武7000系へ",
+        "source": ""
+      }
+    ],
+    "auto_江ノ島電鉄線_江ノ島電鉄": [
+      {
+        "vehicle": "700形",
+        "company": "江ノ島電鉄",
+        "status": "導入予定",
+        "trend": "2026年度運行開始予定",
+        "period": "2026年度",
+        "memory": "江ノ電新型",
+        "notes": "小田急グループ",
+        "source": "設備投資計画"
+      }
+    ],
+    "auto_三岐線_三岐鉄道": [
+      {
+        "vehicle": "211系5600番台(元JR東海)",
+        "company": "三岐鉄道",
+        "status": "譲受",
+        "trend": "元西武車21両を置換",
+        "period": "2024-",
+        "memory": "元静岡地区",
+        "notes": "315系投入で捻出の3扉車",
+        "source": "マイナビ"
+      }
+    ],
+    "auto_本線_近江鉄道": [
+      {
+        "vehicle": "西武2000系/新2000系(元西武)",
+        "company": "近江鉄道",
+        "status": "譲受",
+        "trend": "西武から譲受(4扉車)",
+        "period": "",
+        "memory": "元西武黄色電車",
+        "notes": "西武グループ・再建支援",
+        "source": "note"
+      }
+    ],
+    "auto_多賀線_近江鉄道": [
+      {
+        "vehicle": "西武2000系/新2000系(元西武)",
+        "company": "近江鉄道",
+        "status": "譲受",
+        "trend": "西武から譲受(4扉車)",
+        "period": "",
+        "memory": "元西武黄色電車",
+        "notes": "西武グループ・再建支援",
+        "source": "note"
+      }
+    ],
+    "auto_松戸線_京成電鉄": [
+      {
+        "vehicle": "旧新京成車(N800形等)",
+        "company": "京成電鉄",
+        "status": "組織再編",
+        "trend": "2025/4/1新京成を吸収合併",
+        "period": "2025-04-01",
+        "memory": "旧新京成",
+        "notes": "路線名「松戸線」へ",
+        "source": "Wikipedia"
+      }
+    ],
+    "auto_泉北線_南海電気鉄道": [
+      {
+        "vehicle": "泉北高速車(3000/7000/9300形等)",
+        "company": "南海電気鉄道",
+        "status": "組織再編",
+        "trend": "2025/4/1泉北高速を吸収合併",
+        "period": "2025-04-01",
+        "memory": "旧泉北",
+        "notes": "2026年度に鉄道事業分社化(NANKAI)",
+        "source": "Wikipedia"
+      }
+    ],
+    "auto_11号線半蔵門線_東京地下鉄": [
+      {
+        "vehicle": "18000系",
+        "company": "東京メトロ",
+        "status": "導入",
+        "trend": "2025年度導入完了・8000系置換",
+        "period": "2025年度",
+        "memory": "半蔵門新型",
+        "notes": "東武・東急・相鉄直通",
+        "source": "鉄道コム"
+      },
+      {
+        "vehicle": "8000系",
+        "company": "東京メトロ",
+        "status": "引退",
+        "trend": "18000系で置換、ほぼ退役(一部延命)",
+        "period": "2026年度",
+        "memory": "丸顔の半蔵門",
+        "notes": "8109F等が残存",
+        "source": "てつとお"
+      }
+    ],
+    "auto_8号線有楽町線_東京地下鉄": [
+      {
+        "vehicle": "17000系",
+        "company": "東京メトロ",
+        "status": "導入",
+        "trend": "7000系を置換(2022導入完了)",
+        "period": "2022",
+        "memory": "有楽町・副都心新型",
+        "notes": "西武・東武・東急・みなとみらい直通",
+        "source": "4gousya"
+      }
+    ],
+    "auto_13号線副都心線_東京地下鉄": [
+      {
+        "vehicle": "17000系",
+        "company": "東京メトロ",
+        "status": "導入",
+        "trend": "7000系を置換(2022導入完了)",
+        "period": "2022",
+        "memory": "有楽町・副都心新型",
+        "notes": "西武・東武・東急・みなとみらい直通",
+        "source": "4gousya"
+      }
+    ],
+    "auto_4号線丸ノ内線_東京地下鉄": [
+      {
+        "vehicle": "2000系",
+        "company": "東京メトロ",
+        "status": "導入",
+        "trend": "02系を置換",
+        "period": "2023年度頃",
+        "memory": "丸ノ内の赤",
+        "notes": "グローイング・スカーレット",
+        "source": "中期計画"
+      }
+    ],
+    "auto_9号線千代田線_東京地下鉄": [
+      {
+        "vehicle": "16000系",
+        "company": "東京メトロ",
+        "status": "現役主力",
+        "trend": "6000系置換済・ワンマン化",
+        "period": "",
+        "memory": "千代田線",
+        "notes": "常磐緩行・小田急直通",
+        "source": "4gousya"
+      }
+    ],
+    "auto_2号線日比谷線_東京地下鉄": [
+      {
+        "vehicle": "13000系",
+        "company": "東京メトロ",
+        "status": "現役主力",
+        "trend": "03系置換済",
+        "period": "",
+        "memory": "日比谷線",
+        "notes": "東武スカイツリーライン直通・7両",
+        "source": ""
+      }
+    ],
+    "auto_3号線銀座線_東京地下鉄": [
+      {
+        "vehicle": "1000系",
+        "company": "東京メトロ",
+        "status": "現役主力",
+        "trend": "01系置換済・レトロ調",
+        "period": "",
+        "memory": "銀座レトロ・黄色",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_5号線東西線_東京地下鉄": [
+      {
+        "vehicle": "15000系",
+        "company": "東京メトロ",
+        "status": "現役主力",
+        "trend": "ワイドドア車・05系と共通",
+        "period": "",
+        "memory": "東西ワイドドア",
+        "notes": "JR・東葉・中央直通",
+        "source": ""
+      }
+    ],
+    "auto_7号線南北線_東京地下鉄": [
+      {
+        "vehicle": "9000系",
+        "company": "東京メトロ",
+        "status": "現役主力",
+        "trend": "8両化増結進行(2025-27)",
+        "period": "2025-",
+        "memory": "南北・目黒方面",
+        "notes": "埼玉高速・東急目黒・相鉄直通",
+        "source": "設備投資計画"
+      }
+    ],
+    "auto_小田原線_小田急電鉄": [
+      {
+        "vehicle": "5000形",
+        "company": "小田急電鉄",
+        "status": "導入",
+        "trend": "増備中(ペース減)",
+        "period": "2020-",
+        "memory": "新型通勤・広い",
+        "notes": "2025年度5065F",
+        "source": "設備投資計画"
+      },
+      {
+        "vehicle": "4000形",
+        "company": "小田急電鉄",
+        "status": "現役主力",
+        "trend": "常磐緩行直通",
+        "period": "",
+        "memory": "",
+        "notes": "JR E233ベース",
+        "source": ""
+      }
+    ],
+    "auto_江ノ島線_小田急電鉄": [
+      {
+        "vehicle": "5000形",
+        "company": "小田急電鉄",
+        "status": "導入",
+        "trend": "増備中(ペース減)",
+        "period": "2020-",
+        "memory": "新型通勤・広い",
+        "notes": "2025年度5065F",
+        "source": "設備投資計画"
+      }
+    ],
+    "auto_多摩線_小田急電鉄": [
+      {
+        "vehicle": "5000形",
+        "company": "小田急電鉄",
+        "status": "導入",
+        "trend": "増備中(ペース減)",
+        "period": "2020-",
+        "memory": "新型通勤・広い",
+        "notes": "2025年度5065F",
+        "source": "設備投資計画"
+      }
+    ],
+    "auto_本線_京浜急行電鉄": [
+      {
+        "vehicle": "新1000形",
+        "company": "京浜急行電鉄",
+        "status": "導入",
+        "trend": "増備継続",
+        "period": "2025ロット等",
+        "memory": "赤い京急",
+        "notes": "都営浅草・京成・北総直通",
+        "source": "FreedomTrain"
+      },
+      {
+        "vehicle": "2100形",
+        "company": "京浜急行電鉄",
+        "status": "現役主力",
+        "trend": "2扉クロスシート",
+        "period": "",
+        "memory": "ウィング号",
+        "notes": "自社線中心",
+        "source": ""
+      }
+    ],
+    "auto_空港線_京浜急行電鉄": [
+      {
+        "vehicle": "新1000形",
+        "company": "京浜急行電鉄",
+        "status": "導入",
+        "trend": "増備継続",
+        "period": "2025ロット等",
+        "memory": "赤い京急",
+        "notes": "都営浅草・京成・北総直通",
+        "source": "FreedomTrain"
+      }
+    ],
+    "auto_久里浜線_京浜急行電鉄": [
+      {
+        "vehicle": "新1000形",
+        "company": "京浜急行電鉄",
+        "status": "導入",
+        "trend": "増備継続",
+        "period": "2025ロット等",
+        "memory": "赤い京急",
+        "notes": "都営浅草・京成・北総直通",
+        "source": "FreedomTrain"
+      }
+    ],
+    "auto_本線_京成電鉄": [
+      {
+        "vehicle": "3200形",
+        "company": "京成電鉄",
+        "status": "導入",
+        "trend": "2025年度〜、3500/3600/3400/8800を更新・〜2027年度に88両",
+        "period": "2025年度",
+        "memory": "京成新型・両数可変",
+        "notes": "京急/都営/北総直通可",
+        "source": "鉄道プレスネット"
+      }
+    ],
+    "auto_成田空港線_京成電鉄": [
+      {
+        "vehicle": "3100形",
+        "company": "京成電鉄",
+        "status": "現役主力",
+        "trend": "オレンジ帯",
+        "period": "",
+        "memory": "アクセス特急",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_相鉄本線_相模鉄道": [
+      {
+        "vehicle": "20000系",
+        "company": "相模鉄道",
+        "status": "現役主力",
+        "trend": "東横・副都心・東武東上・西武直通",
+        "period": "",
+        "memory": "YNB紺(10両)",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "12000系",
+        "company": "相模鉄道",
+        "status": "現役主力",
+        "trend": "JR直通用",
+        "period": "",
+        "memory": "大きな前面",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "11000系",
+        "company": "相模鉄道",
+        "status": "現役主力",
+        "trend": "YNB化進行",
+        "period": "",
+        "memory": "JR E233ベース",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_相鉄いずみ野線_相模鉄道": [
+      {
+        "vehicle": "11000系",
+        "company": "相模鉄道",
+        "status": "現役主力",
+        "trend": "YNB化進行",
+        "period": "",
+        "memory": "JR E233ベース",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_東横線_東急電鉄": [
+      {
+        "vehicle": "5000系列(5000/5050/5080系)",
+        "company": "東急電鉄",
+        "status": "現役主力",
+        "trend": "各線の標準車・リニューアル進行",
+        "period": "",
+        "memory": "東急ステンレス標準",
+        "notes": "5050=東横/5080=目黒/5000=田都",
+        "source": ""
+      }
+    ],
+    "auto_田園都市線_東急電鉄": [
+      {
+        "vehicle": "5000系列(5000/5050/5080系)",
+        "company": "東急電鉄",
+        "status": "現役主力",
+        "trend": "各線の標準車・リニューアル進行",
+        "period": "",
+        "memory": "東急ステンレス標準",
+        "notes": "5050=東横/5080=目黒/5000=田都",
+        "source": ""
+      },
+      {
+        "vehicle": "2020系",
+        "company": "東急電鉄",
+        "status": "現役主力",
+        "trend": "8500系を置換完了",
+        "period": "",
+        "memory": "田都の新型",
+        "notes": "半蔵門・東武直通",
+        "source": ""
+      },
+      {
+        "vehicle": "8500系",
+        "company": "東急電鉄",
+        "status": "引退",
+        "trend": "2023年1月引退(2020系で置換)",
+        "period": "2023-01",
+        "memory": "赤帯の田都名物",
+        "notes": "長らく半蔵門直通の主",
+        "source": ""
+      }
+    ],
+    "auto_目黒線_東急電鉄": [
+      {
+        "vehicle": "5000系列(5000/5050/5080系)",
+        "company": "東急電鉄",
+        "status": "現役主力",
+        "trend": "各線の標準車・リニューアル進行",
+        "period": "",
+        "memory": "東急ステンレス標準",
+        "notes": "5050=東横/5080=目黒/5000=田都",
+        "source": ""
+      },
+      {
+        "vehicle": "3020系",
+        "company": "東急電鉄",
+        "status": "現役主力",
+        "trend": "目黒線8両化・相鉄直通対応",
+        "period": "",
+        "memory": "目黒線新型",
+        "notes": "相鉄/都営/南北/埼玉高速直通",
+        "source": ""
+      }
+    ],
+    "auto_池上線_東急電鉄": [
+      {
+        "vehicle": "1000系",
+        "company": "東急電鉄",
+        "status": "現役主力",
+        "trend": "3両ワンマン",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_東急多摩川線_東急電鉄": [
+      {
+        "vehicle": "1000系",
+        "company": "東急電鉄",
+        "status": "現役主力",
+        "trend": "3両ワンマン",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_井の頭線_京王電鉄": [
+      {
+        "vehicle": "1000系(2代)",
+        "company": "京王電鉄",
+        "status": "現役主力",
+        "trend": "7色カラフル",
+        "period": "",
+        "memory": "井の頭レインボー",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_鬼怒川線_東武鉄道": [
+      {
+        "vehicle": "N100系 スペーシアX",
+        "company": "東武鉄道",
+        "status": "導入",
+        "trend": "2023年デビュー・100系を置換進行",
+        "period": "2023",
+        "memory": "スペーシアX",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "SL大樹(C11+客車)",
+        "company": "東武鉄道",
+        "status": "現役主力",
+        "trend": "SL列車",
+        "period": "",
+        "memory": "大樹",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_伊勢崎線_東武鉄道": [
+      {
+        "vehicle": "50000系列(50050/50070/50090等)",
+        "company": "東武鉄道",
+        "status": "現役主力",
+        "trend": "50090=TJライナー、50050=半蔵門直通",
+        "period": "",
+        "memory": "TJライナー",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "70000系/70090型",
+        "company": "東武鉄道",
+        "status": "現役主力",
+        "trend": "70090=THライナー",
+        "period": "",
+        "memory": "THライナー",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "8000系",
+        "company": "東武鉄道",
+        "status": "現役主力",
+        "trend": "大量増備の私鉄名車・減少中",
+        "period": "",
+        "memory": "私鉄の8000系",
+        "notes": "8111F動態保存",
+        "source": ""
+      }
+    ],
+    "auto_名古屋本線_名古屋鉄道": [
+      {
+        "vehicle": "9500系/9100系",
+        "company": "名古屋鉄道",
+        "status": "導入",
+        "trend": "増備中(2025年度30両)・旧型を置換",
+        "period": "2019-",
+        "memory": "名鉄新型スカーレット",
+        "notes": "9500=4両/9100=2両",
+        "source": "マイナビ/名鉄"
+      },
+      {
+        "vehicle": "2200系",
+        "company": "名古屋鉄道",
+        "status": "現役主力",
+        "trend": "一部特別車編成",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "1000系/1200系 パノラマSuper",
+        "company": "名古屋鉄道",
+        "status": "現役主力",
+        "trend": "展望・更新進行",
+        "period": "",
+        "memory": "パノラマSuper",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_豊田線_名古屋鉄道": [
+      {
+        "vehicle": "500系",
+        "company": "名古屋鉄道",
+        "status": "導入予定",
+        "trend": "2026年度導入、100系を置換",
+        "period": "2026年度",
+        "memory": "鶴舞線直通新型",
+        "notes": "20m4扉・9500系同等性能",
+        "source": "名鉄プレス"
+      }
+    ],
+    "auto_犬山線_名古屋鉄道": [
+      {
+        "vehicle": "500系",
+        "company": "名古屋鉄道",
+        "status": "導入予定",
+        "trend": "2026年度導入、100系を置換",
+        "period": "2026年度",
+        "memory": "鶴舞線直通新型",
+        "notes": "20m4扉・9500系同等性能",
+        "source": "名鉄プレス"
+      }
+    ],
+    "auto_奈良線_近畿日本鉄道": [
+      {
+        "vehicle": "8A系",
+        "company": "近畿日本鉄道",
+        "status": "導入",
+        "trend": "2024年10月デビュー・一般車24年ぶり新型",
+        "period": "2024-10",
+        "memory": "八角形フェイス新型",
+        "notes": "シリーズ21以来",
+        "source": "Wikipedia"
+      }
+    ],
+    "auto_京都線_近畿日本鉄道": [
+      {
+        "vehicle": "8A系",
+        "company": "近畿日本鉄道",
+        "status": "導入",
+        "trend": "2024年10月デビュー・一般車24年ぶり新型",
+        "period": "2024-10",
+        "memory": "八角形フェイス新型",
+        "notes": "シリーズ21以来",
+        "source": "Wikipedia"
+      }
+    ],
+    "auto_橿原線_近畿日本鉄道": [
+      {
+        "vehicle": "8A系",
+        "company": "近畿日本鉄道",
+        "status": "導入",
+        "trend": "2024年10月デビュー・一般車24年ぶり新型",
+        "period": "2024-10",
+        "memory": "八角形フェイス新型",
+        "notes": "シリーズ21以来",
+        "source": "Wikipedia"
+      }
+    ],
+    "auto_天理線_近畿日本鉄道": [
+      {
+        "vehicle": "8A系",
+        "company": "近畿日本鉄道",
+        "status": "導入",
+        "trend": "2024年10月デビュー・一般車24年ぶり新型",
+        "period": "2024-10",
+        "memory": "八角形フェイス新型",
+        "notes": "シリーズ21以来",
+        "source": "Wikipedia"
+      }
+    ],
+    "auto_大阪線_近畿日本鉄道": [
+      {
+        "vehicle": "1A系/1B系",
+        "company": "近畿日本鉄道",
+        "status": "導入",
+        "trend": "2026年1月16日デビュー・青色",
+        "period": "2026-01",
+        "memory": "進化の青",
+        "notes": "8A系ベース",
+        "source": "近鉄プレス"
+      }
+    ],
+    "auto_名古屋線_近畿日本鉄道": [
+      {
+        "vehicle": "1A系/1B系",
+        "company": "近畿日本鉄道",
+        "status": "導入",
+        "trend": "2026年1月16日デビュー・青色",
+        "period": "2026-01",
+        "memory": "進化の青",
+        "notes": "8A系ベース",
+        "source": "近鉄プレス"
+      }
+    ],
+    "auto_山田線_近畿日本鉄道": [
+      {
+        "vehicle": "1A系/1B系",
+        "company": "近畿日本鉄道",
+        "status": "導入",
+        "trend": "2026年1月16日デビュー・青色",
+        "period": "2026-01",
+        "memory": "進化の青",
+        "notes": "8A系ベース",
+        "source": "近鉄プレス"
+      }
+    ],
+    "auto_鳥羽線_近畿日本鉄道": [
+      {
+        "vehicle": "1A系/1B系",
+        "company": "近畿日本鉄道",
+        "status": "導入",
+        "trend": "2026年1月16日デビュー・青色",
+        "period": "2026-01",
+        "memory": "進化の青",
+        "notes": "8A系ベース",
+        "source": "近鉄プレス"
+      }
+    ],
+    "auto_南大阪線_近畿日本鉄道": [
+      {
+        "vehicle": "6A系",
+        "company": "近畿日本鉄道",
+        "status": "導入予定",
+        "trend": "2026年度運行開始予定・赤白",
+        "period": "2026年度",
+        "memory": "南大阪の新型",
+        "notes": "8A系同様の赤白ツートン",
+        "source": "近鉄プレス"
+      },
+      {
+        "vehicle": "16200系 青の交響曲(6200改)",
+        "company": "近畿日本鉄道",
+        "status": "現役主力",
+        "trend": "観光特急",
+        "period": "",
+        "memory": "シンフォニー",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_長野線_近畿日本鉄道": [
+      {
+        "vehicle": "6A系",
+        "company": "近畿日本鉄道",
+        "status": "導入予定",
+        "trend": "2026年度運行開始予定・赤白",
+        "period": "2026年度",
+        "memory": "南大阪の新型",
+        "notes": "8A系同様の赤白ツートン",
+        "source": "近鉄プレス"
+      }
+    ],
+    "auto_御所線_近畿日本鉄道": [
+      {
+        "vehicle": "6A系",
+        "company": "近畿日本鉄道",
+        "status": "導入予定",
+        "trend": "2026年度運行開始予定・赤白",
+        "period": "2026年度",
+        "memory": "南大阪の新型",
+        "notes": "8A系同様の赤白ツートン",
+        "source": "近鉄プレス"
+      }
+    ],
+    "auto_吉野線_近畿日本鉄道": [
+      {
+        "vehicle": "6A系",
+        "company": "近畿日本鉄道",
+        "status": "導入予定",
+        "trend": "2026年度運行開始予定・赤白",
+        "period": "2026年度",
+        "memory": "南大阪の新型",
+        "notes": "8A系同様の赤白ツートン",
+        "source": "近鉄プレス"
+      },
+      {
+        "vehicle": "16200系 青の交響曲(6200改)",
+        "company": "近畿日本鉄道",
+        "status": "現役主力",
+        "trend": "観光特急",
+        "period": "",
+        "memory": "シンフォニー",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_京都線_阪急電鉄": [
+      {
+        "vehicle": "2300系(2代)",
+        "company": "阪急電鉄",
+        "status": "導入",
+        "trend": "2024年夏デビュー・座席指定PRiVACE",
+        "period": "2024",
+        "memory": "PRiVACE",
+        "notes": "9300系にも2300組込",
+        "source": "マイナビ"
+      },
+      {
+        "vehicle": "9300系",
+        "company": "阪急電鉄",
+        "status": "現役主力",
+        "trend": "京都線特急の主力(PRiVACE組込)",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "1000系/1300系",
+        "company": "阪急電鉄",
+        "status": "現役主力",
+        "trend": "標準通勤",
+        "period": "",
+        "memory": "阪急マルーン",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "3300系/5300系",
+        "company": "阪急電鉄",
+        "status": "引退",
+        "trend": "新型で置換進行",
+        "period": "",
+        "memory": "阪急の古参",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_神戸線_阪急電鉄": [
+      {
+        "vehicle": "2000系(2代)",
+        "company": "阪急電鉄",
+        "status": "導入",
+        "trend": "2024年導入・新型通勤",
+        "period": "2024",
+        "memory": "神宝線新型",
+        "notes": "",
+        "source": "阪急"
+      }
+    ],
+    "auto_宝塚線_阪急電鉄": [
+      {
+        "vehicle": "2000系(2代)",
+        "company": "阪急電鉄",
+        "status": "導入",
+        "trend": "2024年導入・新型通勤",
+        "period": "2024",
+        "memory": "神宝線新型",
+        "notes": "",
+        "source": "阪急"
+      },
+      {
+        "vehicle": "1000系/1300系",
+        "company": "阪急電鉄",
+        "status": "現役主力",
+        "trend": "標準通勤",
+        "period": "",
+        "memory": "阪急マルーン",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_本線_阪神電気鉄道": [
+      {
+        "vehicle": "5700系",
+        "company": "阪神電気鉄道",
+        "status": "導入",
+        "trend": "5001形を置換",
+        "period": "",
+        "memory": "新ジェットシルバー",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "1000系",
+        "company": "阪神電気鉄道",
+        "status": "現役主力",
+        "trend": "阪神なんば線経由近鉄直通",
+        "period": "",
+        "memory": "近鉄直通",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "8000系/9300系",
+        "company": "阪神電気鉄道",
+        "status": "現役主力",
+        "trend": "本線の急行・特急系",
+        "period": "",
+        "memory": "赤胴車",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "5001形",
+        "company": "阪神電気鉄道",
+        "status": "引退",
+        "trend": "5700系で置換",
+        "period": "",
+        "memory": "青胴ジェットカー",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_阪神なんば線_阪神電気鉄道": [
+      {
+        "vehicle": "1000系",
+        "company": "阪神電気鉄道",
+        "status": "現役主力",
+        "trend": "阪神なんば線経由近鉄直通",
+        "period": "",
+        "memory": "近鉄直通",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_京阪本線_京阪電気鉄道": [
+      {
+        "vehicle": "8000系",
+        "company": "京阪電気鉄道",
+        "status": "現役主力",
+        "trend": "2階建ダブルデッカー＋プレミアムカー",
+        "period": "",
+        "memory": "2階建特急",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "13000系",
+        "company": "京阪電気鉄道",
+        "status": "現役主力",
+        "trend": "標準通勤・増備進行",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_石山坂本線_京阪電気鉄道": [
+      {
+        "vehicle": "13000系",
+        "company": "京阪電気鉄道",
+        "status": "現役主力",
+        "trend": "標準通勤・増備進行",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_交野線_京阪電気鉄道": [
+      {
+        "vehicle": "13000系",
+        "company": "京阪電気鉄道",
+        "status": "現役主力",
+        "trend": "標準通勤・増備進行",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_宇治線_京阪電気鉄道": [
+      {
+        "vehicle": "13000系",
+        "company": "京阪電気鉄道",
+        "status": "現役主力",
+        "trend": "標準通勤・増備進行",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_高野線_南海電気鉄道": [
+      {
+        "vehicle": "30000系/31000系",
+        "company": "南海電気鉄道",
+        "status": "現役主力",
+        "trend": "高野山特急",
+        "period": "",
+        "memory": "こうや",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "2000系",
+        "company": "南海電気鉄道",
+        "status": "現役主力",
+        "trend": "山岳区間対応ズームカー",
+        "period": "",
+        "memory": "山岳ズームカー",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "8300系",
+        "company": "南海電気鉄道",
+        "status": "現役主力",
+        "trend": "通勤の主力・増備",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_高野線_南海電気鉄道_b1": [
+      {
+        "vehicle": "30000系/31000系",
+        "company": "南海電気鉄道",
+        "status": "現役主力",
+        "trend": "高野山特急",
+        "period": "",
+        "memory": "こうや",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "2000系",
+        "company": "南海電気鉄道",
+        "status": "現役主力",
+        "trend": "山岳区間対応ズームカー",
+        "period": "",
+        "memory": "山岳ズームカー",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "8300系",
+        "company": "南海電気鉄道",
+        "status": "現役主力",
+        "trend": "通勤の主力・増備",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_南海本線_南海電気鉄道": [
+      {
+        "vehicle": "8300系",
+        "company": "南海電気鉄道",
+        "status": "現役主力",
+        "trend": "通勤の主力・増備",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_天神大牟田線_西日本鉄道": [
+      {
+        "vehicle": "9000形",
+        "company": "西日本鉄道",
+        "status": "現役主力",
+        "trend": "通勤新型(2017-)",
+        "period": "2017-",
+        "memory": "西鉄新型",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "3000形",
+        "company": "西日本鉄道",
+        "status": "現役主力",
+        "trend": "転換クロス(特急等)",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "5000形",
+        "company": "西日本鉄道",
+        "status": "現役主力",
+        "trend": "長年の主力・置換進行",
+        "period": "",
+        "memory": "西鉄の顔",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_東北新幹線_東日本旅客鉄道": [
+      {
+        "vehicle": "E5系/H5系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "最高320km/h",
+        "period": "",
+        "memory": "はやぶさ",
+        "notes": "H5は北海道所属",
+        "source": ""
+      },
+      {
+        "vehicle": "E2系",
+        "company": "JR東日本",
+        "status": "引退",
+        "trend": "E7系等で置換・上越から撤退",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "akita_shinkansen": [
+      {
+        "vehicle": "E6系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "E5と併結で320km/h",
+        "period": "",
+        "memory": "赤いこまち",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "701系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "東北の交流ロングシート",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_北陸新幹線_東日本旅客鉄道": [
+      {
+        "vehicle": "E7系/W7系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "上越はE7に統一",
+        "period": "",
+        "memory": "",
+        "notes": "W7はJR西所属",
+        "source": ""
+      }
+    ],
+    "auto_上越新幹線_東日本旅客鉄道": [
+      {
+        "vehicle": "E7系/W7系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "上越はE7に統一",
+        "period": "",
+        "memory": "",
+        "notes": "W7はJR西所属",
+        "source": ""
+      },
+      {
+        "vehicle": "E2系",
+        "company": "JR東日本",
+        "status": "引退",
+        "trend": "E7系等で置換・上越から撤退",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "jr_chuo_sobu_local": [
+      {
+        "vehicle": "E353系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "E257を置換完了",
+        "period": "",
+        "memory": "あずさ",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "jr_chuo_main": [
+      {
+        "vehicle": "E353系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "E257を置換完了",
+        "period": "",
+        "memory": "あずさ",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "jr_chuo_main_tatsuno": [
+      {
+        "vehicle": "E353系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "E257を置換完了",
+        "period": "",
+        "memory": "あずさ",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "jr_joban_rapid": [
+      {
+        "vehicle": "E657系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "品川〜仙台",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "E531系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "交直流近郊・一部G車",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "jr_joban_local": [
+      {
+        "vehicle": "E657系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "品川〜仙台",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "E531系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "交直流近郊・一部G車",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "jr_joban_medium": [
+      {
+        "vehicle": "E657系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "品川〜仙台",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "E531系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "交直流近郊・一部G車",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "jr_yamanote_line": [
+      {
+        "vehicle": "E235系0番台",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "E231-500を置換完了",
+        "period": "",
+        "memory": "山手線新型",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "jr_yokosuka_line": [
+      {
+        "vehicle": "E235系1000番台",
+        "company": "JR東日本",
+        "status": "導入",
+        "trend": "2025年E217を置換・統一完了",
+        "period": "2025",
+        "memory": "青い帯の快速",
+        "notes": "グリーン車2両・15両",
+        "source": "Wikipedia"
+      },
+      {
+        "vehicle": "E217系",
+        "company": "JR東日本",
+        "status": "引退",
+        "trend": "2025/3/8定期運用終了、6月形式消滅",
+        "period": "2025-03",
+        "memory": "初代ステンレス近郊",
+        "notes": "E235-1000で置換",
+        "source": "Wikipedia"
+      }
+    ],
+    "jr_shonan_shinjuku_yokosuka_takasaki": [
+      {
+        "vehicle": "E235系1000番台",
+        "company": "JR東日本",
+        "status": "導入",
+        "trend": "2025年E217を置換・統一完了",
+        "period": "2025",
+        "memory": "青い帯の快速",
+        "notes": "グリーン車2両・15両",
+        "source": "Wikipedia"
+      },
+      {
+        "vehicle": "E217系",
+        "company": "JR東日本",
+        "status": "引退",
+        "trend": "2025/3/8定期運用終了、6月形式消滅",
+        "period": "2025-03",
+        "memory": "初代ステンレス近郊",
+        "notes": "E235-1000で置換",
+        "source": "Wikipedia"
+      }
+    ],
+    "jr_sobu_rapid": [
+      {
+        "vehicle": "E235系1000番台",
+        "company": "JR東日本",
+        "status": "導入",
+        "trend": "2025年E217を置換・統一完了",
+        "period": "2025",
+        "memory": "青い帯の快速",
+        "notes": "グリーン車2両・15両",
+        "source": "Wikipedia"
+      },
+      {
+        "vehicle": "E217系",
+        "company": "JR東日本",
+        "status": "引退",
+        "trend": "2025/3/8定期運用終了、6月形式消滅",
+        "period": "2025-03",
+        "memory": "初代ステンレス近郊",
+        "notes": "E235-1000で置換",
+        "source": "Wikipedia"
+      },
+      {
+        "vehicle": "209系",
+        "company": "JR東日本",
+        "status": "引退",
+        "trend": "房総で残存・置換進行",
+        "period": "",
+        "memory": "元京浜東北の顔",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "jr_chuo_rapid": [
+      {
+        "vehicle": "E233系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "中央快速にグリーン車2両組込(2024-25)",
+        "period": "",
+        "memory": "首都圏の主力",
+        "notes": "番台多数",
+        "source": ""
+      }
+    ],
+    "jr_keihin_tohoku_negishi": [
+      {
+        "vehicle": "E233系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "中央快速にグリーン車2両組込(2024-25)",
+        "period": "",
+        "memory": "首都圏の主力",
+        "notes": "番台多数",
+        "source": ""
+      }
+    ],
+    "auto_京葉線_東日本旅客鉄道": [
+      {
+        "vehicle": "E233系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "中央快速にグリーン車2両組込(2024-25)",
+        "period": "",
+        "memory": "首都圏の主力",
+        "notes": "番台多数",
+        "source": ""
+      }
+    ],
+    "auto_京葉線_東日本旅客鉄道_b1": [
+      {
+        "vehicle": "E233系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "中央快速にグリーン車2両組込(2024-25)",
+        "period": "",
+        "memory": "首都圏の主力",
+        "notes": "番台多数",
+        "source": ""
+      }
+    ],
+    "jr_tokaido_main": [
+      {
+        "vehicle": "E233系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "中央快速にグリーン車2両組込(2024-25)",
+        "period": "",
+        "memory": "首都圏の主力",
+        "notes": "番台多数",
+        "source": ""
+      },
+      {
+        "vehicle": "E231系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "首都圏広域の主力",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "jr_ueno_tokyo_line": [
+      {
+        "vehicle": "E233系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "中央快速にグリーン車2両組込(2024-25)",
+        "period": "",
+        "memory": "首都圏の主力",
+        "notes": "番台多数",
+        "source": ""
+      },
+      {
+        "vehicle": "E231系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "首都圏広域の主力",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "jr_shonan_shinjuku_line": [
+      {
+        "vehicle": "E233系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "中央快速にグリーン車2両組込(2024-25)",
+        "period": "",
+        "memory": "首都圏の主力",
+        "notes": "番台多数",
+        "source": ""
+      },
+      {
+        "vehicle": "E231系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "首都圏広域の主力",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "jr_ueno_tokyo_takasaki": [
+      {
+        "vehicle": "E233系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "中央快速にグリーン車2両組込(2024-25)",
+        "period": "",
+        "memory": "首都圏の主力",
+        "notes": "番台多数",
+        "source": ""
+      },
+      {
+        "vehicle": "E231系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "首都圏広域の主力",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "jr_takasaki_line": [
+      {
+        "vehicle": "E233系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "中央快速にグリーン車2両組込(2024-25)",
+        "period": "",
+        "memory": "首都圏の主力",
+        "notes": "番台多数",
+        "source": ""
+      },
+      {
+        "vehicle": "E231系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "首都圏広域の主力",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_武蔵野線_東日本旅客鉄道": [
+      {
+        "vehicle": "E231系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "首都圏広域の主力",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_武蔵野線_東日本旅客鉄道_b99": [
+      {
+        "vehicle": "E231系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "首都圏広域の主力",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_水戸線_東日本旅客鉄道": [
+      {
+        "vehicle": "E531系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "交直流近郊・一部G車",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_内房線_東日本旅客鉄道": [
+      {
+        "vehicle": "209系",
+        "company": "JR東日本",
+        "status": "引退",
+        "trend": "房総で残存・置換進行",
+        "period": "",
+        "memory": "元京浜東北の顔",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_外房線_東日本旅客鉄道": [
+      {
+        "vehicle": "209系",
+        "company": "JR東日本",
+        "status": "引退",
+        "trend": "房総で残存・置換進行",
+        "period": "",
+        "memory": "元京浜東北の顔",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "jr_sobu_main_choshi": [
+      {
+        "vehicle": "209系",
+        "company": "JR東日本",
+        "status": "引退",
+        "trend": "房総で残存・置換進行",
+        "period": "",
+        "memory": "元京浜東北の顔",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_成田線_東日本旅客鉄道": [
+      {
+        "vehicle": "209系",
+        "company": "JR東日本",
+        "status": "引退",
+        "trend": "房総で残存・置換進行",
+        "period": "",
+        "memory": "元京浜東北の顔",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_成田線_東日本旅客鉄道_b1": [
+      {
+        "vehicle": "209系",
+        "company": "JR東日本",
+        "status": "引退",
+        "trend": "房総で残存・置換進行",
+        "period": "",
+        "memory": "元京浜東北の顔",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_成田線_東日本旅客鉄道_b2": [
+      {
+        "vehicle": "209系",
+        "company": "JR東日本",
+        "status": "引退",
+        "trend": "房総で残存・置換進行",
+        "period": "",
+        "memory": "元京浜東北の顔",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_相模線_東日本旅客鉄道": [
+      {
+        "vehicle": "E131系(0/500/600番台)",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "各地ローカル新型(2・3両ワンマン)",
+        "period": "",
+        "memory": "",
+        "notes": "800番台(仙石線)は別項",
+        "source": ""
+      }
+    ],
+    "auto_鶴見線_東日本旅客鉄道": [
+      {
+        "vehicle": "E131系(0/500/600番台)",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "各地ローカル新型(2・3両ワンマン)",
+        "period": "",
+        "memory": "",
+        "notes": "800番台(仙石線)は別項",
+        "source": ""
+      }
+    ],
+    "auto_越後線_東日本旅客鉄道": [
+      {
+        "vehicle": "E129系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "新潟の主力近郊",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_田沢湖線_東日本旅客鉄道": [
+      {
+        "vehicle": "701系",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "東北の交流ロングシート",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_烏山線_東日本旅客鉄道": [
+      {
+        "vehicle": "ACCUM(EV-E301系/EV-E801系)",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "蓄電池駆動電車",
+        "period": "",
+        "memory": "充電して走る",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_男鹿線_東日本旅客鉄道": [
+      {
+        "vehicle": "ACCUM(EV-E301系/EV-E801系)",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "蓄電池駆動電車",
+        "period": "",
+        "memory": "充電して走る",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_東海道新幹線_東海旅客鉄道": [
+      {
+        "vehicle": "N700S系",
+        "company": "JR東海",
+        "status": "導入",
+        "trend": "2020デビュー・N700A置換進行",
+        "period": "2020-",
+        "memory": "最新のぞみ",
+        "notes": "N700Aと共通運用",
+        "source": ""
+      }
+    ],
+    "jr_biwako_line": [
+      {
+        "vehicle": "225系",
+        "company": "JR西日本",
+        "status": "現役主力",
+        "trend": "アーバン主力(223後継)",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "223系",
+        "company": "JR西日本",
+        "status": "現役主力",
+        "trend": "新快速の顔",
+        "period": "",
+        "memory": "新快速",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "jr_kyoto_line": [
+      {
+        "vehicle": "225系",
+        "company": "JR西日本",
+        "status": "現役主力",
+        "trend": "アーバン主力(223後継)",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "223系",
+        "company": "JR西日本",
+        "status": "現役主力",
+        "trend": "新快速の顔",
+        "period": "",
+        "memory": "新快速",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "jr_kobe_line": [
+      {
+        "vehicle": "225系",
+        "company": "JR西日本",
+        "status": "現役主力",
+        "trend": "アーバン主力(223後継)",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "223系",
+        "company": "JR西日本",
+        "status": "現役主力",
+        "trend": "新快速の顔",
+        "period": "",
+        "memory": "新快速",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "jr_sanyo_main": [
+      {
+        "vehicle": "225系",
+        "company": "JR西日本",
+        "status": "現役主力",
+        "trend": "アーバン主力(223後継)",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "223系",
+        "company": "JR西日本",
+        "status": "現役主力",
+        "trend": "新快速の顔",
+        "period": "",
+        "memory": "新快速",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "TWILIGHT EXPRESS 瑞風(87系)",
+        "company": "JR西日本",
+        "status": "現役主力",
+        "trend": "豪華クルーズ",
+        "period": "",
+        "memory": "瑞風",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "WEST EXPRESS 銀河(117改)",
+        "company": "JR西日本",
+        "status": "現役主力",
+        "trend": "長距離観光",
+        "period": "",
+        "memory": "銀河",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "jr_yamatoji_line": [
+      {
+        "vehicle": "225系",
+        "company": "JR西日本",
+        "status": "現役主力",
+        "trend": "アーバン主力(223後継)",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "osaka_loop_line": [
+      {
+        "vehicle": "323系",
+        "company": "JR西日本",
+        "status": "現役主力",
+        "trend": "201系を置換完了",
+        "period": "",
+        "memory": "環状線新型",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_小浜線_西日本旅客鉄道": [
+      {
+        "vehicle": "521系",
+        "company": "JR西日本",
+        "status": "現役主力",
+        "trend": "北陸新幹線敦賀延伸(2024)で三セク移管も",
+        "period": "2024",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_土讃線_四国旅客鉄道": [
+      {
+        "vehicle": "N2000系/2000系",
+        "company": "JR四国",
+        "status": "引退",
+        "trend": "2700系で置換進行",
+        "period": "",
+        "memory": "世界初の振り子気動車",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "四国まんなか千年ものがたり(キハ185改)",
+        "company": "JR四国",
+        "status": "現役主力",
+        "trend": "観光列車",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "志国土佐 時代の夜明けのものがたり(キハ185改)",
+        "company": "JR四国",
+        "status": "現役主力",
+        "trend": "観光列車",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_西九州新幹線_九州旅客鉄道": [
+      {
+        "vehicle": "N700S(8両)",
+        "company": "JR九州",
+        "status": "導入",
+        "trend": "2022/9/23開業",
+        "period": "2022-09",
+        "memory": "西九州かもめ",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_鹿児島線_九州旅客鉄道": [
+      {
+        "vehicle": "近郊形(811/813/817系)",
+        "company": "JR九州",
+        "status": "現役主力",
+        "trend": "811系はリニューアル進行",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_鹿児島線_九州旅客鉄道_b1": [
+      {
+        "vehicle": "近郊形(811/813/817系)",
+        "company": "JR九州",
+        "status": "現役主力",
+        "trend": "811系はリニューアル進行",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_筑豊線_九州旅客鉄道": [
+      {
+        "vehicle": "BEC819系 DENCHA",
+        "company": "JR九州",
+        "status": "現役主力",
+        "trend": "蓄電池電車",
+        "period": "",
+        "memory": "DENCHA",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_香椎線_九州旅客鉄道": [
+      {
+        "vehicle": "BEC819系 DENCHA",
+        "company": "JR九州",
+        "status": "現役主力",
+        "trend": "蓄電池電車",
+        "period": "",
+        "memory": "DENCHA",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_函館線_北海道旅客鉄道": [
+      {
+        "vehicle": "H100形(DECMO)",
+        "company": "JR北海道",
+        "status": "導入",
+        "trend": "キハ40置換完了(2024)・GV-E400ベース電気式",
+        "period": "2020-",
+        "memory": "DECMO",
+        "notes": "",
+        "source": "Wikipedia"
+      },
+      {
+        "vehicle": "733系/735系",
+        "company": "JR北海道",
+        "status": "現役主力",
+        "trend": "通勤近郊(733主力)",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_函館線_北海道旅客鉄道_b1": [
+      {
+        "vehicle": "H100形(DECMO)",
+        "company": "JR北海道",
+        "status": "導入",
+        "trend": "キハ40置換完了(2024)・GV-E400ベース電気式",
+        "period": "2020-",
+        "memory": "DECMO",
+        "notes": "",
+        "source": "Wikipedia"
+      },
+      {
+        "vehicle": "733系/735系",
+        "company": "JR北海道",
+        "status": "現役主力",
+        "trend": "通勤近郊(733主力)",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_宗谷線_北海道旅客鉄道": [
+      {
+        "vehicle": "H100形(DECMO)",
+        "company": "JR北海道",
+        "status": "導入",
+        "trend": "キハ40置換完了(2024)・GV-E400ベース電気式",
+        "period": "2020-",
+        "memory": "DECMO",
+        "notes": "",
+        "source": "Wikipedia"
+      }
+    ],
+    "auto_千歳線_北海道旅客鉄道": [
+      {
+        "vehicle": "733系/735系",
+        "company": "JR北海道",
+        "status": "現役主力",
+        "trend": "通勤近郊(733主力)",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_千歳線_北海道旅客鉄道_b1": [
+      {
+        "vehicle": "733系/735系",
+        "company": "JR北海道",
+        "status": "現役主力",
+        "trend": "通勤近郊(733主力)",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_妙高はねうまライン_えちごトキめき鉄道": [
+      {
+        "vehicle": "ET127系/ET122系",
+        "company": "えちごトキめき鉄道",
+        "status": "現役主力",
+        "trend": "観光「雪月花」(ET122改)",
+        "period": "",
+        "memory": "雪月花",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_日本海ひすいライン_えちごトキめき鉄道": [
+      {
+        "vehicle": "ET127系/ET122系",
+        "company": "えちごトキめき鉄道",
+        "status": "現役主力",
+        "trend": "観光「雪月花」(ET122改)",
+        "period": "",
+        "memory": "雪月花",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_ほくほく線_北越急行": [
+      {
+        "vehicle": "HK100形",
+        "company": "北越急行",
+        "status": "現役主力",
+        "trend": "元「はくたか」高速路線",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_リアス線_三陸鉄道": [
+      {
+        "vehicle": "36-700形等",
+        "company": "三陸鉄道",
+        "status": "現役主力",
+        "trend": "「さんてつ」",
+        "period": "",
+        "memory": "さんてつ",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_宮福線_WILLER　TRAINS": [
+      {
+        "vehicle": "KTR8000形 丹後の海/KTR700・800形",
+        "company": "京都丹後鉄道",
+        "status": "現役主力",
+        "trend": "「丹後の海」(8000改)",
+        "period": "",
+        "memory": "丹後の海",
+        "notes": "KTR8500は別項",
+        "source": ""
+      },
+      {
+        "vehicle": "KTR300形",
+        "company": "京都丹後鉄道",
+        "status": "現役主力",
+        "trend": "普通列車用気動車",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      },
+      {
+        "vehicle": "丹後あおまつ・あかまつ・くろまつ(KTR700/800改)",
+        "company": "京都丹後鉄道",
+        "status": "現役主力",
+        "trend": "観光列車「松三兄弟」",
+        "period": "",
+        "memory": "あお/あか/くろまつ",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_七尾線_のと鉄道": [
+      {
+        "vehicle": "NT200形/NT300形",
+        "company": "のと鉄道",
+        "status": "現役主力",
+        "trend": "観光「のと里山里海」(NT300)",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_五能線_東日本旅客鉄道": [
+      {
+        "vehicle": "リゾートしらかみ(HB-E300系)",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "ハイブリッド観光",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_羽越線_東日本旅客鉄道": [
+      {
+        "vehicle": "海里(かいり)(HB-E300系)",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "食の観光列車",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_磐越西線_東日本旅客鉄道": [
+      {
+        "vehicle": "SLばんえつ物語(C57+客車)",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "SL列車",
+        "period": "",
+        "memory": "ばんえつ物語",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_八戸線_東日本旅客鉄道": [
+      {
+        "vehicle": "TOHOKU EMOTION(485改)",
+        "company": "JR東日本",
+        "status": "現役主力",
+        "trend": "レストラン列車",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_紀勢線_西日本旅客鉄道": [
+      {
+        "vehicle": "WEST EXPRESS 銀河(117改)",
+        "company": "JR西日本",
+        "status": "現役主力",
+        "trend": "長距離観光",
+        "period": "",
+        "memory": "銀河",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_山口線_西日本旅客鉄道": [
+      {
+        "vehicle": "SLやまぐち号(D51/C57+35系客車)",
+        "company": "JR西日本",
+        "status": "現役主力",
+        "trend": "SL列車",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_三角線_九州旅客鉄道": [
+      {
+        "vehicle": "A列車で行こう(キハ185改)",
+        "company": "JR九州",
+        "status": "現役主力",
+        "trend": "D&S列車",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_豊肥線_九州旅客鉄道": [
+      {
+        "vehicle": "かわせみ やませみ(キハ47改)",
+        "company": "JR九州",
+        "status": "現役主力",
+        "trend": "D&S列車",
+        "period": "",
+        "memory": "",
+        "notes": "肥薩線被災で運転区間変更",
+        "source": ""
+      }
+    ],
+    "auto_1号線浅草線_東京都": [
+      {
+        "vehicle": "5500形",
+        "company": "都営地下鉄",
+        "status": "現役主力",
+        "trend": "5300形を置換完了",
+        "period": "",
+        "memory": "",
+        "notes": "京急/京成/北総直通",
+        "source": ""
+      }
+    ],
+    "auto_6号線三田線_東京都": [
+      {
+        "vehicle": "6500形/6300形",
+        "company": "都営地下鉄",
+        "status": "現役主力",
+        "trend": "6500形導入(2022)",
+        "period": "2022",
+        "memory": "",
+        "notes": "東急目黒線・相鉄直通",
+        "source": ""
+      }
+    ],
+    "auto_10号線新宿線_東京都": [
+      {
+        "vehicle": "10-300形",
+        "company": "都営地下鉄",
+        "status": "現役主力",
+        "trend": "京王線直通",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_12号線大江戸線_東京都": [
+      {
+        "vehicle": "12-600形/12-000形",
+        "company": "都営地下鉄",
+        "status": "現役主力",
+        "trend": "リニアモーター地下鉄",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_1号線(御堂筋線)_大阪市高速電気軌道": [
+      {
+        "vehicle": "30000系/21系等",
+        "company": "大阪メトロ",
+        "status": "現役主力",
+        "trend": "北大阪急行直通・10系置換完了",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_4号線(中央線)_大阪市高速電気軌道_s0": [
+      {
+        "vehicle": "400系/30000A系",
+        "company": "大阪メトロ",
+        "status": "導入",
+        "trend": "2025万博延伸・400系2023導入",
+        "period": "2023",
+        "memory": "万博顔",
+        "notes": "近鉄けいはんな直通",
+        "source": ""
+      }
+    ],
+    "auto_4号線(中央線)_大阪市高速電気軌道_s1": [
+      {
+        "vehicle": "400系/30000A系",
+        "company": "大阪メトロ",
+        "status": "導入",
+        "trend": "2025万博延伸・400系2023導入",
+        "period": "2023",
+        "memory": "万博顔",
+        "notes": "近鉄けいはんな直通",
+        "source": ""
+      }
+    ],
+    "auto_2号線(谷町線)_大阪市高速電気軌道": [
+      {
+        "vehicle": "22系/30000系等",
+        "company": "大阪メトロ",
+        "status": "現役主力",
+        "trend": "標準型地下鉄",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_3号線(四つ橋線)_大阪市高速電気軌道": [
+      {
+        "vehicle": "22系/30000系等",
+        "company": "大阪メトロ",
+        "status": "現役主力",
+        "trend": "標準型地下鉄",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_6号線(堺筋線)_大阪市高速電気軌道": [
+      {
+        "vehicle": "66系",
+        "company": "大阪メトロ",
+        "status": "現役主力",
+        "trend": "阪急京都線直通",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_1号線東山線_名古屋市": [
+      {
+        "vehicle": "N1000形/5050形",
+        "company": "名古屋市交通局",
+        "status": "現役主力",
+        "trend": "第三軌条",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_3号線鶴舞線_名古屋市": [
+      {
+        "vehicle": "N3000形/3050形",
+        "company": "名古屋市交通局",
+        "status": "現役主力",
+        "trend": "名鉄犬山・豊田線直通(500系)",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_6号線桜通線_名古屋市": [
+      {
+        "vehicle": "6000/6050/2000形",
+        "company": "名古屋市交通局",
+        "status": "現役主力",
+        "trend": "名城線は環状",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_2号線名港線_名古屋市": [
+      {
+        "vehicle": "6000/6050/2000形",
+        "company": "名古屋市交通局",
+        "status": "現役主力",
+        "trend": "名城線は環状",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_1号線_横浜市": [
+      {
+        "vehicle": "3000形/4000形",
+        "company": "横浜市営地下鉄",
+        "status": "現役主力",
+        "trend": "4000形(2022)導入",
+        "period": "2022",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_3号線_横浜市": [
+      {
+        "vehicle": "3000形/4000形",
+        "company": "横浜市営地下鉄",
+        "status": "現役主力",
+        "trend": "4000形(2022)導入",
+        "period": "2022",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_4号線_横浜市": [
+      {
+        "vehicle": "10000形",
+        "company": "横浜市営地下鉄",
+        "status": "現役主力",
+        "trend": "リニア・6両化進行",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_南北線_札幌市": [
+      {
+        "vehicle": "5000形",
+        "company": "札幌市営地下鉄",
+        "status": "現役主力",
+        "trend": "ゴムタイヤ・案内軌条",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_東西線_札幌市": [
+      {
+        "vehicle": "8000形/9000形・7000形",
+        "company": "札幌市営地下鉄",
+        "status": "現役主力",
+        "trend": "ゴムタイヤ地下鉄",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_東豊線_札幌市": [
+      {
+        "vehicle": "8000形/9000形・7000形",
+        "company": "札幌市営地下鉄",
+        "status": "現役主力",
+        "trend": "ゴムタイヤ地下鉄",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_烏丸線_京都市": [
+      {
+        "vehicle": "20系/10系",
+        "company": "京都市営地下鉄",
+        "status": "現役主力",
+        "trend": "20系導入で旧型置換進行",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_東西線_京都市": [
+      {
+        "vehicle": "50系",
+        "company": "京都市営地下鉄",
+        "status": "現役主力",
+        "trend": "鉄輪式リニア・京阪京津線直通",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_山手線_神戸市": [
+      {
+        "vehicle": "6000形",
+        "company": "神戸市営地下鉄",
+        "status": "現役主力",
+        "trend": "6000形で旧型置換進行",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_海岸線_神戸市": [
+      {
+        "vehicle": "5000形",
+        "company": "神戸市営地下鉄",
+        "status": "現役主力",
+        "trend": "鉄輪式リニア地下鉄",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_1号線(空港線)_福岡市": [
+      {
+        "vehicle": "2000系/1000N系",
+        "company": "福岡市地下鉄",
+        "status": "現役主力",
+        "trend": "JR筑肥線直通",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_2号線(箱崎線)_福岡市": [
+      {
+        "vehicle": "2000系/1000N系",
+        "company": "福岡市地下鉄",
+        "status": "現役主力",
+        "trend": "JR筑肥線直通",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_3号線(七隈線)_福岡市": [
+      {
+        "vehicle": "3000系/3000A系",
+        "company": "福岡市地下鉄",
+        "status": "導入",
+        "trend": "2023/3博多延伸",
+        "period": "2023-03",
+        "memory": "",
+        "notes": "鉄輪式リニア",
+        "source": ""
+      }
+    ],
+    "auto_南北線_仙台市": [
+      {
+        "vehicle": "1000N系/2000系",
+        "company": "仙台市地下鉄",
+        "status": "現役主力",
+        "trend": "東西線は鉄輪式リニア(2015)",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ],
+    "auto_東西線_仙台市": [
+      {
+        "vehicle": "1000N系/2000系",
+        "company": "仙台市地下鉄",
+        "status": "現役主力",
+        "trend": "東西線は鉄輪式リニア(2015)",
+        "period": "",
+        "memory": "",
+        "notes": "",
+        "source": ""
+      }
+    ]
+  },
+  "freight": [
+    {
+      "company": "JR貨物",
+      "vehicle": "EF210形 桃太郎",
+      "lines": "東海道・山陽本線等(直流)",
+      "status": "現役主力",
+      "trend": "増備継続・EF66/65置換・300番台は補機",
+      "period": "",
+      "memory": "桃太郎",
+      "notes": "",
+      "source": ""
+    },
+    {
+      "company": "JR貨物",
+      "vehicle": "EF510形(0/500番台)",
+      "lines": "日本海縦貫線(交直流)",
+      "status": "現役主力",
+      "trend": "富山機関区・EF81置換",
+      "period": "",
+      "memory": "レッドサンダー",
+      "notes": "",
+      "source": ""
+    },
+    {
+      "company": "JR貨物",
+      "vehicle": "EF510形300番台",
+      "lines": "九州(日豊・鹿児島本線等)",
+      "status": "導入",
+      "trend": "2021〜門司配置・ED76/EF81置換(2025年度完了予定)",
+      "period": "2021-",
+      "memory": "銀色レッドサンダー",
+      "notes": "",
+      "source": "マイナビ/Wikipedia"
+    },
+    {
+      "company": "JR貨物",
+      "vehicle": "EH500形 金太郎",
+      "lines": "東北本線・関門(交直流)",
+      "status": "現役主力",
+      "trend": "二車体連結",
+      "period": "",
+      "memory": "金太郎",
+      "notes": "",
+      "source": ""
+    },
+    {
+      "company": "JR貨物",
+      "vehicle": "EH800形",
+      "lines": "青函(交流・新幹線共用区間)",
+      "status": "現役主力",
+      "trend": "青函トンネル対応",
+      "period": "",
+      "memory": "",
+      "notes": "",
+      "source": ""
+    },
+    {
+      "company": "JR貨物",
+      "vehicle": "EF65形",
+      "lines": "一部運用(直流・国鉄型)",
+      "status": "引退",
+      "trend": "EF210で置換進行",
+      "period": "",
+      "memory": "国鉄型直流",
+      "notes": "",
+      "source": ""
+    },
+    {
+      "company": "JR貨物",
+      "vehicle": "EF64形",
+      "lines": "中央西線・伯備等(直流・国鉄型)",
+      "status": "引退",
+      "trend": "一部残存・置換進行",
+      "period": "",
+      "memory": "山岳用国鉄型",
+      "notes": "",
+      "source": ""
+    },
+    {
+      "company": "JR貨物",
+      "vehicle": "EF66形100番台",
+      "lines": "東海道・山陽(直流)",
+      "status": "引退",
+      "trend": "2022定期運用終了",
+      "period": "2022",
+      "memory": "サメ",
+      "notes": "",
+      "source": ""
+    },
+    {
+      "company": "JR貨物",
+      "vehicle": "EF81形",
+      "lines": "日本海縦貫・九州等(交直流・国鉄型)",
+      "status": "引退",
+      "trend": "EF510で置換",
+      "period": "",
+      "memory": "",
+      "notes": "",
+      "source": ""
+    },
+    {
+      "company": "JR貨物",
+      "vehicle": "ED76形",
+      "lines": "九州(交流・国鉄型)",
+      "status": "引退",
+      "trend": "EF510-300で置換(2025年度完了予定)",
+      "period": "2025年度",
+      "memory": "",
+      "notes": "",
+      "source": ""
+    },
+    {
+      "company": "JR貨物",
+      "vehicle": "DF200形",
+      "lines": "北海道・(関西一部)(電気式ディーゼル)",
+      "status": "現役主力",
+      "trend": "愛知にも転用",
+      "period": "",
+      "memory": "レッドベア",
+      "notes": "",
+      "source": ""
+    },
+    {
+      "company": "JR貨物",
+      "vehicle": "DD200形",
+      "lines": "入換・支線(電気式)",
+      "status": "導入",
+      "trend": "DE10を置換",
+      "period": "",
+      "memory": "",
+      "notes": "",
+      "source": ""
+    },
+    {
+      "company": "JR貨物",
+      "vehicle": "HD300形",
+      "lines": "貨物ターミナル入換用",
+      "status": "現役主力",
+      "trend": "ハイブリッド機関車",
+      "period": "",
+      "memory": "",
+      "notes": "",
+      "source": ""
+    },
+    {
+      "company": "JR貨物",
+      "vehicle": "DE10形",
+      "lines": "入換(国鉄型)",
+      "status": "引退",
+      "trend": "DD200/HD300で置換",
+      "period": "",
+      "memory": "",
+      "notes": "",
+      "source": ""
+    },
+    {
+      "company": "JR貨物",
+      "vehicle": "M250系 スーパーレールカーゴ",
+      "lines": "東京貨物ターミナル〜安治川口(高速貨物電車)",
+      "status": "現役主力",
+      "trend": "世界初の貨物電車・佐川専用",
+      "period": "",
+      "memory": "スーパーレールカーゴ",
+      "notes": "後継車開発中",
+      "source": ""
+    }
+  ]
+}

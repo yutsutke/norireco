@@ -27,6 +27,66 @@
 
 ---
 
+## 197. v347 — 営業系統×車両形式 DB Phase 1: Notion → JSON exporter + service_line_vehicles.json (2026-05-25)
+
+### 背景
+ユスケが Notion に「営業系統×車両形式 DB」(id `b4bed329…7da785`) を構築済。256 件、9 バッチ (JR 主要・関東・関西・JR 全社・JR 貨物・三セク・観光列車・地下鉄) で `車両形式` / `鉄道会社` / `営業系統` / `動向区分` 等のスキーマで蓄積。これを乗レコの記録モードで「営業系統 → 現役車両形式を候補に出す」UI のデータソースにするのが目的（TODO 🟡「普通電車の車両形式も記録できるように」の素材）。
+
+### 設計判断
+- **UI 方針**: C' 案 (ユスケ提案で改訂)。デフォは「列車・車両形式 UI を非表示」、マニアトグル ON 時のみ展開 + 区間 chip + 現役車両 dropdown。5大原則 ② 同心円ターゲティング (Lv0/1 心理負荷ゼロ・Lv2/3 詳細記録) に直結
+- **データ紐付け**: Notion DB の `営業系統`(text) → SERVICE_LINES.id の機械マッチング。完璧でなくても「ほぼ正しい現役車両」が出れば UX 改善になる
+- **エクスポート方式**: Claude セッション内で Notion 親ページに埋まっている JSON スナップショット (256 件) を抽出 → Node 機械マッチング → service_line_vehicles.json 生成。DB の DataSource を 1 件ずつ query するより簡潔
+- **複数系統対応**: 1 record の `lines`(text) を `・、,` 分割 → 各トークンを SL に紐付け。1 vehicle が複数 SL に登場する
+- **JR貨物 (15 件)**: 営業系統紐付け対象外 (機関車は自由運用) → `freight` 配列に分離
+
+### マッチング戦略 (tools/export_service_line_vehicles.js)
+1. **会社 alias dict** (`COMPANY_ALIAS`): DB「JR東日本」→ SL ["東日本旅客鉄道", "JR東日本"]、「東京メトロ」→ ["東京地下鉄"]、「都営地下鉄」→ ["東京都"]、「大阪メトロ」→ ["大阪市高速電気軌道"] 等 (混在する正式名称 ↔ 短縮形を吸収)
+2. **路線 alias dict** (`LINE_ALIAS`): 「東上線」→「東上本線」、「アーバンパークライン」→「野田線」、「スカイツリーライン」→「伊勢崎線」、「成田スカイアクセス線」→「成田空港線」、「ブルーライン」→「横浜市営1号線/3号線」、「日比谷線」→「東京メトロ日比谷線/2号線日比谷線」等
+3. **本線 ↔ 線 expander** (`nameVariants`): 「奥羽本線」⇔「奥羽線」、「中央西線」→「中央線/中央本線」(東西南北 + 線 パターン抽出)
+4. **「本線」単独 special case**: token === "本線" なら候補 SL から `official_line === '本線'` (京急/京成/阪神等) もしくは `name.endsWith('本線')` (相鉄本線/京阪本線等) を返す
+5. **新幹線 propagation**: 隣接 token が "新幹線" 終わりなら、suffix なし region token に「新幹線」を付与。「東北・北海道新幹線」→「東北新幹線・北海道新幹線」
+6. **括弧内 expand**: `(信越・上越・白新・越後線等)` のように `・` を含む括弧内は別 token 群として抽出 (単純な括弧除去だと路線リストが消える)
+7. **不明な regional 短縮**: 「東北」「山陽」等の地域名は false positive を生むため alias 化しない (DB 側で「東北本線」「東北新幹線」と明示する運用)
+
+### 結果
+- **matched: 176 records → 197 SLs (292 links)**
+- カテゴリ別 unmatched: train_name_only 37 (列車名のみ = trains_master 領分)、no_line_match 17 (Phase 2 で alias 追加 or 他社直通対応)、generic_all_lines 11 (「各線」とだけ)、freight 15 (JR貨物)
+- 非対象除外したマッチ率: 176 / (256 − 15 − 37 − 11) = **91.2%**
+- 抜き打ち検証: 山手線 → E235系0番台、京浜東北 → E233系、京急本線 → 新1000形/2100形、京阪本線 → 8000系/13000系、相鉄本線 → 20000系/12000系/11000系 (東急/JR 直通車含む)、東北新幹線 → E5系/H5系/E2系、山形新幹線 → E8系/E3系2000番台/E723系5000番台 すべて正常
+
+### バグ修正履歴 (途中)
+- 初版: `js_text.encode().decode('unicode_escape')` で日本語 UTF-8 バイトが double-encoded → mojibake。`.replace('\\\\n','\\n')` 系の手動 unescape に修正
+- 第 2 版: tokenizer で「(京葉・東海道・高崎宇都宮)」を先に `・` 分割してから括弧除去していたため `["京葉", "東海道", "高崎宇都宮)"]` のように orphan `)` が残った → 括弧除去を先に実行
+- 第 3 版: 末尾正規化で「ライン」「エリア」も strip していたため「アーバンパークライン」→「アーバンパーク」になり alias 引けず → これらは strip 対象から外し、alias 側に「アーバンパークライン」を登録
+- 第 4 版: 「東北」を alias で `["東北本線", "東北新幹線"]` と双方向マッピング → 本線↔線 expander で「東北線」が変換され、京浜東北・根岸線 (official_line="東北線") に E5系/H5系 が誤紐付け → 「東北」alias を撤回
+- 第 5 版: tokenize 最終 filter で `norm !== '本線'` が「本線」を完全廃棄 → findMatchingSls の special case に到達せず → filter から「本線」除外を削除 (「線」のみ捨てる)
+
+### ファイル
+- 新規: [tools/export_service_line_vehicles.js](tools/export_service_line_vehicles.js) (Node, 285 行)
+- 新規: [tools/_extract_snapshot.py](tools/_extract_snapshot.py) (Notion fetch 結果から JSON 抽出 helper)
+- 新規: [tools/_notion_db_snapshot.json](tools/_notion_db_snapshot.json) (2026-05-25 時点 256 件、再生成可能だがリプロデュース用に commit)
+- 新規: [tools/_dump_sl_names.py](tools/_dump_sl_names.py) (SL 構造調査用 helper)
+- 新規: [service_line_vehicles.json](service_line_vehicles.json) (97 KB, by_sl_id 索引 + freight)
+- 更新: [sw.js](sw.js) v346 → v347, STATIC_ASSETS に service_line_vehicles.json 追加
+
+### 残課題 (Phase 2)
+- no_line_match 17 件: 「東急東横線方面直通」(相鉄 → 他社線記述)、「名阪特急」「関空特急」(列車種別記述)、「電気式気動車(羽越・米坂・津軽・五能一部等)」(短縮形 alias 不足) 等
+- 他社直通の正規表現: 「JR直通(埼京線)」のように lines 内で operator 切替されるケース
+- Notion DB 側の表記揺れを直接修正する選択肢もある (e.g. `各線` を具体名に展開)
+
+### 残課題 (Phase 3: UI)
+- 記録確認モーダルに「📋 列車・車両形式も記録する (マニア向け)」トグル
+- ON 時: 区間から候補系統を chip 表示 → 選択系統の現役車両 (動向区分 `現役主力`/`導入`/`導入予定`) を dropdown
+- トグル状態を localStorage (`NORIRECO.prefs.showTrainSelector`) 永続化
+
+### 運用フロー (Notion DB 更新時の再生成)
+1. Claude セッションで Notion 親ページを fetch (`notion-fetch` id `36b71b458b6381109483d1f52108a618`)
+2. `python tools/_extract_snapshot.py` で _notion_db_snapshot.json を再生成
+3. `node tools/export_service_line_vehicles.js` で service_line_vehicles.json を再生成 + unmatch レポート確認
+4. sw.js の CACHE_VERSION を上げて push
+
+---
+
 ## 196. v346 — 「GPS に変換」ボタン (retroactivelyVerifyTrip) を撤去 (2026-05-25)
 
 ### 背景
