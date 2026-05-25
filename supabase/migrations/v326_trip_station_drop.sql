@@ -27,3 +27,7 @@ ALTER TABLE norireco_trips
   DROP COLUMN IF EXISTS to_station;
 
 NOTIFY pgrst, 'reload schema';
+
+-- Applied: 2026-05-25 by yutsutke (Supabase Dashboard SQL Editor)
+--   ※ Applied 日時は事後追記 (v333 で規約導入 + 過去 Run の事実を記録)
+--   ※ 以降 Supabase で SQL Run したら必ずこの行を追記して commit する (CLAUDE.md 規約)

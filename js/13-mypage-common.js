@@ -26,17 +26,14 @@ import { filterTripsByDate } from './05-supabase-data.js';
 //   元 13b-trips.js に置いていたが、13-mypage-common ↔ 13b-trips の循環 import で
 //   13b の top-level `NORIRECO.mypage.xxx = ...` が NORIRECO.mypage 未初期化のまま
 //   走り画面が落ちる事故 (v331 → v332) を防ぐため common に移動。
-//   過渡期 (DROP 未実行) は trip.from_station をそのまま使い、DROP 後は id → MERGED_STATIONS 逆引き。
+// v333 (Phase 3): trip.from_station / to_station 列 DROP 完遂 (v326 SQL Applied 2026-05-25) — name fallback 撤去。
 export function getTripStationName(trip, which) {
   if (!trip) return '';
-  const nameKey = which === 'to' ? 'to_station' : 'from_station';
   const idKey = which === 'to' ? 'to_station_id' : 'from_station_id';
-  if (trip[nameKey]) return trip[nameKey];
-  if (trip[idKey]) {
-    const ms = (NORIRECO.data?.MERGED_STATIONS || []).find(m => m.id === trip[idKey]);
-    return ms ? ms.name : '';
-  }
-  return '';
+  const sid = trip[idKey];
+  if (!sid) return '';
+  const ms = (NORIRECO.data?.MERGED_STATIONS || []).find(m => m.id === sid);
+  return ms ? ms.name : '';
 }
 
 // ── NORIRECO 名前空間の初期化 ──────────────────────────────────

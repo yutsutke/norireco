@@ -44,17 +44,13 @@ NORIRECO.memos = NORIRECO.memos || {
 };
 const M = NORIRECO.memos.state;
 
-// v325 (Phase 3): memo.station_id から駅名を逆引き。memo.station 列が DROP された後の
-//   display 用 fallback。station 列がまだ残っている過渡期は memo.station をそのまま使う。
-// v331 (Phase 3): 他モジュール (17-station-actions / 13-mypage-common) から共用するため export。
+// v325 (Phase 3): memo.station_id から駅名を逆引き。
+// v331 (Phase 3): 他モジュール (17-station-actions) から共用するため export。
+// v333 (Phase 3): memo.station 列 DROP 完遂 (v325 SQL Applied 2026-05-25) — name fallback 撤去。
 export function getMemoStationName(memo) {
-  if (!memo) return '';
-  if (memo.station) return memo.station;
-  if (memo.station_id) {
-    const ms = (NORIRECO.data?.MERGED_STATIONS || []).find(m => m.id === memo.station_id);
-    return ms ? ms.name : '';
-  }
-  return '';
+  if (!memo || !memo.station_id) return '';
+  const ms = (NORIRECO.data?.MERGED_STATIONS || []).find(m => m.id === memo.station_id);
+  return ms ? ms.name : '';
 }
 
 const MOOD_EMOJI = { '最高': '🤩', '良い': '😊', '普通': '😐', '微妙': '😕', '最悪': '😤' };
@@ -486,20 +482,17 @@ function buildMemoFilterBar() {
 
 function applyMemoFilters(memos) {
   const q = (M.filter.station || '').trim();
-  // v317 (Phase 3-e): 駅名検索を id 解決層経由に。m.station_id があれば idSet 比較で
-  //   同名異所駅を厳密区別、無ければ name.includes(q) に fallback (v315 以前のレガシーメモ)。
+  // v317 (Phase 3-e): 駅名検索を id 解決層経由に。
   // v318: 空白区切りで「駅名 都道府県」検索 (例: "八王子 東京")。
-  // v320: pref モード時は id 厳密 (v318 と同じ挙動)。fallback で混入する同名異所駅を排除。
+  // v320: pref モード時は id 厳密。fallback で混入する同名異所駅を排除。
+  // v333 (Phase 3): memo.station 列 DROP 完遂で全 memo が station_id 入り。name fallback 撤去。
   const res = q ? resolveStationQuery(q) : null;
   return memos.filter(m => {
     if (M.filter.line_id !== 'all' && m.line_id !== M.filter.line_id) return false;
     if (M.filter.memo_type !== 'all' && m.memo_type !== M.filter.memo_type) return false;
     if (M.filter.mood !== 'all' && m.mood !== M.filter.mood) return false;
     if (res) {
-      const { ids, nameToken, hasPrefFilter } = res;
-      const idHit = m.station_id && ids.has(m.station_id);
-      const nameHit = !hasPrefFilter && !!m.station && m.station.includes(nameToken);
-      if (!idHit && !nameHit) return false;
+      if (!m.station_id || !res.ids.has(m.station_id)) return false;
     }
     return true;
   });
@@ -560,8 +553,7 @@ function memoCardHtml(memo) {
 
 // 駅マーカークリックから呼ばれる。args は station 情報を持つ。
 // v315 (Phase 3-d): args.station_id があれば id 優先で filter (同名駅取り違え回避)。
-// v325 (Phase 3): station 列 DROP 後は name fallback はほぼ no-op (memo.station = undefined)。
-//   過渡期 (SQL 未実行 + backfill 未完了の状態) を救済するため fallback は残置。
+// v333 (Phase 3): station 列 DROP 完遂で全 memo が station_id 入り。name fallback 撤去。
 function openStationMemoList(args) {
   // args = { station, station_id, lineId, lineName, lat, lon }
   M.stationContext = {
@@ -572,11 +564,10 @@ function openStationMemoList(args) {
     lat: typeof args.lat === 'number' ? args.lat : (parseFloat(args.lat) || null),
     lon: typeof args.lon === 'number' ? args.lon : (parseFloat(args.lon) || null),
   };
-  // id 優先 + name fallback (id を持たない旧 memo は name で hit)
-  const memos = M.cache.filter(m => {
-    if (args.station_id && m.station_id) return m.station_id === args.station_id;
-    return m.station === args.station;
-  });
+  // v333: id 一致のみ (station 列 DROP 済、name fallback は無効化)
+  const memos = args.station_id
+    ? M.cache.filter(m => m.station_id === args.station_id)
+    : [];
 
   document.getElementById('sm-title').textContent =
     `📸 ${args.station} のメモ (${memos.length} 件)`;
@@ -693,84 +684,24 @@ NORIRECO.memos.clear = clearLocalMemos;
 NORIRECO.memos.renderMpMemosSection = renderMpMemosSection;
 // v251: 08-rendering の station マーカー click から呼ぶための公開 API
 NORIRECO.memos.openStationMemoList = openStationMemoList;
-// v315 (Phase 3-d): ms オブジェクト引数に拡張 (id 優先 + name fallback)。
-//   旧シグネチャ hasMemosForStation("駅名") 互換のため、引数が string でも動かす。
-// v325 (Phase 3): station 列 DROP 後 m.station = undefined になるので name fallback は no-op。
-//   過渡期救済のため残置。
-NORIRECO.memos.hasMemosForStation = (msOrName) => {
-  if (!msOrName) return false;
-  if (typeof msOrName === 'string') {
-    return M.cache.some(m => m.station === msOrName);
-  }
-  const id = msOrName.id;
-  const name = msOrName.name;
-  return M.cache.some(m => {
-    if (id && m.station_id) return m.station_id === id;
-    return name && m.station === name;
-  });
+// v315 (Phase 3-d): ms オブジェクト引数で id 比較。
+// v333 (Phase 3): station 列 DROP 完遂で全 memo が station_id 入り。name fallback / string 引数を撤去。
+//   呼び出し側は ms オブジェクト ({id, name, ...}) を渡すこと。
+NORIRECO.memos.hasMemosForStation = (ms) => {
+  if (!ms || !ms.id) return false;
+  return M.cache.some(m => m.station_id === ms.id);
 };
 
-// v325 (Phase 3): 「この駅のメモは何件か」を id 優先で集計 (17-station-actions の memoCount 用)。
+// v325 (Phase 3): 「この駅のメモは何件か」を id で集計 (17-station-actions の memoCount 用)。
+// v333 (Phase 3): name fallback 撤去 (DROP 完遂)。
 NORIRECO.memos.countMemosForStation = (ms) => {
-  if (!ms) return 0;
-  return M.cache.filter(m => {
-    if (ms.id && m.station_id) return m.station_id === ms.id;
-    return ms.name && m.station === ms.name;
-  }).length;
+  if (!ms || !ms.id) return 0;
+  return M.cache.filter(m => m.station_id === ms.id).length;
 };
 
-// v325 (Phase 3): 既存 memo の station_id を MERGED_STATIONS から逆引きして backfill。
-//   v315 デプロイ後に作成された memo は既に station_id 入り。v315 以前のレガシーメモ
-//   (3 件 + α) を id 化するための一回限りのヘルパー。
-//   実行: ブラウザコンソールで `await norirecoBackfillMemoStationIds()` を呼ぶ。
-//   同名異所駅は memo.lat/lon を使って最近接 ms を選ぶ。
-window.norirecoBackfillMemoStationIds = async function backfillMemoStationIds() {
-  if (!currentUserId()) { console.warn('[Backfill] ログインしてください'); return; }
-  const MS = NORIRECO.data?.MERGED_STATIONS || [];
-  if (MS.length === 0) { console.warn('[Backfill] MERGED_STATIONS 未ロード'); return; }
-
-  const targets = M.cache.filter(m => !m.station_id && m.station);
-  if (targets.length === 0) {
-    console.log('[Backfill] 対象メモなし (全て station_id 入り済 or station なし)');
-    return;
-  }
-  console.log(`[Backfill] 対象 ${targets.length} 件:`, targets.map(m => `${m.station} (${m.id})`));
-
-  const dist2 = (lat1, lon1, lat2, lon2) => {
-    const dLat = lat1 - lat2, dLon = lon1 - lon2;
-    return dLat * dLat + dLon * dLon;  // 平面近似で十分 (同名駅の選別だけなので)
-  };
-
-  let ok = 0, fail = 0, skip = 0;
-  for (const memo of targets) {
-    const cands = MS.filter(m => m.name === memo.station);
-    if (cands.length === 0) {
-      console.warn(`[Backfill] スキップ: ${memo.id} (${memo.station}) — MERGED_STATIONS に該当駅なし`);
-      skip++;
-      continue;
-    }
-    let chosen = cands[0];
-    if (cands.length > 1 && typeof memo.lat === 'number' && typeof memo.lon === 'number') {
-      chosen = cands.reduce((best, c) =>
-        dist2(c.lat, c.lon, memo.lat, memo.lon) < dist2(best.lat, best.lon, memo.lat, memo.lon) ? c : best,
-        cands[0]
-      );
-    }
-    try {
-      const updated = await updateMemoOnServer(memo.id, { station_id: chosen.id });
-      const idx = M.cache.findIndex(m => m.id === memo.id);
-      if (idx >= 0) M.cache[idx] = updated;
-      console.log(`[Backfill] ✓ ${memo.id} → ${chosen.id} (${chosen.name})`);
-      ok++;
-    } catch (e) {
-      console.warn(`[Backfill] ✗ ${memo.id}: ${e.message}`);
-      fail++;
-    }
-  }
-  try { localStorage.setItem('norireco_memos', JSON.stringify(M.cache)); } catch (e) {}
-  console.log(`[Backfill] 完了: OK ${ok} / FAIL ${fail} / SKIP ${skip}`);
-  return { ok, fail, skip };
-};
+// v333 (Phase 3): norirecoBackfillMemoStationIds は撤去。
+//   v325 SQL Applied 2026-05-25 で station 列 DROP 済、もう backfill する元データがない。
+//   過去のヘルパー全文は git log 16-memos.js (v325..v332) を参照。
 
 // マイページ統合用 (13-mypage-common.applyMpSection から呼ばれる)
 NORIRECO.mypage = NORIRECO.mypage || {};

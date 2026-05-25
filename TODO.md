@@ -62,14 +62,8 @@ git log --oneline -20
   - **Phase 3-e 仕上げ完成 (v317)**: マイページ駅名検索を id 解決層経由 (resolveStationQueryIds) に、slVisitCount を SERVICE_LINES + 駅 id キーに統一、08-rendering / キャラモーダルの参照側も ms.id ベースに
   - **Phase 3-f 完成 (v323)**: slStopType を駅名 → 駅 id キーに切替 (同名異所駅の stop_type 判定混線を解消)
   - **Phase 3-g 完成 (v324)**: characters_master schema_v3 で `station_names` / `obtainable_at_names` 撤去、stationCharMap / `getStationCharacter` 系 API を駅 id ベースに統一
-  - **Phase 3-h JS 側完了 (v325)**: memo の `station` 列への並行書き込み撤去、display は `getMemoStationName` で id → name 逆引き、`window.norirecoBackfillMemoStationIds()` 提供
-  - **Phase 3-i JS 側完了 (v326)**: trip の `from_station`/`to_station` 列への並行書き込み撤去、findStCoord / alert を id → name 逆引きに、`window.norirecoBackfillTripStationIds()` 提供
-  - **残 (ユスケの手動 SQL 実行)**:
-    1. ブラウザコンソールで `await norirecoBackfillMemoStationIds()` を実行 → 全 memo が station_id 入りを確認
-    2. ブラウザコンソールで `await norirecoBackfillTripStationIds()` を実行 → 全 trip が *_station_id 入りを確認 (v311 で完了済のはず、念のため)
-    3. Supabase SQL Editor で `supabase/migrations/v325_memo_station_drop.sql` を Run
-    4. Supabase SQL Editor で `supabase/migrations/v326_trip_station_drop.sql` を Run
-    5. 動作確認後、過渡期の name fallback コード (getMemoStationName / getTripStationName 内の `if (memo.station) return memo.station` 等) は段階的に整理可
+  - **Phase 3-h 完成 (v325 + Run 2026-05-25 + v333 cleanup)**: memo.station 列 DROP 完遂、fallback 分岐撤去、backfill 関数撤去
+  - **Phase 3-i 完成 (v326 + Run 2026-05-25 + v333 cleanup)**: trip.from_station/to_station 列 DROP 完遂、fallback 分岐撤去、backfill 関数撤去
   - **Phase 3-j 完成 (v327)**: LINES (lines-p1〜p4.json) の stations[] に駅 id 付与 (10,164 中 10,151 / 99.87%)、p2 を「1 路線 1 行」フォーマットに統一。先回り対応 (実態としては N02 LINES.stations[].n 参照箇所が 12 ファイル数十箇所あり、データ側に id を持たせて将来 reader 移行をインクリメンタルに可能にした)
   - **Phase 3-k 完成 (v328)**: lines-p2.json の座標を流用して merged_stations.json に 13 駅 (s_09018〜s_09030) を追加 (常磐線震災区間 11 + 山陽線 2 + 東北線 1)。add_line_station_ids.js 再実行で **カバレッジ 100.00%** 達成 (far=0, missing=0)
   - **Phase 3-k+ データ充実完成 (v329)**: 上記 13 駅を jr_joban_medium / jr_sanyo_main / jr_tohoku_main_rifu の 3 SERVICE_LINES に収録、merged_stations の lines/colors も同時更新、compute_isolation_rank.js で isolation_rank 再計算 (新規駅 rank 3-5 / 9030 駅全てが SERVICE_LINE 収録)

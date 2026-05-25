@@ -188,8 +188,10 @@ function checkAndGrantCharacters() {
       setId(seg.from_id, gps); if (!seg.from_id) setByName(seg.from, gps);
       setId(seg.to_id, gps); if (!seg.to_id) setByName(seg.to, gps);
     }
-    setId(trip.from_station_id, gps); if (!trip.from_station_id) setByName(trip.from_station, gps);
-    setId(trip.to_station_id, gps); if (!trip.to_station_id) setByName(trip.to_station, gps);
+    // v333 (Phase 3): trip.from_station / to_station 列は DROP 済 (v325/v326 SQL 完遂)、
+    //   id のみ参照。seg.from / seg.to (jsonb 内 segments) は trip テーブルの列でないので別途残置。
+    setId(trip.from_station_id, gps);
+    setId(trip.to_station_id, gps);
   }
   if (verifiedStations.size === 0) return [];
 

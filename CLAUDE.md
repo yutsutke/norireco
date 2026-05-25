@@ -32,6 +32,14 @@
 - main 直 push（30秒〜2分で反映）
 - CACHE_VERSION = デプロイ回数 の不変式。push のたびに sw.js を +1
 
+## Supabase migration 規約（v333 で導入）
+- **migration ファイル末尾の `-- Applied: YYYY-MM-DD by <user>` が「真実の源」**。Supabase Dashboard の状態は git で追跡できないので、ここで補う
+- **ユスケ**: SQL Run 後すぐに `supabase/migrations/v*.sql` 末尾に Applied 行追記 → commit (1 ファイル変更だけで OK、push は次回まとめて可)
+- **Claude**: `supabase/migrations/v*.sql` の存在を見ても **「Applied 行があるか」を必ず grep** してから着手する。Applied 無し = 未実行。STATUS.md の「実行待ち」表記は二次情報、migration ファイル末尾が一次情報
+  - 例: `grep -L "^-- Applied:" supabase/migrations/v*.sql` で未実行 migration を列挙
+- DROP COLUMN 前提の事前修正 (callsite を id ベースに直す等) を伴うタスクに着手する前に、必ず該当 migration の Applied 状態を確認する。「JS 側完了 / SQL 実行待ち」と書いてあっても疑う
+- 経緯: v325/v326 SQL は実は Run 済だったが STATUS.md が古く「実行待ち」のまま → v331 で「事前修正」と称して既に不要な作業を実施 → 副作用で循環 import 事故 → v332/v333 修正。CHANGELOG §182 / §183 参照
+
 ## 原則
 - 真実の源はコード。ドキュメントとずれたらコードが正しい → §2.7 意思決定ログに記録
 - docs/ ミラーは作らない（二重管理回避）。HANDOFF.md は廃止済み

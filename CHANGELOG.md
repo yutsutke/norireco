@@ -27,6 +27,81 @@
 
 ---
 
+## 183. v333 — Supabase migration Applied 規約導入 + Phase 3-h/3-i 完全クロージング (2026-05-25)
+
+### 事故の発見と原因分析
+
+v331 push 後ユスケから「画面真っ黒」スクショ報告 → v332 で循環 import を緊急修正したが、**そもそも v331 で「DROP COLUMN 前事前修正」をやる必要が無かった** ことが発覚。
+
+git ログを追うと:
+```
+3da1d47 (2026-05-25) feat(supabase): v325+v326 — name 列廃止準備 (JS) + migration ファイル追加
+                     ↓
+                     [ユスケが Supabase Dashboard で SQL Run、しかし git に痕跡なし]
+                     ↓
+875345f (2026-05-25) v331 — Claude が「SQL 実行待ち」前提で事前修正 push ← 既に Run 済を知らず!
+```
+
+**3 つの欠落が重なった**:
+1. **Supabase Dashboard 状態が git で追跡できない** (構造的欠陥)
+2. ユスケが SQL Run 後に STATUS.md / CHANGELOG.md を更新する規約が無かった (プロセス欠陥)
+3. Claude が「実行待ち」と書かれた項目に着手する前に状態確認しなかった (Claude 側の手抜き)
+
+ユスケから「v325/v326 SQL DROP は既に完遂済がなぜ、君につたわってなかったんだろう？原因を特定したいね」で問題提起。
+
+### 採用した再発防止策 — A: migration ファイル末尾に Applied コメント
+
+選定理由: ユスケ・Claude 両方の認知負荷が最小、git で追跡可能、運用負荷が低い (1 ファイル変更だけ)。
+
+ルール (CLAUDE.md に追記):
+- **ユスケ**: SQL Run 直後に `supabase/migrations/v*.sql` 末尾に `-- Applied: YYYY-MM-DD by yutsutke` 追記 → commit
+- **Claude**: migration を扱う作業に着手する前に **必ず該当ファイル末尾を grep** して Applied 状態を確認。STATUS.md の「実行待ち」表記は二次情報、migration ファイル末尾が一次情報
+- 例コマンド: `grep -L "^-- Applied:" supabase/migrations/v*.sql` で未実行 migration を列挙
+
+### 変更 (規約 + クロージング)
+
+- **supabase/migrations/v325_memo_station_drop.sql**: 末尾に `-- Applied: 2026-05-25 by yutsutke` (事後追記、過去 Run の事実を記録)
+- **supabase/migrations/v326_trip_station_drop.sql**: 同上
+- **CLAUDE.md**: 「Supabase migration 規約」セクション新設、両者の義務と一次情報の位置を明文化
+- **STATUS.md / TODO.md**: Phase 3-h / 3-i 行を「🟡 実行待ち」→「✅ 完成 (Run 済 + cleanup)」に更新
+
+### 変更 (Phase 3-h/3-i 完全クロージング — DROP 前提の cleanup)
+
+DROP 完遂が確認できたので、過渡期用の fallback / backfill コードを全撤去。
+
+- **js/16-memos.js**:
+  - `getMemoStationName`: `if (memo.station) return memo.station;` 撤去、id 解決のみに
+  - 駅名検索 filter: `m.station.includes(nameToken)` の name fallback 撤去、id 一致のみ (v317 で resolveStationQuery が substring → ids 解決済なので影響なし)
+  - `openStationMemoList`: `m.station === args.station` の name fallback 撤去
+  - `hasMemosForStation` / `countMemosForStation`: name fallback 撤去、string 引数 (旧シグネチャ互換) も撤去
+  - `window.norirecoBackfillMemoStationIds` 関数全体撤去 (50 行)
+- **js/13-mypage-common.js**:
+  - `getTripStationName`: name fallback 撤去、id 解決のみに
+- **js/13b-trips.js**:
+  - `window.norirecoBackfillTripStationIds` 関数全体撤去 (70 行)
+- **js/03-characters.js**:
+  - `setId(trip.from_station_id, ...); if (!trip.from_station_id) setByName(trip.from_station, ...)` の name fallback 撤去、id のみに (seg.from / seg.to は jsonb 内データなので残置)
+- **js/17-station-actions.js**:
+  - `m.station === ms.name` フォールバック (countMemosForStation 不在時) を `0` に変更 — 2 箇所
+- **sw.js**: CACHE_VERSION v332 → v333
+
+### 検証
+
+- syntax check 25/25 OK
+- 残った `memo.station` / `trip.from_station` / `trip.to_station` の grep ヒットは全部コメント文字列のみ (実コード上の参照は 0 件)
+
+### 教訓 — 「分散システムで状態を 1 か所に集約せよ」
+
+Supabase Dashboard と git の間に状態の窓が空いていた。CHANGELOG / STATUS だけが情報源だと「ユスケが Run したのに更新を忘れた」で簡単に古くなる。migration ファイル自体に Applied を書く方式なら、Run と記録がほぼ同時で漏れにくい (commit するだけ)。
+
+判定ルール:「真実の源が複数ある時、git で追跡可能な側を一次情報に置く」 — 今回は migration ファイル末尾を一次情報、STATUS.md を二次情報に降格。
+
+### 変更ファイル
+
+`git diff --name-only HEAD` (supabase/migrations/v325_memo_station_drop.sql / v326_trip_station_drop.sql / CLAUDE.md / STATUS.md / TODO.md / js/16-memos.js / js/13-mypage-common.js / js/13b-trips.js / js/03-characters.js / js/17-station-actions.js / sw.js / CHANGELOG.md)
+
+---
+
 ## 182. v332 — 緊急修正: 循環 import で 13b-trips.js top-level が落ちて画面真っ黒 (v331 事故) (2026-05-25)
 
 ### 事故概要

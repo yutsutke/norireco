@@ -108,7 +108,7 @@ export function openStationActionSheet(ms, options) {
   // v325 (Phase 3): 同名異所駅対応のため id 優先カウントに統一
   const memoCount = window.NORIRECO?.memos?.countMemosForStation
     ? window.NORIRECO.memos.countMemosForStation(ms)
-    : (window.NORIRECO?.memos?.state?.cache || []).filter(m => m.station === ms.name).length;
+    : 0;  // v333: memo.station 列 DROP 済、name fallback は機能しないので 0 を返す
 
   // 見出し
   document.getElementById('sa-title').textContent = `🚉 ${ms.name}`;
@@ -477,7 +477,7 @@ function onSaBackToMain() {
   // v325 (Phase 3): 同名異所駅対応のため id 優先カウントに統一
   const memoCount = window.NORIRECO?.memos?.countMemosForStation
     ? window.NORIRECO.memos.countMemosForStation(ms)
-    : (window.NORIRECO?.memos?.state?.cache || []).filter(m => m.station === ms.name).length;
+    : 0;  // v333: memo.station 列 DROP 済、name fallback は機能しないので 0 を返す
   renderActionList({ ms, lines, memoCount });
   S.colorPickLines = null;
 }
