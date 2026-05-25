@@ -1084,15 +1084,28 @@ window.onRecordStationClick = onRecordStationClick;
 //   localStorage key: 'norireco.prefs.showTrainSelector' ('1' or '0')
 // ════════════════════════════════════════════════════════════════
 const PREF_SHOW_TRAIN_SELECTOR = 'norireco.prefs.showTrainSelector';
+const PREF_SHOW_DELAY_INPUT    = 'norireco.prefs.showDelayInput';   // v350
+const PREF_REC_TRAIN_MODE      = 'norireco.prefs.recTrainMode';     // v350: 'local' | 'express'
 
 function initRecTrainToggle() {
+  // 列車・車両形式 (マニアトグル)
   const toggle = document.getElementById('rec-train-toggle');
   const picker = document.getElementById('rec-train-picker');
-  if (!toggle || !picker) return;
-  const saved = localStorage.getItem(PREF_SHOW_TRAIN_SELECTOR) === '1';
-  toggle.checked = saved;
-  picker.style.display = saved ? 'block' : 'none';
-  if (saved) populateSlVehiclePicker();
+  if (toggle && picker) {
+    const saved = localStorage.getItem(PREF_SHOW_TRAIN_SELECTOR) === '1';
+    toggle.checked = saved;
+    picker.style.display = saved ? 'block' : 'none';
+    // モードラジオの復元 (default 'local')
+    const mode = localStorage.getItem(PREF_REC_TRAIN_MODE) === 'express' ? 'express' : 'local';
+    const localRadio   = document.getElementById('rec-train-mode-local');
+    const expressRadio = document.getElementById('rec-train-mode-express');
+    if (localRadio)   localRadio.checked   = (mode === 'local');
+    if (expressRadio) expressRadio.checked = (mode === 'express');
+    applyRecTrainMode(mode);
+    if (saved && mode === 'local') populateSlVehiclePicker();
+  }
+  // 遅延入力トグル (v350)
+  initRecDelayToggle();
 }
 
 function onRecTrainToggle() {
@@ -1103,17 +1116,74 @@ function onRecTrainToggle() {
   localStorage.setItem(PREF_SHOW_TRAIN_SELECTOR, on ? '1' : '0');
   picker.style.display = on ? 'block' : 'none';
   if (on) {
-    populateSlVehiclePicker();
+    // モードに応じて適切なレーンを populate
+    const mode = localStorage.getItem(PREF_REC_TRAIN_MODE) === 'express' ? 'express' : 'local';
+    applyRecTrainMode(mode);
+    if (mode === 'local') populateSlVehiclePicker();
   } else {
     // OFF にしたら車両形式選択をクリア (隠れた state を残さない)
-    const T = NORIRECO.trains;
-    T.selectedCarModel = null;
-    T.selectedTrainId = null;
-    T.selectedTrainName = null;
-    T.selectedTrainCategory = null;
+    clearAllTrainSelections();
   }
 }
 window.onRecTrainToggle = onRecTrainToggle;
+
+// v350: 普通 / 特急 ラジオ切替
+function onRecTrainModeChange() {
+  const expressRadio = document.getElementById('rec-train-mode-express');
+  const mode = expressRadio && expressRadio.checked ? 'express' : 'local';
+  localStorage.setItem(PREF_REC_TRAIN_MODE, mode);
+  // 切替時は両方のレーンの選択をクリア (排他制御を予測可能に)
+  clearAllTrainSelections();
+  resetTrainSelector();   // 既存 cascade の DOM もリセット
+  applyRecTrainMode(mode);
+  if (mode === 'local') populateSlVehiclePicker();
+}
+window.onRecTrainModeChange = onRecTrainModeChange;
+
+// レーン (普通電車 block / 特急 cascade) の表示を切替
+function applyRecTrainMode(mode) {
+  const local   = document.getElementById('rec-sl-vehicle-block');
+  const express = document.getElementById('rec-train-cascade');
+  if (local)   local.style.display   = (mode === 'local')   ? 'block' : 'none';
+  if (express) express.style.display = (mode === 'express') ? 'block' : 'none';
+}
+
+function clearAllTrainSelections() {
+  const T = NORIRECO.trains;
+  T.selectedCarModel       = null;
+  T.selectedTrainId        = null;
+  T.selectedTrainName      = null;
+  T.selectedTrainCategory  = null;
+  const sel = document.getElementById('rec-sl-vehicle-select');
+  if (sel) sel.value = '';
+}
+
+// v350: 遅延入力トグル
+function initRecDelayToggle() {
+  const toggle = document.getElementById('rec-delay-toggle');
+  const row    = document.getElementById('rec-delay-row');
+  if (!toggle || !row) return;
+  const saved = localStorage.getItem(PREF_SHOW_DELAY_INPUT) === '1';
+  toggle.checked = saved;
+  row.style.display = saved ? 'flex' : 'none';
+}
+
+function onRecDelayToggle() {
+  const toggle = document.getElementById('rec-delay-toggle');
+  const row    = document.getElementById('rec-delay-row');
+  if (!toggle || !row) return;
+  const on = toggle.checked;
+  localStorage.setItem(PREF_SHOW_DELAY_INPUT, on ? '1' : '0');
+  row.style.display = on ? 'flex' : 'none';
+  if (!on) {
+    // OFF にしたら入力値をクリア (隠れた state を残さない)
+    const h = document.getElementById('rec-edit-delay-h');
+    const m = document.getElementById('rec-edit-delay-m');
+    if (h) h.value = '';
+    if (m) m.value = '';
+  }
+}
+window.onRecDelayToggle = onRecDelayToggle;
 
 // 区間 chip + 候補車両 dropdown を生成
 function populateSlVehiclePicker() {

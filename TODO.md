@@ -123,9 +123,10 @@ git log --oneline -20
 
 <!-- ✅ v247 で完了: 系統色のユーザーカスタマイズ機能 (Supabase 同期含む) — CHANGELOG §92, §93, §94, §95, §96 参照 -->
 
-- [ ] **普通電車の車両形式も記録できるように** — MVP 完成 (v348)、残: Phase 2 (データクリーンアップ) + Phase 4 (Notion §2.1)
+- [ ] **普通電車の車両形式も記録できるように** — MVP 完成 (v348) + 記録モーダル整理 (v350)、残: Phase 2 (データクリーンアップ) + Phase 4 (Notion §2.1)
   - ✅ Phase 1 (v347): Notion DB「営業系統×車両形式 DB」(256 件) を `service_line_vehicles.json` に書き出すフロー完成 (`tools/export_service_line_vehicles.js`)。176 records → 197 SLs / 292 links に紐付け (非対象除外 91% カバレッジ)
   - ✅ Phase 3 (v348): 記録確認モーダルに「📋 列車・車両形式も記録する (マニア向け)」トグル、ON 時のみ区間 chip + 現役車両 dropdown 展開、`norireco.prefs.showTrainSelector` (localStorage) で永続化 (5大原則 ②同心円ターゲティング)
+  - ✅ 記録モーダル整理 (v350): 普通電車 / 特急・観光列車のラジオで車両形式 UI を排他表示 + 遅延入力 (⏱) を独立トグルでデフォ非表示 (5大原則 ②同心円ターゲティング — 任意項目は UI ごと hide/show)
   - **Phase 2** (未着手): unmatch クリーンアップ — no_line_match 17 件 (他社直通・短縮形 alias 不足) + Notion DB 側の表記揺れ修正 (「各線」を具体化)。実機運用してから優先度判断
   - **Phase 4** (未着手): Notion §2.1 に新データソース追記
 
