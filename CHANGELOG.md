@@ -27,6 +27,41 @@
 
 ---
 
+## 190. v340 — 山陽電鉄 through_lines 補完 (Phase C 漏れ 2 ペア) (2026-05-25)
+
+### 背景
+
+v337 Phase C で `grep '山陽電'` を line.name / official_line で検索したため、`auto_本線_山陽電気鉄道` (name='本線') と `auto_網干線_山陽電気鉄道` (name='網干線') が引っかからず、「山陽電鉄は service_lines_master に未追加」と誤判断。実際は両方とも既存で、through_lines 未設定の状態だった。今回 merged_stations から 49 駅が `auto_本線_山陽電気鉄道` に所属していることに気づき、漏れを補完。
+
+### 追加した 2 ペア / 4 ref
+
+| 元 | 先 | 接続駅 | 列車 |
+|---|---|---|---|
+| 山陽電鉄本線 | 阪神神戸高速線 | 西代 | 直通特急 山陽姫路〜阪神大阪梅田 |
+| 山陽電鉄本線 | 山陽電鉄網干線 | 飾磨 | 社内 (本線/網干線) |
+
+これで「Phase C 神戸高速線 3 社相互 (新開地)」(阪急/阪神/神鉄) に山陽電鉄本線が「阪神神戸高速線→阪神本線まで navigable」で接続される。新開地で乗り換える従来の経路よりも、直通特急 (西代経由) の実態を表現できる。
+
+### 変更
+
+- **tools/add_sanyo_dentetsu_through.js**: 新規 (冪等 + 双方向 + assert)
+- **service_lines_master.json**: 4 ref 追加
+- **sw.js**: CACHE_VERSION v339 → v340
+
+### 教訓
+
+「データが無い」と判断する前に、`operator` フィールドや merged_stations.stations[].lines でクロスチェックすべき。`grep '山陽電'` を line.name / official_line にだけ通すのは不十分 (auto_* 系統は name が `本線` 等の短縮名のことが多く、operator フィールドに会社名が入る)。今後の through_lines 追加スクリプトでは:
+1. service_lines_master を operator/operator_id でフィルタ
+2. merged_stations.stations[].lines に出現する line.id を逆引き
+の 2 段階で確認する。
+
+### 検証
+
+- node tools/add_sanyo_dentetsu_through.js: 4 ref 追加, broken 0, unidi 0
+- through_lines 持ち系統 82 → **84 / 642**
+
+---
+
 ## 189. v339 — 山形/秋田 ミニ新幹線を独立系統として新設 + 東北新幹線と through_lines 接続 (2026-05-25)
 
 ### 背景

@@ -30015,7 +30015,8 @@
       "through_lines": [
         "auto_本線_阪神電気鉄道",
         "auto_神戸高速線_阪急電鉄",
-        "auto_神戸高速線_神戸電鉄"
+        "auto_神戸高速線_神戸電鉄",
+        "auto_本線_山陽電気鉄道"
       ],
       "is_circular": false,
       "parent_id": null,
@@ -49376,7 +49377,10 @@
       "color": "hsl(45, 60%, 55%)",
       "official_line": "本線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_神戸高速線_阪神電気鉄道",
+        "auto_網干線_山陽電気鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -49608,7 +49612,9 @@
       "color": "hsl(284, 60%, 55%)",
       "official_line": "網干線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_本線_山陽電気鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
