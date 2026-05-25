@@ -27,6 +27,27 @@
 
 ---
 
+## 194. v344 — 「📝 後追い」バッジ + 「📌 記録」行を GPS 記録 (verified) 限定に (2026-05-25)
+
+### 背景
+旅程カードの `📝 後追い` バッジと `📌 記録: YYYY-MM-DD HH:MM` 行は、`recorded_at` と `date` が同日でない / または `date_precision = 'unknown'` のとき出していた (v181 由来)。当初 GPS 記録の「即時記録」を前提に「乗車日と記録日のズレ = 異例」のシグナルとして導入したが、手動記録はそもそも「あとから入力」がデフォルト (今日昼の乗車を夜にまとめて入力 / 過去の旅程を思い出して入力など) のため、手動記録カードのほぼ全てに後追いバッジが付いてしまい情報量がゼロ・むしろノイズになっていた。
+
+### 設計判断
+- `trip.verified === true` のとき (GPS 記録) のみ判定を走らせる
+- GPS 記録で当日記録 → バッジなし (普通)
+- GPS 記録で後追い認証 (`retroactivelyVerifyTrip` で半径 500m 内に来て verified=true に昇格) → 📝後追い + 📌 記録 (異例だと一目でわかる)
+- 手動記録 → バッジも行も非表示
+
+### 変更
+- [js/13-mypage-common.js:549-573](js/13-mypage-common.js#L549): `if (trip.recorded_at)` を `if (trip.verified && trip.recorded_at)` に変更。`recordedAtStr` と `isAfterTheFact` を一括で GPS 記録だけに gating。`afterTheFactBadge` / `recordedAtLine` の生成式は変更なし (str / bool が空のまま渡るので自動的に出力されない)
+- 旅程編集モーダル (v226 拡張) の「🕒 乗車時刻ロック」(GPS = ロック、手動 = フル編集) の仕分けと整合
+
+### 関連
+- v181 後追い記録モード拡張 (CHANGELOG_PHASE3.8-early)
+- v226 旅程編集モーダル 5 セクション化 (CHANGELOG §75)
+
+---
+
 ## 193. v343 — Phase D3: 第三セクター北陸・東北 + 福岡空港線 + 私鉄細支線 関東 (23 ペア / 46 ref) (2026-05-25)
 
 ### 背景

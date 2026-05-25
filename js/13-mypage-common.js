@@ -547,9 +547,11 @@ export function tripCardHtml(trip) {
     : '';
 
   // 記録した日 (recorded_at) と 乗車日 (date) の差分で「後追い記録」判定
+  // GPS 記録 (verified) のみ対象: 手動記録は「あとから入力」がデフォルトなので
+  // 「後追い」「📌 記録」を出してもノイズになる (v344)
   let recordedAtStr = '';
   let isAfterTheFact = false;
-  if (trip.recorded_at) {
+  if (trip.verified && trip.recorded_at) {
     try {
       const rd = new Date(trip.recorded_at);
       const ymd = `${rd.getFullYear()}-${String(rd.getMonth()+1).padStart(2,'0')}-${String(rd.getDate()).padStart(2,'0')}`;
