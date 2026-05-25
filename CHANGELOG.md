@@ -27,6 +27,61 @@
 
 ---
 
+## 178. v328 — 駅 ID 体系 Phase 3-k: LINES id 付与カバレッジ 100% (merged_stations 13 駅補完) (2026-05-25)
+
+### 背景
+
+v327 で LINES (lines-p?.json) に駅 id を付与した際、merged_stations.json 側のデータ欠落により 13 駅 (10,164 中) が id 未付与で残った (カバレッジ 99.87%)。内訳:
+- **常磐線 (震災区間) 11 駅**: 逢隈・亘理・浜吉田・山下・坂元・新地・駒ヶ嶺・相馬・日立木・鹿島 (10 駅は merged_stations に存在せず) + 山下 (兵庫の能勢電鉄 山下と 280km 離れて far skip)
+- **山陽線 2 駅**: はりま勝原・英賀保
+- **東北線 1 駅**: 陸前山王
+
+v327 では「merged_stations 側のデータ整備マターとして別件」と棚上げしていたが、座標は lines-p2.json に既にあるため流用すれば自己完結する。
+
+### 動機
+
+- 「あとあと問題が起きなそう」予防的目的の完遂 (v327 と同じ動機)
+- LINES → id ベース reader 移行を将来始めるとき、データに穴があるとそこで例外処理が必要になる。100% にしておく
+- 山下 (常磐線) を 山下 (世田谷線/能勢電鉄) と厳密区別できる状態にしておく (同名異所駅の典型例)
+
+### 変更
+
+- **tools/add_missing_13_stations.js** (新規): lines-p2.json の座標を流用して merged_stations.json に 13 駅を追加する Node スクリプト。デフォルト dry-run、`--write` で書き込み
+  - 採番: s_09018 〜 s_09030 (連番)
+  - `lines: []` / `colors: []`: 該当 SERVICE_LINE が無いため空 (jr_joban_medium は 原ノ町 で終わり、山陽線・東北線の該当駅も SERVICE_LINES 未収録)
+  - `n02_lines: [<該当 N02 line id>]`: 山陽線 / 常磐線 / 東北線
+  - `isolation_rank: 0` / `nearest_km: null`: compute_isolation_rank.js は lines:[] のとき 0 にフォールバックする挙動と一致
+- **merged_stations.json**: 9017 駅 → 9030 駅 (+13)
+- **lines-p?.json**: tools/add_line_station_ids.js --write を再実行し 13 駅に id 付与。カバレッジ 99.87% → **100.00%** (far=0, missing=0)
+  - 集計内訳: exact 9068 → 9080 (+12), near 1083 → 1084 (+1, 常磐線 山下 が 3 候補中の最近接として near 扱い)
+- **sw.js**: CACHE_VERSION v327 → v328
+
+### 設計判断 — SERVICE_LINES への追加は別スコープ
+
+13 駅のうち常磐線 11 駅は震災後 2020 年に運転再開済だが、service_lines_master.json の jr_joban_medium は 原ノ町 で終わっており、いわき方面が継続していない。これらを SERVICE_LINES に追加するのは「🟢 データ充実」カテゴリの別タスク (用語、station_class、運営会社等の妥当性も検討必要)。
+
+今回は「LINES の id 付与カバレッジ 100% にする」だけが目的なので、merged_stations への駅追加 + n02_lines セットに留め、SERVICE_LINES は触らない。
+
+### リスク・検証
+
+- 既存 s_NNNNN id は変更なし (新規 s_09018〜s_09030 のみ追加) → trip / memo / character_grants の既存データに影響なし
+- 山下 (常磐線 / s_09023) は 3 候補中の最近接で id 付与され、世田谷線 (s_04031) / 能勢電鉄 (s_00536) の id は変わらず
+- 9017 駅 → 9030 駅で完駅率分母が +13 = 0.14% 上昇 (UI 上ほぼ影響なし)
+- syntax check 不要 (JSON データのみ変更、JS は新規 tool のみ)
+- 全 4 lines-p?.json の JSON parse 成功 + id 付与カウント確認 (前回比 +13)
+
+### 残課題
+
+- 常磐線 jr_joban_medium SERVICE_LINE をいわき方面まで延伸 (データ充実、別タスク)
+- 山陽線 / 東北線 の SERVICE_LINES 拡充 (同上)
+- N02 LINES.stations[].n キーで集計している reader 側コードの段階的 id 化 (必要になってから 1 箇所ずつ、v327 と同じ方針)
+
+### 変更ファイル
+
+`git diff --name-only HEAD` (tools/add_missing_13_stations.js / merged_stations.json / lines-p1.json / lines-p2.json / lines-p3.json / lines-p4.json / sw.js / CHANGELOG.md / STATUS.md / TODO.md)
+
+---
+
 ## 177. v327 — 駅 ID 体系 Phase 3-j: LINES (lines-p?.json) 各駅に id 付与 + p2 フォーマット統一 (2026-05-25)
 
 ### 背景

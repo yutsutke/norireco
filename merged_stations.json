@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-05-24",
+  "updated_at": "2026-05-25",
   "note": "運行系統 id/色 + N02 物理路線 id + 駅 id (s_NNNNN, v293 で順序ベース付与) を併記。",
   "stations": [
     {
@@ -157269,6 +157269,175 @@
       ],
       "isolation_rank": 0,
       "nearest_km": 0.3
+    },
+    {
+      "id": "s_09018",
+      "name": "はりま勝原",
+      "lat": 34.81016,
+      "lon": 134.61428,
+      "lines": [],
+      "colors": [],
+      "n02_lines": [
+        "山陽線_西日本旅客鉄道"
+      ],
+      "isolation_rank": 0,
+      "nearest_km": null
+    },
+    {
+      "id": "s_09019",
+      "name": "英賀保",
+      "lat": 34.81337,
+      "lon": 134.64477,
+      "lines": [],
+      "colors": [],
+      "n02_lines": [
+        "山陽線_西日本旅客鉄道"
+      ],
+      "isolation_rank": 0,
+      "nearest_km": null
+    },
+    {
+      "id": "s_09020",
+      "name": "逢隈",
+      "lat": 38.06762,
+      "lon": 140.85475,
+      "lines": [],
+      "colors": [],
+      "n02_lines": [
+        "常磐線_東日本旅客鉄道"
+      ],
+      "isolation_rank": 0,
+      "nearest_km": null
+    },
+    {
+      "id": "s_09021",
+      "name": "亘理",
+      "lat": 38.03988,
+      "lon": 140.86129,
+      "lines": [],
+      "colors": [],
+      "n02_lines": [
+        "常磐線_東日本旅客鉄道"
+      ],
+      "isolation_rank": 0,
+      "nearest_km": null
+    },
+    {
+      "id": "s_09022",
+      "name": "浜吉田",
+      "lat": 38.00222,
+      "lon": 140.89008,
+      "lines": [],
+      "colors": [],
+      "n02_lines": [
+        "常磐線_東日本旅客鉄道"
+      ],
+      "isolation_rank": 0,
+      "nearest_km": null
+    },
+    {
+      "id": "s_09023",
+      "name": "山下",
+      "lat": 37.96632,
+      "lon": 140.88898,
+      "lines": [],
+      "colors": [],
+      "n02_lines": [
+        "常磐線_東日本旅客鉄道"
+      ],
+      "isolation_rank": 0,
+      "nearest_km": null
+    },
+    {
+      "id": "s_09024",
+      "name": "坂元",
+      "lat": 37.92408,
+      "lon": 140.90105,
+      "lines": [],
+      "colors": [],
+      "n02_lines": [
+        "常磐線_東日本旅客鉄道"
+      ],
+      "isolation_rank": 0,
+      "nearest_km": null
+    },
+    {
+      "id": "s_09025",
+      "name": "新地",
+      "lat": 37.87922,
+      "lon": 140.92564,
+      "lines": [],
+      "colors": [],
+      "n02_lines": [
+        "常磐線_東日本旅客鉄道"
+      ],
+      "isolation_rank": 0,
+      "nearest_km": null
+    },
+    {
+      "id": "s_09026",
+      "name": "駒ヶ嶺",
+      "lat": 37.84237,
+      "lon": 140.92508,
+      "lines": [],
+      "colors": [],
+      "n02_lines": [
+        "常磐線_東日本旅客鉄道"
+      ],
+      "isolation_rank": 0,
+      "nearest_km": null
+    },
+    {
+      "id": "s_09027",
+      "name": "相馬",
+      "lat": 37.80248,
+      "lon": 140.92572,
+      "lines": [],
+      "colors": [],
+      "n02_lines": [
+        "常磐線_東日本旅客鉄道"
+      ],
+      "isolation_rank": 0,
+      "nearest_km": null
+    },
+    {
+      "id": "s_09028",
+      "name": "日立木",
+      "lat": 37.75613,
+      "lon": 140.93466,
+      "lines": [],
+      "colors": [],
+      "n02_lines": [
+        "常磐線_東日本旅客鉄道"
+      ],
+      "isolation_rank": 0,
+      "nearest_km": null
+    },
+    {
+      "id": "s_09029",
+      "name": "鹿島",
+      "lat": 37.70284,
+      "lon": 140.97008,
+      "lines": [],
+      "colors": [],
+      "n02_lines": [
+        "常磐線_東日本旅客鉄道"
+      ],
+      "isolation_rank": 0,
+      "nearest_km": null
+    },
+    {
+      "id": "s_09030",
+      "name": "陸前山王",
+      "lat": 38.29959,
+      "lon": 140.97948,
+      "lines": [],
+      "colors": [],
+      "n02_lines": [
+        "東北線_東日本旅客鉄道"
+      ],
+      "isolation_rank": 0,
+      "nearest_km": null
     }
   ]
 }

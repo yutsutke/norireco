@@ -70,7 +70,8 @@ git log --oneline -20
     3. Supabase SQL Editor で `supabase/migrations/v325_memo_station_drop.sql` を Run
     4. Supabase SQL Editor で `supabase/migrations/v326_trip_station_drop.sql` を Run
     5. 動作確認後、過渡期の name fallback コード (getMemoStationName / getTripStationName 内の `if (memo.station) return memo.station` 等) は段階的に整理可
-  - **Phase 3-j 完成 (v327)**: LINES (lines-p1〜p4.json) の stations[] に駅 id 付与 (10,164 中 10,151 / 99.87%)、p2 を「1 路線 1 行」フォーマットに統一。先回り対応 (実態としては N02 LINES.stations[].n 参照箇所が 12 ファイル数十箇所あり、データ側に id を持たせて将来 reader 移行をインクリメンタルに可能にした)。スキップ 13 駅は merged_stations 側の補完待ち (常磐線震災区間 + 山陽線 2 駅 + 東北線 陸前山王)
+  - **Phase 3-j 完成 (v327)**: LINES (lines-p1〜p4.json) の stations[] に駅 id 付与 (10,164 中 10,151 / 99.87%)、p2 を「1 路線 1 行」フォーマットに統一。先回り対応 (実態としては N02 LINES.stations[].n 参照箇所が 12 ファイル数十箇所あり、データ側に id を持たせて将来 reader 移行をインクリメンタルに可能にした)
+  - **Phase 3-k 完成 (v328)**: lines-p2.json の座標を流用して merged_stations.json に 13 駅 (s_09018〜s_09030) を追加 (常磐線震災区間 11 + 山陽線 2 + 東北線 1)。add_line_station_ids.js 再実行で **カバレッジ 100.00%** 達成 (far=0, missing=0)。SERVICE_LINES (jr_joban_medium 等) への追加は 🟢 データ充実カテゴリの別タスク
 
 ## 🟡 体験向上（コア層の継続率を上げる）
 
@@ -162,6 +163,15 @@ git log --oneline -20
   - `service_lines_master.json` 内の placeholder（`op_` の後にアンダースコア連続）を本来の id（例: `yokohama_city`, `kyoto_city`, `keifuku`, `saitama_rapid`）に置換
   - 影響: `detectServiceLineGroup` が地域グループを正しく付けられず「首都圏・ローカル」「その他」にフォールバックしている
   - 西武池袋線駅順 / 箱根登山系 / 伊豆箱根 の 4 件は v173 で対応済
+
+- [ ] **常磐線 SERVICE_LINE のいわき方面延伸**（service_lines_master.json）
+  - 現状: `jr_joban_medium` が原ノ町で終わっており、震災後 2020 年に運転再開した 原ノ町〜いわき (11 駅) が SERVICE_LINES 未収録
+  - v328 で merged_stations.json には 13 駅 (常磐 11 + 山陽 はりま勝原/英賀保 + 東北 陸前山王) を補完したが、`lines: []` のため SERVICE_LINES 経由の集計・描画では現れない (N02 LINES polyline でのみ描画される)
+  - 影響: 駅完訪達成判定で「いわき方面常磐線駅は jr_joban_medium に乗ったとカウントされない」
+  - 対応: service_lines_master.json の jr_joban_medium.stations に 11 駅追加 (順序: 岩沼〜亘理〜...〜原ノ町〜日立木〜...〜広野〜いわき)。stop_type / station_class は周辺駅と整合
+
+- [ ] **山陽線 はりま勝原・英賀保 / 東北線 陸前山王 の SERVICE_LINE 収録**（service_lines_master.json）
+  - v328 で merged_stations 側は補完済 (s_09018/19/30)、SERVICE_LINE 未収録の小規模穴
 
 - [ ] **直通系統の追加**（service_lines_master.json）
   - F ライナー（元町中華街〜小川町/小手指）
