@@ -27,6 +27,75 @@
 
 ---
 
+## 179. v329 — データ充実: v328 で補完した 13 駅を 3 SERVICE_LINES に収録 + isolation_rank 再計算 (2026-05-25)
+
+### 背景
+
+v328 で merged_stations.json に 13 駅 (常磐線震災区間 11 + 山陽線 2 + 東北線 1) を補完したが、`lines: []` のままだった (SERVICE_LINE 未収録)。このままだと:
+- 完駅率カードや運営会社別カードの「乗車系統数」で表示されない
+- 系統別の集計 (路線タブ・slVisitCount) に出てこない
+- 地図上の駅マーカーは N02 LINES polyline 経由でしか描画されない (SERVICE_LINES マーカーレイヤーで欠落)
+- isolation_rank が 0 にフォールバックして「東京山手内側並みの密集」扱い (実際は 4-6km 間隔)
+
+ユスケから「13 駅を SERVICE_LINES に収録するところまでやる」依頼で v329 で対応。
+
+### 動機
+
+- v328 で「データ充実カテゴリの別タスク」と punt したが、3 線追加だけなのでまとめてやる方が綺麗
+- 利府線 (jr_tohoku_main_rifu) は陸前山王が抜けていた **既存データ漏れ** (震災と無関係) で、これも同時修正できる
+- isolation_rank が 0 のままだと低ズーム LOD で表示優先度が低くなり、ユーザーに「ない駅」のように見える
+
+### 変更
+
+- **tools/add_13_stations_to_service_lines.js** (新規): 3 つの SERVICE_LINES に駅を追加して order を採番し直し + merged_stations.json の lines/colors を同時更新する Node スクリプト。idempotent (再実行で重複追加しない)。デフォルト dry-run、`--write` で書き込み。
+- **service_lines_master.json**:
+  - `jr_joban_medium`: 11 駅を 原ノ町 (order 63) の後に追加 (鹿島〜岩沼)、駅数 63 → 74、name を「常磐線中距離(品川〜原ノ町)」→「**常磐線中距離(品川〜岩沼)**」に更新
+  - `jr_sanyo_main`: 英賀保・はりま勝原 を 姫路 (idx 0) と 網干 (idx 1) の間に挿入、駅数 101 → 103、網干以降の order を +2 シフト
+  - `jr_tohoku_main_rifu`: 陸前山王 を 岩切 (idx 0) と 新利府 (idx 1) の間に挿入、駅数 3 → 4 (1:岩切 → 2:陸前山王 → 3:新利府 → 4:利府)
+- **merged_stations.json**:
+  - 11 常磐線駅: `lines: ["jr_joban_medium"]` / `colors: ["#2DA9DF"]`
+  - 岩沼 (s_04138): 既存 `jr_tohoku_main_north` に加えて `jr_joban_medium` を追加 (lines 2 個に)
+  - 2 山陽線駅 (はりま勝原 s_09018 / 英賀保 s_09019): `jr_sanyo_main` / `#0072BC`
+  - 陸前山王 (s_09030): `jr_tohoku_main_rifu` / `#F4A300`
+- **isolation_rank 再計算** (`tools/compute_isolation_rank.js`):
+  - 新規 13 駅は SERVICE_LINE 経由で隣接駅と距離計算可能になり、rank 3-5 / nearest 2-6.7km に確定 (前回は 0 / null)
+  - **隣接駅情報なし: 0 駅** (前回も 0 駅、9030 駅全てが何らかの SERVICE_LINE に含まれた)
+  - rank 分布: rank 0=716 / 1=1938 / 2=2959 / 3=1625 / 4=1393 / 5=319 / 6=80
+- **sw.js**: CACHE_VERSION v328 → v329
+
+### 設計判断 — jr_joban_medium に append (新規 SERVICE_LINE 作成せず)
+
+代替案として「常磐線 原ノ町〜岩沼 を別 SERVICE_LINE として独立 (`jr_joban_north` 等)」もありえたが:
+- 国土地理院 N02 は 1 本の `常磐線_東日本旅客鉄道` 線
+- 中距離・特急ひたち系統 (上野〜仙台直通) の運転実績あり (1 日数本)
+- 完駅率の集計で「常磐線」が 2 つに分裂すると混乱
+
+→ 単一 SERVICE_LINE 内に append、name を「品川〜岩沼」に更新する形を採用。
+
+### 設計判断 — 陸前山王 は jr_tohoku_main_north ではなく jr_tohoku_main_rifu
+
+陸前山王 は東北本線の 利府支線 (旧線) 上の駅。本線 (海岸線) は 岩切 → 国府多賀城 → 塩釜 を通る。`jr_tohoku_main_rifu` という支線 SERVICE_LINE が既存だったので、そこに収録するのが正しい (本線に紛れ込ませない)。
+
+### リスク・検証
+
+- 既存駅 (岩沼) の lines 拡張は `addLineToMs` の existing check で重複追加されない
+- 山下 (常磐線 s_09023) は msByName Map の last-write-wins で正しく s_09023 (s_00536 / s_04031 ではなく) が更新される。検証済
+- syntax check 25/25 OK (JSON のみ変更)
+- jr_joban_medium の通し駅数 74 駅・name 「常磐線中距離(品川〜岩沼)」確認済
+- jr_sanyo_main の冒頭 6 駅順序 (姫路→英賀保→はりま勝原→網干→竜野→相生) 確認済
+- jr_tohoku_main_rifu の 4 駅順序 (岩切→陸前山王→新利府→利府) 確認済
+
+### 残課題
+
+- 常磐線特急 (ひたち・ときわ) の系統定義は別 SERVICE_LINE (`jr_joban_express` 等) が無いため、現状中距離と混在
+- 山陽本線・東北本線の更なる SERVICE_LINES 拡充は別タスク (operator_id placeholder 一括補修と同カテゴリ)
+
+### 変更ファイル
+
+`git diff --name-only HEAD` (tools/add_13_stations_to_service_lines.js / service_lines_master.json / merged_stations.json / sw.js / CHANGELOG.md / STATUS.md / TODO.md)
+
+---
+
 ## 178. v328 — 駅 ID 体系 Phase 3-k: LINES id 付与カバレッジ 100% (merged_stations 13 駅補完) (2026-05-25)
 
 ### 背景

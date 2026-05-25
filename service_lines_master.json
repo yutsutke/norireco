@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "updated_at": "2026-05-12",
+  "updated_at": "2026-05-25",
   "note": "手動キュレーション(都市圏運行系統) + N02 物理路線からの自動生成",
   "service_lines": [
     {
@@ -60730,7 +60730,7 @@
     },
     {
       "id": "jr_joban_medium",
-      "name": "常磐線中距離(品川〜原ノ町)",
+      "name": "常磐線中距離(品川〜岩沼)",
       "operator": "東日本旅客鉄道",
       "operator_id": "jr_east",
       "color": "#2DA9DF",
@@ -61056,6 +61056,61 @@
           "order": 63,
           "name": "原ノ町",
           "n02_match": true
+        },
+        {
+          "order": 64,
+          "name": "鹿島",
+          "n02_match": true
+        },
+        {
+          "order": 65,
+          "name": "日立木",
+          "n02_match": true
+        },
+        {
+          "order": 66,
+          "name": "相馬",
+          "n02_match": true
+        },
+        {
+          "order": 67,
+          "name": "駒ヶ嶺",
+          "n02_match": true
+        },
+        {
+          "order": 68,
+          "name": "新地",
+          "n02_match": true
+        },
+        {
+          "order": 69,
+          "name": "坂元",
+          "n02_match": true
+        },
+        {
+          "order": 70,
+          "name": "山下",
+          "n02_match": true
+        },
+        {
+          "order": 71,
+          "name": "浜吉田",
+          "n02_match": true
+        },
+        {
+          "order": 72,
+          "name": "亘理",
+          "n02_match": true
+        },
+        {
+          "order": 73,
+          "name": "逢隈",
+          "n02_match": true
+        },
+        {
+          "order": 74,
+          "name": "岩沼",
+          "n02_match": true
         }
       ]
     },
@@ -61198,501 +61253,511 @@
         },
         {
           "order": 2,
-          "name": "網干",
+          "name": "英賀保",
           "n02_match": true
         },
         {
           "order": 3,
-          "name": "竜野",
+          "name": "はりま勝原",
           "n02_match": true
         },
         {
           "order": 4,
-          "name": "相生",
+          "name": "網干",
           "n02_match": true
         },
         {
           "order": 5,
-          "name": "有年",
+          "name": "竜野",
           "n02_match": true
         },
         {
           "order": 6,
-          "name": "上郡",
+          "name": "相生",
           "n02_match": true
         },
         {
           "order": 7,
-          "name": "三石",
+          "name": "有年",
           "n02_match": true
         },
         {
           "order": 8,
-          "name": "吉永",
+          "name": "上郡",
           "n02_match": true
         },
         {
           "order": 9,
-          "name": "和気",
+          "name": "三石",
           "n02_match": true
         },
         {
           "order": 10,
-          "name": "熊山",
+          "name": "吉永",
           "n02_match": true
         },
         {
           "order": 11,
-          "name": "万富",
+          "name": "和気",
           "n02_match": true
         },
         {
           "order": 12,
-          "name": "瀬戸",
+          "name": "熊山",
           "n02_match": true
         },
         {
           "order": 13,
-          "name": "上道",
+          "name": "万富",
           "n02_match": true
         },
         {
           "order": 14,
-          "name": "東岡山",
+          "name": "瀬戸",
           "n02_match": true
         },
         {
           "order": 15,
-          "name": "高島",
+          "name": "上道",
           "n02_match": true
         },
         {
           "order": 16,
-          "name": "西川原",
+          "name": "東岡山",
           "n02_match": true
         },
         {
           "order": 17,
-          "name": "岡山",
+          "name": "高島",
           "n02_match": true
         },
         {
           "order": 18,
-          "name": "北長瀬",
+          "name": "西川原",
           "n02_match": true
         },
         {
           "order": 19,
-          "name": "庭瀬",
+          "name": "岡山",
           "n02_match": true
         },
         {
           "order": 20,
-          "name": "中庄",
+          "name": "北長瀬",
           "n02_match": true
         },
         {
           "order": 21,
-          "name": "倉敷",
+          "name": "庭瀬",
           "n02_match": true
         },
         {
           "order": 22,
-          "name": "西阿知",
+          "name": "中庄",
           "n02_match": true
         },
         {
           "order": 23,
-          "name": "新倉敷",
+          "name": "倉敷",
           "n02_match": true
         },
         {
           "order": 24,
-          "name": "金光",
+          "name": "西阿知",
           "n02_match": true
         },
         {
           "order": 25,
-          "name": "鴨方",
+          "name": "新倉敷",
           "n02_match": true
         },
         {
           "order": 26,
-          "name": "里庄",
+          "name": "金光",
           "n02_match": true
         },
         {
           "order": 27,
-          "name": "笠岡",
+          "name": "鴨方",
           "n02_match": true
         },
         {
           "order": 28,
-          "name": "大門",
+          "name": "里庄",
           "n02_match": true
         },
         {
           "order": 29,
-          "name": "東福山",
+          "name": "笠岡",
           "n02_match": true
         },
         {
           "order": 30,
-          "name": "福山",
+          "name": "大門",
           "n02_match": true
         },
         {
           "order": 31,
-          "name": "備後赤坂",
+          "name": "東福山",
           "n02_match": true
         },
         {
           "order": 32,
-          "name": "松永",
+          "name": "福山",
           "n02_match": true
         },
         {
           "order": 33,
-          "name": "東尾道",
+          "name": "備後赤坂",
           "n02_match": true
         },
         {
           "order": 34,
-          "name": "尾道",
+          "name": "松永",
           "n02_match": true
         },
         {
           "order": 35,
-          "name": "糸崎",
+          "name": "東尾道",
           "n02_match": true
         },
         {
           "order": 36,
-          "name": "三原",
+          "name": "尾道",
           "n02_match": true
         },
         {
           "order": 37,
-          "name": "本郷",
+          "name": "糸崎",
           "n02_match": true
         },
         {
           "order": 38,
-          "name": "河内",
+          "name": "三原",
           "n02_match": true
         },
         {
           "order": 39,
-          "name": "入野",
+          "name": "本郷",
           "n02_match": true
         },
         {
           "order": 40,
-          "name": "白市",
+          "name": "河内",
           "n02_match": true
         },
         {
           "order": 41,
-          "name": "西高屋",
+          "name": "入野",
           "n02_match": true
         },
         {
           "order": 42,
-          "name": "西条",
+          "name": "白市",
           "n02_match": true
         },
         {
           "order": 43,
-          "name": "寺家",
+          "name": "西高屋",
           "n02_match": true
         },
         {
           "order": 44,
-          "name": "八本松",
+          "name": "西条",
           "n02_match": true
         },
         {
           "order": 45,
-          "name": "瀬野",
+          "name": "寺家",
           "n02_match": true
         },
         {
           "order": 46,
-          "name": "中野東",
+          "name": "八本松",
           "n02_match": true
         },
         {
           "order": 47,
-          "name": "安芸中野",
+          "name": "瀬野",
           "n02_match": true
         },
         {
           "order": 48,
-          "name": "海田市",
+          "name": "中野東",
           "n02_match": true
         },
         {
           "order": 49,
-          "name": "向洋",
+          "name": "安芸中野",
           "n02_match": true
         },
         {
           "order": 50,
-          "name": "天神川",
+          "name": "海田市",
           "n02_match": true
         },
         {
           "order": 51,
-          "name": "広島",
+          "name": "向洋",
           "n02_match": true
         },
         {
           "order": 52,
-          "name": "新白島",
+          "name": "天神川",
           "n02_match": true
         },
         {
           "order": 53,
-          "name": "横川",
+          "name": "広島",
           "n02_match": true
         },
         {
           "order": 54,
-          "name": "西広島",
+          "name": "新白島",
           "n02_match": true
         },
         {
           "order": 55,
-          "name": "新井口",
+          "name": "横川",
           "n02_match": true
         },
         {
           "order": 56,
-          "name": "五日市",
+          "name": "西広島",
           "n02_match": true
         },
         {
           "order": 57,
-          "name": "廿日市",
+          "name": "新井口",
           "n02_match": true
         },
         {
           "order": 58,
-          "name": "宮内串戸",
+          "name": "五日市",
           "n02_match": true
         },
         {
           "order": 59,
-          "name": "阿品",
+          "name": "廿日市",
           "n02_match": true
         },
         {
           "order": 60,
-          "name": "宮島口",
+          "name": "宮内串戸",
           "n02_match": true
         },
         {
           "order": 61,
-          "name": "前空",
+          "name": "阿品",
           "n02_match": true
         },
         {
           "order": 62,
-          "name": "大野浦",
+          "name": "宮島口",
           "n02_match": true
         },
         {
           "order": 63,
-          "name": "玖波",
+          "name": "前空",
           "n02_match": true
         },
         {
           "order": 64,
-          "name": "大竹",
+          "name": "大野浦",
           "n02_match": true
         },
         {
           "order": 65,
-          "name": "和木",
+          "name": "玖波",
           "n02_match": true
         },
         {
           "order": 66,
-          "name": "岩国",
+          "name": "大竹",
           "n02_match": true
         },
         {
           "order": 67,
-          "name": "南岩国",
+          "name": "和木",
           "n02_match": true
         },
         {
           "order": 68,
-          "name": "藤生",
+          "name": "岩国",
           "n02_match": true
         },
         {
           "order": 69,
-          "name": "通津",
+          "name": "南岩国",
           "n02_match": true
         },
         {
           "order": 70,
-          "name": "由宇",
+          "name": "藤生",
           "n02_match": true
         },
         {
           "order": 71,
-          "name": "神代",
+          "name": "通津",
           "n02_match": true
         },
         {
           "order": 72,
-          "name": "大畠",
+          "name": "由宇",
           "n02_match": true
         },
         {
           "order": 73,
-          "name": "柳井港",
+          "name": "神代",
           "n02_match": true
         },
         {
           "order": 74,
-          "name": "柳井",
+          "name": "大畠",
           "n02_match": true
         },
         {
           "order": 75,
-          "name": "田布施",
+          "name": "柳井港",
           "n02_match": true
         },
         {
           "order": 76,
-          "name": "岩田",
+          "name": "柳井",
           "n02_match": true
         },
         {
           "order": 77,
-          "name": "島田",
+          "name": "田布施",
           "n02_match": true
         },
         {
           "order": 78,
-          "name": "光",
+          "name": "岩田",
           "n02_match": true
         },
         {
           "order": 79,
-          "name": "下松",
+          "name": "島田",
           "n02_match": true
         },
         {
           "order": 80,
-          "name": "櫛ヶ浜",
+          "name": "光",
           "n02_match": true
         },
         {
           "order": 81,
-          "name": "徳山",
+          "name": "下松",
           "n02_match": true
         },
         {
           "order": 82,
-          "name": "新南陽",
+          "name": "櫛ヶ浜",
           "n02_match": true
         },
         {
           "order": 83,
-          "name": "福川",
+          "name": "徳山",
           "n02_match": true
         },
         {
           "order": 84,
-          "name": "戸田",
+          "name": "新南陽",
           "n02_match": true
         },
         {
           "order": 85,
-          "name": "富海",
+          "name": "福川",
           "n02_match": true
         },
         {
           "order": 86,
-          "name": "防府",
+          "name": "戸田",
           "n02_match": true
         },
         {
           "order": 87,
-          "name": "大道",
+          "name": "富海",
           "n02_match": true
         },
         {
           "order": 88,
-          "name": "四辻",
+          "name": "防府",
           "n02_match": true
         },
         {
           "order": 89,
-          "name": "新山口",
+          "name": "大道",
           "n02_match": true
         },
         {
           "order": 90,
-          "name": "嘉川",
+          "name": "四辻",
           "n02_match": true
         },
         {
           "order": 91,
-          "name": "本由良",
+          "name": "新山口",
           "n02_match": true
         },
         {
           "order": 92,
-          "name": "厚東",
+          "name": "嘉川",
           "n02_match": true
         },
         {
           "order": 93,
-          "name": "宇部",
+          "name": "本由良",
           "n02_match": true
         },
         {
           "order": 94,
-          "name": "小野田",
+          "name": "厚東",
           "n02_match": true
         },
         {
           "order": 95,
-          "name": "厚狭",
+          "name": "宇部",
           "n02_match": true
         },
         {
           "order": 96,
-          "name": "埴生",
+          "name": "小野田",
           "n02_match": true
         },
         {
           "order": 97,
-          "name": "小月",
+          "name": "厚狭",
           "n02_match": true
         },
         {
           "order": 98,
-          "name": "長府",
+          "name": "埴生",
           "n02_match": true
         },
         {
           "order": 99,
-          "name": "新下関",
+          "name": "小月",
           "n02_match": true
         },
         {
           "order": 100,
-          "name": "幡生",
+          "name": "長府",
           "n02_match": true
         },
         {
           "order": 101,
+          "name": "新下関",
+          "n02_match": true
+        },
+        {
+          "order": 102,
+          "name": "幡生",
+          "n02_match": true
+        },
+        {
+          "order": 103,
           "name": "下関",
           "n02_match": true
         }
@@ -62561,11 +62626,16 @@
         },
         {
           "order": 2,
-          "name": "新利府",
+          "name": "陸前山王",
           "n02_match": true
         },
         {
           "order": 3,
+          "name": "新利府",
+          "n02_match": true
+        },
+        {
+          "order": 4,
           "name": "利府",
           "n02_match": true
         }

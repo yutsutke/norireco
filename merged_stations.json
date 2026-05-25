@@ -12107,7 +12107,7 @@
         "東北線_東日本旅客鉄道"
       ],
       "isolation_rank": 3,
-      "nearest_km": 2.4
+      "nearest_km": 2.1
     },
     {
       "id": "s_00545",
@@ -74316,10 +74316,12 @@
       "lat": 38.11186,
       "lon": 140.86365,
       "lines": [
-        "jr_tohoku_main_north"
+        "jr_tohoku_main_north",
+        "jr_joban_medium"
       ],
       "colors": [
-        "#F4A300"
+        "#F4A300",
+        "#2DA9DF"
       ],
       "n02_lines": [
         "東北線_東日本旅客鉄道"
@@ -87789,7 +87791,7 @@
         "日生線_能勢電鉄"
       ],
       "isolation_rank": 6,
-      "nearest_km": 394.9
+      "nearest_km": 597.7
     },
     {
       "id": "s_04931",
@@ -125035,8 +125037,8 @@
       "n02_lines": [
         "山陽線_西日本旅客鉄道"
       ],
-      "isolation_rank": 5,
-      "nearest_km": 5.9
+      "isolation_rank": 3,
+      "nearest_km": 2.7
     },
     {
       "id": "s_07122",
@@ -157275,169 +157277,221 @@
       "name": "はりま勝原",
       "lat": 34.81016,
       "lon": 134.61428,
-      "lines": [],
-      "colors": [],
+      "lines": [
+        "jr_sanyo_main"
+      ],
+      "colors": [
+        "#0072BC"
+      ],
       "n02_lines": [
         "山陽線_西日本旅客鉄道"
       ],
-      "isolation_rank": 0,
-      "nearest_km": null
+      "isolation_rank": 3,
+      "nearest_km": 2.7
     },
     {
       "id": "s_09019",
       "name": "英賀保",
       "lat": 34.81337,
       "lon": 134.64477,
-      "lines": [],
-      "colors": [],
+      "lines": [
+        "jr_sanyo_main"
+      ],
+      "colors": [
+        "#0072BC"
+      ],
       "n02_lines": [
         "山陽線_西日本旅客鉄道"
       ],
-      "isolation_rank": 0,
-      "nearest_km": null
+      "isolation_rank": 3,
+      "nearest_km": 2.8
     },
     {
       "id": "s_09020",
       "name": "逢隈",
       "lat": 38.06762,
       "lon": 140.85475,
-      "lines": [],
-      "colors": [],
+      "lines": [
+        "jr_joban_medium"
+      ],
+      "colors": [
+        "#2DA9DF"
+      ],
       "n02_lines": [
         "常磐線_東日本旅客鉄道"
       ],
-      "isolation_rank": 0,
-      "nearest_km": null
+      "isolation_rank": 4,
+      "nearest_km": 3.1
     },
     {
       "id": "s_09021",
       "name": "亘理",
       "lat": 38.03988,
       "lon": 140.86129,
-      "lines": [],
-      "colors": [],
+      "lines": [
+        "jr_joban_medium"
+      ],
+      "colors": [
+        "#2DA9DF"
+      ],
       "n02_lines": [
         "常磐線_東日本旅客鉄道"
       ],
-      "isolation_rank": 0,
-      "nearest_km": null
+      "isolation_rank": 4,
+      "nearest_km": 3.1
     },
     {
       "id": "s_09022",
       "name": "浜吉田",
       "lat": 38.00222,
       "lon": 140.89008,
-      "lines": [],
-      "colors": [],
+      "lines": [
+        "jr_joban_medium"
+      ],
+      "colors": [
+        "#2DA9DF"
+      ],
       "n02_lines": [
         "常磐線_東日本旅客鉄道"
       ],
-      "isolation_rank": 0,
-      "nearest_km": null
+      "isolation_rank": 4,
+      "nearest_km": 4
     },
     {
       "id": "s_09023",
       "name": "山下",
       "lat": 37.96632,
       "lon": 140.88898,
-      "lines": [],
-      "colors": [],
+      "lines": [
+        "jr_joban_medium"
+      ],
+      "colors": [
+        "#2DA9DF"
+      ],
       "n02_lines": [
         "常磐線_東日本旅客鉄道"
       ],
-      "isolation_rank": 0,
-      "nearest_km": null
+      "isolation_rank": 4,
+      "nearest_km": 4
     },
     {
       "id": "s_09024",
       "name": "坂元",
       "lat": 37.92408,
       "lon": 140.90105,
-      "lines": [],
-      "colors": [],
+      "lines": [
+        "jr_joban_medium"
+      ],
+      "colors": [
+        "#2DA9DF"
+      ],
       "n02_lines": [
         "常磐線_東日本旅客鉄道"
       ],
-      "isolation_rank": 0,
-      "nearest_km": null
+      "isolation_rank": 4,
+      "nearest_km": 4.8
     },
     {
       "id": "s_09025",
       "name": "新地",
       "lat": 37.87922,
       "lon": 140.92564,
-      "lines": [],
-      "colors": [],
+      "lines": [
+        "jr_joban_medium"
+      ],
+      "colors": [
+        "#2DA9DF"
+      ],
       "n02_lines": [
         "常磐線_東日本旅客鉄道"
       ],
-      "isolation_rank": 0,
-      "nearest_km": null
+      "isolation_rank": 4,
+      "nearest_km": 4.1
     },
     {
       "id": "s_09026",
       "name": "駒ヶ嶺",
       "lat": 37.84237,
       "lon": 140.92508,
-      "lines": [],
-      "colors": [],
+      "lines": [
+        "jr_joban_medium"
+      ],
+      "colors": [
+        "#2DA9DF"
+      ],
       "n02_lines": [
         "常磐線_東日本旅客鉄道"
       ],
-      "isolation_rank": 0,
-      "nearest_km": null
+      "isolation_rank": 4,
+      "nearest_km": 4.1
     },
     {
       "id": "s_09027",
       "name": "相馬",
       "lat": 37.80248,
       "lon": 140.92572,
-      "lines": [],
-      "colors": [],
+      "lines": [
+        "jr_joban_medium"
+      ],
+      "colors": [
+        "#2DA9DF"
+      ],
       "n02_lines": [
         "常磐線_東日本旅客鉄道"
       ],
-      "isolation_rank": 0,
-      "nearest_km": null
+      "isolation_rank": 4,
+      "nearest_km": 4.4
     },
     {
       "id": "s_09028",
       "name": "日立木",
       "lat": 37.75613,
       "lon": 140.93466,
-      "lines": [],
-      "colors": [],
+      "lines": [
+        "jr_joban_medium"
+      ],
+      "colors": [
+        "#2DA9DF"
+      ],
       "n02_lines": [
         "常磐線_東日本旅客鉄道"
       ],
-      "isolation_rank": 0,
-      "nearest_km": null
+      "isolation_rank": 5,
+      "nearest_km": 5.2
     },
     {
       "id": "s_09029",
       "name": "鹿島",
       "lat": 37.70284,
       "lon": 140.97008,
-      "lines": [],
-      "colors": [],
+      "lines": [
+        "jr_joban_medium"
+      ],
+      "colors": [
+        "#2DA9DF"
+      ],
       "n02_lines": [
         "常磐線_東日本旅客鉄道"
       ],
-      "isolation_rank": 0,
-      "nearest_km": null
+      "isolation_rank": 5,
+      "nearest_km": 6.7
     },
     {
       "id": "s_09030",
       "name": "陸前山王",
       "lat": 38.29959,
       "lon": 140.97948,
-      "lines": [],
-      "colors": [],
+      "lines": [
+        "jr_tohoku_main_rifu"
+      ],
+      "colors": [
+        "#F4A300"
+      ],
       "n02_lines": [
         "東北線_東日本旅客鉄道"
       ],
-      "isolation_rank": 0,
-      "nearest_km": null
+      "isolation_rank": 3,
+      "nearest_km": 2
     }
   ]
 }
