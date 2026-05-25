@@ -70,7 +70,7 @@ git log --oneline -20
     3. Supabase SQL Editor で `supabase/migrations/v325_memo_station_drop.sql` を Run
     4. Supabase SQL Editor で `supabase/migrations/v326_trip_station_drop.sql` を Run
     5. 動作確認後、過渡期の name fallback コード (getMemoStationName / getTripStationName 内の `if (memo.station) return memo.station` 等) は段階的に整理可
-  - **棚上げ**: LINES (lines-p1〜p4.json) の stations[].id 付与 — 直接参照する処理が現状なし、必要になってから再考
+  - **Phase 3-j 完成 (v327)**: LINES (lines-p1〜p4.json) の stations[] に駅 id 付与 (10,164 中 10,151 / 99.87%)、p2 を「1 路線 1 行」フォーマットに統一。先回り対応 (実態としては N02 LINES.stations[].n 参照箇所が 12 ファイル数十箇所あり、データ側に id を持たせて将来 reader 移行をインクリメンタルに可能にした)。スキップ 13 駅は merged_stations 側の補完待ち (常磐線震災区間 + 山陽線 2 駅 + 東北線 陸前山王)
 
 ## 🟡 体験向上（コア層の継続率を上げる）
 

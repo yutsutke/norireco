@@ -27,6 +27,64 @@
 
 ---
 
+## 177. v327 — 駅 ID 体系 Phase 3-j: LINES (lines-p?.json) 各駅に id 付与 + p2 フォーマット統一 (2026-05-25)
+
+### 背景
+
+v326 で「Phase 3 残り (LINES の id 付与)」は **棚上げ** とした (`lines-p?.json` の stations[] を直接参照する処理が現状なし、必要になってから再考)。しかしユスケから「あとあと問題が起きなそう」観点で先回り対応依頼。
+
+実際 grep してみると **N02 LINES.stations[].n キーで findIndex / forEach している箇所が 12 ファイル・数十箇所残っている** (04b-ride-record / 05-supabase-data / 07-record-mode / 11-fraud-detection 等)。SERVICE_LINES.stations[].id (v293 で付与済) と違い、N02 LINES は name しか持たないため、複数路線を跨いだ駅集計や同名異所駅の厳密区別が将来できない。
+
+データ側に id を持たせておけば、後で reader を id 化する時にいつでも置換可能になる。これがユスケの予防的目的に合致する最小スコープ。
+
+### 動機
+
+- 同名異所駅 (高松 香川/石川/多摩 / 山下 宮城/兵庫 等) を N02 物理路線レベルでも厳密区別可能にする
+- 将来 reader を id 化する作業を「データ整備の手間なしで」始められる状態にしておく
+- v324 までの Phase 3 (SERVICE_LINES 側 + characters_master + memos + trips) を補完して「駅 id 体系」を全面適用 (LINES だけ name のままという歪みを解消)
+
+### 変更
+
+- **tools/add_line_station_ids.js** (新規): `merged_stations.json` と (name + 座標近接) で照合して `lines-p1〜4.json` の各駅に `id: s_NNNNN` を付与する Node スクリプト。デフォルト dry-run、`--write` で書き込み。
+  - 照合キー: `merged_stations.json` は国土地理院 `c` コードを持たないため、name で候補を絞り座標最近接 1 件を採用
+  - 安全策: 距離 0.5km 超の最近接候補は「同名異所駅で誤マッチ」の危険があるため id 付与しない (reader 側 name fallback に任せる)
+  - 集計: total 10,164 駅 / exact (single cand, <0.5km) 9,068 / near (multi cand, <0.5km) 1,083 / far (>=0.5km, skip) 1 / missing (no name) 12 → **カバレッジ 99.87%**
+- **lines-p1.json / lines-p3.json / lines-p4.json**: 各駅に `id` プロパティ追加 (1 路線 1 行フォーマット維持)
+- **lines-p2.json**: id 付与 + **フォーマット統一**。元は「1 駅複数行のインデント形式」だったが、p1/p3/p4 と揃えて「1 路線 1 行」に統一 (38,289 行 → 170 行、766KB → 450KB)
+- **sw.js**: CACHE_VERSION v326 → v327
+
+### id 付与スキップ駅 (13 駅、約 0.13%)
+
+reader 側 name fallback で従来どおり動作:
+- **常磐線 (震災不通区間 11 駅)**: 逢隈・亘理・浜吉田・坂元・新地・駒ヶ嶺・相馬・日立木・鹿島 + 山下 (山下のみ「他県の山下と座標 280km 差で far skip」、他 10 駅は merged_stations に存在せず missing)
+- **山陽線**: はりま勝原・英賀保 (merged_stations 漏れ)
+- **東北線**: 陸前山王 (merged_stations 漏れ)
+
+これらは merged_stations.json 側のデータ整備マターとして別件 (今回スコープ外)。
+
+### 設計判断 — reader 側変更なしで stop
+
+「N02 LINES.stations[].n キー findIndex」が大量に残っているが、ほぼすべて **特定の路線スコープ内** での検索 (例: `line.stations.findIndex(s => s.n === seg.from)`)。line.id でスコープされる範囲内では同名異所駅問題は発生しないため、reader 側変更は今回不要と判断。
+
+将来「複数路線を跨いだ駅集計」を書く時に id ベースに移行すれば良い (データは既に揃っている)。インクリメンタルに進められる。
+
+### 検証
+
+- syntax check 25/25 OK
+- 全 4 ファイルの JSON parse + id 付与カウント確認 (p1 110/110 / p2 4558/4571 / p3 2872/2872 / p4 2611/2611)
+- dry-run → write 切替時にもサイズ・カバレッジ変動なし
+
+### 残課題 / 棚上げ
+
+- merged_stations.json の常磐線震災区間 + 山陽線 はりま勝原・英賀保 + 東北線 陸前山王 のデータ補完 (別件、🟢 データ充実カテゴリ)
+- N02 LINES.stations[].n キーで集計している reader 側コードの段階的 id 化 (必要になってから 1 箇所ずつ)
+
+### 変更ファイル
+
+`git diff --name-only HEAD` (tools/add_line_station_ids.js / lines-p1.json / lines-p2.json / lines-p3.json / lines-p4.json / sw.js / CHANGELOG.md / STATUS.md / TODO.md)
+
+---
+
 ## 176. v326 — 駅 ID 体系 Phase 3-i: norireco_trips.from_station/to_station 列廃止準備 (JS) (2026-05-25)
 
 ### 背景
