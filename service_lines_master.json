@@ -19415,7 +19415,9 @@
       "color": "hsl(307, 60%, 55%)",
       "official_line": "川越線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "jr_saikyo_line"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -24655,7 +24657,9 @@
       "color": "hsl(134, 60%, 55%)",
       "official_line": "みなとみらい21線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_東横線_東急電鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -26024,7 +26028,11 @@
       "color": "hsl(101, 60%, 55%)",
       "official_line": "押上線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_1号線浅草線_東京都",
+        "auto_本線_京成電鉄",
+        "auto_北総線_北総鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -26246,7 +26254,10 @@
       "alias": [
         "京成本線"
       ],
-      "through_lines": [],
+      "through_lines": [
+        "auto_押上線_京成電鉄",
+        "auto_成田空港線_京成電鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -26872,7 +26883,9 @@
       "alias": [
         "京急本線"
       ],
-      "through_lines": [],
+      "through_lines": [
+        "auto_1号線浅草線_東京都"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -30212,7 +30225,9 @@
       "color": "hsl(245, 60%, 55%)",
       "official_line": "埼玉高速鉄道線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_7号線南北線_東京地下鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -30866,7 +30881,9 @@
       "color": "hsl(296, 60%, 55%)",
       "official_line": "小田原線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_9号線千代田線_東京地下鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -32645,7 +32662,11 @@
       "color": "hsl(96, 60%, 55%)",
       "official_line": "西武有楽町線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_13号線副都心線_東京地下鉄",
+        "auto_8号線有楽町線_東京地下鉄",
+        "auto_池袋線_西武鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -32776,7 +32797,9 @@
       "color": "hsl(194, 60%, 55%)",
       "official_line": "池袋線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_西武有楽町線_西武鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -33191,7 +33214,9 @@
       "color": "hsl(107, 60%, 55%)",
       "official_line": "相鉄本線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_相鉄新横浜線_相模鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -34773,7 +34798,9 @@
       "color": "hsl(66, 60%, 55%)",
       "official_line": "田園都市線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_11号線半蔵門線_東京地下鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -34925,7 +34952,10 @@
       "color": "hsl(247, 60%, 55%)",
       "official_line": "東横線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_13号線副都心線_東京地下鉄",
+        "auto_みなとみらい21線_横浜高速鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -35099,7 +35129,11 @@
       "color": "hsl(120, 60%, 55%)",
       "official_line": "目黒線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_6号線三田線_東京都",
+        "auto_7号線南北線_東京地下鉄",
+        "auto_東急新横浜線_東急電鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -35574,7 +35608,10 @@
       "color": "hsl(359, 60%, 55%)",
       "official_line": "5号線東西線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_東葉高速線_東葉高速鉄道",
+        "jr_chuo_sobu_local"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -35706,7 +35743,10 @@
       "color": "hsl(259, 60%, 55%)",
       "official_line": "7号線南北線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_目黒線_東急電鉄",
+        "auto_埼玉高速鉄道線_埼玉高速鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -35818,7 +35858,10 @@
       "color": "hsl(260, 60%, 55%)",
       "official_line": "8号線有楽町線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_東上本線_東武鉄道",
+        "auto_西武有楽町線_西武鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -35955,7 +35998,11 @@
       "color": "hsl(27, 60%, 55%)",
       "official_line": "13号線副都心線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_東横線_東急電鉄",
+        "auto_東上本線_東武鉄道",
+        "auto_西武有楽町線_西武鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -36027,7 +36074,10 @@
       "color": "hsl(83, 60%, 55%)",
       "official_line": "9号線千代田線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_小田原線_小田急電鉄",
+        "jr_joban_local"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -36144,7 +36194,10 @@
       "color": "hsl(155, 60%, 55%)",
       "official_line": "11号線半蔵門線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_田園都市線_東急電鉄",
+        "auto_伊勢崎線_東武鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -36231,7 +36284,10 @@
       "color": "hsl(55, 60%, 55%)",
       "official_line": "1号線浅草線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_本線_京浜急行電鉄",
+        "auto_押上線_京成電鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -36348,7 +36404,9 @@
       "color": "hsl(239, 60%, 55%)",
       "official_line": "6号線三田線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_目黒線_東急電鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -36996,7 +37054,9 @@
       "color": "hsl(209, 60%, 55%)",
       "official_line": "臨海副都心線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "jr_saikyo_line"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -37055,7 +37115,9 @@
       "alias": [
         "東武スカイツリーライン"
       ],
-      "through_lines": [],
+      "through_lines": [
+        "auto_11号線半蔵門線_東京地下鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -37793,7 +37855,10 @@
       "color": "hsl(155, 60%, 55%)",
       "official_line": "東上本線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_13号線副都心線_東京地下鉄",
+        "auto_8号線有楽町線_東京地下鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -38344,7 +38409,9 @@
       "color": "hsl(290, 60%, 55%)",
       "official_line": "東葉高速線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_5号線東西線_東京地下鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -39367,7 +39434,9 @@
       "color": "hsl(7, 60%, 55%)",
       "official_line": "北総線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_押上線_京成電鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -42446,7 +42515,9 @@
       "color": "hsl(20, 60%, 55%)",
       "official_line": "成田空港線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_本線_京成電鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -42585,7 +42656,10 @@
       "color": "hsl(295, 60%, 55%)",
       "official_line": "相鉄新横浜線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_東急新横浜線_東急電鉄",
+        "auto_相鉄本線_相模鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -42617,7 +42691,10 @@
       "color": "hsl(278, 60%, 55%)",
       "official_line": "東急新横浜線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_目黒線_東急電鉄",
+        "auto_相鉄新横浜線_相模鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -60175,7 +60252,10 @@
       "color": "#00AC9A",
       "official_line": "赤羽線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_臨海副都心線_東京臨海高速鉄道",
+        "auto_川越線_東日本旅客鉄道"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -60288,7 +60368,9 @@
       "alias": [
         "中央・総武緩行線"
       ],
-      "through_lines": [],
+      "through_lines": [
+        "auto_5号線東西線_東京地下鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
@@ -60661,7 +60743,9 @@
       "color": "#00B2E5",
       "official_line": "常磐線",
       "alias": [],
-      "through_lines": [],
+      "through_lines": [
+        "auto_9号線千代田線_東京地下鉄"
+      ],
       "is_circular": false,
       "parent_id": null,
       "branch_from": null,
