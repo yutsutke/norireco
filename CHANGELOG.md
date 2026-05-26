@@ -44,6 +44,63 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 233. v383 — 旅程編集モーダルも per-seg フル cascade (マスター列車 dropdown + 車両形式 dropdown) 対応 (2026-05-27)
+
+### 背景
+
+v375 で記録モードは「区間ごとに完全独立」な per-seg フル cascade (カテゴリ → マスター列車 dropdown → 車両形式 dropdown) に再設計済だったが、旅程編集モーダル側は v380 までで「カテゴリ select + 列車名 input + 車両形式 input」の 3 自由入力に留めていた。CHANGELOG §223 / §229 の備考にも「編集モーダルでも候補車両 dropdown は未実装、自由入力のみ」と残課題として明記されていた。
+
+ユスケから「編集モーダルのマスター列車 dropdown フル cascade」の指示があり、記録モード v375 と同形のカスケードを編集モーダル per-seg にも導入。
+
+### 設計判断
+
+- **既存自由入力 input は手入力 fallback として温存**: master 列車を選んだ後の `__custom__` (リストにない列車) や、master が `car_models[]` を持たないケース、cat='local' (普通電車) のケースで使われる。dropdown と input は併存する DOM 構造に。
+- **記録モードの `selectedXxxBySl` Map は使わず DOM 直接管理**: 編集モーダルは「seg 全部が常に画面上に並ぶ」UI で、record モードの「chip + active な 1 seg のみ DOM」とは違う。Map で per-seg state を保持する必要が無いので、DOM 自体が source of truth で十分。シンプル。
+- **visibility rule** (記録モード `applyRecTrainCategory` を per-seg にした版):
+  - `cat=''` (指定しない) → 列車行 / 列車名行 / 車両行 全 hide
+  - `cat='local'` → 列車行 / 列車名行 hide、車両行は dropdown hide + input show のみ
+  - `cat=他` → 列車 dropdown show + populate、列車名行は `__custom__` 選択時のみ show、車両 dropdown は train 選択後に populate (master.car_models 空なら input fallback)
+- **保存ルール** (master 列車選択時の `train_name` シャドウ書き込み):
+  - master id 選択 → `train_id`=master id + `train_name`=master.name (記録モード v356 と同形)
+  - `__custom__` 選択 → `train_id`=null + `train_name`=手入力値
+  - 未選択 (空) → `train_id`=null + `train_name`=null
+  - 車両も同様: master 車両形式選択 → そのまま採用、`__custom__` → 手入力値、未選択 → 手入力値 (空なら null)
+- **trip 直下の集約は v371/v375 と同形** (全 seg 一致なら値 / 不一致なら null) — 既存ロジックを再利用
+
+### 変更
+
+- `js/13b-trips.js`
+  - `openTripEditModal` (line 346 周辺): seg row HTML を 5 行構造 (種別 select / 列車 dropdown / 列車名 input / 車両 dropdown + 車両 input) に拡張、innerHTML 後に `segs.forEach` で各 seg の visibility + cascade 復元
+  - 4 helper を新規追加:
+    - `applyTripEditSegCategoryVisibility(idx, cat)` — cat 別に行表示を切替 + train dropdown populate (記録モードの `applyRecTrainCategory` + dropdown populate を 1 関数にまとめた)
+    - `populateTripEditSegCarSelect(idx, trainId, restoreValue)` — 選択中 train の car_models[] を dropdown に流し込み + 既存値復元
+    - `restoreTripEditSegCascade(idx, seg)` — 保存済み train_id / train_name / car_model を DOM に復元 (master 選択 → tid 採用 + car dropdown / __custom__ → train_name input show + car input show / どちらも null → 列車未選択 + car input)
+    - イベントハンドラ 3 個: `onTripEditSegCategoryChange` / `onTripEditSegTrainChange` / `onTripEditSegCarChange`
+  - `saveTripEdit`: per-seg dropdown 経由で `train_id` / `train_name` / `car_model` を読み取り。`segCatSels` の他に `segTrainIdSels` / `segCarSels` を新規追加、`hasPerSegInputs` 判定にも含める。`train_id` 採用時は TRAINS から master.name を引いて `train_name` にシャドウ書き込み
+- `sw.js`: CACHE_VERSION v382 → v383
+
+### 検証 (preview MCP)
+
+3 区間のテスト trip (seg0=master 列車+master 車両 / seg1=__custom__ 列車+手入力車両 / seg2=local+手入力車両) を `NORIRECO.mypage.state._mypageCache` に注入して `openTripEditModal()` を実行:
+
+- **復元**: seg0 列車 dropdown=azusa + 車両 dropdown=E353系、seg1 列車 dropdown=__custom__ + 列車名行 show + 車両 input show + 値復元、seg2 列車行 hide + 車両 input show + '211系' 復元 — 全パス ✓
+- **インタラクション** (`window.onTripEditSegXxxChange()` 経由):
+  - (A) seg2 を local → limited_express に変更 → 列車行 show + dropdown populate ✓
+  - (B) seg0 列車を azusa → kaiji に変更 → 車両 dropdown が kaiji の car_models で再 populate ✓
+  - (C) seg0 を `__custom__` に変更 → 列車名行 show + 車両入力 show + 車両 dropdown hide ✓
+  - (D) seg0 車両 dropdown を `__custom__` に変更 → 車両入力 show + focus ✓
+- **保存** (fetch をモックして `saveTripEdit()` 実行):
+  - seg0: train_id='azusa' + train_name='あずさ' (master シャドウ) + car_model='テスト車両999' ✓
+  - seg1: train_id=null + train_name='手入力カスタム特急' + car_model='手入力車両' ✓
+  - seg2: train_id=null + train_name=null + car_model='211系' (元の値保持) ✓
+  - trip 直下: train_category='limited_express' (全 seg 一致) + train_id/name/car_model=null (不一致) ✓
+
+### 残課題
+
+- cat 変更時に「以前の cat の値」が DOM に残る (例: local → express で 211系 が car_input に残る) — 記録モードは `selectedXxxBySl` Map で per-cat 値を分離しているが、編集モーダルは Map 不採用なので単純な DOM 上書きになる。混乱を招くようなら applyTripEditSegCategoryVisibility の cat=other 分岐に `carInpEl.value = ''` を追加するか検討。今回は「値が残る方が UX 親切」と判断して据置
+
+---
+
 ## 232. v382 — パイチャート (divIcon) のみ alighted 倍率を 2.5 → 1.5 に調整 (2026-05-27)
 
 ### 背景

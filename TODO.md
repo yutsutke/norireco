@@ -132,6 +132,7 @@ git log --oneline -20
   - **Phase 2** (未着手): unmatch クリーンアップ — no_line_match 17 件 (他社直通・短縮形 alias 不足) + Notion DB 側の表記揺れ修正 (「各線」を具体化)。実機運用してから優先度判断
   - **Phase 4** (未着手): Notion §2.1 に新データソース追記
   - ✅ 車両形式検索 UI (v357): 旅程タブに「🚆 車両」input を追加 (`t.car_model` substring 検索、大文字小文字不問、駅名検索と AND 関係)
+  - ✅ 旅程編集モーダルの per-seg フル cascade (v383): 種別 select / 列車 dropdown / 列車名手入力 (__custom__) / 車両形式 dropdown + 手入力 を各区間に。記録モード v375 と同じカスケード挙動
 
 - [ ] **駅 UI の情報ハブ化（4領域パネル）**
   - 駅タップで以下を表示:
