@@ -131,7 +131,7 @@ git log --oneline -20
   - ✅ ラジオ撤廃 (v352): カテゴリ dropdown 駆動に統一 (cat='local' なら sl レーン / それ以外は cascade)。既存の TRAIN_CATEGORIES dropdown と排他選択の二重化を解消、新幹線で普通車形式が選べる不整合も解消
   - **Phase 2** (未着手): unmatch クリーンアップ — no_line_match 17 件 (他社直通・短縮形 alias 不足) + Notion DB 側の表記揺れ修正 (「各線」を具体化)。実機運用してから優先度判断
   - **Phase 4** (未着手): Notion §2.1 に新データソース追記
-  - **車両形式検索 UI** (未着手): マイページの旅程タブに「🚆 車両形式」検索 input を追加 (`t.car_model` substring 検索)。データはすでに揃っているので実装は軽量。実機運用してから「どう検索したいか」N=1 設計
+  - ✅ 車両形式検索 UI (v357): 旅程タブに「🚆 車両」input を追加 (`t.car_model` substring 検索、大文字小文字不問、駅名検索と AND 関係)
 
 - [ ] **駅 UI の情報ハブ化（4領域パネル）**
   - 駅タップで以下を表示:

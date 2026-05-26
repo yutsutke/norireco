@@ -40,6 +40,49 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 207. v357 — 旅程タブに「🚆 車両」検索 input を追加 (substring 検索) (2026-05-26)
+
+### 背景
+
+v351 で「車両形式検索 UI は実機運用後に N=1 設計」と TODO に残していた件。v354 で旅程カードに車両形式表示が入り、v356 で編集モーダルにも列車 dropdown が入って車両形式入力の動線が一通り完成。ユスケから「旅程タブ 車両形式でも検索できるようにする」との指示。
+
+### 設計判断
+
+- **`t.car_model` substring 検索**: データ層は v122 から TEXT 列、フラットな文字列で保存されている。複雑な正規化 (車両形式マスターとの突き合わせ等) は不要、シンプルな部分一致で十分
+- **大文字小文字不問**: `E235` でも `e235` でも引っ掛かる方が予測しやすい (車両形式は英数字混在)
+- **駅名検索と AND 関係**: 既存の駅名検索 (v285〜) と並列で OR ではなく AND。「東京を発着した E235 系の旅程」のような掘り下げ検索が自然
+- **UI: 既存 input の真下に配置**: フィルタバーは「期間 / 種類 / 種別 / 駅名 / 範囲 / 並び替え」と縦並び (`mp-filter-row`)。「駅名」と「範囲」の間に挿入
+
+### 変更
+
+- [js/13-mypage-common.js:67](js/13-mypage-common.js#L67) state 初期値 `mpTripFilter` に `car_model: ''` 追加
+- [js/13b-trips.js:142-145](js/13b-trips.js#L142) `buildTripFilterBar` に `<input id="mp-fil-car-model" placeholder="例: E235 / キハ110">` 追加
+- [js/13b-trips.js:194](js/13b-trips.js#L194) `resetMpFilter` の reset 値に `car_model: ''` 追加
+- [js/13b-trips.js:264-267](js/13b-trips.js#L264) `applyTripFilters` の末尾に car_model 判定追加:
+  ```js
+  const cmq = (NORIRECO.mypage.state.mpTripFilter.car_model || '').trim();
+  if (cmq) {
+    if (!t.car_model || !t.car_model.toLowerCase().includes(cmq.toLowerCase())) return false;
+  }
+  ```
+- sw.js: CACHE_VERSION 'v356' → 'v357'
+
+### 検証 (Claude Preview)
+
+mock 4 trips (`E235系0番台 / E353系 / キハ110系 / null`) で:
+
+| クエリ | マッチ |
+|---|---|
+| `E235` | t1 (`E235系0番台`) |
+| `e353` (小文字) | t2 (`E353系`) — 大文字小文字不問 |
+| `系` | t1, t2, t3 (`null` は除外) |
+| `キハ` | t3 |
+| `` (空) | 全 4 件 |
+
+`resetMpFilter` 後 `car_model = ''` を確認。`buildTripFilterBar` 出力 HTML に `mp-fil-car-model` 含有を確認。
+
+---
+
 ## 206. v356 — 旅程編集モーダル: 特急等選択時に列車 dropdown を追加 (記録モーダルとの対称性向上) (2026-05-26)
 
 ### 背景

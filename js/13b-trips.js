@@ -141,6 +141,10 @@ function buildTripFilterBar() {
       <input type="search" class="mp-filter-input" id="mp-fil-station" placeholder="例: 八王子 / 八王子 東京" title="駅名のみ / 駅名 都道府県 (空白区切り、AND 検索)" value="${escapeAttr(NORIRECO.mypage.state.mpTripFilter.station || '')}" oninput="updateMpFilter('station',this.value)">
     </div>
     <div class="mp-filter-row">
+      <label class="mp-filter-lbl">🚆 車両</label>
+      <input type="search" class="mp-filter-input" id="mp-fil-car-model" placeholder="例: E235 / キハ110" title="車両形式の部分一致 (大文字小文字 / 番台略号も部分一致)" value="${escapeAttr(NORIRECO.mypage.state.mpTripFilter.car_model || '')}" oninput="updateMpFilter('car_model',this.value)">
+    </div>
+    <div class="mp-filter-row">
       <label class="mp-filter-lbl">🎯 範囲</label>
       <div class="mp-scope-chips" id="mp-scope-chips">
         ${['from','end','transfer','pass'].map(k => {
@@ -191,7 +195,7 @@ NORIRECO.mypage.toggleMpStationScope = toggleMpStationScope;
 
 function resetMpFilter() {
   NORIRECO.mypage.state.mpTripFilter = {
-    auth: 'all', period: 'all', category: 'all', sort: 'date_desc', station: '',
+    auth: 'all', period: 'all', category: 'all', sort: 'date_desc', station: '', car_model: '',
     stationScope: { from:true, end:true, transfer:true, pass:true },
   };
   // reset は select の選択状態と input の表示値を初期に戻すため全体再描画
@@ -258,6 +262,11 @@ function applyTripFilters(trips) {
         return !!name && name.includes(nameToken);
       };
       if (!tripMatchesAnyStation(t, predicate, _stScope)) return false;
+    }
+    // v357: 車両形式 substring 検索 (大文字小文字を区別しない)。空文字はスキップ
+    const cmq = (NORIRECO.mypage.state.mpTripFilter.car_model || '').trim();
+    if (cmq) {
+      if (!t.car_model || !t.car_model.toLowerCase().includes(cmq.toLowerCase())) return false;
     }
     return true;
   });
