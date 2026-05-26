@@ -44,6 +44,33 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 228. v378 — 「列車制覇」統計を segments 走査に対応 (2026-05-27)
+
+### 背景
+
+v375 で `segments[].train_id / train_name / car_model` per-seg 化したが、乗換ありで「特急 + 普通」のような混在旅程は trip 直下が集約ルール (全 seg 一致なら値 / 不一致なら null) で null になる。「列車制覇」統計 (`09-tabs-stats.js`) は trip 直下のみ集計していたため、混在旅程の特急が拾われていなかった。
+
+ユスケから「統計に特急の乗車が反映されない / データの置き場を考えないといけない？それとも統計のほうで考える必要がある？」と相談。データ構造はもう per-seg に変えてあるので、**統計側を segments 走査に対応**するのが筋。
+
+### 設計判断
+
+- **trip 直下 → sources 配列に統一**: segments があれば各 seg を source として扱い、なければ trip 直下を 1 source として fallback。同じ列車に複数 segment で乗っても、Set で unique 化されるため count はダブらない
+- **車両形式集計 (carModelsByTrainId / carModelsByCustomName) も per-seg**: 「あずさ E353 + 普通 E233」の旅程で E353 / E233 両方が拾われる
+
+### 変更
+
+- `js/09-tabs-stats.js:423-440`: `trips.forEach` 内の集計を sources 配列ベースに変更。segments 走査対応
+
+### 残課題
+
+- **マイページ「車両形式コレクション」(`buildCarModelStats` in `js/13a-stats.js`)** も trip 直下のみ走査 → 同じパターンで segments 対応が必要
+- **マイページ「📋 種類」フィルタ (`mpTripFilter.category`)** も trip 直下のみ走査 → segments 対応が必要 (v371 で car_model だけ対応済)
+- **編集モーダル (`openTripEditModal`) の per-seg cascade 対応**も未着手
+
+これらはユスケと相談しつつ次回以降に対応。
+
+---
+
 ## 227. v377 — 旅程カード表示を per-segment 列車・車両に対応 (2026-05-27)
 
 ### 背景

@@ -420,20 +420,30 @@ export async function renderStats(){
     const ridCustomNames = new Set();
     const carModelsByTrainId = {};       // id → Set<string>
     const carModelsByCustomName = {};    // name → Set<string>
+    // v378: 乗換ありで「特急 (segments[0]) + 普通 (segments[1])」のような旅程は
+    //   trip.train_id / trip.train_name が null になる (v375 集約ルール、混在で null) ため、
+    //   trip 直下だけ見ていると特急が拾われない。segments 走査に対応。
+    //   segments が空 (visit-only や v375 以前 trip) は trip 直下 fallback。
     trips.forEach(t => {
-      if (t.train_id) {
-        ridTrainIds.add(t.train_id);
-        if (t.car_model) {
-          if (!carModelsByTrainId[t.train_id]) carModelsByTrainId[t.train_id] = new Set();
-          carModelsByTrainId[t.train_id].add(t.car_model);
+      const segs = Array.isArray(t.segments) ? t.segments : [];
+      const sources = segs.length > 0
+        ? segs.map(s => ({ train_id: s.train_id, train_name: s.train_name, car_model: s.car_model }))
+        : [{ train_id: t.train_id, train_name: t.train_name, car_model: t.car_model }];
+      sources.forEach(src => {
+        if (src.train_id) {
+          ridTrainIds.add(src.train_id);
+          if (src.car_model) {
+            if (!carModelsByTrainId[src.train_id]) carModelsByTrainId[src.train_id] = new Set();
+            carModelsByTrainId[src.train_id].add(src.car_model);
+          }
+        } else if (src.train_name) {
+          ridCustomNames.add(src.train_name);
+          if (src.car_model) {
+            if (!carModelsByCustomName[src.train_name]) carModelsByCustomName[src.train_name] = new Set();
+            carModelsByCustomName[src.train_name].add(src.car_model);
+          }
         }
-      } else if (t.train_name) {
-        ridCustomNames.add(t.train_name);
-        if (t.car_model) {
-          if (!carModelsByCustomName[t.train_name]) carModelsByCustomName[t.train_name] = new Set();
-          carModelsByCustomName[t.train_name].add(t.car_model);
-        }
-      }
+      });
     });
 
     const byCategory = {};
