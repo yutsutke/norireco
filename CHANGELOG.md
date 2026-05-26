@@ -40,6 +40,58 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 206. v356 — 旅程編集モーダル: 特急等選択時に列車 dropdown を追加 (記録モーダルとの対称性向上) (2026-05-26)
+
+### 背景
+
+v355 の編集モーダル整理直後、ユスケから「特急で列車が手入力だけ、選択肢がでてこない」との指摘。記録モーダルでは特急カテゴリ選択 → 列車 dropdown (137 列車) → 列車選択 → 車両形式入力 という cascade フローだが、編集モーダルは text input のみの簡易入力だった。「※ 簡易入力です。マスター列車の cascading 選択は新規記録の確認モーダルでのみ可能」と注釈はあったが、UX が非対称で違和感大。
+
+### 設計判断
+
+- **車両形式は引き続き text input**: ユスケ要望は「列車選択肢」だけが目下の不満点。記録モーダルの「区間→車両 dropdown」(sl レーン) や「列車別車両 dropdown」(cascade レーン) を編集モーダルにも持ってくると工数大きい。最小工数で「列車 dropdown だけ追加」して様子見、必要なら車両側も後で追加
+- **shadow value 方式**: `#trip-edit-train-name` text input は hide のまま残し、列車 dropdown 選択時にマスター train.name を text input に代入 (shadow セット)。これで saveTripEdit の既存ロジック (`trim()` で読む) を変えずに済む
+- **train_id は dropdown 経由で取得**: dropdown value がそのまま train_id (`'azusa'` 等)、`'__custom__'` または空文字なら null。v355 まであった「train_name 変更で train_id を null に倒す」分岐を撤去、ロジックが明確に
+
+### 変更
+
+- [noritetsu-map.html:1461-1471](noritetsu-map.html#L1461):
+  - `<select id="trip-edit-train-id" onchange="onTripEditTrainChange()">` を category select と train-name input の間に新設 (default `display:none`)
+  - 既存 `#trip-edit-train-name` の枠を `var(--gold)` に変更 (手入力モードの視覚的強調)
+- [js/13b-trips.js](js/13b-trips.js):
+  - `applyTripEditCategoryVisibility(cat)` を拡張:
+    - `cat === ''` → 全 hide + value clear
+    - `cat === 'local'` → 列車 dropdown hide + 列車手入力 hide + 車両形式 show
+    - `cat === 'その他'` → `populateTripEditTrainDropdown(cat)` 呼出 + 列車 dropdown show + 車両形式 show
+  - `populateTripEditTrainDropdown(cat)` (新, internal): TRAINS をカテゴリで filter + 廃止末尾・名前順 sort、末尾に「📝 リストにない (手入力)」option
+  - `onTripEditTrainChange()` (新, window 公開): dropdown value で分岐
+    - `'__custom__'` → 列車手入力 show + value clear + focus
+    - `''` → 列車手入力 hide + value clear
+    - 通常 train_id → 列車手入力 hide + train_name input に master train.name を shadow セット
+  - `openTripEditModal` 末尾: applyTripEditCategoryVisibility 後に、cat='その他' なら trip.train_id の有無で dropdown 値・列車手入力 input 表示を復元
+  - `saveTripEdit`: train_id 取得を `tidRaw && tidRaw !== '__custom__'` 経由に変更、v355 まであった `tnameRaw !== trip.train_name` で train_id null 倒し分岐を撤去
+- sw.js: CACHE_VERSION 'v355' → 'v356'
+
+### 検証
+
+- syntax check 24/24 OK
+- preview の dynamic import で新 module 読込テスト: `exists.tid: true`, `onTrainChange: 'function'` を確認
+- preview の ES Module memory cache に古い `applyTripEditCategoryVisibility` (v355 版) が貼り付いて dropdown populate / display 切替が反映されない問題があったため、エンドツーエンドの実機検証は push 後の本番ハードリロードで実施
+- ファイル内容は grep + Read で「特急なら populate + show」のロジックが含まれていることを確認済
+
+### フロー対比
+
+| カテゴリ | v355 編集モーダル | v356 編集モーダル |
+|---|---|---|
+| 指定しない | 列車名 hide / 車両形式 hide | 列車 dropdown hide / 列車名 hide / 車両形式 hide |
+| 普通 | 列車名 hide / 車両形式 input | 列車 dropdown hide / 列車名 hide / 車両形式 input |
+| 特急など | 列車名 **text input のみ** | 列車 **dropdown** + 「リストにない」で text input fallback + 車両形式 input |
+
+### 残課題
+
+- 編集モーダルにも記録モーダルと同様の「車両形式 dropdown」を追加 (特急: 列車別車両候補 / 普通: 区間別 sl 候補)。これは UX 対称性を最大化する案だが、工数大きいので実機運用で「車両も dropdown ほしい」が出てから検討
+
+---
+
 ## 205. v355 — 旅程編集モーダル整理: カテゴリ「普通」先頭 + 列車名 input を「普通」/「指定しない」で hide (2026-05-26)
 
 ### 背景

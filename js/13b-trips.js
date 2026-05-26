@@ -343,6 +343,25 @@ function openTripEditModal(tripId) {
   if (carModelInp) carModelInp.value = trip.car_model || '';
   // v355: カテゴリに応じて input を出し分け
   applyTripEditCategoryVisibility(trip.train_category || '');
+  // v356: 特急など (cat !== '' && cat !== 'local') のとき、列車 dropdown の値復元
+  //   - train_id あり (マスター列車)  → dropdown で該当 option 選択、train_name input は hide (shadow value は不要、value は trip.train_name 済)
+  //   - train_id なし + train_name あり → dropdown="__custom__" + train_name input show
+  //   - どちらもなし → dropdown="" + train_name input hide
+  if (trip.train_category && trip.train_category !== 'local') {
+    const trainIdSel = document.getElementById('trip-edit-train-id');
+    if (trainIdSel) {
+      if (trip.train_id) {
+        trainIdSel.value = trip.train_id;
+        if (trainNameInp) trainNameInp.style.display = 'none';
+      } else if (trip.train_name) {
+        trainIdSel.value = '__custom__';
+        if (trainNameInp) trainNameInp.style.display = 'block';
+      } else {
+        trainIdSel.value = '';
+        if (trainNameInp) trainNameInp.style.display = 'none';
+      }
+    }
+  }
 
   // v258: 📷 写真エリアを再生成 (createPhotoArea を使って最大 5 枚)
   if (_tripEditPhotoArea) {
@@ -365,22 +384,58 @@ function openTripEditModal(tripId) {
 window.openTripEditModal = openTripEditModal;
 NORIRECO.mypage.openTripEditModal = openTripEditModal;
 
-// v355: 編集モーダルのカテゴリ select onchange ハンドラ。
-// 指定しない → 両方 hide / 普通 → 列車名 hide + 車両形式 show / それ以外 → 両方 show
-// hide 時は value を '' に clear して saveTripEdit で null になるように
+// v355→v356: 編集モーダルのカテゴリ select onchange ハンドラ。
+// 指定しない → 全 hide
+// 普通       → 列車 dropdown hide + 列車手入力 hide + 車両形式 show
+// 特急など   → 列車 dropdown show + populate + 車両形式 show
+// hide 時は value も '' に clear して saveTripEdit で null になるように。
+// 既存値復元 (trip.train_id / train_name) は openTripEditModal 側で applyTripEditCategoryVisibility 後に処理
 function applyTripEditCategoryVisibility(cat) {
+  const trainIdSel   = document.getElementById('trip-edit-train-id');
   const trainNameInp = document.getElementById('trip-edit-train-name');
   const carModelInp  = document.getElementById('trip-edit-car-model');
-  const showName = !!(cat && cat !== 'local');
-  const showCar  = !!cat;
-  if (trainNameInp) {
-    trainNameInp.style.display = showName ? 'block' : 'none';
-    if (!showName) trainNameInp.value = '';
+
+  if (!cat) {
+    // 指定しない
+    if (trainIdSel)   { trainIdSel.style.display   = 'none'; trainIdSel.value   = ''; }
+    if (trainNameInp) { trainNameInp.style.display = 'none'; trainNameInp.value = ''; }
+    if (carModelInp)  { carModelInp.style.display  = 'none'; carModelInp.value  = ''; }
+    return;
   }
-  if (carModelInp) {
-    carModelInp.style.display = showCar ? 'block' : 'none';
-    if (!showCar) carModelInp.value = '';
+  if (cat === 'local') {
+    // 普通: 列車 dropdown / 列車手入力 hide + 車両形式 show
+    if (trainIdSel)   { trainIdSel.style.display   = 'none'; trainIdSel.value   = ''; }
+    if (trainNameInp) { trainNameInp.style.display = 'none'; trainNameInp.value = ''; }
+    if (carModelInp)  { carModelInp.style.display  = 'block'; }
+    return;
   }
+  // 特急など: 列車 dropdown を populate して show、車両形式は show
+  if (trainIdSel) {
+    populateTripEditTrainDropdown(cat);
+    trainIdSel.style.display = 'block';
+  }
+  if (carModelInp) carModelInp.style.display = 'block';
+  // trainNameInp の表示は onTripEditTrainChange / openTripEditModal の復元側で決定
+}
+
+// 指定カテゴリの列車を dropdown に populate (記録モーダル 02-data-loaders.js の挙動と揃える)
+function populateTripEditTrainDropdown(cat) {
+  const trainIdSel = document.getElementById('trip-edit-train-id');
+  if (!trainIdSel) return;
+  const trains = ((NORIRECO.trains && NORIRECO.trains.TRAINS) || [])
+    .filter(t => t.category === cat)
+    .sort((a, b) => {
+      if (!!a.discontinued !== !!b.discontinued) return a.discontinued ? 1 : -1;
+      return (a.name || '').localeCompare(b.name || '', 'ja');
+    });
+  let html = '<option value="">列車を選ぶ...</option>';
+  for (const t of trains) {
+    const disc = t.discontinued ? ' (廃止)' : '';
+    const rarity = t.rarity === 'legendary' ? ' ⭐' : (t.rarity === 'rare' ? ' ✨' : '');
+    html += `<option value="${t.id}">${t.name}${rarity}${disc}</option>`;
+  }
+  html += '<option value="__custom__">📝 リストにない (手入力)</option>';
+  trainIdSel.innerHTML = html;
 }
 
 function onTripEditCategoryChange() {
@@ -388,6 +443,28 @@ function onTripEditCategoryChange() {
   applyTripEditCategoryVisibility(cat);
 }
 window.onTripEditCategoryChange = onTripEditCategoryChange;
+
+// v356: 列車 dropdown 選択時。マスター列車選択 → 列車手入力 hide + train_name input に shadow value セット
+//       (saveTripEdit が train_name input から読むため)。"__custom__" 選択 → 列車手入力 show + clear + focus
+function onTripEditTrainChange() {
+  const trainIdSel   = document.getElementById('trip-edit-train-id');
+  const trainNameInp = document.getElementById('trip-edit-train-name');
+  if (!trainIdSel || !trainNameInp) return;
+  const v = trainIdSel.value;
+  if (v === '__custom__') {
+    trainNameInp.style.display = 'block';
+    trainNameInp.value = '';
+    trainNameInp.focus();
+  } else if (v === '') {
+    trainNameInp.style.display = 'none';
+    trainNameInp.value = '';
+  } else {
+    const train = ((NORIRECO.trains && NORIRECO.trains.TRAINS) || []).find(t => t.id === v);
+    trainNameInp.style.display = 'none';
+    trainNameInp.value = train ? (train.name || '') : '';
+  }
+}
+window.onTripEditTrainChange = onTripEditTrainChange;
 
 function closeTripEditModal() {
   document.getElementById('trip-edit-modal')?.classList.remove('open');
@@ -453,16 +530,18 @@ async function saveTripEdit() {
     }
   }
 
-  // v226: 🚆 列車種別 — category / train_name / car_model (任意)
+  // v226 → v356: 🚆 列車種別 — category / train_id (dropdown) / train_name / car_model
   const catRaw = document.getElementById('trip-edit-train-category')?.value || '';
+  const tidRaw = document.getElementById('trip-edit-train-id')?.value || '';
   const tnameRaw = (document.getElementById('trip-edit-train-name')?.value || '').trim();
   const carRaw = (document.getElementById('trip-edit-car-model')?.value || '').trim();
   tripPatch.train_category = catRaw || null;
   tripPatch.train_name = tnameRaw || null;
   tripPatch.car_model = carRaw || null;
-  // 手動編集では train_id を解決しないため null に倒す (mypage 表示の 📝 マーク = マニア手入力扱い)
-  // 既存のマスター選択を維持したい場合は train_name を変えなければ trip.train_id 据置
-  if (tnameRaw && tnameRaw !== (trip.train_name || '')) {
+  // v356: train_id は dropdown 経由で取得。マスター選択時のみ非 null、__custom__ や 普通カテゴリでは null
+  if (tidRaw && tidRaw !== '__custom__') {
+    tripPatch.train_id = tidRaw;
+  } else {
     tripPatch.train_id = null;
   }
 
