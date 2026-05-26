@@ -270,7 +270,13 @@ export function resetTrainSelector() {
   const carCustom    = document.getElementById('rec-car-model-custom');
   if (!catSel) return;
   let catHtml = '<option value="">指定しない</option>';
-  for (const [k, v] of Object.entries(T.TRAIN_CATEGORIES)) {
+  // v353: 「普通」(local) を先頭に。一番多い選択肢なのでアクセス性を優先。それ以外は元の順序維持
+  const catEntries = Object.entries(T.TRAIN_CATEGORIES).sort((a, b) => {
+    if (a[0] === 'local') return -1;
+    if (b[0] === 'local') return 1;
+    return 0;
+  });
+  for (const [k, v] of catEntries) {
     catHtml += `<option value="${k}">${v.icon || ''} ${v.label}</option>`;
   }
   catSel.innerHTML = catHtml;

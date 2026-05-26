@@ -40,6 +40,39 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 203. v353 — 記録モーダル: カテゴリ dropdown の並びを「普通」先頭に (2026-05-26)
+
+### 背景
+
+v352 実機検証時にユスケから「普通車選ぶのがもっとも多いから一番上にしたい」。元の `trains_master.json` の `categories` 順は新幹線 → 特急 → 快速 → 急行 → 普通 → ... で「普通」が 5 番目。記録の多数派ケース (通勤・近郊で普通電車) が中段に埋もれて毎回スクロール要求していた。
+
+### 変更
+
+- [js/02-data-loaders.js:272-279](js/02-data-loaders.js#L272) `resetTrainSelector` の `Object.entries(T.TRAIN_CATEGORIES)` ループ前に stable sort 1 つ追加。`local` を先頭、それ以外は元順序維持
+- sw.js: CACHE_VERSION 'v352' → 'v353'
+
+### 検証 (Claude Preview)
+
+`/js/02-data-loaders.js?bust=...` で module cache を bypass、`resetTrainSelector()` 呼出後の cat dropdown options:
+
+```
+0: (empty) — 指定しない
+1: local — 🚉 普通          ← 先頭
+2: shinkansen — 🚅 新幹線
+3: limited_express — 🚄 特急
+4: rapid — 🚆 快速
+5: express — 🚃 急行
+6: sleeper — 🛌 寝台列車
+7: cruise_train — 💎 クルーズトレイン
+8: joyful_train — 🎉 観光列車
+9: steam — 🚂 蒸気機関車 (SL)
+10: seasonal — 🎫 季節限定
+```
+
+期待通り。
+
+---
+
 ## 202. v352 — 記録モーダル: 普通/特急ラジオを撤廃 → 既存カテゴリ dropdown 駆動に統一 (2026-05-26)
 
 ### 背景
