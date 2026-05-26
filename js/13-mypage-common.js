@@ -576,23 +576,30 @@ export function tripCardHtml(trip) {
   //   - 特急 (列車+車両): 🚆 あずさ [E353系]
   //   - 特急 (列車のみ): 🚆 あずさ
   //   - 特急 (手入力列車): 🚆 湘南ライナー 📝 [185系]
-  // v371: 乗換ありの旅程で系統ごとに別車両が選ばれている場合、segments[].car_model
-  //   から unique 値を joining 表示 (例: [E353系 / 185系])。
-  //   trip.car_model は全 segment 一致なら値 / 不一致なら null (v371 仕様)。
+  // v371→v375→v377: 乗換ありの旅程で系統ごとに別車両 (+ 別列車種別) が選ばれている場合、
+  //   segments[].train_name + segments[].car_model を区間ごとに " / " で joining 表示。
+  //   例: 🚆 [E233-T車] / 八王子発のあずさ [E353系] / [205系]
+  //   segments[] に train_name/car_model が 1 つも無いとき (v375 以前の trip) は旧仕様で
+  //   trip 直下の train_name + car_model を表示 (後方互換)。
   let trainBit = '';
-  const carModelList = (() => {
-    if (trip.car_model) return [trip.car_model];
-    const segs = Array.isArray(trip.segments) ? trip.segments : [];
-    const set = new Set();
-    for (const s of segs) {
-      if (s.car_model) set.add(s.car_model);
-    }
-    return [...set];
-  })();
-  if (trip.train_name || carModelList.length > 0) {
+  const segs377 = Array.isArray(trip.segments) ? trip.segments : [];
+  const segBits = segs377.map(s => {
+    const tn = s.train_name || '';
+    const cm = s.car_model || '';
+    if (!tn && !cm) return '';
+    const customMark = (tn && !s.train_id) ? ' 📝' : '';
+    const namePart = tn ? `${tn}${customMark}` : '';
+    const carPart = cm ? `<span class="mp-car">[${cm}]</span>` : '';
+    const sep = (namePart && carPart) ? ' ' : '';
+    return `${namePart}${sep}${carPart}`;
+  }).filter(Boolean);
+  if (segBits.length > 0) {
+    trainBit = `<div class="mp-tcard-train">🚆 ${segBits.join(' / ')}</div>`;
+  } else if (trip.train_name || trip.car_model) {
+    // segments に列車情報なし (visit-only or v375 以前 trip) → trip 直下で表示
     const customMark = (trip.train_name && !trip.train_id) ? ' 📝' : '';
     const namePart = trip.train_name ? `${trip.train_name}${customMark}` : '';
-    const carPart = carModelList.length > 0 ? `<span class="mp-car">[${carModelList.join(' / ')}]</span>` : '';
+    const carPart = trip.car_model ? `<span class="mp-car">[${trip.car_model}]</span>` : '';
     const sep = (namePart && carPart) ? ' ' : '';
     trainBit = `<div class="mp-tcard-train">🚆 ${namePart}${sep}${carPart}</div>`;
   }

@@ -44,6 +44,37 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 227. v377 — 旅程カード表示を per-segment 列車・車両に対応 (2026-05-27)
+
+### 背景
+
+v375 で記録モードの per-seg 化が動き、ユスケから「2回乗換でもうまくできました。これにあわせて旅程の表示方法を変えてください」との要望。
+
+v371 では `segments[].car_model` の unique 値を joining 表示 (例: `[E353系 / 185系]`) していたが、v375 で `segments[].train_name` も per-seg 保存されるようになったので、車両だけでなく列車名も区間ごとに表示したい。
+
+旧表示の問題 (スクショ): `🚆 [ああ / 車両]` のように unique car_model だけが意味不明な joining になっていた。
+
+### 設計判断
+
+- **区間ごとに `train_name [car_model]` を " / " で joining**:
+  - 例: `🚆 [E233-T車] / 中央線特急あずさ [E353系] / [205系]`
+  - 区間ラベル ("八高線" 等) は付けない (メインタイトルに line_list が既にある)
+- **train_name のみ / car_model のみ / 両方 / 両方なし** の組み合わせを 1 つの segBit で吸収
+- **手入力列車** (`train_name && !train_id`) には `📝` を付けて区別 (旧仕様維持)
+- **後方互換**: `segments[]` に train_name/car_model が 1 つも無い旧 trip (v375 以前) は、`trip.train_name` + `trip.car_model` の旧表示にフォールバック
+- **空 segBit はフィルタアウト**: train_name も car_model も無い区間はその segment を表示行から除外。残った segBit を joining
+
+### 変更
+
+- `js/13-mypage-common.js:574-606` 付近: `tripCardHtml` の trainBit 構築ロジックを per-seg ベースに置換。旧 `carModelList` unique joining を撤去
+
+### 残課題
+
+- マイページ「📋 種類」フィルタ (train_category) は trip 直下のみ走査 (segments 走査未対応)。次回課題
+- 編集モーダル (`openTripEditModal`) の per-seg cascade 対応も未着手
+
+---
+
 ## 226. v376 — v375 hotfix: `window.populateSlVehiclePicker` 未公開 (2026-05-27)
 
 ### 背景
