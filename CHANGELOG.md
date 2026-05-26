@@ -40,6 +40,71 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 212. v362 — メモ車両 cascade 整理: `#m-car-model` を `__custom__` 選択時のみ表示 (2026-05-27)
+
+### 背景
+
+v361 push 後ユスケから「整理したいね」のスクショ指摘 3 枚:
+1. カテゴリ「指定しない」なのに下に自由入力 input が表示されたまま
+2. 「指定しない」だけのときも input 領域が大きく見える
+3. 「新幹線 → のぞみ → ✏️ 別形式を入力」を選んだ時にも `#m-car-model` (自由入力 input) が dropdown の下に常時表示 → 二重 UI
+
+v361 では `#m-car-model` を最終 shadow value 兼自由入力欄として常時表示にしていたが、dropdown 選択中も見えるので「どっちに入れたらいい?」と混乱しやすい。
+
+### 設計判断
+
+- **「`__custom__` (「✏️ 別形式を入力」/「リストにない (手入力)」) 選択時のみ表示」**: dropdown 選択中は自由入力 input を見せない、選んだ option の値が shadow セットされて隠れる。`__custom__` を選んだ時のみ表示+ focus
+- **「指定しない」は完全 clear**: カテゴリ未指定なら車両情報を一切記録しない (input value も clear)
+- **編集時の復元**: 既存 `memo.car_model` が dropdown 一致なら dropdown 選択 + input hide、一致しなければ `__custom__` 選択 + input show + 値復元
+- **input 枠を gold border に**: 「自由入力モード」の視覚的強調 (旅程編集モーダル v356 と同じ)
+
+### 変更
+
+[noritetsu-map.html](noritetsu-map.html): `#m-car-model` の inline style に `display:none` 追加 + border を `var(--gold)` に変更
+
+[js/16-memos.js](js/16-memos.js) の表示切替分岐を以下のとおり統一:
+
+| 関数 | 入力 | `#m-car-model` 表示 |
+|---|---|---|
+| `initMemoTrainCascade()` | (初期化) | hide |
+| `onMemoTrainCategoryChange()` | cat='' | hide + value clear |
+| `onMemoTrainCategoryChange()` | cat='local'/'その他' | 一旦 hide (populate 側で再判定) |
+| `populateMemoSlVehiclePicker()` | 既存値 dropdown 一致 | hide |
+| `populateMemoSlVehiclePicker()` | 既存値 dropdown 不一致 (custom) | show + 値復元 |
+| `populateMemoSlVehiclePicker()` | 既存値なし | hide |
+| `onMemoSlVehicleChange()` | `__custom__` | show + focus |
+| `onMemoSlVehicleChange()` | 通常 option | hide + value セット |
+| `onMemoTrainIdChange()` | `__custom__` (列車手入力) | show |
+| `onMemoTrainIdChange()` | 通常 train で car_models 0 件 | show (自由入力可) |
+| `onMemoTrainIdChange()` | 通常 train、既存値が car_models 一致 | hide |
+| `onMemoTrainIdChange()` | 通常 train、既存値が一致なし | show + 値復元 |
+| `onMemoTrainIdChange()` | '' | hide |
+| `onMemoCarModelSelectChange()` | `__custom__` | show + focus |
+| `onMemoCarModelSelectChange()` | 通常 option | hide + value セット |
+
+sw.js: CACHE_VERSION 'v361' → 'v362'
+
+### 検証
+
+- syntax check 24/24 OK
+- DOM: `#m-car-model.style.display = 'none'` 初期確認
+- 関数公開は preview の ES Module memory cache で反映されず → 実機ハードリロード
+
+### 動線 (整理後)
+
+```
+[カテゴリ ▼]
+ ├ 指定しない  → 全 hide (車両情報 0)
+ ├ 🚉 普通     → [車両 ▼ (sl 車両 + ✏️ 別形式を入力)]
+ │               └ 通常 option → input hide (shadow セット)
+ │               └ ✏️ 別形式  → input show + focus
+ └ 🚄 特急     → [列車 ▼] → [車両 ▼ (列車別 car_models + ✏️)]
+                  └ 列車「リストにない」→ 列車手入力 + 車両 input show
+                  └ 通常 train → car_models populate → 同上
+```
+
+---
+
 ## 211. v361 — メモ車両選択を記録モーダル方式 (フル cascade) に統一 (2026-05-27)
 
 ### 背景

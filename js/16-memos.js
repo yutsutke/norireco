@@ -727,6 +727,9 @@ function initMemoTrainCascade() {
   if (slBlock) slBlock.style.display = 'none';
   const cascade = document.getElementById('m-train-cascade');
   if (cascade) cascade.style.display = 'none';
+  // v362: 最終 shadow value input は default hide (__custom__ 選択時のみ show)
+  const carInp = document.getElementById('m-car-model');
+  if (carInp) carInp.style.display = 'none';
 }
 
 function onMemoTrainCategoryChange() {
@@ -737,13 +740,19 @@ function onMemoTrainCategoryChange() {
   const trainCustom = document.getElementById('m-train-name-custom');
   const carSel = document.getElementById('m-car-model-select');
   const carInp = document.getElementById('m-car-model');
-  // 一旦すべてリセット (車両形式 input value は維持、ユーザーが手入力した値を消さない)
+  // 一旦すべてリセット
   if (slBlock) slBlock.style.display = 'none';
   if (cascade) cascade.style.display = 'none';
   if (trainSel) { trainSel.style.display = 'none'; }
   if (trainCustom) { trainCustom.style.display = 'none'; trainCustom.value = ''; }
   if (carSel) { carSel.style.display = 'none'; }
-  if (cat === '') return;
+  // v362: 「指定しない」は車両情報を一切記録しない → car_model も clear + hide
+  if (cat === '') {
+    if (carInp) { carInp.style.display = 'none'; carInp.value = ''; }
+    return;
+  }
+  // それ以外の cat は populate 側で carInp の表示を決める (dropdown 一致なら hide、__custom__ なら show)
+  if (carInp) carInp.style.display = 'none';
   if (cat === 'local') {
     if (slBlock) slBlock.style.display = 'block';
     populateMemoSlVehiclePicker();
@@ -779,15 +788,19 @@ function populateMemoSlVehiclePicker() {
   html += '<option value="__custom__">✏️ 別形式を入力...</option>';
   selectEl.innerHTML = html;
   if (emptyEl) emptyEl.style.display = (vehicles.length === 0) ? 'block' : 'none';
-  // 既存 car_model 値を dropdown 一致で復元 (なければ '__custom__' = text input そのまま)
+  // v362: 既存 car_model 値を dropdown 一致で復元。
+  //   一致: dropdown 選択 + carInp hide / 一致なし: __custom__ + carInp show + 値復元 / 空: dropdown=''
   const carInp = document.getElementById('m-car-model');
   const currentVal = carInp?.value?.trim() || '';
   if (currentVal && vehicles.some(v => v.vehicle === currentVal)) {
     selectEl.value = currentVal;
+    if (carInp) { carInp.style.display = 'none'; }
   } else if (currentVal) {
     selectEl.value = '__custom__';
+    if (carInp) { carInp.style.display = 'block'; }
   } else {
     selectEl.value = '';
+    if (carInp) { carInp.style.display = 'none'; }
   }
 }
 
@@ -796,11 +809,14 @@ function onMemoSlVehicleChange() {
   const carInp = document.getElementById('m-car-model');
   if (!selectEl || !carInp) return;
   const v = selectEl.value;
+  // v362: __custom__ のみ carInp 表示、それ以外は hide + shadow セット
   if (v === '__custom__') {
-    carInp.focus();   // 自由入力にフォーカス
-    // value は維持 (ユーザーが手入力した内容を消さない)
+    carInp.style.display = 'block';
+    // value は維持 (ユーザーが手入力した内容を消さない、編集モードの復元値も保つ)
+    carInp.focus();
   } else {
     carInp.value = v || '';
+    carInp.style.display = 'none';
   }
 }
 window.onMemoSlVehicleChange = onMemoSlVehicleChange;
@@ -834,27 +850,42 @@ function onMemoTrainIdChange() {
   if (!trainSel) return;
   const v = trainSel.value;
   if (carSel) { carSel.style.display = 'none'; carSel.innerHTML = '<option value="">車両形式を選ぶ (任意)...</option>'; }
+  // v362: 列車「リストにない」→ 列車手入力 + 車両も自由入力 (carInp show)
   if (v === '__custom__') {
     if (trainCustom) { trainCustom.style.display = 'block'; trainCustom.value = ''; trainCustom.focus(); }
-    if (carInp) carInp.focus();   // 車両形式は自由入力
+    if (carInp) { carInp.style.display = 'block'; }
     return;
   }
   if (trainCustom) { trainCustom.style.display = 'none'; trainCustom.value = ''; }
-  if (!v) return;
+  if (!v) {
+    if (carInp) { carInp.style.display = 'none'; }
+    return;
+  }
   // 選ばれた列車の car_models を dropdown に populate
   const train = ((NORIRECO.trains && NORIRECO.trains.TRAINS) || []).find(t => t.id === v);
   const carModels = (train && Array.isArray(train.car_models)) ? train.car_models : [];
-  if (carModels.length === 0) return;
+  // v362: car_models 0 件 → carInp 自由入力可
+  if (carModels.length === 0) {
+    if (carInp) { carInp.style.display = 'block'; }
+    return;
+  }
   let html = '<option value="">車両形式を選ぶ (任意)...</option>';
   for (const cm of carModels) html += `<option value="${cm.replace(/"/g, '&quot;')}">${cm}</option>`;
   html += '<option value="" disabled>──────</option>';
   html += '<option value="__custom__">✏️ 別形式を入力...</option>';
   if (carSel) { carSel.innerHTML = html; carSel.style.display = 'block'; }
-  // 既存 car_model 値を dropdown 一致で復元
+  // v362: 既存 car_model 値を dropdown 一致で復元 + carInp 表示判定
   const currentVal = carInp?.value?.trim() || '';
   if (currentVal && carSel) {
-    if (carModels.includes(currentVal)) carSel.value = currentVal;
-    else carSel.value = '__custom__';
+    if (carModels.includes(currentVal)) {
+      carSel.value = currentVal;
+      if (carInp) carInp.style.display = 'none';
+    } else {
+      carSel.value = '__custom__';
+      if (carInp) carInp.style.display = 'block';
+    }
+  } else {
+    if (carInp) carInp.style.display = 'none';
   }
 }
 window.onMemoTrainIdChange = onMemoTrainIdChange;
@@ -864,10 +895,13 @@ function onMemoCarModelSelectChange() {
   const carInp = document.getElementById('m-car-model');
   if (!carSel || !carInp) return;
   const v = carSel.value;
+  // v362: __custom__ のみ carInp 表示、それ以外は hide + shadow セット
   if (v === '__custom__') {
+    carInp.style.display = 'block';
     carInp.focus();
   } else {
     carInp.value = v || '';
+    carInp.style.display = 'none';
   }
 }
 window.onMemoCarModelSelectChange = onMemoCarModelSelectChange;
