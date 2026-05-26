@@ -695,15 +695,18 @@ function drawStationsLayer() {
     if (_mapMode === 'unridden' && ridden) continue;
 
     // v186/v187: stop_type ('alighted' | 'boarded' | 'passed' | 未訪問は 'unvisited' 扱い)
-    //  - サイズ倍率: alighted=2.5 (v381〜) / boarded=1.0 / passed=0.8 / unvisited=1.0
+    //  - サイズ倍率: alighted=2.5 (circleMarker) / 1.5 (パイチャート、v382〜) / boarded=1.0 / passed=0.8 / unvisited=1.0
     //  - フィルタ: 該当 stype が false ならその駅を skip (未訪問駅も含む)
     // v323 (Phase 3): slStopType は駅 id キー化。ms.id を直接引く。
     // v381: ユスケ要望「乗降した駅 (alighted: 始点/終点/乗換) を目立たせたい、大きさは今の倍」に対応。
     //   alighted の stypeMul を 1.25 → 2.5。tier ベースのズーム表示タイミングは変えない。
+    // v382: パイチャート (divIcon、makePieIcon 使用) に限り 2.5 → 1.5 (2 倍ではでかすぎ)。
+    //   circleMarker (radius ベース) は 2.5 のまま、パイは stypeMulPie で 1.5 倍に独立制御。
     const stype = ridden ? (slStopType[ms.id] || 'boarded') : 'unvisited';
     const stf = window._stopTypeFilter || { alighted: true, boarded: true, passed: true, unvisited: true };
     if (stf[stype] === false) continue;
-    const stypeMul = stype === 'alighted' ? 2.5 : stype === 'passed' ? 0.8 : 1.0;
+    const stypeMul    = stype === 'alighted' ? 2.5 : stype === 'passed' ? 0.8 : 1.0;
+    const stypeMulPie = stype === 'alighted' ? 1.5 : stype === 'passed' ? 0.8 : 1.0;
 
     // 訪問回数 → 個人化レベル (1-4回:Lv1, 5-9:Lv2, 10-49:Lv3, 50+:Lv4)
     // v317 (Phase 3-e): slVisitCount は駅 id キーに移行 (SERVICE_LINES ベース集計)。
@@ -728,10 +731,10 @@ function drawStationsLayer() {
     let extraDot = null;  // 多系統駅にだけ作る「低ズーム用の単色ドット」
     if (nLines > 1) {
       if (level >= 2 || character) {
-        // 装飾 divIcon (Lv2+/キャラ付き)
+        // 装飾 divIcon (Lv2+/キャラ付き) — v382: パイ系は stypeMulPie で 1.5 倍に抑制
         const baseSize = ridden ? 14 : 11;
         const levelBonus = level >= 4 ? 4 : level >= 3 ? 2 : level >= 2 ? 1 : 0;
-        const size = Math.round((baseSize + levelBonus) * mScale * stypeMul);
+        const size = Math.round((baseSize + levelBonus) * mScale * stypeMulPie);
         dot = L.marker([ms.lat, ms.lon], {
           icon: makePieIcon(colors, size, ridden, level, character),
           opacity: ridden ? 1.0 : 0.7,
@@ -750,9 +753,9 @@ function drawStationsLayer() {
           fillOpacity: ridden ? 1.0 : 0.85,
           renderer: CANVAS,
         });
-        // パイマーカー (上に重ねる、ドットと同タイミングで出現)
+        // パイマーカー (上に重ねる、ドットと同タイミングで出現) — v382: stypeMulPie
         const baseSize = ridden ? 14 : 11;
-        const size = Math.round(baseSize * mScale * stypeMul);
+        const size = Math.round(baseSize * mScale * stypeMulPie);
         extraDot = L.marker([ms.lat, ms.lon], {
           icon: makePieIcon(colors, size, ridden, 0, null),
           opacity: ridden ? 1.0 : 0.7,
@@ -760,9 +763,10 @@ function drawStationsLayer() {
         });
       }
     } else if (level >= 2 || character) {
+      // v382: 単系統 装飾 divIcon — パイ系は stypeMulPie
       const baseSize = ridden ? 12 : 9;
       const levelBonus = level >= 4 ? 4 : level >= 3 ? 2 : level >= 2 ? 1 : 0;
-      const size = Math.round((baseSize + levelBonus) * mScale * stypeMul);
+      const size = Math.round((baseSize + levelBonus) * mScale * stypeMulPie);
       dot = L.marker([ms.lat, ms.lon], {
         icon: makePieIcon(colors, size, ridden, level, character),
         opacity: ridden ? 1.0 : 0.7,

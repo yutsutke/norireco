@@ -44,6 +44,25 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 232. v382 — パイチャート (divIcon) のみ alighted 倍率を 2.5 → 1.5 に調整 (2026-05-27)
+
+### 背景
+
+v381 で `stypeMul = 2.5` にしたが、ユスケから「パイチャートに限り 2 倍だとでかすぎ。1.5 倍にしてください」との指摘。circleMarker (普通のドット) は 2.5 が適切でもパイチャートは divIcon (HTML サイズ) なので絶対サイズが大きすぎた。
+
+### 設計判断
+
+- **stypeMul と stypeMulPie を分離**: 同じ alighted 駅でも circleMarker (radius) は 2.5、パイ系 (divIcon) は 1.5
+- パイ系は 3 箇所 (多系統 装飾 / 多系統 平常の overlay pie / 単系統 装飾) で `stypeMulPie` を使う
+- circleMarker (radius ベース) は v381 のまま 2.5 維持
+
+### 変更
+
+- `js/08-rendering.js:705-706`: `stypeMul` の隣に `stypeMulPie` を定義
+- パイ系 size 計算 3 箇所 (`mScale * stypeMul` → `mScale * stypeMulPie`)
+
+---
+
 ## 231. v381 — 乗降した駅 (alighted) のドットを目立たせるよう倍に拡大 (2026-05-27)
 
 ### 背景
