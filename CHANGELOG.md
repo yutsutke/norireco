@@ -40,6 +40,53 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 202. v352 — 記録モーダル: 普通/特急ラジオを撤廃 → 既存カテゴリ dropdown 駆動に統一 (2026-05-26)
+
+### 背景
+
+v351 push 後ユスケから「設計もっと単純にできるのでは? ラジオボタンをなくす。普通車の選択肢があるんだから、それを使うようにする。普通車→車両形式を選択という流れに。ラジオボタンでは新幹線も普通車形式で選択できるのも見直したい」との指摘。
+v350 で「ラジオ 2 選択『普通電車 / 特急・観光列車』」を入れたが、cascade レーンの中に既に存在するカテゴリ dropdown (新幹線/特急/快速/急行/普通/寝台/クルーズ/観光/SL/季節限定) と意味が二重化していた。さらに排他制御が荒く、新幹線カテゴリ選択中でも普通車向け車両形式が選べてしまう不整合があった。
+
+### 設計判断
+
+- **ラジオ撤廃 + カテゴリ dropdown を picker の主役に**: TRAIN_CATEGORIES dropdown を picker 最上位 (マニアトグル直下) に出し、カテゴリ選択 = レーン選択を兼ねる。1 つの UI で「列車カテゴリの意味」と「車両形式 UI の出し分け」を同時に表現
+- **`local` (普通) → sl レーン分岐の根拠**: `trains_master.json` の category 別 train 数を見ると `local: 0` / `rapid: 1` / 他は十数〜100+。`local` だけはマスターに列車登録がないので「列車を選ぶ」dropdown が空になる。逆に sl-vehicle DB は普通電車の通勤車両を網羅しているので、`local` だけを sl レーンに振るのが筋
+- **`rapid` / `express` も cascade レーンに残す**: 列車登録があるので cascade が機能する。「快速」「急行」は固有列車名 (例: 急行アルプス/急行きたぐに) を選ぶ動線が活きる
+- **シンプル化の効果**: ラジオ + 復元用 localStorage キー (`recTrainMode`) + `onRecTrainModeChange()` + `applyRecTrainMode()` を全て削除。`onTrainCategoryChange()` が「カテゴリで分岐」する 1 か所に集約
+
+### 変更
+
+- **HTML** ([noritetsu-map.html](noritetsu-map.html)):
+  - `<input type="radio" name="rec-train-mode">` 2 個と親 `<div>` を削除
+  - cascade 内にあった `<select id="rec-train-category">` を `<div id="rec-train-picker">` の直下 (sl-block と cascade の上) に移動
+  - `#rec-sl-vehicle-block` を default `display:none` に変更 (`applyRecTrainCategory` がカテゴリ選択時に show する)
+  - `#rec-train-cascade` の中身を「列車 → 車両形式 cascade のみ」に縮約 (category select は外に出た)
+- **JS** ([js/07-record-mode.js](js/07-record-mode.js)):
+  - `onRecTrainModeChange()` / `applyRecTrainMode()` / `PREF_REC_TRAIN_MODE` を削除
+  - `applyRecTrainCategory(cat)` (新, window 公開のみ — 循環 import 回避): cat='local' → sl-block show + cascade hide + populateSlVehiclePicker / cat='その他' → sl-block hide + cascade show / cat='' → 両方 hide
+  - `initRecTrainToggle()` / `onRecTrainToggle()` を「カテゴリ毎回 '' リセット → applyRecTrainCategory('')」に簡素化 (前回モードの localStorage 復元は廃止)
+- **JS** ([js/02-data-loaders.js:284](js/02-data-loaders.js#L284) `onTrainCategoryChange`):
+  - 冒頭で T のクリア + cascade 内 UI 全 hide (既存)
+  - `window.applyRecTrainCategory(cat)` 呼出を追加 (sl-block / cascade の表示切替を委譲)
+  - `!cat || cat === 'local'` で early return (cascade の列車 dropdown populate は skip)
+  - それ以外 (limited_express / shinkansen / rapid 等) は既存の cascade populate を継続
+- **sw.js**: CACHE_VERSION 'v351' → 'v352'
+
+### 検証
+
+- syntax check 24/24 OK
+- `window.applyRecTrainCategory('local')` 直接呼出: sl='block' / cas='none' ✓
+- `window.applyRecTrainCategory('limited_express')` 直接呼出: sl='none' / cas='block' ✓
+- `window.applyRecTrainCategory('')` 直接呼出: sl='none' / cas='none' ✓
+- preview の ES Module memory cache に古い 02-data-loaders.js が貼り付いて `window.onTrainCategoryChange.toString()` が古い版を返したため、`onTrainCategoryChange` 経由のエンドツーエンド確認は push 後の実機ハードリロードで実施 (ファイル内容は grep + fetch で新版を確認済)
+
+### 残課題
+
+- 「季節限定」カテゴリは現状 trains_master に列車 0 件 → 選んでも cascade の列車 dropdown が空になる。これは別タスク (季節限定列車をマスターに追加)。今回は「普通」と挙動が違うので将来検討
+- 車両形式検索 UI (v351 で TODO 残し済)
+
+---
+
 ## 201. v351 — 記録モーダル: 「(マニア向け)」文言削除 + 普通電車レーンに「✏️ 別形式を入力」自由記述 option (2026-05-26)
 
 ### 背景

@@ -1085,7 +1085,6 @@ window.onRecordStationClick = onRecordStationClick;
 // ════════════════════════════════════════════════════════════════
 const PREF_SHOW_TRAIN_SELECTOR = 'norireco.prefs.showTrainSelector';
 const PREF_SHOW_DELAY_INPUT    = 'norireco.prefs.showDelayInput';   // v350
-const PREF_REC_TRAIN_MODE      = 'norireco.prefs.recTrainMode';     // v350: 'local' | 'express'
 
 function initRecTrainToggle() {
   // 列車・車両形式 (マニアトグル)
@@ -1095,14 +1094,11 @@ function initRecTrainToggle() {
     const saved = localStorage.getItem(PREF_SHOW_TRAIN_SELECTOR) === '1';
     toggle.checked = saved;
     picker.style.display = saved ? 'block' : 'none';
-    // モードラジオの復元 (default 'local')
-    const mode = localStorage.getItem(PREF_REC_TRAIN_MODE) === 'express' ? 'express' : 'local';
-    const localRadio   = document.getElementById('rec-train-mode-local');
-    const expressRadio = document.getElementById('rec-train-mode-express');
-    if (localRadio)   localRadio.checked   = (mode === 'local');
-    if (expressRadio) expressRadio.checked = (mode === 'express');
-    applyRecTrainMode(mode);
-    if (saved && mode === 'local') populateSlVehiclePicker();
+    // v352: モードラジオ撤廃。カテゴリ dropdown が picker の主役、cat='local' で sl レーン、それ以外で cascade
+    // 開く度にカテゴリを「指定しない」にリセット (前回値の復元はせず、毎回素の状態から始める)
+    const catSel = document.getElementById('rec-train-category');
+    if (catSel) catSel.value = '';
+    applyRecTrainCategory('');
   }
   // 遅延入力トグル (v350)
   initRecDelayToggle();
@@ -1116,10 +1112,10 @@ function onRecTrainToggle() {
   localStorage.setItem(PREF_SHOW_TRAIN_SELECTOR, on ? '1' : '0');
   picker.style.display = on ? 'block' : 'none';
   if (on) {
-    // モードに応じて適切なレーンを populate
-    const mode = localStorage.getItem(PREF_REC_TRAIN_MODE) === 'express' ? 'express' : 'local';
-    applyRecTrainMode(mode);
-    if (mode === 'local') populateSlVehiclePicker();
+    // 開く度にカテゴリ「指定しない」から始める (v352)
+    const catSel = document.getElementById('rec-train-category');
+    if (catSel) catSel.value = '';
+    applyRecTrainCategory('');
   } else {
     // OFF にしたら車両形式選択をクリア (隠れた state を残さない)
     clearAllTrainSelections();
@@ -1127,26 +1123,27 @@ function onRecTrainToggle() {
 }
 window.onRecTrainToggle = onRecTrainToggle;
 
-// v350: 普通 / 特急 ラジオ切替
-function onRecTrainModeChange() {
-  const expressRadio = document.getElementById('rec-train-mode-express');
-  const mode = expressRadio && expressRadio.checked ? 'express' : 'local';
-  localStorage.setItem(PREF_REC_TRAIN_MODE, mode);
-  // 切替時は両方のレーンの選択をクリア (排他制御を予測可能に)
-  clearAllTrainSelections();
-  resetTrainSelector();   // 既存 cascade の DOM もリセット
-  applyRecTrainMode(mode);
-  if (mode === 'local') populateSlVehiclePicker();
+// v352: cat に応じて sl-block / cascade の表示を排他切替。
+// 02-data-loaders.js の onTrainCategoryChange から window.applyRecTrainCategory(cat) で呼ばれる。
+// export せず window 公開のみ (02 → 07 の import で循環参照を作らない)
+function applyRecTrainCategory(cat) {
+  const slBlock = document.getElementById('rec-sl-vehicle-block');
+  const cascade = document.getElementById('rec-train-cascade');
+  if (cat === 'local') {
+    if (slBlock) slBlock.style.display = 'block';
+    if (cascade) cascade.style.display = 'none';
+    populateSlVehiclePicker();
+  } else if (cat) {
+    if (slBlock) slBlock.style.display = 'none';
+    if (cascade) cascade.style.display = 'block';
+    // cascade 内部 (列車 dropdown) は 02 側の onTrainCategoryChange が populate する
+  } else {
+    // 「指定しない」
+    if (slBlock) slBlock.style.display = 'none';
+    if (cascade) cascade.style.display = 'none';
+  }
 }
-window.onRecTrainModeChange = onRecTrainModeChange;
-
-// レーン (普通電車 block / 特急 cascade) の表示を切替
-function applyRecTrainMode(mode) {
-  const local   = document.getElementById('rec-sl-vehicle-block');
-  const express = document.getElementById('rec-train-cascade');
-  if (local)   local.style.display   = (mode === 'local')   ? 'block' : 'none';
-  if (express) express.style.display = (mode === 'express') ? 'block' : 'none';
-}
+window.applyRecTrainCategory = applyRecTrainCategory;
 
 function clearAllTrainSelections() {
   const T = NORIRECO.trains;

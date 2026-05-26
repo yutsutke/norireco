@@ -294,10 +294,13 @@ function onTrainCategoryChange() {
   if (trainCustom) { trainCustom.value = ''; trainCustom.style.display = 'none'; }
   if (carSel)      { carSel.style.display = 'none'; }
   if (carCustom)   { carCustom.value = ''; carCustom.style.display = 'none'; }
-  if (!cat) {
-    if (trainSel) trainSel.style.display = 'none';
-    return;
-  }
+  if (trainSel)    { trainSel.style.display = 'none'; }
+  // v352: cat='local' (普通) は sl-vehicle レーンに分岐、それ以外は cascade レーン。
+  // sl レーンも cascade レーンも、まずは applyRecTrainCategory で表示切替してから列車 dropdown を populate
+  if (window.applyRecTrainCategory) window.applyRecTrainCategory(cat);
+  // 「指定しない」 or 「普通」は cascade 不要 (sl レーンは applyRecTrainCategory が populate 済)
+  if (!cat || cat === 'local') return;
+  // それ以外のカテゴリ: cascade の列車 dropdown を populate
   const trains = T.TRAINS.filter(t => t.category === cat)
     .sort((a, b) => {
       // 廃止は末尾、その後は名前順

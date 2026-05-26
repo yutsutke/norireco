@@ -1339,19 +1339,14 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
         <span>📋 列車・車両形式も記録する</span>
       </label>
       <div id="rec-train-picker" style="display:none;margin-top:10px">
-        <!-- v350: 普通電車 / 特急・観光列車のラジオ排他選択 -->
-        <div style="display:flex;gap:14px;margin-bottom:10px;flex-wrap:wrap">
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--silver);cursor:pointer;user-select:none">
-            <input type="radio" name="rec-train-mode" id="rec-train-mode-local" value="local" checked onchange="onRecTrainModeChange()" style="margin:0;cursor:pointer">
-            <span>普通電車</span>
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--silver);cursor:pointer;user-select:none">
-            <input type="radio" name="rec-train-mode" id="rec-train-mode-express" value="express" onchange="onRecTrainModeChange()" style="margin:0;cursor:pointer">
-            <span>特急・観光列車</span>
-          </label>
-        </div>
-        <!-- 普通電車レーン: 区間 chip → 現役車両 dropdown -->
-        <div id="rec-sl-vehicle-block">
+        <!-- v352: ラジオ撤廃、カテゴリ dropdown を picker 最上位に。
+             cat='local' (普通) → sl レーン / cat='その他' → cascade レーン -->
+        <select id="rec-train-category" onchange="onTrainCategoryChange()"
+                style="width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;margin-bottom:10px">
+          <option value="">指定しない</option>
+        </select>
+        <!-- 普通カテゴリ用: 区間 chip → 現役車両 dropdown (sl レーン) -->
+        <div id="rec-sl-vehicle-block" style="display:none">
           <div style="font-size:11px;color:var(--silver);margin-bottom:6px">🚆 この区間の車両形式</div>
           <div id="rec-sl-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
           <select id="rec-sl-vehicle-select" onchange="onSlVehicleChange()"
@@ -1364,12 +1359,8 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
             この系統の車両データはまだ未登録です。dropdown 末尾の「✏️ 別形式を入力」から自由記述できます。
           </div>
         </div>
-        <!-- 特急・観光列車レーン: 既存の カテゴリ → 列車 → 車両形式 cascading -->
+        <!-- 特急/新幹線/観光列車等のカテゴリ用: 列車 → 車両形式 cascade レーン -->
         <div id="rec-train-cascade" style="display:none">
-          <select id="rec-train-category" onchange="onTrainCategoryChange()"
-                  style="width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;margin-bottom:6px">
-            <option value="">指定しない</option>
-          </select>
           <select id="rec-train-id" onchange="onTrainChange()"
                   style="display:none;width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;margin-bottom:6px">
             <option value="">列車を選ぶ...</option>
