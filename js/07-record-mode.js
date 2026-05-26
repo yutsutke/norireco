@@ -170,6 +170,50 @@ function resolveSelectionStationId(st) {
   return ms?.id || null;
 }
 
+// v367: 緯度経度から徒歩距離 (近似メートル)。
+function _distMeters(a, b) {
+  const dLat = (a.lat - b.lat) * 111000;
+  const dLon = (a.lon - b.lon) * 111000 * Math.cos(((a.lat + b.lat) / 2) * Math.PI / 180);
+  return Math.hypot(dLat, dLon);
+}
+
+// v367: R.selection の連続 2 駅が同じ徒歩乗換グループに属するなら情報を返す (=徒歩区間扱い)。
+function _isWalkPair(a, b) {
+  const wtIdx = NORIRECO.data?.walkTransferIndex;
+  if (!wtIdx || wtIdx.size === 0) return null;
+  const aId = resolveSelectionStationId(a);
+  const bId = resolveSelectionStationId(b);
+  if (!aId || !bId || aId === bId) return null;
+  const gA = wtIdx.get(aId);
+  const gB = wtIdx.get(bId);
+  if (gA == null || gB == null || gA !== gB) return null;
+  return { walkM: Math.round(_distMeters(a, b)) };
+}
+
+// v367: lineB の駅で、stationId と同じ徒歩乗換グループに属する駅を 1 件返す
+// (近い順に 1 件)。groupIdx を元に group.stations を全部試す。
+function _findWalkPartnerOnLine(stationId, lineB, anchor) {
+  const wtIdx = NORIRECO.data?.walkTransferIndex;
+  const WT = NORIRECO.data?.WALK_TRANSFERS;
+  if (!wtIdx || !WT) return null;
+  const groupIdx = wtIdx.get(stationId);
+  if (groupIdx == null) return null;
+  const group = WT.groups?.[groupIdx];
+  if (!group) return null;
+  let best = null;
+  for (const sid of group.stations) {
+    if (sid === stationId) continue;
+    const j = lineB.stations.findIndex(s => s.id === sid);
+    if (j < 0) continue;
+    const sb = lineB.stations[j];
+    const d = anchor ? _distMeters(anchor, sb) : 0;
+    if (!best || d < best.distM) {
+      best = { index: j, station: sb, distM: Math.round(d) };
+    }
+  }
+  return best;
+}
+
 // v366: 駅 id (or name fallback) → Set<sl.id> 索引。findTransferCandidates / find2HopTransferCandidates
 // の高速化用。SERVICE_LINES が変わるまでキャッシュ (NORIRECO.data._stationLineIndexCache に置く)。
 function buildStationLineIndex() {
@@ -219,27 +263,43 @@ function findTransferCandidates(a, b, maxResults = 5) {
   if (linesA.length === 0 || linesB.length === 0) return [];
 
   // station key → 最良候補 (totalStations 最小、ただし isDirectThrough を優先維持)
+  // v367: x = a 自身も許可 (徒歩乗換 fallback で「a で降りて徒歩で別駅へ」のルート提案のため)
   const bestByStation = new Map();
   for (const lineA of linesA) {
     const aIdx = _indexOnLine(lineA, a, aId);
     const throughSet = new Set(lineA.through_lines || []);
     for (let i = 0; i < lineA.stations.length; i++) {
-      if (i === aIdx) continue;
       const x = lineA.stations[i];
-      if (x.name === a.name || x.name === b.name) continue;
-      const stationsA = Math.abs(i - aIdx) + 1;
+      if (x.name === b.name) continue;
+      const isAItself = (i === aIdx);
+      // x ≠ a で x.name === a.name のケース (同名異所) も a 自身扱いから除外、通常 x として扱う
+      const stationsA = isAItself ? 1 : Math.abs(i - aIdx) + 1;
       for (const lineB of linesB) {
         if (lineB.id === lineA.id) continue;
-        const xIdxOnB = x.id
+        // 通常: x が lineB に直接ある (id 一致 or name 一致)
+        let xIdxOnB = x.id
           ? lineB.stations.findIndex(s => s.id === x.id)
           : lineB.stations.findIndex(s => s.name === x.name);
+        let walkPartner = null;
+        // v367: 直接無いなら徒歩乗換グループから lineB に乗ってる別駅 (y) を探す
+        if (xIdxOnB < 0 && x.id) {
+          const w = _findWalkPartnerOnLine(x.id, lineB, x);
+          if (w) {
+            xIdxOnB = w.index;
+            walkPartner = { name: w.station.name, lat: w.station.lat, lon: w.station.lon, id: w.station.id, distM: w.distM };
+          }
+        }
         if (xIdxOnB < 0) continue;
+        // v367: x = a で walkPartner なしは「a が lineB にも直接乗ってる」= 1 hop で繋がる
+        //  (= そもそも error にならない) ので skip。walkPartner ありは「a で降りて徒歩」の意味
+        if (isAItself && !walkPartner) continue;
         const bIdxOnB = _indexOnLine(lineB, b, bId);
         if (bIdxOnB < 0 || bIdxOnB === xIdxOnB) continue;
         const stationsB = Math.abs(bIdxOnB - xIdxOnB) + 1;
         const total = stationsA + stationsB;
         const isDirectThrough = throughSet.has(lineB.id);
-        const key = x.id || `${x.name}|${x.lat.toFixed(4)}|${x.lon.toFixed(4)}`;
+        // 徒歩乗換は dedupe key を分ける (同じ x で line 直接乗換 + 別 line で徒歩乗換 の両候補を保持できる)
+        const key = (x.id || `${x.name}|${x.lat.toFixed(4)}|${x.lon.toFixed(4)}`) + (walkPartner ? `|w_${walkPartner.id || walkPartner.name}` : '');
         const prev = bestByStation.get(key);
         // direct through は同一駅候補のなかで優先 (driver experience として「乗換不要」が刺さる)
         const better = !prev
@@ -249,6 +309,7 @@ function findTransferCandidates(a, b, maxResults = 5) {
           bestByStation.set(key, {
             name: x.name, lat: x.lat, lon: x.lon, id: x.id || null,
             lineA, lineB, totalStations: total, isDirectThrough,
+            walkPartner,
           });
         }
       }
@@ -387,6 +448,45 @@ function insertTwoTransferStations(pairIdx, xName, xLat, xLon, yName, yLat, yLon
 window.insertTwoTransferStations = insertTwoTransferStations;
 window.insertTransferStation = insertTransferStation;
 
+// v367: 徒歩乗換チップ用の挿入処理。X (lineA 側) + Y (lineB 側、徒歩で X から到達可能) を
+// 連続して selection に入れる。中間 pair (X→Y) は walk_transferIndex が一致するため
+// buildSegmentsFromSelection が自動で walk segment 化する (no line pre-select)。
+// X が selection[pairIdx] (=a 自身) と同じなら、Y だけ挿入 (a で降りて徒歩で Y → lineB) のパターン。
+function insertWalkTransfer(pairIdx, xName, xLat, xLon, yName, yLat, yLon, lineAId, lineBId) {
+  const stX = { name: xName, lat: xLat, lon: xLon };
+  const stY = { name: yName, lat: yLat, lon: yLon };
+  const xIsA = R.selection[pairIdx] && sameStation(R.selection[pairIdx], stX);
+  if (xIsA) {
+    // a → 徒歩 → Y → lineB → b 経路。Y だけ挿入。
+    if (R.selection.some(s => sameStation(s, stY))) return;
+    R.selection.splice(pairIdx + 1, 0, stY);
+    addRecordHighlight(stY);
+    const newChoices = new Map();
+    for (const [k, v] of R.pairLineChoices) {
+      newChoices.set(k <= pairIdx ? k : k + 1, v);
+    }
+    // pairIdx = walk (a → Y), pairIdx+1 = lineB (Y → b)
+    if (lineBId) newChoices.set(pairIdx + 1, lineBId);
+    R.pairLineChoices = newChoices;
+  } else {
+    // 通常: a → lineA → X → 徒歩 → Y → lineB → b。X+Y 両方挿入
+    if (R.selection.some(s => sameStation(s, stX)) || R.selection.some(s => sameStation(s, stY))) return;
+    R.selection.splice(pairIdx + 1, 0, stX, stY);
+    addRecordHighlight(stX);
+    addRecordHighlight(stY);
+    const newChoices = new Map();
+    for (const [k, v] of R.pairLineChoices) {
+      newChoices.set(k <= pairIdx ? k : k + 2, v);
+    }
+    if (lineAId) newChoices.set(pairIdx,     lineAId);
+    // pairIdx + 1 は walk pair (line 不要)
+    if (lineBId) newChoices.set(pairIdx + 2, lineBId);
+    R.pairLineChoices = newChoices;
+  }
+  refreshRecPanel();
+}
+window.insertWalkTransfer = insertWalkTransfer;
+
 // 候補リスト群の積集合 (id ベース)
 function intersectLineLists(lists) {
   if (!lists || lists.length === 0) return [];
@@ -406,16 +506,18 @@ function intersectLineLists(lists) {
 function buildSegmentsFromSelection() {
   if (R.selection.length < 2) return [];
 
-  // Step 1: 各ペアの候補を計算
+  // Step 1: 各ペアの候補を計算 (v367: 徒歩乗換ペアもここで判定)
   const pairs = [];
   for (let i = 0; i < R.selection.length - 1; i++) {
     const a = R.selection[i], b = R.selection[i + 1];
-    pairs.push({a, b, cands: findCommonServiceLines([a, b])});
+    const walk = _isWalkPair(a, b);
+    pairs.push({a, b, walk, cands: walk ? [] : findCommonServiceLines([a, b])});
   }
 
-  // Step 2: 各ペアの選択 (手動 > 継続性 > 先頭)
+  // Step 2: 各ペアの選択 (手動 > 継続性 > 先頭、徒歩はマーカーだけ)
   let prevLineId = null;
   const chosen = pairs.map((p, i) => {
+    if (p.walk) { prevLineId = null; return { _walk: true, walkM: p.walk.walkM }; }
     if (p.cands.length === 0) { prevLineId = null; return null; }
     const userPick = R.pairLineChoices.get(i);
     let ln = null;
@@ -426,7 +528,7 @@ function buildSegmentsFromSelection() {
     return ln;
   });
 
-  // Step 3: 同一路線の連続ペアをマージ
+  // Step 3: 同一路線の連続ペアをマージ (walk pair は単独 segment)
   const segs = [];
   let i = 0;
   while (i < pairs.length) {
@@ -439,8 +541,18 @@ function buildSegmentsFromSelection() {
       i++;
       continue;
     }
+    if (chosen[i]._walk) {
+      segs.push({
+        walk: true,
+        from: pairs[i].a, to: pairs[i].b,
+        walkM: chosen[i].walkM,
+        pairIndices: [i],
+      });
+      i++;
+      continue;
+    }
     let j = i;
-    while (j + 1 < pairs.length && chosen[j + 1] && chosen[j + 1].id === chosen[i].id) {
+    while (j + 1 < pairs.length && chosen[j + 1] && !chosen[j + 1]._walk && chosen[j + 1].id === chosen[i].id) {
       j++;
     }
     const cands = intersectLineLists(pairs.slice(i, j + 1).map(p => p.cands));
@@ -494,6 +606,15 @@ function refreshRecPanel() {
 
     R.segments.forEach((seg, idx) => {
       const div = document.createElement('div');
+      if (seg.walk) {
+        // v367: 徒歩乗換 segment — error ではない、駅数カウントもしない
+        div.className = 'rec-seg';
+        div.style.background = 'rgba(120,180,240,.12)';
+        div.style.borderLeft = '3px solid #7fc4ff';
+        div.innerHTML = `<span style="color:#7fc4ff;font-size:11px">🚶 ${seg.from.name} → ${seg.to.name} <span style="opacity:.7">(徒歩 約${seg.walkM}m)</span></span>`;
+        pickDiv.appendChild(div);
+        return;
+      }
       if (seg.error) {
         hasError = true;
         div.className = 'rec-seg err';
@@ -509,10 +630,17 @@ function refreshRecPanel() {
           html += `<div style="display:flex;flex-direction:column;gap:4px;margin-top:4px">`;
           for (const c of cands) {
             const nm = c.name.replace(/'/g, "\\'");
-            const iconAndLabel = c.isDirectThrough
-              ? `🚉 <b>${c.name}</b> で乗換 <span style="background:rgba(0,178,229,.25);color:#00B2E5;font-size:9px;padding:1px 5px;border-radius:8px;margin-left:4px">直通あり</span>`
-              : `🔁 <b>${c.name}</b> で乗換`;
-            html += `<button type="button" onclick="insertTransferStation(${pairIdx},'${nm}',${c.lat},${c.lon},'${c.lineA.id}','${c.lineB.id}')" style="text-align:left;padding:6px 8px;background:rgba(140,160,179,.15);border:1px solid var(--track);border-radius:6px;color:var(--white);cursor:pointer;font-size:11px;font-family:inherit;line-height:1.4">${iconAndLabel}<span style="color:var(--silver);font-size:10px;display:block;margin-top:2px"><span style="color:${c.lineA.color}">●</span> ${c.lineA.name} → <span style="color:${c.lineB.color}">●</span> ${c.lineB.name} ・ 合計 ${c.totalStations}駅</span></button>`;
+            if (c.walkPartner) {
+              // v367: 徒歩乗換 chip — X (lineA) → 徒歩 → Y (lineB)
+              const yn = c.walkPartner.name.replace(/'/g, "\\'");
+              const iconAndLabel = `🚶 <b>${c.name}</b> 〜 <b>${c.walkPartner.name}</b> で乗換 <span style="background:rgba(127,196,255,.25);color:#7fc4ff;font-size:9px;padding:1px 5px;border-radius:8px;margin-left:4px">徒歩 ${c.walkPartner.distM}m</span>`;
+              html += `<button type="button" onclick="insertWalkTransfer(${pairIdx},'${nm}',${c.lat},${c.lon},'${yn}',${c.walkPartner.lat},${c.walkPartner.lon},'${c.lineA.id}','${c.lineB.id}')" style="text-align:left;padding:6px 8px;background:rgba(140,160,179,.15);border:1px solid var(--track);border-radius:6px;color:var(--white);cursor:pointer;font-size:11px;font-family:inherit;line-height:1.4">${iconAndLabel}<span style="color:var(--silver);font-size:10px;display:block;margin-top:2px"><span style="color:${c.lineA.color}">●</span> ${c.lineA.name} → 🚶 → <span style="color:${c.lineB.color}">●</span> ${c.lineB.name} ・ 合計 ${c.totalStations}駅</span></button>`;
+            } else {
+              const iconAndLabel = c.isDirectThrough
+                ? `🚉 <b>${c.name}</b> で乗換 <span style="background:rgba(0,178,229,.25);color:#00B2E5;font-size:9px;padding:1px 5px;border-radius:8px;margin-left:4px">直通あり</span>`
+                : `🔁 <b>${c.name}</b> で乗換`;
+              html += `<button type="button" onclick="insertTransferStation(${pairIdx},'${nm}',${c.lat},${c.lon},'${c.lineA.id}','${c.lineB.id}')" style="text-align:left;padding:6px 8px;background:rgba(140,160,179,.15);border:1px solid var(--track);border-radius:6px;color:var(--white);cursor:pointer;font-size:11px;font-family:inherit;line-height:1.4">${iconAndLabel}<span style="color:var(--silver);font-size:10px;display:block;margin-top:2px"><span style="color:${c.lineA.color}">●</span> ${c.lineA.name} → <span style="color:${c.lineB.color}">●</span> ${c.lineB.name} ・ 合計 ${c.totalStations}駅</span></button>`;
+            }
           }
           html += `</div>`;
         } else {
@@ -557,10 +685,14 @@ function refreshRecPanel() {
     if (R.segments.length > 0) {
       const summary = document.createElement('div');
       summary.style.cssText = 'margin-top:6px;font-size:11px;color:var(--gold);';
-      const transferCount = R.segments.filter(s => !s.error).length - 1;
+      // v367: 徒歩区間は乗換回数にカウント (乗車系統数 - 1 として計算)
+      const rideSegs = R.segments.filter(s => !s.error && !s.walk);
+      const walkSegs = R.segments.filter(s => s.walk);
+      const transferCount = Math.max(0, rideSegs.length - 1);
+      const walkPart = walkSegs.length > 0 ? ` (徒歩乗換 ${walkSegs.length}回 含む)` : '';
       summary.textContent = hasError
         ? '⚠️ 未解決区間があります'
-        : `合計 ${totalStations}駅 / 乗換 ${Math.max(0, transferCount)}回`;
+        : `合計 ${totalStations}駅 / 乗換 ${transferCount}回${walkPart}`;
       pickDiv.appendChild(summary);
 
       // 手動「終了して確認」 (現在の selection で終了)

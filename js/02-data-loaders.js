@@ -26,6 +26,8 @@ NORIRECO.data = NORIRECO.data || {
   CHARACTERS: {},                  // id → {meta, innerSvg}
   stationCharMap: new Map(),       // station name → [character objects]
   charModeOn: false,               // 🎭 キャラ表示 ON/OFF (init で localStorage から復元)
+  WALK_TRANSFERS: null,            // v367: 徒歩乗換グループ (walk_transfers.json)
+  walkTransferIndex: new Map(),    // v367: stationId → groupIdx 逆引き
 };
 const D = NORIRECO.data;
 
@@ -141,6 +143,69 @@ export async function loadMergedStations() {
     console.log(`[乗レコ] 統合駅 ${D.MERGED_STATIONS.length}駅 (索引 ${D.slMergedStationMap.size}件)`);
   } catch (e) {
     console.warn('[乗レコ] merged_stations.json 読込失敗:', e.message);
+  }
+}
+
+// v367: 徒歩乗換グループ (walk_transfers.json) — scripts/extract_walk_transfers.js で自動抽出した
+// 「名前異なる + 400m 以内 + 共通系統なし」の近接駅グループ。函館↔函館駅前、立川↔立川北↔立川南 等。
+// オプションで walk_transfers_overrides.json (手動キュレーション) もマージする (add / remove_pairs)。
+// 乗換候補抽出 (07-record-mode.js) で id 一致だけでなく「同一グループ内」も同一駅扱いにする。
+export async function loadWalkTransfers() {
+  if (D.WALK_TRANSFERS) return D.WALK_TRANSFERS;
+  try {
+    const res = await fetch('walk_transfers.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const groups = Array.isArray(data.groups) ? data.groups.map(g => ({ ...g, stations: g.stations.slice() })) : [];
+    // overrides.json (任意ファイル) があれば適用
+    try {
+      const ovRes = await fetch('walk_transfers_overrides.json');
+      if (ovRes.ok) {
+        const ov = await ovRes.json();
+        // add: 新規グループ (stations 配列で指定、既存と重複したらマージ)
+        for (const g of (ov.add || [])) {
+          if (!g.stations || g.stations.length < 2) continue;
+          // 既存に重なるグループがあれば駅をマージ
+          const overlap = groups.find(ex => g.stations.some(sid => ex.stations.includes(sid)));
+          if (overlap) {
+            for (const sid of g.stations) if (!overlap.stations.includes(sid)) overlap.stations.push(sid);
+            if (g.max_walk_m && g.max_walk_m > (overlap.max_walk_m || 0)) overlap.max_walk_m = g.max_walk_m;
+            if (g.note) overlap.note = (overlap.note || '') + ' / ' + g.note;
+          } else {
+            groups.push({ name: g.name || g.stations.join('+'), stations: g.stations.slice(), max_walk_m: g.max_walk_m || null, note: g.note || null });
+          }
+        }
+        // remove_pairs: 特定 station ペアを「徒歩乗換しない」扱いに (誤検出除去)
+        // ペアのうち少なくとも片方が含まれるグループから両方の id を含む場合、片方を切る
+        for (const pair of (ov.remove_pairs || [])) {
+          if (!Array.isArray(pair) || pair.length !== 2) continue;
+          const [a, b] = pair;
+          for (const g of groups) {
+            const ai = g.stations.indexOf(a);
+            const bi = g.stations.indexOf(b);
+            if (ai >= 0 && bi >= 0) {
+              // 両方が同じグループ → b を外す (グループが 2 駅なら 1 駅になり実質無効化)
+              g.stations.splice(bi, 1);
+            }
+          }
+        }
+        // 1 駅以下になったグループを除外
+        for (let i = groups.length - 1; i >= 0; i--) if (groups[i].stations.length < 2) groups.splice(i, 1);
+        console.log('[乗レコ] walk_transfers_overrides.json 適用済 (add ' + (ov.add?.length || 0) + ' / remove_pairs ' + (ov.remove_pairs?.length || 0) + ')');
+      }
+    } catch (e) { /* overrides は任意ファイル、無くてもエラーにしない */ }
+    D.WALK_TRANSFERS = { ...data, groups };
+    // 逆引き index
+    D.walkTransferIndex.clear();
+    for (let i = 0; i < groups.length; i++) {
+      for (const sid of groups[i].stations) D.walkTransferIndex.set(sid, i);
+    }
+    console.log(`[乗レコ] 徒歩乗換 ${groups.length} グループ (${D.walkTransferIndex.size} 駅)`);
+    return D.WALK_TRANSFERS;
+  } catch (e) {
+    console.warn('[乗レコ] walk_transfers.json 読込失敗:', e.message);
+    D.WALK_TRANSFERS = { groups: [] };
+    return D.WALK_TRANSFERS;
   }
 }
 

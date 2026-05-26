@@ -23,6 +23,7 @@ import {
   loadCharacters,
   loadTrains,
   loadServiceLineVehicles,
+  loadWalkTransfers,
 } from './02-data-loaders.js';
 import {
   getStorageStats,
@@ -141,7 +142,7 @@ export function initMap(){
   // 初期表示: P1（新幹線）+ P2（JR在来）+ P3（大手私鉄）
   (async () => {
     console.log('[乗レコ] 初期ロード開始');
-    await Promise.all([loadRunningServices(), loadMergedStations(), loadCharacters(), loadTrains(), loadServiceLineVehicles()]);
+    await Promise.all([loadRunningServices(), loadMergedStations(), loadCharacters(), loadTrains(), loadServiceLineVehicles(), loadWalkTransfers()]);
     await loadLines(1);
     await loadLines(2);
     await loadLines(3);

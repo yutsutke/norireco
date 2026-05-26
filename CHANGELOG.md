@@ -40,6 +40,58 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 217. v367 — 徒歩乗換グループ DB + 記録モード walk segment / walk fallback 候補 (2026-05-27)
+
+### 背景
+
+ユスケから「函館駅・函館駅前駅、西武秩父駅・御花畑駅、立川駅・立川北駅 など、歩いて乗換可能な駅をまとめておくと自動判定に使える」との指摘。merged_stations だけでは「同名駅マージ」止まりで、「別名・別駅扱いだが徒歩 200〜400m で連絡」のケースは別駅扱いになり、乗換候補抽出ロジックでも繋がらない。
+
+例: 函館 (函館本線) → 松風町 (函館市電大森線) は 1 hop でも 2 hop でも 0 件 → 「経由駅を手動で追加してください」だった。実際は函館駅前 (市電) まで徒歩 230m で行けば 大森線で松風町に行ける。
+
+### 設計判断
+
+- **データ収集**: 自動抽出 + 細かい修正は後付けで (`walk_transfers_overrides.json` 機構)。手動キュレーションは初期 50 件くらいが必要だがメンテ負担が重い vs 自動抽出は誤検出を許容しつつ高網羅性
+- **抽出条件**: 距離 < 400m AND 名前異なる AND 共通系統なし (= 同じ系統で繋がる駅は乗換扱いしない)。閾値は実例 (函館 230m / 西武秩父 267m / 立川 226m) 全部入る広めの 400m
+- **transitive closure (Union-Find) でグループ化**: 立川↔立川北 + 立川↔立川南 → {立川, 立川北, 立川南} 1 グループに。利用側は「グループ内なら徒歩可」と判定するだけで済む
+- **同名異所も別駅扱い**: 名前異なる条件があるので同名の高松・大宮等は今回は除外。本来「大宮 (関東)」と「大宮 (京都阪急)」も別駅だが同名なのでスキップされる (merged_stations 段階で別 id 付与済、同名異所問題は v293 で対応済)
+- **walk segment は error にせず通過**: buildSegmentsFromSelection が連続 2 駅を walk pair と認識したら `{walk:true, walkM}` segment 化。pairLineChoices なし、saveMultiSegmentTrip でも `if (!seg.line) continue;` で自然に除外
+- **walk fallback in findTransferCandidates**: lineB に直接乗っていない x について、x.id が属する walk グループ内の他駅を lineB から探して「walkPartner」として候補化
+- **a 自身からの walk fallback 許可**: 旧コードは `x.name === a.name` で skip していたが、これだと「a で降りて徒歩 → b の系統」のケース (函館→松風町など) が拾えない。`i === aIdx && !walkPartner` のみ skip にした (walkPartner ありなら有効、a 自身を「降りる駅」として扱う)
+- **挿入処理 (insertWalkTransfer)**: X = a の特殊ケースで Y だけ挿入、それ以外は X+Y 両方挿入。pairLineChoices シフト + lineA/lineB pre-select (walk pair の中間 pairIdx には line 設定なし)
+- **手動修正 (walk_transfers_overrides.json)**: `add` (新規グループ追加 / 既存グループに駅追加) + `remove_pairs` (誤検出ペア除外) の 2 方向。任意ファイルで存在しなければ skip
+
+### 変更
+
+- [scripts/extract_walk_transfers.js](scripts/extract_walk_transfers.js) 新規: merged_stations.json 全 9030 駅から徒歩乗換ペアを抽出。グリッド分割 (0.005°) で総当りを 9030² → 2032 ペアに削減、Union-Find で transitive closure グループ化 → 243 グループ / 553 駅
+- [walk_transfers.json](walk_transfers.json) 新規 (自動生成): 243 グループ、最大 max_walk_m=399m。主要例: 函館・函館駅前 / 立川・立川北・立川南 / 西武秩父・御花畑 / 大宮 (京都)・四条大宮 / 富山駅周辺 9 駅
+- [js/02-data-loaders.js](js/02-data-loaders.js): `loadWalkTransfers()` 新規 export。`walk_transfers_overrides.json` の add/remove_pairs 処理 + `D.walkTransferIndex` (id → groupIdx) 構築。NORIRECO.data に `WALK_TRANSFERS` / `walkTransferIndex` を追加
+- [js/06-map-leaflet.js](js/06-map-leaflet.js): boot Promise.all に `loadWalkTransfers()` 追加
+- [js/07-record-mode.js](js/07-record-mode.js):
+  - `_distMeters(a, b)`: 緯度経度から近似メートル
+  - `_isWalkPair(a, b)`: 連続 2 駅が同じ walk グループに属するか判定
+  - `_findWalkPartnerOnLine(stationId, lineB, anchor)`: lineB 上の同グループ駅を最近接 1 件返す
+  - `buildSegmentsFromSelection`: walk pair を `{walk:true, walkM}` segment 化 (error 回避)
+  - `refreshRecPanel`: walk segment 表示 (🚶 + 徒歩 Xm + 水色枠)、サマリに「徒歩乗換 N 回含む」追記
+  - `findTransferCandidates`: walk fallback ロジック追加。lineB に x 直接乗ってないとき walk グループから別駅を Y として候補化、`walkPartner` フィールドで chip 用情報を保持。x = a でも walkPartner ありなら有効化
+  - `insertWalkTransfer` 新規 + window 公開。X = a なら Y だけ挿入、それ以外は X+Y 両方挿入
+  - chip render の `if (c.walkPartner)` 分岐で「🚶 X 〜 Y で乗換」+「徒歩 N m」バッジ表示
+- [sw.js](sw.js): CACHE_VERSION v366 → v367、STATIC_ASSETS に walk_transfers.json 追加
+
+### 検証
+
+- 自動抽出: 「[乗レコ] 徒歩乗換 243 グループ (553 駅)」確認。函館・立川・西武秩父・大宮・名古屋すべて期待通り
+- **walk pair 認識**: 函館 → 函館駅前 を選択 → 「🚶 函館 → 函館駅前 (徒歩 約228m)」walk segment、サマリ「合計 0駅 / 乗換 0回 (徒歩乗換 1回 含む)」、error にならない
+- **walk fallback**: 函館 → 松風町 (函館本線駅 + 函館市電大森線駅、1 hop 0 件) → 「🚶 函館 〜 函館駅前 で乗換 徒歩 228m / 函館本線 → 🚶 → 大森線 ・ 合計 3駅」候補が 1 件出る
+- **挿入**: 上記候補クリック → selection [函館, 函館駅前, 松風町] (X = a なので Y だけ挿入)、segments = walk + 大森線 (2駅) で正しく組まれた、pairChoices に pair[1] = 大森線 のみ pre-select (walk pair の pair[0] には line なし)
+
+### 残課題
+
+- 2 hop fallback には walk fallback を組み込まず: 1 hop で walk が出るケースは出るので実用上は問題ないはず。2 hop に組み込むと 4 種類のパスタイプ (X walk / Y walk / X+Y walk / neither walk) が増えてコード複雑化
+- 同名異所 (高松・大宮等) は walk グループに入れていない: name 異なる条件 + merged_stations が同名異所を別 id で持つ (v293〜) ので、両駅は既に別駅扱いされている。徒歩乗換は別問題なので必要なら別途手動 override
+- `walk_transfers_overrides.json` は今回コミット時点では存在しない (空でも問題なし、loader は fetch 失敗を warn だけにする)。手動修正したいケースが出てきたら追加する
+
+---
+
 ## 216. v366 — 乗換候補: 直通系統「直通あり」バッジ + 2 hop fallback (2026-05-27)
 
 ### 背景
