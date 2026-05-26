@@ -143,12 +143,13 @@ function renderActionList({ ms, lines, memoCount }) {
   // _mypageCache が null (マイページ未開封) の場合は件数バッジ無しで案内文に切り替え
   // v309: タップ時に lazy fetch するため、ラベルを「タップで読み込み」へ
   // v312 (Phase 2-c): 引数を ms オブジェクトに (id 優先比較)
+  // v368: 「(タップで読み込み)」カッコ書きはアクションシートの文脈で自明なため削除
   const tripsHere = getTripsAtStation(ms);
   if (tripsHere === null) {
     buttons.push(`
       <button class="sa-btn" onclick="onSaShowTrips()">
         <span class="sa-btn-ic">🚃</span>
-        <span class="sa-btn-tx">この駅を含む旅程 (タップで読み込み)</span>
+        <span class="sa-btn-tx">この駅を含む旅程</span>
         <span class="sa-btn-arrow">›</span>
       </button>
     `);
