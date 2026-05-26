@@ -40,6 +40,44 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 204. v354 — 旅程カードに車両形式を表示 (普通=車両形式のみ / 特急=列車名+車両形式) (2026-05-26)
+
+### 背景
+
+ユスケから「旅程画面一覧で、普通車は車両形式を、特急者は列車名・車両形式を表示したい」との要望。現状の `tripCardHtml` は `trip.train_name` がある時だけ車両情報を描画していたため、v348 以降の sl レーン経由 (普通電車: `train_name=null` + `car_model=値`) で記録した旅程は車両形式が一切表示されていなかった。
+
+### 変更
+
+[js/13-mypage-common.js:572-585](js/13-mypage-common.js#L572) の `trainBit` 生成を「`train_name` か `car_model` のどちらかあれば表示」に変更:
+
+```js
+if (trip.train_name || trip.car_model) {
+  const customMark = (trip.train_name && !trip.train_id) ? ' 📝' : '';
+  const namePart = trip.train_name ? `${trip.train_name}${customMark}` : '';
+  const carPart  = trip.car_model  ? `<span class="mp-car">[${trip.car_model}]</span>` : '';
+  const sep = (namePart && carPart) ? ' ' : '';
+  trainBit = `<div class="mp-tcard-train">🚆 ${namePart}${sep}${carPart}</div>`;
+}
+```
+
+sw.js: CACHE_VERSION 'v353' → 'v354'
+
+### 検証 (Claude Preview)
+
+mock trip 5 パターンを `tripCardHtml` に通して `<div class="mp-tcard-train">` の中身を確認:
+
+| ケース | train_id | train_name | car_model | 出力 |
+|---|---|---|---|---|
+| 普通 | null | null | E235系0番台 | `🚆 [E235系0番台]` |
+| 特急 (列車+車両) | azusa | あずさ | E353系 | `🚆 あずさ [E353系]` |
+| 特急 (列車のみ) | azusa | あずさ | null | `🚆 あずさ` |
+| 手入力列車+車両 | null | 湘南ライナー | 185系 | `🚆 湘南ライナー 📝 [185系]` |
+| 両方 null | null | null | null | (行なし) |
+
+全 5 ケース期待通り。
+
+---
+
 ## 203. v353 — 記録モーダル: カテゴリ dropdown の並びを「普通」先頭に (2026-05-26)
 
 ### 背景

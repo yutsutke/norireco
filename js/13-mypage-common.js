@@ -569,10 +569,18 @@ export function tripCardHtml(trip) {
     ? `<div class="mp-tcard-recorded">📌 記録: ${recordedAtStr}</div>`
     : '';
 
+  // v354: 普通電車 (train_name なし + car_model あり) でも車両形式を表示。
+  //   - 普通: 🚆 [E235系0番台]
+  //   - 特急 (列車+車両): 🚆 あずさ [E353系]
+  //   - 特急 (列車のみ): 🚆 あずさ
+  //   - 特急 (手入力列車): 🚆 湘南ライナー 📝 [185系]
   let trainBit = '';
-  if (trip.train_name) {
-    const customMark = trip.train_id ? '' : ' 📝';
-    trainBit = `<div class="mp-tcard-train">🚆 ${trip.train_name}${customMark}${trip.car_model?` <span class="mp-car">[${trip.car_model}]</span>`:''}</div>`;
+  if (trip.train_name || trip.car_model) {
+    const customMark = (trip.train_name && !trip.train_id) ? ' 📝' : '';
+    const namePart = trip.train_name ? `${trip.train_name}${customMark}` : '';
+    const carPart = trip.car_model ? `<span class="mp-car">[${trip.car_model}]</span>` : '';
+    const sep = (namePart && carPart) ? ' ' : '';
+    trainBit = `<div class="mp-tcard-train">🚆 ${namePart}${sep}${carPart}</div>`;
   }
 
   // v181/v185: 後追い記録モード拡張 — 遅延分・自由メモ (時間+分表記)
