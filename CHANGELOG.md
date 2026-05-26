@@ -44,6 +44,32 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 229. v379 — v378 hotfix: 古い trip (v374 以前) の特急が「列車制覇」に出ない (2026-05-27)
+
+### 背景
+
+v378 で「列車制覇」統計を segments 走査に対応したが、ユスケから「乗換ありで選んだ特急は表示されるけど、乗り換えなしの旅程の特急が表示されない」報告。
+
+実際は「乗換なし」が問題ではなく **「v374 以前に記録した旅程」が問題**。v374 以前は `segments[]` を持つが `segments[].train_id` を持たない (per-seg 列車情報は v375 から)。v378 ロジックは `segs.length > 0` で segments を見ていたので、古い trip では segments[].train_id=undefined で集計が空になり、trip 直下の train_id にフォールバックしなかった。
+
+### 設計判断
+
+- **「segments の中に列車情報があれば segments、無ければ trip 直下 fallback」** に条件分岐を強化
+- `segSources = segs.map(...).filter(s => s.train_id || s.train_name || s.car_model)` で「中身がある seg」だけ抽出
+- `segSources.length > 0` なら segments を使う、それ以外は trip 直下 fallback
+- この方が v375 以降の混在旅程と v374 以前の旧 trip 両方を正しく扱える
+
+### 変更
+
+- `js/09-tabs-stats.js:423-444` 付近: `segSources` フィルタを追加、`sources` を `segSources.length > 0 ? segSources : trip 直下` に変更
+
+### 教訓
+
+- 「segments[] が存在する」と「segments[].xxx が存在する」は別。v375 で per-seg 列車情報を追加したことで「segments があっても seg 中の xxx が無い古い trip」というケースが生まれた
+- 同じ罠は他の集計 (`buildCarModelStats` / 「📋 種類」フィルタ等) にもある。今後 segments 走査対応するときは「segSources.filter で中身ありだけ」パターンを徹底
+
+---
+
 ## 228. v378 — 「列車制覇」統計を segments 走査に対応 (2026-05-27)
 
 ### 背景

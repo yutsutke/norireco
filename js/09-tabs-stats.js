@@ -420,14 +420,17 @@ export async function renderStats(){
     const ridCustomNames = new Set();
     const carModelsByTrainId = {};       // id → Set<string>
     const carModelsByCustomName = {};    // name → Set<string>
-    // v378: 乗換ありで「特急 (segments[0]) + 普通 (segments[1])」のような旅程は
-    //   trip.train_id / trip.train_name が null になる (v375 集約ルール、混在で null) ため、
-    //   trip 直下だけ見ていると特急が拾われない。segments 走査に対応。
-    //   segments が空 (visit-only や v375 以前 trip) は trip 直下 fallback。
+    // v378→v379: 乗換ありの混在旅程は trip 直下が null になるため segments 走査が必要。
+    //   ただし v374 以前の trip は segments[] を持つが segments[].train_id を持たない
+    //   (per-seg 列車情報は v375 から)。そのため「segments の中に列車情報があれば segments を使い、
+    //   なければ trip 直下にフォールバック」する条件分岐に変更。
     trips.forEach(t => {
       const segs = Array.isArray(t.segments) ? t.segments : [];
-      const sources = segs.length > 0
-        ? segs.map(s => ({ train_id: s.train_id, train_name: s.train_name, car_model: s.car_model }))
+      const segSources = segs
+        .map(s => ({ train_id: s.train_id, train_name: s.train_name, car_model: s.car_model }))
+        .filter(s => s.train_id || s.train_name || s.car_model);
+      const sources = segSources.length > 0
+        ? segSources
         : [{ train_id: t.train_id, train_name: t.train_name, car_model: t.car_model }];
       sources.forEach(src => {
         if (src.train_id) {
