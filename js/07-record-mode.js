@@ -1686,7 +1686,7 @@ function selectSlChip(slId) {
   // 候補ゼロのときは説明文を出す
   if (emptyEl) emptyEl.style.display = (vehicles.length === 0) ? 'block' : 'none';
   // 既存の T.selectedCarModel が新しい候補にあれば維持、無ければ custom input の値か null
-  const T = NORIRECO.trains;
+  // v371: T は関数冒頭で宣言済み (selectedCarModelBySl 同期のため)
   const customEl = document.getElementById('rec-sl-vehicle-custom');
   const inDropdown = vehicles.some(v => v.vehicle === T.selectedCarModel);
   if (T.selectedCarModel && inDropdown) {

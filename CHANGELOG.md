@@ -44,6 +44,30 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 222. v372 — v371 hotfix: `const T` 二重宣言で画面真っ黒 (2026-05-27)
+
+### 背景
+
+v371 で `selectSlChip(slId)` 関数の冒頭に `const T = NORIRECO.trains` を追加したが、同関数内の 1689 行に既存の `const T = NORIRECO.trains` 宣言があり `SyntaxError: Identifier 'T' has already been declared` で初期化が止まり画面真っ黒に。ユスケから「表示されなくなったよ」+ DevTools console スクリーンショット報告。
+
+### 変更
+
+- `js/07-record-mode.js:1689`: 既存の `const T` 宣言を削除（冒頭宣言で統一）
+
+### 教訓
+
+- **`node --check js/file.js` は CommonJS として解釈するため関数内 `const` 重複を見逃す**。v371 push 前のチェックは exit 0 で通っていた。事後再現で `node --check --input-type=module < js/07-record-mode.js` を試したら期待通り SyntaxError を検出 (`Identifier 'T' has already been declared`)
+- 当プロジェクトは `<script type="module">` の ESM。今後は **`node --check --input-type=module < <file>`** か、より厳格な linter (eslint / biome / tsc) を使うべき
+- ES Modules では `const` 同一スコープ重複は即 SyntaxError → 初期化完全停止 → 画面真っ黒。ブラウザ側で確認できないと気付けない。preview の module キャッシュ問題で本セッションは UI 検証スキップしていたのが裏目に出た
+- イディオム重複の事故: 既存関数の冒頭に変数を追加するときは、関数末尾まで grep して同名変数が無いか確認する。`const T = NORIRECO.trains` は複数関数で使われていた
+
+### 追加対策候補 (TODO 化推奨)
+
+- `node --check --input-type=module < <file>` を Stop hook か pre-push hook で全 ESM ファイルにかける
+- もしくは eslint の `no-redeclare` ルールを最小構成で導入 (CI ではなくローカル check 用)
+
+---
+
 ## 221. v371 — 記録モードに「系統別車両形式」対応 (2026-05-27)
 
 ### 背景
