@@ -44,16 +44,25 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
-## 220. v370 — 路線フィルタを `lineId × SERVICE_LINES` 逆引き方式に修正 (2026-05-27)
+## 220. v370 — 路線フィルタを `lineId × SERVICE_LINES` 逆引き方式に整理 (2026-05-27)
 
 ### 背景
 
-v369 の路線フィルタで「東金」と入力したら 0 / 139 件になる事故。`segments[].lineName` を substring 検索する設計だったが、実際のデータ構造を確認すると `lineName` は記録時 `null` になるケースが多く (`js/17-station-actions.js:485` で `lineName: sl?.name || null`、`js/16-memos.js:595` 同様)、`lineId` (`s_*`) が一次情報だった。代わりに表示時は `SERVICE_LINES.find(l => l.id === seg.lineId)?.name` で逆引きしている (`js/13a-stats.js` 多数)。
+v369 の路線フィルタで「東金」と入力したら 0 / 139 件になり、Claude は「`lineName` が null 主体だから事故」と即断して v370 を出した。**しかし実機検証 (京王線で動作) とユスケ確認の結果、東金線の旅程記録がそもそも無かっただけ** で、v369 のロジック自体は正しく動いていた。SERVICE_LINES の `id` (`s_京王線` のように日本語包含) と segments[].lineId が substring マッチしていたため。
+
+つまり v370 は「事故修正」ではなく、たまたま正当化された **予防的リファクタ** だった。
+
+### v370 の意義 (事後評価)
+
+それでも v370 の方が筋は良い:
+- `lineName` は記録時 null が主流 (`js/17-station-actions.js:485`, `js/16-memos.js:595` で `args.lineName || null`) なので、v369 の `lineName` 側 OR 条件は実質効いていなかった
+- `lineId` を id 一次情報として `SERVICE_LINES.name` 逆引き経由でマッチするのは駅検索 v317 と同形パターン
+- 旅程数 × segments 数の積で動く callback 内の文字列処理を、loop 前に Set 化することで O(L + N) になり性能も改善
 
 ### 設計判断
 
-- 駅検索 v317 と同じパターンで実装: filter loop の外で `SERVICE_LINES` を 1 回スキャンしてマッチする `lineId` Set を構築 → loop 内では `segments[].lineId` が Set に含まれるかだけ判定 (O(L + N))
-- `candidateN02Ids` も Set に含める。SERVICE_LINES の `id` (`s_*`) と旧 N02 ID の両方が segments にあり得るため (v330 関連)
+- 駅検索 v317 と同じパターン: filter loop の外で `SERVICE_LINES` を 1 回スキャンしてマッチする `lineId` Set を構築 → loop 内では `segments[].lineId` が Set に含まれるかだけ判定
+- `candidateN02Ids` も Set に含める。SERVICE_LINES の `id` (`s_*`) と旧 N02 ID の両方が segments にあり得る (v330 関連)
 - マッチ 0 件のときは `Set(['__nomatch__'])` を入れて all-false にする。`null` のままだと「フィルタ無効」と区別がつかない
 
 ### 変更
@@ -63,9 +72,10 @@ v369 の路線フィルタで「東金」と入力したら 0 / 139 件になる
 
 ### 教訓
 
-- **データ構造の一次情報を確認せずに「ありそうな key」で検索するのは事故のもと**。v369 では `lineName / lineId` を OR で見ていたが、`lineName` が null 主体なら無いも同然
-- 表示用 (lineName, fromStation 等) と保存用 (lineId, station_id) でデータの「信頼度」が違う。フィルタ・検索などのロジックは保存用 (id) を一次情報として組むべき
-- 駅検索 v317 で同じ罠を踏んでいた (id Set 化したのも同じ理由)。「id 一次情報パターン」は再利用可能なテンプレートとして覚えておく
+- **「ユーザー報告 = バグ」と即断しない**。「0 件」は単にデータが無いだけの可能性。Claude は v370 で「事故修正」と書いてしまったが、実際はデータ確認すれば「東金線記録ゼロ」が分かったはず
+- 仮説検証の順番: (1) データの有無を `_mypageCache` から確認 → (2) ロジックの正誤を検証 → (3) 修正案を出す。今回は (1) をスキップして (3) に進んだ
+- ただし v370 のリファクタ自体は筋が良く (id 一次情報 / Set 化 / O(L+N))、結果的に push したのは妥当だった。「事故」のラベルだけが誤り
+- `lineName` が null 主体な事実は記録に値する。将来別の機能で `seg.lineName` を表示や検索に使う場合は逆引き必須
 
 ---
 
