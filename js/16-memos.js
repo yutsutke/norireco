@@ -219,6 +219,9 @@ function fillModal({ title, sub, memo }) {
   // v360: 車両形式 (新規は空、編集は memo.car_model から復元)
   const carInp = document.getElementById('m-car-model');
   if (carInp) carInp.value = memo.car_model || '';
+  // v363: 列車名の shadow value も復元 (#m-train-name-custom が shadow 兼ねる)
+  const trainNameInp = document.getElementById('m-train-name-custom');
+  if (trainNameInp) trainNameInp.value = memo.train_name || '';
   // v361: cascade 初期化 — カテゴリ dropdown を populate + 「指定しない」から始める。
   //   memo.car_model があれば後で dropdown 一致 option を探して選択状態に復元するが、
   //   メモは train_category 列を持たないので「自由入力モード」を保つ方が予測可能 (input 側に値が残る)
@@ -267,8 +270,11 @@ function readModal() {
   const comment = document.getElementById('m-comment').value.trim();
   // v360: 車両形式 (任意、空文字なら null として送信)
   const car_model = (document.getElementById('m-car-model')?.value || '').trim() || null;
+  // v363: 列車名 (任意)。#m-train-name-custom が shadow value 役 (onMemoTrainIdChange で
+  // master train.name セット / __custom__ 時はユーザー入力)。「指定しない」 / 「普通」では空
+  const train_name = (document.getElementById('m-train-name-custom')?.value || '').trim() || null;
   // photos は M.photo から saveMemoFromModal() 側で組み立てる
-  return { memo_type, mood, tags, comment, car_model };
+  return { memo_type, mood, tags, comment, car_model, train_name };
 }
 
 async function saveMemoFromModal() {
@@ -558,7 +564,13 @@ export function memoCardHtml(memo) {
         ${updatedNote}
       </div>
       ${where ? `<div class="mp-memo-where">${where}</div>` : ''}
-      ${memo.car_model ? `<div class="mp-memo-car" style="font-size:11px;color:var(--silver);margin-top:2px">🚆 <span style="font-family:'DM Mono',monospace">${escapeHtml(memo.car_model)}</span></div>` : ''}
+      ${(memo.train_name || memo.car_model) ? (() => {
+        // v363: train_name か car_model のどちらかあれば表示。普通=「🚆 [E235系]」/ 特急=「🚆 あずさ [E353系]」
+        const namePart = memo.train_name ? escapeHtml(memo.train_name) : '';
+        const carPart = memo.car_model ? `<span style="font-family:'DM Mono',monospace">[${escapeHtml(memo.car_model)}]</span>` : '';
+        const sep = (namePart && carPart) ? ' ' : '';
+        return `<div class="mp-memo-car" style="font-size:11px;color:var(--silver);margin-top:2px">🚆 ${namePart}${sep}${carPart}</div>`;
+      })() : ''}
       ${memo.comment ? `<div class="mp-memo-comment">${escapeHtml(memo.comment)}</div>` : ''}
       ${tagsHtml ? `<div class="mp-memo-tags">${tagsHtml}</div>` : ''}
       ${photoBit}
@@ -716,11 +728,11 @@ function initMemoTrainCascade() {
   }
   catSel.innerHTML = catHtml;
   catSel.value = '';
-  // 各サブ select を初期化
+  // 各サブ select を初期化 (v363: trainCustom.value は shadow value 兼用なのでクリアしない、表示のみ)
   const trainSel = document.getElementById('m-train-id');
   if (trainSel) { trainSel.innerHTML = '<option value="">列車を選ぶ...</option>'; trainSel.style.display = 'none'; }
   const trainCustom = document.getElementById('m-train-name-custom');
-  if (trainCustom) { trainCustom.value = ''; trainCustom.style.display = 'none'; }
+  if (trainCustom) trainCustom.style.display = 'none';
   const carSel = document.getElementById('m-car-model-select');
   if (carSel) { carSel.innerHTML = '<option value="">車両形式を選ぶ (任意)...</option>'; carSel.style.display = 'none'; }
   const slBlock = document.getElementById('m-sl-vehicle-block');
@@ -740,16 +752,21 @@ function onMemoTrainCategoryChange() {
   const trainCustom = document.getElementById('m-train-name-custom');
   const carSel = document.getElementById('m-car-model-select');
   const carInp = document.getElementById('m-car-model');
-  // 一旦すべてリセット
+  // 一旦すべてリセット (v363: trainCustom.value は cat 変更時の動作で clear/保持を判定)
   if (slBlock) slBlock.style.display = 'none';
   if (cascade) cascade.style.display = 'none';
   if (trainSel) { trainSel.style.display = 'none'; }
-  if (trainCustom) { trainCustom.style.display = 'none'; trainCustom.value = ''; }
+  if (trainCustom) trainCustom.style.display = 'none';
   if (carSel) { carSel.style.display = 'none'; }
-  // v362: 「指定しない」は車両情報を一切記録しない → car_model も clear + hide
+  // v362/v363: 「指定しない」/「普通」は列車種別情報を持たない → train_name shadow も clear
   if (cat === '') {
     if (carInp) { carInp.style.display = 'none'; carInp.value = ''; }
+    if (trainCustom) trainCustom.value = '';
     return;
+  }
+  if (cat === 'local') {
+    // 普通は列車名概念がないので train_name shadow を clear
+    if (trainCustom) trainCustom.value = '';
   }
   // それ以外の cat は populate 側で carInp の表示を決める (dropdown 一致なら hide、__custom__ なら show)
   if (carInp) carInp.style.display = 'none';
@@ -856,13 +873,19 @@ function onMemoTrainIdChange() {
     if (carInp) { carInp.style.display = 'block'; }
     return;
   }
-  if (trainCustom) { trainCustom.style.display = 'none'; trainCustom.value = ''; }
   if (!v) {
+    // 列車未選択 → shadow も clear
+    if (trainCustom) { trainCustom.style.display = 'none'; trainCustom.value = ''; }
     if (carInp) { carInp.style.display = 'none'; }
     return;
   }
   // 選ばれた列車の car_models を dropdown に populate
   const train = ((NORIRECO.trains && NORIRECO.trains.TRAINS) || []).find(t => t.id === v);
+  // v363: master 列車名を shadow value にセット (input は hide のまま、readModal が読む)
+  if (trainCustom) {
+    trainCustom.style.display = 'none';
+    trainCustom.value = train ? (train.name || '') : '';
+  }
   const carModels = (train && Array.isArray(train.car_models)) ? train.car_models : [];
   // v362: car_models 0 件 → carInp 自由入力可
   if (carModels.length === 0) {

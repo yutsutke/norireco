@@ -40,6 +40,57 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 213. v363 — メモに train_name 列追加: 「🚆 あずさ [E353系]」形式の表示 (2026-05-27)
+
+### 背景
+
+v362 cascade 整理後ユスケから「列車名がでてこない」との指摘。v360 で car_model だけ追加していたが、特急で「のぞみ → N700S」を選んでも一覧では `🚆 N700S` だけで、列車名「のぞみ」が表示されない。旅程カード v354 と同じ「🚆 列車名 [車両形式]」形式に揃える。
+
+### 設計判断
+
+- **`train_name` を新規列で追加**: メモは v122 時点で `train_name`/`train_id` を持っていなかった。`car_model` (v360) と同じく nullable TEXT で
+- **`train_id` は保存しない**: メモは旅程と違って「列車を選んだ」というメタ情報は不要、名前文字列だけあれば一覧で完結。UI 補助の dropdown は使うが保存対象は `train_name` のみ
+- **`#m-train-name-custom` を shadow value 兼用**: 元は「📝 リストにない」選択時の手入力 input だったが、v363 で「常に最終 train_name を保持する shadow」として再利用。`onMemoTrainIdChange` で master の `train.name` を `.value` に shadow セット、`readModal` がそこから読む。HTML 要素は不変、value の使い方だけ拡張
+- **「指定しない」/「普通」は train_name 空**: 普通電車には固有列車名がない、指定しないは全リセット
+
+### 変更
+
+- **migration** [`supabase/migrations/v363_memo_train_name.sql`](supabase/migrations/v363_memo_train_name.sql) 新規:
+  ```sql
+  ALTER TABLE norireco_memos ADD COLUMN IF NOT EXISTS train_name text;
+  NOTIFY pgrst, 'reload schema';
+  ```
+  → **ユスケへ実行依頼**: Supabase Dashboard SQL Editor で Run、Run 後 migration 末尾に `-- Applied: 2026-05-27 by yutsutke` 追記
+- **JS** [js/16-memos.js](js/16-memos.js):
+  - `fillModal`: `memo.train_name` を `#m-train-name-custom.value` に復元 (新規は '')
+  - `initMemoTrainCascade`: trainCustom.value をクリアしない (shadow value 維持)、表示のみ hide
+  - `onMemoTrainCategoryChange`: cat='' → trainCustom.value = '' (clear) / cat='local' → train_name shadow clear (普通電車に列車名なし) / cat='その他' → そのまま populate
+  - `onMemoTrainIdChange`: 通常 train_id 選択 → master `train.name` を `trainCustom.value` に shadow セット / `__custom__` → trainCustom show + clear + focus / `''` → trainCustom hide + clear
+  - `readModal`: `train_name = trainCustom.value.trim() || null` を戻り値に追加
+  - `memoCardHtml`: 「🚆 [車両]」を「`train_name || car_model` どちらかあれば表示」の旅程カード v354 と同じパターンに改修
+- sw.js: CACHE_VERSION 'v362' → 'v363'
+
+### 表示パターン (旅程カード v354 と同等)
+
+| ケース | train_name | car_model | 表示 |
+|---|---|---|---|
+| 普通 (車両のみ) | null | E235系0番台 | `🚆 [E235系0番台]` |
+| 特急 (列車+車両) | あずさ | E353系 | `🚆 あずさ [E353系]` |
+| 特急 (列車のみ) | のぞみ | null | `🚆 のぞみ` |
+| 手入力列車+車両 | 湘南ライナー | 185系 | `🚆 湘南ライナー [185系]` |
+| なし (両方 null) | null | null | (行なし) |
+
+### 検証
+
+- syntax check 24/24 OK
+- preview の ES Module memory cache に古い 16-memos.js が貼り付いて `mod.memoCardHtml` テストが取れず → 実機ハードリロード後に確認
+
+### 残課題
+
+- v363 SQL を Supabase で Run → 実行後 migration 末尾に `-- Applied: 2026-05-27 by yutsutke` 追記 (v333 Applied 規約)
+
+---
+
 ## 212. v362 — メモ車両 cascade 整理: `#m-car-model` を `__custom__` 選択時のみ表示 (2026-05-27)
 
 ### 背景
