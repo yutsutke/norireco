@@ -1339,16 +1339,22 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
         <span>📋 列車・車両形式も記録する</span>
       </label>
       <div id="rec-train-picker" style="display:none;margin-top:10px">
-        <!-- v352: ラジオ撤廃、カテゴリ dropdown を picker 最上位に。
-             cat='local' (普通) → sl レーン / cat='その他' → cascade レーン -->
+        <!-- v375: 区間 chip を最上位に移動。「区間を選んでから車両形式のカスケード」フロー。
+             chip 切替で active な区間に紐づく category / train / car_model を Map から復元。 -->
+        <div id="rec-seg-chips-wrap" style="display:none;margin-bottom:10px">
+          <div style="font-size:11px;color:var(--silver);margin-bottom:6px">🚉 区間を選ぶ (区間ごとに列車・車両を記録できます)</div>
+          <div id="rec-sl-chips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        </div>
+        <!-- v352: ラジオ撤廃、カテゴリ dropdown を picker 直下に。
+             cat='local' (普通) → sl レーン / cat='その他' → cascade レーン
+             v375: per-segment 化、active chip の category を表示する -->
         <select id="rec-train-category" onchange="onTrainCategoryChange()"
                 style="width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;margin-bottom:10px">
           <option value="">指定しない</option>
         </select>
-        <!-- 普通カテゴリ用: 区間 chip → 現役車両 dropdown (sl レーン) -->
+        <!-- 普通カテゴリ用: 現役車両 dropdown (sl レーン)。区間 chip は picker 上位に移動済み (v375) -->
         <div id="rec-sl-vehicle-block" style="display:none">
           <div style="font-size:11px;color:var(--silver);margin-bottom:6px">🚆 この区間の車両形式</div>
-          <div id="rec-sl-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
           <select id="rec-sl-vehicle-select" onchange="onSlVehicleChange()"
                   style="width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px">
             <option value="">車両形式を選ぶ (任意)...</option>

@@ -44,6 +44,57 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 225. v375 — 記録モード「区間 → カスケード」順に再編 + 完全 per-segment 化 (2026-05-27)
+
+### 背景
+
+v374 で特急時も SL chip + cascade を併存表示にしたが、ユスケから「順番を変えたほうがいいね、まずは区間を選んでから、車両形式のカスケード選択だね」+ 「区間ごとに完全独立 (列車種別も per-segment)」との指示。
+
+### 設計判断
+
+- **HTML 構造を再編**: 区間 chip ラッパ `#rec-seg-chips-wrap` を picker 直下 (カテゴリ select の上) に移動。フローは「区間 chip → カテゴリ → カスケード or sl-block dropdown」
+- **完全 per-segment 化**: segments[].train_category / train_id / train_name / car_model 全部 per-seg。`NORIRECO.trains` に `selectedTrainCategoryBySl` / `selectedTrainIdBySl` / `selectedTrainNameBySl` / `selectedCarModelBySl` の 4 Map を保持
+- **applyRecTrainCategory は単純表示切替に**: v374 の併存表示を撤回し、v352 排他型に戻す。ただし「trip 全体に対する cat」ではなく「現在 active chip の cat」を表す
+- **chip 切替時の restore**: `selectSlChip(slId)` 内で Map から catRestored / tidRestored / tnameRestored / cmRestored を取り出し、catSel.value 設定 + applyRecTrainCategory + cat 別に cascade or sl-block を populate + value 復元。`Map.cat` 未設定で catSel.value 既存値があれば Map にコピー (cat 先選択フロー対応)
+- **populateSlVehiclePicker は activeChipSlId を維持**: 再描画時に勝手に slIds[0] へ戻らないよう、既存 active があれば維持
+- **`#rec-seg-chips-wrap` は segments ≥ 2 のときだけ表示**: 1 区間や visit-only では chip 不要、cascade が直接担当
+- **各 handler に Map 同期書き込み**: `onTrainCategoryChange` / `onTrainChange` / `onTrainCustomInput` / `onCarModelChange` / `onCarModelCustomInput` でいずれも `T.selectedXxxBySl[activeChipSlId]` に書く。category 変更時は同じ chip の下位 train_id/name/car_model は矛盾するのでクリア
+- **saveTrip の seg 構築**: `segments[i].train_category / train_id / train_name / car_model` を Map から埋める。Map に無いときは `T.selectedXxx` (trip 単位最後値) を fallback
+- **trip 直下の集約**: car_model と同形 — 全 seg 一致なら値 / 不一致なら null。visit-only は `T.selectedXxx` (旧仕様)
+- **clearAllTrainSelections**: 4 Map + activeChipSlId 全クリア
+
+### 変更
+
+- `noritetsu-map.html`:
+  - 旧 `#rec-sl-chips` を picker 直下の `#rec-seg-chips-wrap` 内に切り出し、見出し「🚉 区間を選ぶ (区間ごとに列車・車両を記録できます)」を追加
+  - `#rec-sl-vehicle-block` 内の chips 要素は削除
+- `js/02-data-loaders.js`:
+  - `NORIRECO.trains` に 4 Map (`selectedTrainCategoryBySl` / `selectedTrainIdBySl` / `selectedTrainNameBySl` / `selectedCarModelBySl`) + `activeChipSlId` を初期化
+  - `onTrainCategoryChange`: applyRecTrainCategory + populateSlVehiclePicker を呼んで終わる (cascade populate は selectSlChip 任せ)。Map.cat 書き込み + train_id/name/car_model クリア
+  - `onTrainChange` / `onTrainCustomInput` / `onCarModelChange` / `onCarModelCustomInput`: 各々 Map に同期書き込み
+- `js/07-record-mode.js`:
+  - `applyRecTrainCategory`: 排他型 (v352) に戻す
+  - `selectSlChip`: Map から restore + cascade populate + value 復元、cat='local' なら fallthrough して sl-block dropdown 再生成
+  - `populateSlVehiclePicker`: chip-wrap の segments ≥ 2 表示制御、active chip 維持
+  - `initRecTrainToggle` / `onRecTrainToggle`: トグル ON 時に populateSlVehiclePicker を呼ぶ
+  - `clearAllTrainSelections`: 4 Map 全クリア
+  - saveTrip: tripSegments push 時に train_category / train_id / train_name / car_model を Map から埋める、trip 直下も per-seg 集約
+
+### 残課題
+
+- 編集モーダル (`openTripEditModal`) も同じ per-seg cascade に対応する必要 (現状 car_model のみ per-seg、train_category/train_id/train_name は trip 単位)
+- 旅程カード表示 (`tripCardHtml`) で `segments[].train_name` 不一致時の joining 表示 (例: `🚆 あずさ / 中央線特急`)
+- マイページ「🚆 車両」「📋 種類」フィルタの segments 走査対応 (種類フィルタは v371 で car_model だけ対応済、train_category は trip 直下のみ)
+- 列車 dropdown populate / car_model dropdown populate のロジックが 02 (onTrainCategoryChange / onTrainChange) と 07 (selectSlChip restore) で重複。共通関数 `populateTrainDropdown(cat)` / `populateCarModelDropdown(trainId)` を window 経由で公開して 07 から呼ぶ方が DRY
+
+### 教訓
+
+- 「trip 単位 state を per-segment 化」は state 数 N 倍 + UI 表示制御 + DOM populate / restore で実装規模が大きい。同心円ターゲティングのコア層機能なので投資価値はあるが、慎重に
+- 「初回 chip 描画時の cat 引き継ぎ」(`Map.cat` 未設定で catSel.value 既存値があれば Map にコピー) は地味だが重要。「ユーザーが catSel を先に触っていた」フローを壊さない
+- DOM populate ロジックの重複 (02 / 07) は当座目をつぶる。将来のリファクタで共通化
+
+---
+
 ## 224. v374 — 記録モード「特急選択時も系統別車両形式」対応 + state 分離 (2026-05-27)
 
 ### 背景
