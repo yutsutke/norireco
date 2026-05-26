@@ -40,6 +40,59 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 211. v361 — メモ車両選択を記録モーダル方式 (フル cascade) に統一 (2026-05-27)
+
+### 背景
+
+v360 で SQL 実行 (`car_model | text | YES`) 完了、ユスケから「メモの車両の選び方が、旅程記録の方式に合わせたい」との指示。v360 は text input 1 つの最小実装だったが、記録モーダル (v352 以降) と動線を揃える。
+
+### 設計判断
+
+- **フル cascade** (ユスケ確認 2 択中の選択): カテゴリ → 普通=line_id から sl 車両 dropdown / 特急=列車選択 → 車両形式 dropdown
+- **メモは train_id 列を持たないが UI は cascade**: train を選んでも保存するのは car_model のみ。列車名は UI 補助で、選んだ列車の car_models から正確な車両を選びやすくする
+- **shadow value 方式**: 最終値は既存 `#m-car-model` text input に shadow セット (旅程編集モーダル v356 と同じパターン)。`readModal` は今まで通り `#m-car-model` を読むだけ、保存ロジック変更不要
+- **「指定しない」が default**: メモは記録モーダルのマニアトグルに相当する仕組み不要、シンプルにカテゴリで出し分け
+- **普通カテゴリの sl 引き**: 編集中なら `memo.line_id`、新規なら `clickInfo.line?.id`。`line_id` が無い場合 (車内/その他メモ) は普通カテゴリでも「車両データ未登録」案内 + 自由入力にフォール
+
+### 変更
+
+- **HTML** [noritetsu-map.html](noritetsu-map.html): `#memo-modal` の「🚆 車両」セクションを拡張
+  - `<select id="m-train-category">` (新): 「指定しない / 🚉 普通 / 🚅 新幹線 / ...」 (普通先頭 sort)
+  - `<div id="m-sl-vehicle-block">` (新, default hide): sl 車両 dropdown + 「データ未登録」案内
+  - `<div id="m-train-cascade">` (新, default hide): 列車 dropdown + 列車手入力 + 車両形式 dropdown
+  - 既存 `<input id="m-car-model">` は「最終 shadow value」として残置、`#m-train-cascade` の下に移動
+- **JS** [js/16-memos.js](js/16-memos.js):
+  - `getMemoCurrentLineId()` (新, internal): 編集中なら `memo.line_id`、新規なら `clickInfo.line?.id`
+  - `initMemoTrainCascade()` (新): カテゴリ dropdown を populate (記録モーダル resetTrainSelector と同じ普通先頭 sort)、サブ dropdown を初期化、`fillModal` から呼出
+  - `onMemoTrainCategoryChange()` (新, window 公開): cat='' → 全 hide / cat='local' → sl-block + populate / cat='その他' → cascade + populate
+  - `populateMemoSlVehiclePicker()` (新): `getMemoCurrentLineId()` → bySlId → 状態順 sort + 末尾「✏️ 別形式を入力」option + 既存 `#m-car-model` 値で一致 option 復元
+  - `onMemoSlVehicleChange()` (新, window 公開): 通常 option → `#m-car-model` に shadow セット / `__custom__` → input にフォーカス
+  - `populateMemoTrainDropdown(cat)` (新): TRAINS を category filter + 廃止末尾・名前順 + 末尾「📝 リストにない」option
+  - `onMemoTrainIdChange()` (新, window 公開): 通常 train_id → 選んだ列車の `car_models` を `#m-car-model-select` に populate + 一致 option 復元 / `__custom__` → 手入力 input + focus
+  - `onMemoCarModelSelectChange()` (新, window 公開): 通常 option → `#m-car-model` に shadow セット / `__custom__` → input にフォーカス
+- sw.js: CACHE_VERSION 'v360' → 'v361'
+
+### 検証
+
+- syntax check 24/24 OK
+- DOM: `#m-train-category` / `#m-sl-vehicle-block` / `#m-train-cascade` / `#m-train-id` / `#m-car-model-select` / `#m-car-model` 全 6 要素存在を確認
+- 関数 window 公開: `window.onMemoTrainCategoryChange/onMemoSlVehicleChange/onMemoTrainIdChange/onMemoCarModelSelectChange` が grep 4 件確認 (公開行: 756/806/860/873)
+- preview の ES Module memory cache に古い 16-memos.js が残って window 関数公開が反映されず実機ハードリロードで検証
+
+### 動線
+
+```
+[🚆 車両 (任意)]
+[カテゴリ ▼]
+  指定しない    → 何も出ない (m-car-model だけ自由入力)
+  🚉 普通       → [車両を選ぶ▼ + (memo.line_id から引いた sl 車両 + ✏️ 別形式を入力)]
+  🚄 特急       → [列車を選ぶ▼ (137 列車)] → [車両を選ぶ▼ (選んだ列車の car_models)]
+                  ↳ 📝 リストにない → 列車手入力
+[車両形式: shadow value 保持 + 自由編集可]
+```
+
+---
+
 ## 210. v360 — メモにも車両形式: migration + 記録/編集モーダル input + 一覧表示 + 検索 (2026-05-27)
 
 ### 背景

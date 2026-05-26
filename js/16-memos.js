@@ -219,6 +219,10 @@ function fillModal({ title, sub, memo }) {
   // v360: 車両形式 (新規は空、編集は memo.car_model から復元)
   const carInp = document.getElementById('m-car-model');
   if (carInp) carInp.value = memo.car_model || '';
+  // v361: cascade 初期化 — カテゴリ dropdown を populate + 「指定しない」から始める。
+  //   memo.car_model があれば後で dropdown 一致 option を探して選択状態に復元するが、
+  //   メモは train_category 列を持たないので「自由入力モード」を保つ方が予測可能 (input 側に値が残る)
+  initMemoTrainCascade();
 
   // 写真エリアを再生成 (v258: 共通 PhotoArea を使用、最大 5 枚)
   if (M.photoArea) {
@@ -682,6 +686,197 @@ function attachPhotoDragSortToMemoCards(rootEl) {
     });
   });
 }
+
+// ════════════════════════════════════════════════════════════════
+// v361: メモモーダルの車両形式 cascade (記録モーダル v352 と同じ動線)
+// ════════════════════════════════════════════════════════════════
+
+// 編集中なら memo.line_id、新規なら clickInfo.line.id を返す。普通カテゴリの sl 引きに使う
+function getMemoCurrentLineId() {
+  if (M.editingId) {
+    const memo = M.cache.find(m => m.id === M.editingId);
+    return memo?.line_id || null;
+  }
+  return (NORIRECO.map?.clickInfo?.line?.id) || null;
+}
+
+function initMemoTrainCascade() {
+  // カテゴリ dropdown を populate (記録モーダル resetTrainSelector と同じ、普通先頭 sort)
+  const catSel = document.getElementById('m-train-category');
+  if (!catSel) return;
+  let catHtml = '<option value="">指定しない</option>';
+  const cats = (NORIRECO.trains && NORIRECO.trains.TRAIN_CATEGORIES) || {};
+  const catEntries = Object.entries(cats).sort((a, b) => {
+    if (a[0] === 'local') return -1;
+    if (b[0] === 'local') return 1;
+    return 0;
+  });
+  for (const [k, v] of catEntries) {
+    catHtml += `<option value="${k}">${v.icon || ''} ${v.label || k}</option>`;
+  }
+  catSel.innerHTML = catHtml;
+  catSel.value = '';
+  // 各サブ select を初期化
+  const trainSel = document.getElementById('m-train-id');
+  if (trainSel) { trainSel.innerHTML = '<option value="">列車を選ぶ...</option>'; trainSel.style.display = 'none'; }
+  const trainCustom = document.getElementById('m-train-name-custom');
+  if (trainCustom) { trainCustom.value = ''; trainCustom.style.display = 'none'; }
+  const carSel = document.getElementById('m-car-model-select');
+  if (carSel) { carSel.innerHTML = '<option value="">車両形式を選ぶ (任意)...</option>'; carSel.style.display = 'none'; }
+  const slBlock = document.getElementById('m-sl-vehicle-block');
+  if (slBlock) slBlock.style.display = 'none';
+  const cascade = document.getElementById('m-train-cascade');
+  if (cascade) cascade.style.display = 'none';
+}
+
+function onMemoTrainCategoryChange() {
+  const cat = document.getElementById('m-train-category')?.value || '';
+  const slBlock = document.getElementById('m-sl-vehicle-block');
+  const cascade = document.getElementById('m-train-cascade');
+  const trainSel = document.getElementById('m-train-id');
+  const trainCustom = document.getElementById('m-train-name-custom');
+  const carSel = document.getElementById('m-car-model-select');
+  const carInp = document.getElementById('m-car-model');
+  // 一旦すべてリセット (車両形式 input value は維持、ユーザーが手入力した値を消さない)
+  if (slBlock) slBlock.style.display = 'none';
+  if (cascade) cascade.style.display = 'none';
+  if (trainSel) { trainSel.style.display = 'none'; }
+  if (trainCustom) { trainCustom.style.display = 'none'; trainCustom.value = ''; }
+  if (carSel) { carSel.style.display = 'none'; }
+  if (cat === '') return;
+  if (cat === 'local') {
+    if (slBlock) slBlock.style.display = 'block';
+    populateMemoSlVehiclePicker();
+    return;
+  }
+  // 特急など: cascade 表示 + 列車 dropdown populate
+  if (cascade) cascade.style.display = 'block';
+  populateMemoTrainDropdown(cat);
+}
+window.onMemoTrainCategoryChange = onMemoTrainCategoryChange;
+
+// 普通カテゴリ: memo.line_id から bySlId 引いて dropdown 構築
+function populateMemoSlVehiclePicker() {
+  const selectEl = document.getElementById('m-sl-vehicle-select');
+  const emptyEl = document.getElementById('m-sl-vehicle-empty');
+  if (!selectEl) return;
+  const lid = getMemoCurrentLineId();
+  const bySlId = NORIRECO.serviceLineVehicles?.bySlId || {};
+  const vehicles = lid ? ((bySlId[lid] || []).slice().sort((a, b) => {
+    const order = { '導入予定': 0, '導入': 1, '現役主力': 2, '譲受': 3, '組織再編': 4, '譲渡': 5, '引退': 6 };
+    return (order[a.status] ?? 9) - (order[b.status] ?? 9);
+  })) : [];
+  let html = '<option value="">車両形式を選ぶ (任意)...</option>';
+  for (const v of vehicles) {
+    const tag = v.status === '導入予定' ? ' ★新' :
+                v.status === '導入'     ? ' 🆕' :
+                v.status === '引退'     ? ' (引退)' :
+                v.status === '譲受'     ? ' (譲受)' :
+                v.status === '譲渡'     ? ' (譲渡)' : '';
+    html += `<option value="${v.vehicle.replace(/"/g, '&quot;')}">${v.vehicle}${tag}</option>`;
+  }
+  if (vehicles.length > 0) html += '<option value="" disabled>──────</option>';
+  html += '<option value="__custom__">✏️ 別形式を入力...</option>';
+  selectEl.innerHTML = html;
+  if (emptyEl) emptyEl.style.display = (vehicles.length === 0) ? 'block' : 'none';
+  // 既存 car_model 値を dropdown 一致で復元 (なければ '__custom__' = text input そのまま)
+  const carInp = document.getElementById('m-car-model');
+  const currentVal = carInp?.value?.trim() || '';
+  if (currentVal && vehicles.some(v => v.vehicle === currentVal)) {
+    selectEl.value = currentVal;
+  } else if (currentVal) {
+    selectEl.value = '__custom__';
+  } else {
+    selectEl.value = '';
+  }
+}
+
+function onMemoSlVehicleChange() {
+  const selectEl = document.getElementById('m-sl-vehicle-select');
+  const carInp = document.getElementById('m-car-model');
+  if (!selectEl || !carInp) return;
+  const v = selectEl.value;
+  if (v === '__custom__') {
+    carInp.focus();   // 自由入力にフォーカス
+    // value は維持 (ユーザーが手入力した内容を消さない)
+  } else {
+    carInp.value = v || '';
+  }
+}
+window.onMemoSlVehicleChange = onMemoSlVehicleChange;
+
+// 特急など: TRAINS の category 別 dropdown
+function populateMemoTrainDropdown(cat) {
+  const trainSel = document.getElementById('m-train-id');
+  if (!trainSel) return;
+  const trains = ((NORIRECO.trains && NORIRECO.trains.TRAINS) || [])
+    .filter(t => t.category === cat)
+    .sort((a, b) => {
+      if (!!a.discontinued !== !!b.discontinued) return a.discontinued ? 1 : -1;
+      return (a.name || '').localeCompare(b.name || '', 'ja');
+    });
+  let html = '<option value="">列車を選ぶ...</option>';
+  for (const t of trains) {
+    const disc = t.discontinued ? ' (廃止)' : '';
+    const rarity = t.rarity === 'legendary' ? ' ⭐' : (t.rarity === 'rare' ? ' ✨' : '');
+    html += `<option value="${t.id}">${t.name}${rarity}${disc}</option>`;
+  }
+  html += '<option value="__custom__">📝 リストにない (手入力)</option>';
+  trainSel.innerHTML = html;
+  trainSel.style.display = 'block';
+}
+
+function onMemoTrainIdChange() {
+  const trainSel = document.getElementById('m-train-id');
+  const trainCustom = document.getElementById('m-train-name-custom');
+  const carSel = document.getElementById('m-car-model-select');
+  const carInp = document.getElementById('m-car-model');
+  if (!trainSel) return;
+  const v = trainSel.value;
+  if (carSel) { carSel.style.display = 'none'; carSel.innerHTML = '<option value="">車両形式を選ぶ (任意)...</option>'; }
+  if (v === '__custom__') {
+    if (trainCustom) { trainCustom.style.display = 'block'; trainCustom.value = ''; trainCustom.focus(); }
+    if (carInp) carInp.focus();   // 車両形式は自由入力
+    return;
+  }
+  if (trainCustom) { trainCustom.style.display = 'none'; trainCustom.value = ''; }
+  if (!v) return;
+  // 選ばれた列車の car_models を dropdown に populate
+  const train = ((NORIRECO.trains && NORIRECO.trains.TRAINS) || []).find(t => t.id === v);
+  const carModels = (train && Array.isArray(train.car_models)) ? train.car_models : [];
+  if (carModels.length === 0) return;
+  let html = '<option value="">車両形式を選ぶ (任意)...</option>';
+  for (const cm of carModels) html += `<option value="${cm.replace(/"/g, '&quot;')}">${cm}</option>`;
+  html += '<option value="" disabled>──────</option>';
+  html += '<option value="__custom__">✏️ 別形式を入力...</option>';
+  if (carSel) { carSel.innerHTML = html; carSel.style.display = 'block'; }
+  // 既存 car_model 値を dropdown 一致で復元
+  const currentVal = carInp?.value?.trim() || '';
+  if (currentVal && carSel) {
+    if (carModels.includes(currentVal)) carSel.value = currentVal;
+    else carSel.value = '__custom__';
+  }
+}
+window.onMemoTrainIdChange = onMemoTrainIdChange;
+
+function onMemoCarModelSelectChange() {
+  const carSel = document.getElementById('m-car-model-select');
+  const carInp = document.getElementById('m-car-model');
+  if (!carSel || !carInp) return;
+  const v = carSel.value;
+  if (v === '__custom__') {
+    carInp.focus();
+  } else {
+    carInp.value = v || '';
+  }
+}
+window.onMemoCarModelSelectChange = onMemoCarModelSelectChange;
+
+function onMemoTrainCustomInput() {
+  // 列車名そのものはメモに保存しないが、UX 上 input は表示し続ける。
+  // car_model 側 (#m-car-model) はユーザーが別途記入する想定
+}
+window.onMemoTrainCustomInput = onMemoTrainCustomInput;
 
 window.closeMemo = closeMemo;
 window.selChip = selChip;

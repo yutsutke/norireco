@@ -28,3 +28,5 @@ WHERE table_schema='public'
   AND column_name='car_model';
 
 -- 期待値: car_model | text | YES
+
+-- Applied: 2026-05-27 by yutsutke
