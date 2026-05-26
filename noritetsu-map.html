@@ -1416,6 +1416,21 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
   </div>
 </div>
 
+<!-- v359: 路線タブの 📺 旅程 / 📸 メモ アイコンクリックで開く詳細モーダル。
+     中身は openLineDetailModal が動的に populate (tripCardHtml / memoCardHtml 流用) -->
+<div class="memo-modal" id="mp-line-detail-modal" onclick="if(event.target===this)closeLineDetailModal()">
+  <div class="memo-sheet">
+    <div class="sh"></div>
+    <div class="modal-title" id="mp-line-detail-title">路線</div>
+    <div class="modal-sub" style="color:var(--silver);font-size:11px;margin-bottom:14px" id="mp-line-detail-sub"></div>
+    <div class="line-detail-tabs" style="display:flex;gap:6px;border-bottom:1px solid var(--track);margin-bottom:10px">
+      <button id="mp-line-detail-tab-trips" class="line-detail-tab" onclick="switchLineDetailTab('trips')" style="flex:1;padding:8px;background:transparent;color:var(--silver);border:none;border-bottom:2px solid transparent;cursor:pointer;font-size:12px">📺 旅程</button>
+      <button id="mp-line-detail-tab-memos" class="line-detail-tab" onclick="switchLineDetailTab('memos')" style="flex:1;padding:8px;background:transparent;color:var(--silver);border:none;border-bottom:2px solid transparent;cursor:pointer;font-size:12px">📸 メモ</button>
+    </div>
+    <div id="mp-line-detail-body" style="max-height:60vh;overflow-y:auto"></div>
+  </div>
+</div>
+
 <!-- v184: 旅程の後追い編集モーダル (マイページ旅程カードから開く)
      v184: メモ・遅延 / v226: 区間 (read-only) ・乗車時刻 (date/depart/arrive) ・列車種別 を追加 -->
 <div class="memo-modal" id="trip-edit-modal" onclick="if(event.target===this)closeTripEditModal()">

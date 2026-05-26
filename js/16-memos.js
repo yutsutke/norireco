@@ -511,7 +511,8 @@ function buildMemoList(memos) {
   return wrap;
 }
 
-function memoCardHtml(memo) {
+// v359: 09-tabs-stats.js の路線詳細モーダルから流用するため export 化
+export function memoCardHtml(memo) {
   const created = (memo.created_at || '').slice(0, 10);
   const tags = Array.isArray(memo.tags) ? memo.tags : [];
   const tagsHtml = tags.map(t => `<span class="mp-memo-tag">${escapeHtml(t)}</span>`).join('');

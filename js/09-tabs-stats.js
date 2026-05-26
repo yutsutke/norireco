@@ -12,8 +12,10 @@
 // v225: 13-mypage-common.renderMypage を import 化。
 // ══════════════════════════════════════
 import { currentUserId, authBearerToken } from './12-auth.js';
-import { renderMypage } from './13-mypage-common.js';
+import { renderMypage, tripCardHtml } from './13-mypage-common.js';
 import { filterTripsByDate, lStats } from './05-supabase-data.js';
+// v359: 路線タブの 📺 旅程 / 📸 メモ アイコン → 詳細モーダルで一覧表示
+import { memoCardHtml } from './16-memos.js';
 
 function switchTab(n){
   // 旧 'list' / 'stats' は 'mypage' にリダイレクト (タブ集約のため)
@@ -69,6 +71,116 @@ function topCarModels(carMap, n) {
     .map(e => e[0]);
 }
 
+// v359: 路線詳細モーダル用の集計 — 各 sl ごとに trips[] / memos[]
+function aggregateTripsByLineId() {
+  const map = new Map();
+  const trips = (window.NORIRECO && NORIRECO.mypage && NORIRECO.mypage.state && NORIRECO.mypage.state._mypageCache) || [];
+  for (const t of trips) {
+    const seen = new Set();
+    for (const seg of (t.segments || [])) {
+      if (seg && seg.lineId && !seen.has(seg.lineId)) {
+        seen.add(seg.lineId);
+        if (!map.has(seg.lineId)) map.set(seg.lineId, []);
+        map.get(seg.lineId).push(t);
+      }
+    }
+  }
+  return map;
+}
+
+// メモは line_id 直接 (路線メモ) と station_id 経由 (駅メモ、その駅が含まれる sl) を両方拾う。
+// 同じ memo が両ルートで重複しないよう Set<memoId> で排除
+function aggregateMemosByLineId() {
+  const map = new Map();   // lineId → memo[]
+  const memos = (window.NORIRECO && NORIRECO.memos && NORIRECO.memos.state && NORIRECO.memos.state.cache) || [];
+  // 1. 路線メモ
+  for (const m of memos) {
+    if (m && m.line_id) {
+      if (!map.has(m.line_id)) map.set(m.line_id, []);
+      map.get(m.line_id).push(m);
+    }
+  }
+  // 2. 駅メモ → station_id から該当 sl を全て拾う
+  const stationIdToLineIds = new Map();   // sid → Set<lineId>
+  for (const sl of (NORIRECO.data?.SERVICE_LINES || [])) {
+    for (const st of (sl.stations || [])) {
+      if (!st.id) continue;
+      if (!stationIdToLineIds.has(st.id)) stationIdToLineIds.set(st.id, new Set());
+      stationIdToLineIds.get(st.id).add(sl.id);
+    }
+  }
+  for (const m of memos) {
+    if (!m || !m.station_id) continue;
+    const lids = stationIdToLineIds.get(m.station_id);
+    if (!lids) continue;
+    for (const lid of lids) {
+      if (!map.has(lid)) map.set(lid, []);
+      const arr = map.get(lid);
+      if (!arr.includes(m)) arr.push(m);   // 重複排除 (路線メモと駅メモ両ルートで拾った場合)
+    }
+  }
+  return map;
+}
+
+// v359: モーダル open/close/switch
+let _lineDetailContext = null;   // { sl, trips, memos }
+function openLineDetailModal(slId, initialTab) {
+  const sl = (NORIRECO.data?.SERVICE_LINES || []).find(l => l.id === slId);
+  if (!sl) return;
+  const tripsByLid = aggregateTripsByLineId();
+  const memosByLid = aggregateMemosByLineId();
+  const trips = tripsByLid.get(slId) || [];
+  const memos = memosByLid.get(slId) || [];
+  // 並びは新しい順
+  trips.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  memos.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+  _lineDetailContext = { sl, trips, memos };
+  const titleEl = document.getElementById('mp-line-detail-title');
+  const subEl   = document.getElementById('mp-line-detail-sub');
+  if (titleEl) titleEl.textContent = sl.name;
+  if (subEl)   subEl.textContent = `${sl.operator || ''} · 旅程 ${trips.length} 件 / メモ ${memos.length} 件`;
+  document.getElementById('mp-line-detail-tab-trips').textContent = `📺 旅程 (${trips.length})`;
+  document.getElementById('mp-line-detail-tab-memos').textContent = `📸 メモ (${memos.length})`;
+  // 初期タブ: 引数優先、無ければ件数の多い方 (両方 0 なら trips)
+  const tab = initialTab || (memos.length > trips.length ? 'memos' : 'trips');
+  switchLineDetailTab(tab);
+  document.getElementById('mp-line-detail-modal')?.classList.add('open');
+}
+window.openLineDetailModal = openLineDetailModal;
+
+function closeLineDetailModal() {
+  document.getElementById('mp-line-detail-modal')?.classList.remove('open');
+  _lineDetailContext = null;
+}
+window.closeLineDetailModal = closeLineDetailModal;
+
+function switchLineDetailTab(tab) {
+  if (!_lineDetailContext) return;
+  const { trips, memos, sl } = _lineDetailContext;
+  const body = document.getElementById('mp-line-detail-body');
+  if (!body) return;
+  const tripsTab = document.getElementById('mp-line-detail-tab-trips');
+  const memosTab = document.getElementById('mp-line-detail-tab-memos');
+  const activate = (btn, on) => {
+    if (!btn) return;
+    btn.style.color = on ? 'var(--gold)' : 'var(--silver)';
+    btn.style.borderBottomColor = on ? 'var(--gold)' : 'transparent';
+    btn.style.fontWeight = on ? '600' : '400';
+  };
+  activate(tripsTab, tab === 'trips');
+  activate(memosTab, tab === 'memos');
+  if (tab === 'trips') {
+    body.innerHTML = trips.length
+      ? trips.map(tripCardHtml).join('')
+      : `<div style="padding:24px;text-align:center;color:var(--silver);font-size:11px">${sl.name} を通る旅程はまだありません</div>`;
+  } else {
+    body.innerHTML = memos.length
+      ? `<div class="mp-memo-list">${memos.map(memoCardHtml).join('')}</div>`
+      : `<div style="padding:24px;text-align:center;color:var(--silver);font-size:11px">${sl.name} に関係するメモはまだありません</div>`;
+  }
+}
+window.switchLineDetailTab = switchLineDetailTab;
+
 export async function renderList(){
   const c=document.getElementById('list-content');
   await NORIRECO.serviceLines.build();
@@ -90,7 +202,9 @@ export async function renderList(){
     listBody.innerHTML = '';
   }
 
-  const carsByLid = aggregateCarModelsByLineId();
+  const carsByLid  = aggregateCarModelsByLineId();
+  const tripsByLid = aggregateTripsByLineId();   // v359
+  const memosByLid = aggregateMemosByLineId();   // v359
   const cmq = (_linesCarModelQuery || '').trim().toLowerCase();
   // 車両形式フィルタ: クエリに一致する車両形式を持つ sl_id だけ通す
   const matchingLids = cmq ? new Set() : null;
@@ -130,6 +244,19 @@ export async function renderList(){
       const carLine = topCars.length
         ? `<div class="lc-cars" style="font-size:10px;color:var(--silver);margin-top:4px;padding-left:2px">🚆 ${topCars.join(', ')}${moreCount > 0 ? ` <span style="opacity:.6">+他${moreCount}</span>` : ''}</div>`
         : '';
+      // v359: 📺 旅程 / 📸 メモ アイコン (件数 0 は非表示)
+      const tripCount = (tripsByLid.get(sl.id) || []).length;
+      const memoCount = (memosByLid.get(sl.id) || []).length;
+      const iconBtnStyle = 'background:rgba(20,32,46,.8);color:var(--silver);border:1px solid var(--track);border-radius:14px;padding:3px 8px;font-size:10px;cursor:pointer;margin-left:6px';
+      const tripIcon = tripCount > 0
+        ? `<button class="lc-icon-trips" data-line-id="${sl.id}" title="${sl.name} の旅程一覧" style="${iconBtnStyle}">📺 ${tripCount}</button>`
+        : '';
+      const memoIcon = memoCount > 0
+        ? `<button class="lc-icon-memos" data-line-id="${sl.id}" title="${sl.name} のメモ一覧" style="${iconBtnStyle}">📸 ${memoCount}</button>`
+        : '';
+      const iconRow = (tripIcon || memoIcon)
+        ? `<div class="lc-icons" style="margin-top:4px;display:flex;flex-wrap:wrap">${tripIcon}${memoIcon}</div>`
+        : '';
       card.innerHTML = `
         <div class="lc-h">
           <input type="color" class="lc-color" value="${sl.color}" data-line-id="${sl.id}" title="この系統の色を変更">
@@ -142,7 +269,8 @@ export async function renderList(){
           ${s.r}/${s.t}駅${s.pct===100?' ✓ 完乗！':''}
           ${isOverridden ? `<button class="lc-color-reset" data-line-id="${sl.id}" title="元の色に戻す">↺ 色をリセット</button>` : ''}
         </div>
-        ${carLine}`;
+        ${carLine}
+        ${iconRow}`;
       listBody.appendChild(card);
     });
   });
@@ -159,6 +287,19 @@ export async function renderList(){
     btn.addEventListener('click', (e) => {
       const id = e.currentTarget.dataset.lineId;
       if (window.NORIRECO && NORIRECO.colorOverrides) NORIRECO.colorOverrides.reset(id);
+    });
+  });
+  // v359: 旅程/メモアイコンのクリック → 路線詳細モーダル
+  listBody.querySelectorAll('.lc-icon-trips').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openLineDetailModal(e.currentTarget.dataset.lineId, 'trips');
+    });
+  });
+  listBody.querySelectorAll('.lc-icon-memos').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openLineDetailModal(e.currentTarget.dataset.lineId, 'memos');
     });
   });
 }

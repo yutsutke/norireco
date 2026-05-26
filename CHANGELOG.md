@@ -40,6 +40,53 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 209. v359 — 路線タブ: 📺 旅程 / 📸 メモ アイコン + 路線詳細モーダル (2026-05-26)
+
+### 背景
+
+v358 で軽い 2 機能 (車両形式表示 + 検索) を入れた続編。ユスケから「旅程・メモアイコン + 一覧モーダル」の実装指示。各路線カードに件数アイコンを置き、クリックで該当路線の旅程・メモを一覧表示するモーダルを開く。
+
+### 設計判断
+
+- **アイコン件数 0 は非表示**: クリーンな見た目を優先。`tripCount > 0` / `memoCount > 0` のときだけ描画
+- **モーダル + タブ切替**: 旅程と メモを同じモーダル (`#mp-line-detail-modal`) で扱い、上部タブで切替。タブ移動 (旅程タブにジャンプ) より「路線タブの上で完結」が path のシンプル化に直結
+- **既存 `tripCardHtml` / `memoCardHtml` を再利用**: 旅程カード・メモカードのレイアウトは既にあるので、import して使い回す。`memoCardHtml` は 16-memos.js 内のローカル関数だったので v359 で `export` 化
+- **集計は `_mypageCache` / `memos.state.cache`**: マイページ用に既にメモリ上にあるデータを使い、追加 fetch なし
+- **メモの紐付け**: `m.line_id` (路線メモ) と `m.station_id` 経由 (sl 内駅メモ) を **両方拾い + Set で重複排除**。「路線に関係するメモ」の自然な解釈
+
+### 変更
+
+- **HTML** ([noritetsu-map.html:1421](noritetsu-map.html#L1421)): 既存 `#trip-edit-modal` の上に `#mp-line-detail-modal` を追加 (memo-modal クラス踏襲、ヘッダ + タブボタン 2 つ + 本文 `#mp-line-detail-body`)
+- **JS** ([js/16-memos.js:514](js/16-memos.js#L514)): `function memoCardHtml` → `export function memoCardHtml` (v359 で 09-tabs-stats から流用するため)
+- **JS** ([js/09-tabs-stats.js](js/09-tabs-stats.js)):
+  - `import { tripCardHtml }` を 13-mypage-common から追加、`import { memoCardHtml }` を 16-memos から追加
+  - `aggregateTripsByLineId()` (新, internal): `_mypageCache` を走査して Map<lineId, trip[]>。1 trip 内の同一 lineId は Set で重複排除 (複数 segment が同じ路線でも 1 カウント)
+  - `aggregateMemosByLineId()` (新, internal): Map<lineId, memo[]>。`m.line_id` 直接 + `m.station_id → sl.stations[].id` 逆引きを両ルート、Set で重複排除
+  - `openLineDetailModal(slId, initialTab)` (新, window 公開): sl を resolve、trips / memos を集計 (date / created_at 降順 sort)、モーダルヘッダ + タブラベル更新、初期タブは引数 > 件数の多い方
+  - `closeLineDetailModal()` / `switchLineDetailTab(tab)` (新, window 公開)
+  - `renderList()` 内: 各 lcard 末尾に `<div class="lc-icons">📺 N / 📸 N</div>` 追加 (件数 0 は省略)
+  - アイコンクリックハンドラ: `lc-icon-trips` / `lc-icon-memos` を `listBody` 内 querySelectorAll で attach、`e.stopPropagation()` で親要素のクリックを抑制
+- sw.js: CACHE_VERSION 'v358' → 'v359'
+
+### 検証
+
+- syntax check 24/24 OK
+- preview の ES Module memory cache に古い 09-tabs-stats.js (v358 版で memoCardHtml import 未対応) が貼り付いて `window.openLineDetailModal` が undefined のまま検証しきれず → 実機ハードリロード後に確認
+- ファイル内容は grep で window 公開 4 つ (open/close/switch + v358 の onMpLinesCarModelInput) を確認済
+
+### 路線タブカード新表示
+
+```
+●─ 山手線              JR東日本  100%
+30/30駅 ✓ 完乗！
+🚆 E235系0番台, E233系
+[📺 12] [📸 3]                ← v359 追加 (クリックでモーダル)
+```
+
+モーダル中身: 上部タブ `📺 旅程 (12) | 📸 メモ (3)` 切替、本文に `tripCardHtml` / `memoCardHtml` の一覧。
+
+---
+
 ## 208. v358 — 路線タブ: 乗車車両 上位 3 個を表示 + 車両形式検索 (2026-05-26)
 
 ### 背景
