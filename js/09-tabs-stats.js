@@ -37,23 +37,99 @@ const SL_GROUP_ORDER = [
   'その他'
 ];
 
+// v358: 路線タブの車両形式フィルタ (IME 安全のためフィルタバーは残置、リスト本体だけ再描画)
+let _linesCarModelQuery = '';
+
+// 全 trip から sl_id → Map<carModel, count> を集計。
+// 集計結果は車両形式バッジ表示と検索フィルタの両方で使う
+function aggregateCarModelsByLineId() {
+  const carsByLid = new Map();
+  const trips = (window.NORIRECO && NORIRECO.mypage && NORIRECO.mypage.state && NORIRECO.mypage.state._mypageCache) || [];
+  for (const t of trips) {
+    if (!t.car_model) continue;
+    const lineIds = new Set();
+    for (const seg of (t.segments || [])) {
+      if (seg && seg.lineId) lineIds.add(seg.lineId);
+    }
+    for (const lid of lineIds) {
+      if (!carsByLid.has(lid)) carsByLid.set(lid, new Map());
+      const m = carsByLid.get(lid);
+      m.set(t.car_model, (m.get(t.car_model) || 0) + 1);
+    }
+  }
+  return carsByLid;
+}
+
+// 出現回数の多い順に上位 N 件取得 (同数は順序問わず)
+function topCarModels(carMap, n) {
+  if (!carMap) return [];
+  return Array.from(carMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n)
+    .map(e => e[0]);
+}
+
 export async function renderList(){
-  const c=document.getElementById('list-content');c.innerHTML='';
+  const c=document.getElementById('list-content');
   await NORIRECO.serviceLines.build();
-  const grouped={};NORIRECO.data.SERVICE_LINES.forEach(sl=>{const g=sl.group||'その他';if(!grouped[g])grouped[g]=[];grouped[g].push(sl);});
+
+  // v358: フィルタバーは IME を壊さないよう 1 度だけ build、リスト本体だけ毎回置換
+  let filterBar = c.querySelector('#mp-lines-filter-bar');
+  let listBody  = c.querySelector('#mp-lines-list-body');
+  if (!filterBar) {
+    c.innerHTML = `
+      <div id="mp-lines-filter-bar" class="mp-filter-bar" style="margin-bottom:8px">
+        <div class="mp-filter-row">
+          <label class="mp-filter-lbl">🚆 車両</label>
+          <input type="search" class="mp-filter-input" id="mp-lines-fil-car" placeholder="例: E235 / キハ110" title="乗車した車両形式で路線を絞り込み" value="${_linesCarModelQuery}" oninput="onMpLinesCarModelInput(this.value)">
+        </div>
+      </div>
+      <div id="mp-lines-list-body"></div>`;
+    listBody = c.querySelector('#mp-lines-list-body');
+  } else {
+    listBody.innerHTML = '';
+  }
+
+  const carsByLid = aggregateCarModelsByLineId();
+  const cmq = (_linesCarModelQuery || '').trim().toLowerCase();
+  // 車両形式フィルタ: クエリに一致する車両形式を持つ sl_id だけ通す
+  const matchingLids = cmq ? new Set() : null;
+  if (cmq) {
+    for (const [lid, m] of carsByLid) {
+      for (const cm of m.keys()) {
+        if (cm.toLowerCase().includes(cmq)) { matchingLids.add(lid); break; }
+      }
+    }
+  }
+
+  const grouped={};
+  NORIRECO.data.SERVICE_LINES.forEach(sl=>{
+    if (matchingLids && !matchingLids.has(sl.id)) return;
+    const g=sl.group||'その他';if(!grouped[g])grouped[g]=[];grouped[g].push(sl);
+  });
+  // クエリでヒット 0 件のとき案内
+  if (cmq && Object.keys(grouped).length === 0) {
+    listBody.innerHTML = `<div style="padding:24px;text-align:center;color:var(--silver);font-size:11px">「${cmq}」を含む車両形式の記録なし</div>`;
+    return;
+  }
   const groupOrder = [...SL_GROUP_ORDER, ...Object.keys(grouped).filter(g => !SL_GROUP_ORDER.includes(g))];
   groupOrder.forEach(grp => {
     const lines = grouped[grp]; if (!lines || lines.length === 0) return;
     // グループ内: 達成率(降順) → 路線名
     lines.sort((a,b) => NORIRECO.serviceLines.stats(b).pct - NORIRECO.serviceLines.stats(a).pct || a.name.localeCompare(b.name, 'ja'));
-    const t=document.createElement('div');t.className='sec-lbl';t.textContent=`${grp} (${lines.length})`;c.appendChild(t);
+    const t=document.createElement('div');t.className='sec-lbl';t.textContent=`${grp} (${lines.length})`;listBody.appendChild(t);
     lines.forEach(sl=>{
       const s=NORIRECO.serviceLines.stats(sl);const card=document.createElement('div');
       card.className='lcard'+(s.pct===100?' done':s.r>0?' partial':'');
-      // v243: lc-dot を input[type=color] に置換し、系統ごとに色をユーザーカスタマイズ可能に。
-      //   change で NORIRECO.colorOverrides.set → localStorage 保存 + 全関連箇所の再描画。
-      //   override 中の系統 (sl.originalColor !== sl.color) には ↺ リセットボタンを表示。
       const isOverridden = !!(sl.originalColor && sl.originalColor !== sl.color);
+      // v358: 乗車車両形式 上位 3 件 + 「他 N 件」
+      const carMap = carsByLid.get(sl.id);
+      const totalCarCount = carMap ? carMap.size : 0;
+      const topCars = topCarModels(carMap, 3);
+      const moreCount = totalCarCount - topCars.length;
+      const carLine = topCars.length
+        ? `<div class="lc-cars" style="font-size:10px;color:var(--silver);margin-top:4px;padding-left:2px">🚆 ${topCars.join(', ')}${moreCount > 0 ? ` <span style="opacity:.6">+他${moreCount}</span>` : ''}</div>`
+        : '';
       card.innerHTML = `
         <div class="lc-h">
           <input type="color" class="lc-color" value="${sl.color}" data-line-id="${sl.id}" title="この系統の色を変更">
@@ -65,26 +141,34 @@ export async function renderList(){
         <div class="lc-sub">
           ${s.r}/${s.t}駅${s.pct===100?' ✓ 完乗！':''}
           ${isOverridden ? `<button class="lc-color-reset" data-line-id="${sl.id}" title="元の色に戻す">↺ 色をリセット</button>` : ''}
-        </div>`;
-      c.appendChild(card);
+        </div>
+        ${carLine}`;
+      listBody.appendChild(card);
     });
   });
 
-  // v243: color picker / reset ボタンのイベント設定 (delegated でも可だが、毎回 renderList で全置換するので直接でも軽い)
-  c.querySelectorAll('.lc-color').forEach(input => {
+  // v243: color picker / reset ボタンのイベント設定 (listBody スコープ内)
+  listBody.querySelectorAll('.lc-color').forEach(input => {
     input.addEventListener('change', (e) => {
       const id = e.target.dataset.lineId;
       const color = e.target.value;
       if (window.NORIRECO && NORIRECO.colorOverrides) NORIRECO.colorOverrides.set(id, color);
     });
   });
-  c.querySelectorAll('.lc-color-reset').forEach(btn => {
+  listBody.querySelectorAll('.lc-color-reset').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const id = e.currentTarget.dataset.lineId;
       if (window.NORIRECO && NORIRECO.colorOverrides) NORIRECO.colorOverrides.reset(id);
     });
   });
 }
+
+// v358: 車両形式 input の oninput ハンドラ。フィルタバー DOM は触らずリスト本体だけ再描画 (IME 安全)
+function onMpLinesCarModelInput(value) {
+  _linesCarModelQuery = value || '';
+  renderList();
+}
+window.onMpLinesCarModelInput = onMpLinesCarModelInput;
 
 // ══════════════════════════════════════
 // STATS

@@ -40,6 +40,51 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 208. v358 — 路線タブ: 乗車車両 上位 3 個を表示 + 車両形式検索 (2026-05-26)
+
+### 背景
+
+v357 で旅程タブに車両形式検索を入れた流れで、ユスケから路線タブの拡張 3 件: (1) 各路線カードに乗車した車両形式を表示 / (2) 旅程・メモアイコン → クリックで一覧モーダル / (3) 車両形式検索。3 機能を 1 commit に詰めると重いので、軽い 2 機能 (車両表示 + 検索) を先に v358、一覧モーダルは v359 で別出しの方針。
+
+### 設計判断
+
+- **集計は `NORIRECO.mypage.state._mypageCache` を使う**: マイページ用に既に Supabase から trips を取得済。renderList で別途 fetch せずに済む (ログイン前なら空配列、車両情報なしで表示)
+- **「`trip.segments[].lineId` ベース集計」**: 駅 id ベースだと駅単位の集計になってしまう。路線単位なら segments の lineId を Set 化して 1 trip 1 line 1 カウント
+- **上位 3 個 + 「他 N 件」**: ユスケ確認で 3 個に。たくさん乗った路線でカードが縦に肥大化するのを防ぐ
+- **IME 安全な再描画分割**: 路線タブ全体を `c.innerHTML=''` で消すと検索 input のフォーカスが飛ぶ。`#mp-lines-filter-bar` (1 度だけ生成) と `#mp-lines-list-body` (毎回置換) に分け、フィルタ入力中も DOM を維持
+
+### 変更
+
+[js/09-tabs-stats.js:40](js/09-tabs-stats.js#L40) `renderList()` を大幅改修:
+
+- `aggregateCarModelsByLineId()` (新, internal): `_mypageCache` を走査して Map<lineId, Map<carModel, count>> を作る
+- `topCarModels(carMap, n)` (新, internal): カウント降順で上位 N 件
+- `renderList` 冒頭: フィルタバーが無ければ生成、あればリスト本体だけクリア
+- フィルタ ロジック: クエリ含む車両形式を持つ sl_id Set で SERVICE_LINES を filter (該当 0 件なら「『X』を含む車両形式の記録なし」案内)
+- 各 lcard 末尾に `<div class="lc-cars">🚆 上位3個 +他N件</div>` を追加 (車両記録 0 件の路線では非表示)
+- color picker / reset イベントは `listBody` スコープに変更 (`c` 直下から listBody 内に)
+- `onMpLinesCarModelInput(value)` (新, window 公開): クエリ更新 + `renderList()` 再呼出
+
+sw.js: CACHE_VERSION 'v357' → 'v358'
+
+### 検証 (Claude Preview)
+
+mock 6 trips (E235系×2, E233系×1, E353系×1, キハ110系×1, null×1) と 4 路線で:
+
+| 操作 | 期待 | 実測 |
+|---|---|---|
+| 初期 | 山手線 `🚆 E235系0番台, E233系` / 中央本線 `🚆 E353系` / 小海線 `🚆 キハ110系` / 使ってない線 表示なし | ✓ |
+| `E235` | 山手線のみ | ✓ |
+| `キハ` | 小海線のみ | ✓ |
+| `XYZ999` | 「『xyz999』を含む車両形式の記録なし」 | ✓ |
+| 空 | 全 4 路線復元 | ✓ |
+
+### 残課題 (v359 へ)
+
+- 各路線カードに「📺 旅程 N 件」「📸 メモ N 件」アイコン + クリックで新規モーダル表示
+
+---
+
 ## 207. v357 — 旅程タブに「🚆 車両」検索 input を追加 (substring 検索) (2026-05-26)
 
 ### 背景
