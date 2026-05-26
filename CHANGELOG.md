@@ -44,6 +44,38 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 230. v380 — 旅程編集モーダルも per-segment cascade (カテゴリ + 列車名 + 車両形式) 対応 (2026-05-27)
+
+### 背景
+
+v375 で記録モードが per-seg cascade に対応、v373/v377 で per-seg car_model 編集と表示まで対応した。ユスケから「マイページ旅程編集の区間も記録と同じように区間ごとに特急の中身まで選べるように」との要望。
+
+### 設計判断
+
+- **per-seg cascade UI** を各区間に複製: カテゴリ select + 列車名 input + 車両形式 input の 3 種
+- **マスター列車 dropdown は見送り**: 編集モーダルは「微調整」用途。記録モード v375 の cascade (TRAIN マスター連動) は実装重く、また編集モーダルから cascade フル機能まで持つと UI が肥大化。**列車名は自由入力 only** とする
+- **trip 単位 cascade input は hide**: segments があるとき、`#trip-edit-train-category` の親 div ごと (列車種別セクション) を hide。trip 直下入力との二重管理を回避
+- **集約ルール**: 保存時に各 seg の category / train_id / train_name / car_model を更新、trip 直下は集約 (全 seg 一致なら値 / 不一致なら null)。v371 / v375 と同形
+- **train_id の扱い**: 編集モーダルでは新規セットしないが、既存値は category が変わったときだけクリア。これで「マスター列車だった旅程をカテゴリだけ修正」しても train_id が温存される (列車名と矛盾するなら別途修正)
+
+### 変更
+
+- `js/13b-trips.js` `openTripEditModal`:
+  - 区間表示の HTML 生成を拡張: 「📋 種別 / 🚆 列車名 / 🚆 車両形式」の 3 行を各区間に生成
+  - `_hasSegmentsForEdit` 時、`catSel.parentElement.style.display = 'none'` で trip 単位 列車種別セクションごと hide
+- `js/13b-trips.js` `saveTripEdit`:
+  - `segCatSels` / `segTrainNameInps` / `segCarInputs` を query
+  - `hasPerSegInputs` true なら newSegments の各 seg を category/train_name/car_model 更新、train_id は category 矛盾時のみクリア
+  - trip 直下 train_category / train_id / train_name / car_model は集約 helper `aggSet(key)` で一括計算
+
+### 残課題
+
+- 旅程カードの per-seg train_name 表示は v377 で対応済 → 編集後の表示も自動的に追従する
+- マイページ「📋 種類」フィルタ (`mpTripFilter.category`) は v378 でまだ未対応 → 段階で対応
+- マイページ「車両形式コレクション」(`buildCarModelStats`) も segments 走査未対応
+
+---
+
 ## 229. v379 — v378 hotfix: 古い trip (v374 以前) の特急が「列車制覇」に出ない (2026-05-27)
 
 ### 背景

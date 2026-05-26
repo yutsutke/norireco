@@ -339,8 +339,10 @@ function openTripEditModal(tripId) {
 
   // v226: 📍 区間 表示。区間そのものは read-only。
   // v373: 各 segment 行に「🚆 車両形式」input を追加 (per-segment 編集対応)。
-  //   segments があるときは trip 単位の car_model input は hide にして、per-seg input が一次入力に。
-  //   trip.car_model は保存時に「全 segment 一致なら値 / 不一致なら null」で再集約 (v371 と同じ)。
+  // v380: per-segment cascade に拡張 — カテゴリ select + 列車名 input + 車両形式 input の 3 種を各区間に。
+  //   マスター列車 dropdown (記録モード v375 仕様) は編集モーダルでは見送り、自由入力 only で最小実装。
+  //   segments があるときは trip 単位の category/train_name/car_model input は hide。
+  //   trip.* は保存時に「全 seg 一致なら値 / 不一致なら null」で再集約 (v371 / v375 と同形)。
   const segEl = document.getElementById('trip-edit-segments');
   let _hasSegmentsForEdit = false;
   if (segEl) {
@@ -350,19 +352,45 @@ function openTripEditModal(tripId) {
       segEl.innerHTML = `<span style="color:var(--silver)">${getTripStationName(trip, 'from') || '?'} → ${getTripStationName(trip, 'to') || '?'}</span>`;
     } else {
       _hasSegmentsForEdit = true;
-      // v371 で trip.car_model が混在時 null になる仕様のため、編集時に「初期表示は seg.car_model が
-      // なければ trip.car_model を fallback として埋める」運用にすると、不意に上書きが起きる。
-      // よって seg.car_model が無い場合は空のままにし、ユーザーが明示的に入力したものだけ保存する。
+      // カテゴリ option 構築 (記録モード `applyTripEditCategoryVisibility` 周辺と同じ source)
+      const cats = (NORIRECO.trains && NORIRECO.trains.TRAIN_CATEGORIES) || {};
+      const catEntries = Object.entries(cats).sort((a, b) => {
+        if (a[0] === 'local') return -1;
+        if (b[0] === 'local') return 1;
+        return 0;
+      });
+      const catOptionsHtml = (selected) => {
+        let html = `<option value="" ${selected ? '' : 'selected'}>指定しない</option>`;
+        for (const [k, v] of catEntries) {
+          const sel = (selected === k) ? 'selected' : '';
+          html += `<option value="${k}" ${sel}>${v.icon || ''} ${v.label || k}</option>`;
+        }
+        return html;
+      };
       segEl.innerHTML = segs.map((s, i) => {
         const lineLabel = s.lineName || s.lineId || '?';
+        const catValue = s.train_category || '';
+        const tnameValue = s.train_name ? escapeAttr(s.train_name) : '';
         const carValue = s.car_model ? escapeAttr(s.car_model) : '';
         const isLast = i === segs.length - 1;
+        const inpStyle = 'flex:1;min-width:120px;padding:4px 8px;background:rgba(20,32,46,.8);color:var(--silver);border:1px solid var(--track);border-radius:6px;font-size:11px';
+        const selStyle = 'min-width:140px;padding:4px 8px;background:rgba(20,32,46,.8);color:var(--silver);border:1px solid var(--track);border-radius:6px;font-size:11px';
+        const lblStyle = 'font-size:11px;color:var(--silver);min-width:64px';
+        const rowStyle = 'margin-top:4px;padding-left:18px;display:flex;align-items:center;gap:6px;flex-wrap:wrap';
         return `
-          <div class="te-seg" style="margin-bottom:${isLast ? '0' : '10px'}">
+          <div class="te-seg" style="margin-bottom:${isLast ? '0' : '12px'}">
             <div><span style="color:var(--gold);font-size:10px">${i+1}.</span> ${s.from || '?'} → ${s.to || '?'} <span style="color:var(--silver);font-size:10px">[${lineLabel}]</span></div>
-            <div style="margin-top:4px;padding-left:18px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-              <span style="font-size:11px;color:var(--silver)">🚆 車両形式</span>
-              <input type="text" class="te-seg-car" data-seg-idx="${i}" value="${carValue}" placeholder="例: E235系 (任意)" style="flex:1;min-width:120px;padding:4px 8px;background:rgba(20,32,46,.8);color:var(--silver);border:1px solid var(--track);border-radius:6px;font-size:11px">
+            <div style="${rowStyle}">
+              <span style="${lblStyle}">📋 種別</span>
+              <select class="te-seg-cat" data-seg-idx="${i}" style="${selStyle}">${catOptionsHtml(catValue)}</select>
+            </div>
+            <div style="${rowStyle}">
+              <span style="${lblStyle}">🚆 列車名</span>
+              <input type="text" class="te-seg-train-name" data-seg-idx="${i}" value="${tnameValue}" placeholder="例: あずさ (任意)" style="${inpStyle}">
+            </div>
+            <div style="${rowStyle}">
+              <span style="${lblStyle}">🚆 車両形式</span>
+              <input type="text" class="te-seg-car" data-seg-idx="${i}" value="${carValue}" placeholder="例: E353系 (任意)" style="${inpStyle}">
             </div>
           </div>
         `;
@@ -407,13 +435,23 @@ function openTripEditModal(tripId) {
   if (carModelInp) carModelInp.value = trip.car_model || '';
   // v355: カテゴリに応じて input を出し分け
   applyTripEditCategoryVisibility(trip.train_category || '');
-  // v373: segments があれば trip 単位の car_model input は hide (per-seg input が一次入力)。
-  //   applyTripEditCategoryVisibility 後に上書きする必要があるので最後に実行。
-  if (_hasSegmentsForEdit && carModelInp) {
-    carModelInp.style.display = 'none';
-    // 弟の説明 <div> (※ 簡易入力です…) もまとめて hide。
-    const nextDiv = carModelInp.nextElementSibling;
-    if (nextDiv && nextDiv.tagName === 'DIV') nextDiv.style.display = 'none';
+  // v373→v380: segments があれば trip 単位の入力一式を hide (per-seg cascade が一次入力)。
+  //   category select / train_id dropdown / train_name input / car_model input + 説明 div。
+  if (_hasSegmentsForEdit) {
+    const trainIdSel = document.getElementById('trip-edit-train-id');
+    if (catSel) {
+      // category select の親 (種別ラベル含む wrapper) は HTML 構造上 catSel と兄弟 div のはず。
+      // 親が 1 個 上の境界線付き <div> なので、その内側の見出し div + select + 列車種別関連
+      // 全部を一気に hide。簡略化のため catSel.parentElement を hide。
+      if (catSel.parentElement) catSel.parentElement.style.display = 'none';
+    }
+    if (trainIdSel) trainIdSel.style.display = 'none';
+    if (trainNameInp) trainNameInp.style.display = 'none';
+    if (carModelInp) {
+      carModelInp.style.display = 'none';
+      const nextDiv = carModelInp.nextElementSibling;
+      if (nextDiv && nextDiv.tagName === 'DIV') nextDiv.style.display = 'none';
+    }
   }
   // v356: 特急など (cat !== '' && cat !== 'local') のとき、列車 dropdown の値復元
   //   - train_id あり (マスター列車)  → dropdown で該当 option 選択、train_name input は hide (shadow value は不要、value は trip.train_name 済)
@@ -602,41 +640,55 @@ async function saveTripEdit() {
     }
   }
 
-  // v226 → v356: 🚆 列車種別 — category / train_id (dropdown) / train_name / car_model
+  // v226 → v356 → v380: 🚆 列車種別 / 車両形式 — segments があれば per-seg cascade 編集を採用、
+  //   無ければ trip 単位の trip-edit-train-category / train-id / train-name / car-model input を使う。
   const catRaw = document.getElementById('trip-edit-train-category')?.value || '';
   const tidRaw = document.getElementById('trip-edit-train-id')?.value || '';
   const tnameRaw = (document.getElementById('trip-edit-train-name')?.value || '').trim();
   const carRaw = (document.getElementById('trip-edit-car-model')?.value || '').trim();
-  tripPatch.train_category = catRaw || null;
-  tripPatch.train_name = tnameRaw || null;
-  // v373: per-segment 車両形式編集対応 (乗換ありの旅程で系統ごとに別車両を保存)。
-  //   segments があれば各 `.te-seg-car` input を読んで segments[i].car_model に書き、
-  //   trip.car_model は集約ルール (全 segment 一致なら値 / 不一致なら null、v371 と同じ)。
-  //   visit-only や segments 空のときだけ従来通り trip 直下の car_model input を使う。
-  const segCarInputs = document.querySelectorAll('#trip-edit-segments .te-seg-car');
+
   const existingSegs = Array.isArray(trip.segments) ? trip.segments : [];
-  if (existingSegs.length > 0 && segCarInputs.length === existingSegs.length) {
+  const segCatSels = document.querySelectorAll('#trip-edit-segments .te-seg-cat');
+  const segTrainNameInps = document.querySelectorAll('#trip-edit-segments .te-seg-train-name');
+  const segCarInputs = document.querySelectorAll('#trip-edit-segments .te-seg-car');
+  const hasPerSegInputs = existingSegs.length > 0
+    && segCatSels.length === existingSegs.length
+    && segTrainNameInps.length === existingSegs.length
+    && segCarInputs.length === existingSegs.length;
+
+  if (hasPerSegInputs) {
+    // v380: per-seg cascade 編集 — 各区間の category / train_name / car_model を更新。
+    //   編集モーダルではマスター列車 dropdown は省略しているので train_id は新規セットしない (既存値は維持)。
+    //   trip 直下は集約ルール (全 seg 一致なら値 / 不一致なら null)。
     const newSegments = existingSegs.map((s, i) => {
-      const v = (segCarInputs[i].value || '').trim() || null;
-      return { ...s, car_model: v };
+      const cat = (segCatSels[i].value || '').trim() || null;
+      const tname = (segTrainNameInps[i].value || '').trim() || null;
+      const cm = (segCarInputs[i].value || '').trim() || null;
+      // 既存 train_id は新カテゴリと矛盾しなければ維持、矛盾するなら clear
+      let tid = s.train_id || null;
+      if (tid && cat !== s.train_category) tid = null;
+      return { ...s, train_category: cat, train_id: tid, train_name: tname, car_model: cm };
     });
     tripPatch.segments = newSegments;
-    const set = new Set(newSegments.map(s => s.car_model || ''));
-    if (set.size === 1) {
-      const only = [...set][0];
-      tripPatch.car_model = only || null;
-    } else {
-      tripPatch.car_model = null;
-    }
+    const aggSet = (key) => {
+      const set = new Set(newSegments.map(s => s[key] || ''));
+      return (set.size === 1 && [...set][0]) ? [...set][0] : null;
+    };
+    tripPatch.train_category = aggSet('train_category');
+    tripPatch.train_id = aggSet('train_id');
+    tripPatch.train_name = aggSet('train_name');
+    tripPatch.car_model = aggSet('car_model');
   } else {
-    // visit-only / segments 空: 従来通り trip 単位 input から
+    // visit-only / segments 空: trip 単位 input
+    tripPatch.train_category = catRaw || null;
+    tripPatch.train_name = tnameRaw || null;
     tripPatch.car_model = carRaw || null;
-  }
-  // v356: train_id は dropdown 経由で取得。マスター選択時のみ非 null、__custom__ や 普通カテゴリでは null
-  if (tidRaw && tidRaw !== '__custom__') {
-    tripPatch.train_id = tidRaw;
-  } else {
-    tripPatch.train_id = null;
+    // v356: train_id は dropdown 経由で取得。マスター選択時のみ非 null、__custom__ や 普通カテゴリでは null
+    if (tidRaw && tidRaw !== '__custom__') {
+      tripPatch.train_id = tidRaw;
+    } else {
+      tripPatch.train_id = null;
+    }
   }
 
   // v258: 📷 写真 — 新規 blob を R2 にアップロード → photos[] を最新化
