@@ -44,6 +44,37 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 219. v369 — マイページ旅程タブに「🛤 路線」substring フィルタ追加 (2026-05-27)
+
+### 背景
+
+マイページ旅程タブには既に多種のフィルタ (期間/種類/種別/駅名/車両/範囲/並び) があったが、「路線で選択」する手段が無く、特定路線の旅程だけを見たいケースに対応できなかった。
+
+### 設計判断
+
+- **既存の `🚆 車両` (v357) フィルタと同形** で実装。input 1 個 + substring 検索、サジェストや select は使わず最小実装
+- **マッチ対象は `segments[].lineName` と `segments[].lineId` の両方**。lineName は表示用日本語、lineId は内部 ID (`s_E27` 等) の両方で部分一致を許容
+- **trip 直下に line 情報を持たない設計** (segments に集約) なので、segments 空の古い trip はフィルタ on のとき除外される。これは挙動として妥当 (路線情報を持たない trip は路線フィルタに該当しない)
+
+### 変更
+
+- `js/13-mypage-common.js:67`: state 初期値 `mpTripFilter.line: ''` 追加
+- `js/13b-trips.js`:
+  - フィルタバー HTML に `🛤 路線` input 行 (`#mp-fil-line`, placeholder 「例: 東金線 / 山手線」) 追加
+  - `resetMpFilter()` の reset 対象に `line: ''` 追加
+  - `applyTripFilters()` に segments 走査による substring 判定追加 (lineName / lineId をいずれも大文字小文字無視で照合)
+
+### 検証
+
+- ローカル preview の ES Modules HTTP キャッシュが頑固で動作確認は失敗（SW unregister + caches 全消 + URL クエリ変更でも module キャッシュが残る）。コード自体は `fetch` で v369 反映済を確認、ロジックは v357 `car_model` フィルタと同形のためデプロイ後に本番で実機確認
+- 本番では SW が v368→v369 で新規 install されるため module キャッシュも刷新される
+
+### 教訓
+
+- preview の module キャッシュ問題は将来的にも繰り返し起きる。本番では SW バージョンバンプで解消されるため、ローカル確認できないことを理由に push を遅らせない判断は妥当だった。preview の制約は記録に留め、similarly fragile な実装 (state shape を変えるなど) のときは慎重に
+
+---
+
 ## 218. v368 — 駅アクションシート「この駅を含む旅程 (タップで読み込み)」のカッコ書きを削除 (2026-05-27)
 
 ### 背景

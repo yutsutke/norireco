@@ -145,6 +145,10 @@ function buildTripFilterBar() {
       <input type="search" class="mp-filter-input" id="mp-fil-car-model" placeholder="例: E235 / キハ110" title="車両形式の部分一致 (大文字小文字 / 番台略号も部分一致)" value="${escapeAttr(NORIRECO.mypage.state.mpTripFilter.car_model || '')}" oninput="updateMpFilter('car_model',this.value)">
     </div>
     <div class="mp-filter-row">
+      <label class="mp-filter-lbl">🛤 路線</label>
+      <input type="search" class="mp-filter-input" id="mp-fil-line" placeholder="例: 東金線 / 山手線" title="路線名の部分一致 (segments.lineName / lineId にマッチ)" value="${escapeAttr(NORIRECO.mypage.state.mpTripFilter.line || '')}" oninput="updateMpFilter('line',this.value)">
+    </div>
+    <div class="mp-filter-row">
       <label class="mp-filter-lbl">🎯 範囲</label>
       <div class="mp-scope-chips" id="mp-scope-chips">
         ${['from','end','transfer','pass'].map(k => {
@@ -195,7 +199,7 @@ NORIRECO.mypage.toggleMpStationScope = toggleMpStationScope;
 
 function resetMpFilter() {
   NORIRECO.mypage.state.mpTripFilter = {
-    auth: 'all', period: 'all', category: 'all', sort: 'date_desc', station: '', car_model: '',
+    auth: 'all', period: 'all', category: 'all', sort: 'date_desc', station: '', car_model: '', line: '',
     stationScope: { from:true, end:true, transfer:true, pass:true },
   };
   // reset は select の選択状態と input の表示値を初期に戻すため全体再描画
@@ -267,6 +271,18 @@ function applyTripFilters(trips) {
     const cmq = (NORIRECO.mypage.state.mpTripFilter.car_model || '').trim();
     if (cmq) {
       if (!t.car_model || !t.car_model.toLowerCase().includes(cmq.toLowerCase())) return false;
+    }
+    // v369: 路線 substring 検索。segments[].lineName / lineId のいずれかに含めば一致
+    const lnq = (NORIRECO.mypage.state.mpTripFilter.line || '').trim();
+    if (lnq) {
+      const segs = Array.isArray(t.segments) ? t.segments : [];
+      const lnqLower = lnq.toLowerCase();
+      const hit = segs.some(s => {
+        const name = (s.lineName || '').toLowerCase();
+        const id = (s.lineId || '').toLowerCase();
+        return name.includes(lnqLower) || id.includes(lnqLower);
+      });
+      if (!hit) return false;
     }
     return true;
   });

@@ -65,6 +65,7 @@ NORIRECO.mypage.state = NORIRECO.mypage.state || {
     sort: 'date_desc', // v182: 旅程タブの並び替え (date_desc/asc, stations_desc, minutes_desc, recorded_desc, delay_desc)
     station: '',     // v285: 駅名 substring 検索
     car_model: '',   // v357: 車両形式 substring 検索 (例: "E235", "キハ110")
+    line: '',        // v369: 路線名 substring 検索 (例: "東金線", "山手線")
     stationScope: {  // v289: 駅名検索のマッチ範囲を ON/OFF
       from: true,    //   始点 (trip.from_station)
       end: true,     //   終点 (trip.to_station)
