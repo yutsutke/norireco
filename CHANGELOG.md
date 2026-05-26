@@ -40,6 +40,55 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 216. v366 — 乗換候補: 直通系統「直通あり」バッジ + 2 hop fallback (2026-05-27)
+
+### 背景
+
+v365 で 1 hop 乗換候補を出すようにしたが、ユスケから 2 つフィードバック:
+1. through_lines (直通系統) で繋がる乗換は「実質乗換不要」なのに「🔁 乗換」と表示されて誤解を招く (例: 立川での中央線快速→青梅線は青梅特快なら立川で降りずに直通)
+2. 1 hop で繋がらないペア (函館 → 弘前など) は「経路が見つかりません」で詰まる。2 hop も提案してほしい
+
+### 設計判断
+
+- **直通系統判定**: SERVICE_LINES の `through_lines: string[]` を見て `lineA.through_lines.includes(lineB.id)` なら `isDirectThrough: true` フラグ。データは v334 以降に手動キュレーションで構築済 (642 系統中 142 が through_lines を持つ、対称性も担保 / `service_lines_master.json` 確認済)
+- **直通あり優先ソート**: 1 hop 内で「直通あり」候補は totalStations が大きくても上位に。実生活の感覚に近い (立川直通 15 駅 > 八王子乗換 16 駅 のような順序が、本来「立川直通」が圧倒的に楽)
+- **2 hop fallback**: 1 hop 候補ゼロのときだけ 2 hop を試す。1 hop が 1 件でもあれば 2 hop は表示しない (1 hop 1 件 < 2 hop 多数 だと UI が混乱、1 hop を選ぶインセンティブも消える)
+- **2 hop top 3**: 1 hop 5 件と同じ密度だと縦に伸びすぎ。3 件に抑制
+- **パフォーマンス**: 4 重ネストループ (linesA × stations × linesMid × stations × linesB) は浅い 〜400ms。最適化として駅→系統索引 `buildStationLineIndex` を初回構築・SERVICE_LINES 不変時はキャッシュ
+- **2 hop は dedupe を (X, Y) ペア単位で**: 同じ (X, Y) 経路を異なる lineA/lineB 組合せが出すことが多いので、ペアキーで最良 (totalStations 最小) のみ採用
+- **挿入処理は別関数**: `insertTwoTransferStations(pairIdx, x, y, laId, lmId, lbId)` — pairLineChoices を +2 シフト + 3 系統 pre-select
+
+### 変更
+
+- [js/07-record-mode.js](js/07-record-mode.js):
+  - `buildStationLineIndex()` 新規: 駅 id (or `_n_<name>`) → Set<sl.id> 索引、SERVICE_LINES 配列が同一参照のあいだはキャッシュ
+  - `_indexOnLine(line, target, targetId)` 抽出: id ベース + name fallback の駅 index 解決を関数化 (2 関数で共用)
+  - `findTransferCandidates`: `isDirectThrough` フラグ追加、ソートを「直通優先 → totalStations 昇順」に。dedupe ロジックも「直通候補が同一駅に出たら non-direct より優先採用」
+  - `find2HopTransferCandidates(a, b, maxResults=3)` 新規: A→X→Y→B の 3 線パスを探索。中間系統が linesB と同一なら 1 hop と等価なので skip (1 hop 側が拾うため)
+  - `insertTwoTransferStations` 新規 + window 公開
+  - `refreshRecPanel` の error 分岐: 1 hop chip の `isDirectThrough` 判定で「🚉 + 直通あり」バッジ表示、1 hop ゼロなら 2 hop fallback (「🔁🔁 X / Y で 2 回乗換」3 系統色付きドット + 合計駅数)
+- [sw.js](sw.js): CACHE_VERSION v365 → v366
+
+### 検証
+
+- **直通あり判定**: 吉祥寺 → 拝島 で
+  - 1 位: 🚉 立川 で乗換 直通あり (中央本線快速 → 青梅線) 15駅
+  - 2 位: 🔁 八王子 で乗換 (中央本線快速 → 八高線) 16駅
+  - 直通あり優先で正しくソート、totalStations は近いが直通候補が上に
+- **2 hop fallback**: 函館 → 弘前 で
+  - 1 hop ゼロ → 「💡 2 回乗換候補 (タップで 2 駅挿入)」見出し
+  - 🔁🔁 新函館北斗 / 新青森 で 2 回乗換 (函館本線 → 北海道新幹線 → 奥羽線) 19駅
+  - 計算 394ms (許容)
+- **2 hop chip クリック**: 函館 → 新函館北斗 → 新青森 → 弘前 (4 駅 selection)、3 segments に分解、pairLineChoices に 3 系統 pre-select、合計 19駅 / 乗換 2回 表示で一致
+- **3 hop 以上のケース** (札幌 → 鹿児島中央 / 富山 → 高知 / 岡山 → 旭川 等): 2 hop でもゼロ → 「2 回乗換でも繋がる経路が見つかりません。経由駅を手動で追加してください」フォールバック
+
+### 残課題
+
+- 3+ hop 探索は実装せず: BFS で全国ネットワーク全探索になり 1〜2 秒以上かかる可能性 + UI が複雑化 (3 駅同時挿入チップ?)。札幌 ↔ 鹿児島中央のような両端ケースだけなので手動 fallback で実用上問題ない
+- through_lines 表示は「乗換駅 1 件」単位で出すので、上野東京ライン↔高崎線のように 6 駅重なるケースでも「直通あり」付きで複数候補が並ぶ。UI 上は重複に見えるが、ソートで一番駅数の少ない 1 件が trump で来るので実害はないはず
+
+---
+
 ## 215. v365 — 記録モード: 別系統 2 駅選択時に乗換駅候補を自動提案 (2026-05-27)
 
 ### 背景
