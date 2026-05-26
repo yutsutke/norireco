@@ -44,6 +44,49 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 221. v371 — 記録モードに「系統別車両形式」対応 (2026-05-27)
+
+### 背景
+
+ユスケから「記録モードで乗換があるとき、それぞれの系統に対して車両形式を選べるようにしてほしい」との要望。現状 v347 (普通電車車両形式 MVP) の仕様では、乗換ありの旅程でも記録時の `T.selectedCarModel` が 1 つしか保持されず、最後に dropdown を触った系統の値だけが trip 全体の `car_model` として保存される設計だった。
+
+「立川 (中央線 E233) → 八王子 (横浜線 E233) → 桜木町」のようなケースは E233 で揃うので問題ないが、「新宿 (あずさ E353) → 八王子 (横浜線 E233)」のように系統が変わる + 車両も変わるケースで、片方の車両情報が失われていた。
+
+### 設計判断
+
+- **state 拡張**: `NORIRECO.trains` に `selectedCarModelBySl: { sl_id: car_model_string }` Map と `activeChipSlId` (現在 active な区間 chip の sl_id) を追加。既存の `T.selectedCarModel` (単一値) は active chip の値として併走させ、UI 同期と既存 callsite (visit-only など) の後方互換を維持
+- **UI 動線**: `selectSlChip()` 切替時、(1) 現在 chip の選択を Map に save → (2) 新 chip の値を Map から restore → (3) dropdown 再生成。`onSlVehicleChange()` / `onSlVehicleCustomInput()` は Map にも書き込み
+- **データ書き込み**: `saveTrip()` 内 tripSegments push で `car_model: T.selectedCarModelBySl[seg.line.id] || null` を埋める。trip 直前に「active chip の最新値を Map に再 sync」する一行も追加 (chip 切替を経ないと Map に同期されないため)
+- **trip.car_model の集約ルール**:
+  - 全 segment が同じ非 null car_model → その値
+  - 違う車両が混在 or 一部 null → null (segments[].car_model を一次情報として参照)
+  - visit-only や segments 空 → 旧仕様で `T.selectedCarModel`
+- **表示 (tripCardHtml)**: `trip.car_model` が無くても `segments[].car_model` から unique 値を joining (例: `🚆 [E353系 / 185系]`)。順序は segments 出現順 + unique
+- **マイページ「🚆 車両」フィルタ**: trip.car_model だけでなく `segments[].car_model` も走査するように修正 (substring 検索、いずれか hit で OK)
+
+### 変更
+
+- `js/02-data-loaders.js:283`: `NORIRECO.trains` に `selectedCarModelBySl` / `activeChipSlId` 追加
+- `js/07-record-mode.js`:
+  - `clearAllTrainSelections()`: Map と activeChipSlId もクリア
+  - `selectSlChip(slId)`: 切替前の値を Map に save → 新 chip の値を `T.selectedCarModel` に restore
+  - `onSlVehicleChange()` / `onSlVehicleCustomInput()`: Map にも書き込み
+  - `saveTrip()`: tripSegments push 時に `car_model: T.selectedCarModelBySl[lineId]`、trip.car_model は全 segment 一致なら値 / 不一致なら null
+- `js/13-mypage-common.js:574`: `tripCardHtml()` で `carModelList` を `trip.car_model || segments[].car_model` から構築、joining 表示
+- `js/13b-trips.js:292`: 「🚆 車両」フィルタを trip.car_model + segments[].car_model 両走査に
+
+### 残課題 (将来)
+
+- **旅程編集モーダル (`openTripEditModal`) の per-segment 編集**: 現状は `trip.car_model` 1 個編集の UI のまま。乗換ありの旅程を編集すると trip.car_model が上書きされ、segments[].car_model との整合が崩れる可能性。Step 2 で対応
+- **Supabase スキーマ**: segments は JSON 列なのでスキーマ変更不要、既存 trip の `car_model` 列も残せて後方互換性あり
+
+### 教訓
+
+- 「1 つの state を多系統に拡張」する場合、最初から Map にしておくと拡張が楽。v347 で `selectedCarModel` 単一値スタートだったのは MVP として妥当だったが、乗換対応で必然的に Map 化する必要に
+- chip 切替型 UI の state 同期: 「現在 active な ID」を別途追跡しないと、複数 dropdown の値を一意に保存できない。今回 `activeChipSlId` 追加で対応
+
+---
+
 ## 220. v370 — 路線フィルタを `lineId × SERVICE_LINES` 逆引き方式に整理 (2026-05-27)
 
 ### 背景

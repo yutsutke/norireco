@@ -576,11 +576,23 @@ export function tripCardHtml(trip) {
   //   - 特急 (列車+車両): 🚆 あずさ [E353系]
   //   - 特急 (列車のみ): 🚆 あずさ
   //   - 特急 (手入力列車): 🚆 湘南ライナー 📝 [185系]
+  // v371: 乗換ありの旅程で系統ごとに別車両が選ばれている場合、segments[].car_model
+  //   から unique 値を joining 表示 (例: [E353系 / 185系])。
+  //   trip.car_model は全 segment 一致なら値 / 不一致なら null (v371 仕様)。
   let trainBit = '';
-  if (trip.train_name || trip.car_model) {
+  const carModelList = (() => {
+    if (trip.car_model) return [trip.car_model];
+    const segs = Array.isArray(trip.segments) ? trip.segments : [];
+    const set = new Set();
+    for (const s of segs) {
+      if (s.car_model) set.add(s.car_model);
+    }
+    return [...set];
+  })();
+  if (trip.train_name || carModelList.length > 0) {
     const customMark = (trip.train_name && !trip.train_id) ? ' 📝' : '';
     const namePart = trip.train_name ? `${trip.train_name}${customMark}` : '';
-    const carPart = trip.car_model ? `<span class="mp-car">[${trip.car_model}]</span>` : '';
+    const carPart = carModelList.length > 0 ? `<span class="mp-car">[${carModelList.join(' / ')}]</span>` : '';
     const sep = (namePart && carPart) ? ' ' : '';
     trainBit = `<div class="mp-tcard-train">🚆 ${namePart}${sep}${carPart}</div>`;
   }

@@ -289,9 +289,14 @@ function applyTripFilters(trips) {
       if (!tripMatchesAnyStation(t, predicate, _stScope)) return false;
     }
     // v357: 車両形式 substring 検索 (大文字小文字を区別しない)。空文字はスキップ
+    // v371: trip.car_model だけでなく segments[].car_model も走査 (乗換系統ごとに別車両のケース対応)
     const cmq = (NORIRECO.mypage.state.mpTripFilter.car_model || '').trim();
     if (cmq) {
-      if (!t.car_model || !t.car_model.toLowerCase().includes(cmq.toLowerCase())) return false;
+      const cmqLower = cmq.toLowerCase();
+      const tripHit = t.car_model && t.car_model.toLowerCase().includes(cmqLower);
+      const segs = Array.isArray(t.segments) ? t.segments : [];
+      const segHit = segs.some(s => s.car_model && s.car_model.toLowerCase().includes(cmqLower));
+      if (!tripHit && !segHit) return false;
     }
     // v369: 路線 substring 検索。segments[].lineId を SERVICE_LINES で逆引きして name と照合
     // (lineName は記録時に null になりがちなので一次情報は lineId、name は SERVICE_LINES から引く)

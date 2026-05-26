@@ -279,7 +279,12 @@ NORIRECO.trains = NORIRECO.trains || {
   selectedTrainId: null,       // マスター選択時の id (手入力なら null)
   selectedTrainName: null,     // 表示名 — マスター選択時=その name、手入力時=ユーザー入力文字列
   selectedTrainCategory: null, // 選んだカテゴリ (手入力時もここに入る)
-  selectedCarModel: null,      // 車両形式 (マスター選択 or 手入力)
+  selectedCarModel: null,      // 車両形式 (マスター選択 or 手入力) — 現在 active な chip の値
+  // v371: 乗換ありの記録モードで系統ごとに別車両形式を選べるよう、{sl_id: car_model} Map を併走させる。
+  //   selectSlChip 切替時に現在 chip の値を Map に保存 → 新 chip の値を Map から復元。
+  //   saveTrip 時に segments[].car_model = Map[lineId] || null を埋める。
+  selectedCarModelBySl: {},    // { sl_id: car_model_string }
+  activeChipSlId: null,        // 現在 active な区間 chip の sl_id (Map 同期用)
 };
 const T = NORIRECO.trains;
 

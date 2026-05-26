@@ -1149,6 +1149,13 @@ async function saveMultiSegmentTrip() {
   const tripSegments = [];
   let totalStations = 0;
   const lineNames = [];
+  // v371: 保存直前に「現在 active な chip」の dropdown 値を Map に同期。
+  //   ユーザーが最後に触った chip の選択は selectSlChip 切替を経ずに保存されるため。
+  {
+    const _T = NORIRECO.trains;
+    _T.selectedCarModelBySl = _T.selectedCarModelBySl || {};
+    if (_T.activeChipSlId) _T.selectedCarModelBySl[_T.activeChipSlId] = _T.selectedCarModel || null;
+  }
   if (!isVisitOnly) {
     for (const seg of R.segments) {
       if (!seg.line) continue;
@@ -1161,10 +1168,13 @@ async function saveMultiSegmentTrip() {
       // seg.line が特定済みなので同名駅問題に当たらず一意に id 化できる。
       const fromStId = seg.line.stations[fromIdx].id || null;
       const toStId = seg.line.stations[toIdx].id || null;
+      // v371: 系統別車両形式を seg.car_model に埋める。Map に値が無ければ null。
+      const segCarModel = NORIRECO.trains.selectedCarModelBySl?.[seg.line.id] || null;
       tripSegments.push({
         lineId: seg.line.id,
         from: seg.from.name, to: seg.to.name,
         from_id: fromStId, to_id: toStId,
+        car_model: segCarModel,
       });
     }
     if (tripSegments.length === 0) { alert('保存できる区間がありません'); return; }
@@ -1328,7 +1338,19 @@ async function saveMultiSegmentTrip() {
     train_id: NORIRECO.trains.selectedTrainId,
     train_name: NORIRECO.trains.selectedTrainName,
     train_category: NORIRECO.trains.selectedTrainCategory,
-    car_model: NORIRECO.trains.selectedCarModel,
+    // v371: trip.car_model は「旅程レベルの代表値」。
+    //   - 全 segment が同じ非 null car_model なら → その値
+    //   - 違う車両が混在 or 一部 null → null (segments[].car_model を一次情報として参照)
+    //   - visit-only や segments 空のとき → 旧仕様で T.selectedCarModel
+    car_model: (() => {
+      if (!tripSegments || tripSegments.length === 0) return NORIRECO.trains.selectedCarModel;
+      const set = new Set(tripSegments.map(s => s.car_model || ''));
+      if (set.size === 1) {
+        const v = [...set][0];
+        return v || null;
+      }
+      return null;
+    })(),
     // 後追い記録モード拡張 (v181): メモ・遅延 — Supabase スキーマ追加待ちのため
     // tripForSupabase() で送信時に除外。localStorage には保存される
     notes: tripNotes,
@@ -1544,6 +1566,9 @@ function clearAllTrainSelections() {
   T.selectedTrainId        = null;
   T.selectedTrainName      = null;
   T.selectedTrainCategory  = null;
+  // v371: 系統別 Map もクリア (隠れた state を残さない)
+  T.selectedCarModelBySl   = {};
+  T.activeChipSlId         = null;
   const sel = document.getElementById('rec-sl-vehicle-select');
   if (sel) sel.value = '';
   const customEl = document.getElementById('rec-sl-vehicle-custom');
@@ -1619,6 +1644,14 @@ function populateSlVehiclePicker() {
 }
 
 function selectSlChip(slId) {
+  const T = NORIRECO.trains;
+  T.selectedCarModelBySl = T.selectedCarModelBySl || {};
+  // v371: 切替前に現在 chip の選択を Map に保存。新 chip の値を Map から復元。
+  if (T.activeChipSlId && T.activeChipSlId !== slId) {
+    T.selectedCarModelBySl[T.activeChipSlId] = T.selectedCarModel || null;
+  }
+  T.activeChipSlId = slId;
+  T.selectedCarModel = T.selectedCarModelBySl[slId] || null;
   const bySlId = NORIRECO.serviceLineVehicles?.bySlId || {};
   // chip の active 切替
   document.querySelectorAll('[id^="rec-sl-chip-"]').forEach(el => {
@@ -1687,6 +1720,9 @@ function onSlVehicleChange() {
     if (customEl) { customEl.style.display = 'none'; customEl.value = ''; }
     T.selectedCarModel = v || null;
   }
+  // v371: 系統別 Map にも書き込み (active chip に紐付け)
+  T.selectedCarModelBySl = T.selectedCarModelBySl || {};
+  if (T.activeChipSlId) T.selectedCarModelBySl[T.activeChipSlId] = T.selectedCarModel || null;
   // 新 UI で選んだら列車種別はクリア (普通電車パターン)
   if (T.selectedCarModel) {
     T.selectedTrainId = null;
@@ -1706,6 +1742,9 @@ function onSlVehicleCustomInput() {
   if (!customEl) return;
   const T = NORIRECO.trains;
   T.selectedCarModel = customEl.value.trim() || null;
+  // v371: 系統別 Map にも書き込み
+  T.selectedCarModelBySl = T.selectedCarModelBySl || {};
+  if (T.activeChipSlId) T.selectedCarModelBySl[T.activeChipSlId] = T.selectedCarModel || null;
   if (T.selectedCarModel) {
     T.selectedTrainId = null;
     T.selectedTrainName = null;
