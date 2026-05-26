@@ -40,6 +40,36 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 214. v364 (no deploy) — CHANGELOG 行数チェックを Stop hook → セッション末手続きに移管 (2026-05-27)
+
+### 背景
+
+v349 で `.claude/hooks/stop-reminder.js` に CHANGELOG.md 行数の機械チェック (1500 行超で警告) を追加していたが、ユスケから「changelogの行数の確認及び分割はセッション末の手続きに変更してください」との指示。毎ターンの警告は過剰、「終わったので手続きお願いします」の合図のときに人手で確認する流れに揃える。
+
+### 設計判断
+
+- **Stop hook の機械チェックを撤去**: 「自動補助は強制したいときに使う」(Notion §0「判断軸」) を再評価し、CHANGELOG 行数チェックは「強制したいほど厳密でない」(分割タイミングはユスケの体感判断もある)。セッション末で `wc -l` 一発で済む
+- **CLAUDE.md のセッション末「合図で」セクションに手順を移動**: v349 で書いた分割手順 (5 ステップ) はそのまま、判定タイミングと「常にセット」原則も残す
+- **Stop hook 自体は維持**: 「コード変更ありなのに CHANGELOG/TODO/STATUS 未更新」のリマインドは引き続き機能
+
+### 変更
+
+- [.claude/hooks/stop-reminder.js](.claude/hooks/stop-reminder.js): CHANGELOG.md 行数チェックブロック (約 17 行) を削除。`fs` / `path` の require も削除。冒頭コメントに v364 移管の旨追記
+- [CLAUDE.md](CLAUDE.md): 「## CHANGELOG.md 行数チェックとアーカイブ手順 (v349〜)」見出しを撤去し、内容を「【セッション終了時・『終わったので手続きお願いします』の合図で】」セクションの先頭に移動。分割手順 5 ステップは変更なし
+
+### 検証
+
+- `node .claude/hooks/stop-reminder.js` → exit 0、何も出力されない (現状 CHANGELOG 変更前なので missing チェックも通る)
+- ファイル行数: stop-reminder.js 75 → 55 行
+
+### 運用ルール (v364〜)
+
+- CHANGELOG.md 行数チェックは「終わったので手続きお願いします」の合図で `wc -l CHANGELOG.md` を実行
+- 1500 行超なら分割 (CHANGELOG_PHASE*.md に退避 + STATUS.md 同時整理)
+- Stop hook は「コード変更時の CHANGELOG/TODO/STATUS 反映漏れ」のみリマインド
+
+---
+
 ## 213. v363 — メモに train_name 列追加: 「🚆 あずさ [E353系]」形式の表示 (2026-05-27)
 
 ### 背景
