@@ -40,6 +40,51 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 210. v360 — メモにも車両形式: migration + 記録/編集モーダル input + 一覧表示 + 検索 (2026-05-27)
+
+### 背景
+
+v354 → v357 → v358 と「旅程・路線タブに車両形式を統合」を進めた流れで、ユスケから「メモの記録/編集モーダルに車両形式選択 + 一覧でも検索/表示できるように」との要望。`norireco_memos` テーブルは v250 で作って以降 `car_model` 列を持っていなかったので migration から。
+
+### 設計判断
+
+- **`car_model` は nullable TEXT 列**: 既存 100 件超のメモを壊さない (NULL のまま動く)。`ALTER TABLE ADD COLUMN IF NOT EXISTS` で冪等
+- **入力欄は free text、常時表示**: 記録モーダルの v348 sl レーン (区間→車両 dropdown) を持ち込むより、メモは「自由入力」が筋。場所・状況により乗ってる車両がまちまちなので、その場でタイプする方が早い
+- **検索は substring 大文字小文字不問**: v357 旅程タブ・v358 路線タブと同じパターン (`includes(q.toLowerCase())`)
+- **一覧表示は条件付き**: `memo.car_model` が空なら行ごと非表示 (UI クリーン)
+
+### 変更
+
+- **migration** [`supabase/migrations/v360_memo_car_model.sql`](supabase/migrations/v360_memo_car_model.sql) 新規:
+  ```sql
+  ALTER TABLE norireco_memos ADD COLUMN IF NOT EXISTS car_model text;
+  NOTIFY pgrst, 'reload schema';
+  ```
+  → **ユスケへ実行依頼**: Supabase Dashboard SQL Editor で Run、実行後 migration ファイル末尾に `-- Applied: 2026-05-27 by yutsutke` を追記 (v333 Applied 規約)
+- **HTML** [noritetsu-map.html](noritetsu-map.html): `#memo-modal` の「コメント」の上に `<input id="m-car-model" placeholder="例: E235系0番台、キハ110系 など">` を `fg` ブロックで追加
+- **JS** [js/16-memos.js](js/16-memos.js):
+  - `fillModal({ memo })` に `if (carInp) carInp.value = memo.car_model || ''` 追加 (新規は空、編集は復元)
+  - `readModal()` 戻り値に `car_model` 追加 (`.trim() || null`)
+  - `M.filter` 初期値に `car_model: ''` 追加
+  - フィルタバー HTML に「🚆 車両」input 1 行追加 (`#mp-memo-fil-car`、`updateMemoFilter('car_model', ...)`)
+  - `applyMemoFilters` 末尾に substring 判定追加 (大文字小文字不問)
+  - `memoCardHtml` に `${memo.car_model ? '🚆 [...]' : ''}` 行追加 (where 行の下、comment の上)
+- sw.js: CACHE_VERSION 'v359' → 'v360'
+
+### 検証 (Claude Preview)
+
+- syntax check 24/24 OK
+- `memoCardHtml({ car_model: 'E235系0番台', ... })` → `🚆 E235系0番台` 含む ✓
+- `memoCardHtml({ car_model: null, ... })` → `mp-memo-car` クラス含まない (行非表示) ✓
+- DOM: `#m-car-model` input が `#memo-modal` 内に存在 ✓
+
+### 残課題
+
+- v360 SQL を Supabase で Run → 実行後 migration ファイル末尾に `-- Applied: YYYY-MM-DD by yutsutke` を追記して commit (v333 Applied 規約)
+- SQL Run 前でも JS 側は動く (`car_model` が null として保存 → 列なしで insert/update も PostgREST が許容)。SQL Run 後に値が永続化される
+
+---
+
 ## 209. v359 — 路線タブ: 📺 旅程 / 📸 メモ アイコン + 路線詳細モーダル (2026-05-26)
 
 ### 背景

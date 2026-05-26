@@ -1620,6 +1620,11 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
       <button class="chip" data-tag="終点" onclick="togTag(this)">🏁 終点</button>
       <button class="chip" data-tag="始発" onclick="togTag(this)">🌅 始発</button>
     </div></div>
+    <!-- v360: 車両形式 (任意)。新規メモは空欄、編集時は memo.car_model から復元 -->
+    <div class="fg"><div class="fl">🚆 車両 <span class="fl-hint">(任意)</span></div>
+      <input class="mta" id="m-car-model" type="text" placeholder="例: E235系0番台、キハ110系 など"
+             style="background:rgba(20,32,46,.8);color:var(--white);border:1.5px solid var(--track);border-radius:8px;padding:8px 10px;font-size:13px;width:100%;box-sizing:border-box">
+    </div>
     <div class="fg"><div class="fl">コメント</div><textarea class="mta" id="m-comment" placeholder="車窓の景色、駅の雰囲気、気づいたことなど..."></textarea></div>
     <div class="fg">
       <div class="fl">📷 写真 <span class="fl-hint">最大 5 枚 / JPEG・PNG・WebP / 圧縮後 5MB まで</span></div>

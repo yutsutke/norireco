@@ -34,7 +34,7 @@ NORIRECO.memos = NORIRECO.memos || {
   state: {
     cache: [],
     editingId: null,
-    filter: { line_id: 'all', memo_type: 'all', mood: 'all', station: '' },
+    filter: { line_id: 'all', memo_type: 'all', mood: 'all', station: '', car_model: '' },   // v360: car_model 検索
     // v251: 駅タップ → 駅メモ一覧モーダルの開いている駅コンテキスト
     // (「+ 新しいメモを残す」を押したときに memo-modal に渡すための保存場所)
     stationContext: null, // { station, lineId, lineName, lat, lon } | null
@@ -216,6 +216,9 @@ function fillModal({ title, sub, memo }) {
   document.getElementById('m-title').textContent = title;
   document.getElementById('m-sub').textContent = sub;
   document.getElementById('m-comment').value = memo.comment || '';
+  // v360: 車両形式 (新規は空、編集は memo.car_model から復元)
+  const carInp = document.getElementById('m-car-model');
+  if (carInp) carInp.value = memo.car_model || '';
 
   // 写真エリアを再生成 (v258: 共通 PhotoArea を使用、最大 5 枚)
   if (M.photoArea) {
@@ -258,8 +261,10 @@ function readModal() {
   const mood = document.querySelector('#mood-row .chip.active')?.dataset.v || '良い';
   const tags = [...document.querySelectorAll('.chip[data-tag].active')].map(b => b.dataset.tag);
   const comment = document.getElementById('m-comment').value.trim();
+  // v360: 車両形式 (任意、空文字なら null として送信)
+  const car_model = (document.getElementById('m-car-model')?.value || '').trim() || null;
   // photos は M.photo から saveMemoFromModal() 側で組み立てる
-  return { memo_type, mood, tags, comment };
+  return { memo_type, mood, tags, comment, car_model };
 }
 
 async function saveMemoFromModal() {
@@ -476,6 +481,10 @@ function buildMemoFilterBar() {
       <label class="mp-filter-lbl">🚉 駅名</label>
       <input type="search" class="mp-filter-input" id="mp-memo-fil-station" placeholder="例: 八王子 / 八王子 東京" title="駅名のみ / 駅名 都道府県 (空白区切り、AND 検索)" value="${escapeHtml(M.filter.station || '')}" oninput="updateMemoFilter('station',this.value)">
     </div>
+    <div class="mp-filter-row">
+      <label class="mp-filter-lbl">🚆 車両</label>
+      <input type="search" class="mp-filter-input" id="mp-memo-fil-car" placeholder="例: E235 / キハ110" title="車両形式の部分一致 (大文字小文字不問)" value="${escapeHtml(M.filter.car_model || '')}" oninput="updateMemoFilter('car_model',this.value)">
+    </div>
   `;
   return bar;
 }
@@ -493,6 +502,11 @@ function applyMemoFilters(memos) {
     if (M.filter.mood !== 'all' && m.mood !== M.filter.mood) return false;
     if (res) {
       if (!m.station_id || !res.ids.has(m.station_id)) return false;
+    }
+    // v360: 車両形式 substring 検索 (大文字小文字不問)
+    const cmq = (M.filter.car_model || '').trim();
+    if (cmq) {
+      if (!m.car_model || !m.car_model.toLowerCase().includes(cmq.toLowerCase())) return false;
     }
     return true;
   });
@@ -540,6 +554,7 @@ export function memoCardHtml(memo) {
         ${updatedNote}
       </div>
       ${where ? `<div class="mp-memo-where">${where}</div>` : ''}
+      ${memo.car_model ? `<div class="mp-memo-car" style="font-size:11px;color:var(--silver);margin-top:2px">🚆 <span style="font-family:'DM Mono',monospace">${escapeHtml(memo.car_model)}</span></div>` : ''}
       ${memo.comment ? `<div class="mp-memo-comment">${escapeHtml(memo.comment)}</div>` : ''}
       ${tagsHtml ? `<div class="mp-memo-tags">${tagsHtml}</div>` : ''}
       ${photoBit}
