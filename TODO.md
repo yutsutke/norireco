@@ -133,6 +133,7 @@ git log --oneline -20
   - **Phase 4** (未着手): Notion §2.1 に新データソース追記
   - ✅ 車両形式検索 UI (v357): 旅程タブに「🚆 車両」input を追加 (`t.car_model` substring 検索、大文字小文字不問、駅名検索と AND 関係)
   - ✅ 旅程編集モーダルの per-seg フル cascade (v383): 種別 select / 列車 dropdown / 列車名手入力 (__custom__) / 車両形式 dropdown + 手入力 を各区間に。記録モード v375 と同じカスケード挙動
+  - 🟢 編集モーダルの cat 切替時に「以前の cat の値が DOM に残る」(local→express で 211系 が車両入力に残る等)。`applyTripEditSegCategoryVisibility` の cat=other 分岐に input clear を足すか、もしくは Notion §1.3「trip 詳細エディタ抽出」(B カテゴリ) に合流させて記録モードと同じ `selectedXxxBySl` Map 管理に統一するかは要判断。優先度低
 
 - [ ] **駅 UI の情報ハブ化（4領域パネル）**
   - 駅タップで以下を表示:
