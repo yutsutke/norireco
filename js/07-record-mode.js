@@ -1149,12 +1149,18 @@ async function saveMultiSegmentTrip() {
   const tripSegments = [];
   let totalStations = 0;
   const lineNames = [];
-  // v371: 保存直前に「現在 active な chip」の dropdown 値を Map に同期。
-  //   ユーザーが最後に触った chip の選択は selectSlChip 切替を経ずに保存されるため。
+  // v371→v374: 保存直前に「現在 active な chip」の SL dropdown DOM 値を Map に同期。
+  //   T.selectedCarModel は cascade 専用なので参照しない。DOM (#rec-sl-vehicle-select) から直接読む。
   {
     const _T = NORIRECO.trains;
     _T.selectedCarModelBySl = _T.selectedCarModelBySl || {};
-    if (_T.activeChipSlId) _T.selectedCarModelBySl[_T.activeChipSlId] = _T.selectedCarModel || null;
+    const slSel = document.getElementById('rec-sl-vehicle-select');
+    const slCustom = document.getElementById('rec-sl-vehicle-custom');
+    if (_T.activeChipSlId && slSel) {
+      let cur = slSel.value;
+      if (cur === '__custom__' && slCustom) cur = (slCustom.value || '').trim();
+      _T.selectedCarModelBySl[_T.activeChipSlId] = cur || null;
+    }
   }
   if (!isVisitOnly) {
     for (const seg of R.segments) {
@@ -1168,8 +1174,11 @@ async function saveMultiSegmentTrip() {
       // seg.line が特定済みなので同名駅問題に当たらず一意に id 化できる。
       const fromStId = seg.line.stations[fromIdx].id || null;
       const toStId = seg.line.stations[toIdx].id || null;
-      // v371: 系統別車両形式を seg.car_model に埋める。Map に値が無ければ null。
-      const segCarModel = NORIRECO.trains.selectedCarModelBySl?.[seg.line.id] || null;
+      // v371→v374: 系統別車両形式を seg.car_model に埋める。
+      //   優先順: SL chip 個別選択 (Map) → cascade の trip 単位 car_model (列車種別「特急」等での共通指定) → null
+      const segCarModel = NORIRECO.trains.selectedCarModelBySl?.[seg.line.id]
+                       || NORIRECO.trains.selectedCarModel
+                       || null;
       tripSegments.push({
         lineId: seg.line.id,
         from: seg.from.name, to: seg.to.name,
@@ -1338,16 +1347,19 @@ async function saveMultiSegmentTrip() {
     train_id: NORIRECO.trains.selectedTrainId,
     train_name: NORIRECO.trains.selectedTrainName,
     train_category: NORIRECO.trains.selectedTrainCategory,
-    // v371: trip.car_model は「旅程レベルの代表値」。
-    //   - 全 segment が同じ非 null car_model なら → その値
-    //   - 違う車両が混在 or 一部 null → null (segments[].car_model を一次情報として参照)
-    //   - visit-only や segments 空のとき → 旧仕様で T.selectedCarModel
+    // v371→v374: trip.car_model は「旅程レベルの代表値」。
+    //   v374 で seg.car_model が cascade 値の fallback を受け取るようになったので、
+    //   segments の集約だけ見れば「全 segment 同じ非 null 値」になっていれば代表値として有効。
+    //   - segments 空 (visit-only): T.selectedCarModel をそのまま (cascade の値)
+    //   - 全 segment 同じ非 null 値: その値
+    //   - 全 segment null: T.selectedCarModel (= ユーザーは触ったが seg fallback 走らず → 念のため fallback)
+    //   - 混在 (異なる値あり): null (segments[].car_model を一次情報として参照)
     car_model: (() => {
       if (!tripSegments || tripSegments.length === 0) return NORIRECO.trains.selectedCarModel;
       const set = new Set(tripSegments.map(s => s.car_model || ''));
       if (set.size === 1) {
         const v = [...set][0];
-        return v || null;
+        return v || NORIRECO.trains.selectedCarModel || null;
       }
       return null;
     })(),
@@ -1541,6 +1553,10 @@ window.onRecTrainToggle = onRecTrainToggle;
 // v352: cat に応じて sl-block / cascade の表示を排他切替。
 // 02-data-loaders.js の onTrainCategoryChange から window.applyRecTrainCategory(cat) で呼ばれる。
 // export せず window 公開のみ (02 → 07 の import で循環参照を作らない)
+// v374: 特急などでも乗換ありの旅程で系統別車両形式を選べるよう、cascade と SL chip を併存表示。
+//   元 v352 の「排他」は「列車種別の cascade と SL chip の dropdown は同時に出さない」設計だったが、
+//   ユスケから「特急選ぶと一つしか選べない」と指摘 → 排他撤回。
+//   onSlVehicleChange/CustomInput のクリアロジック (車両選択時に列車種別をクリア) も併せて撤廃。
 function applyRecTrainCategory(cat) {
   const slBlock = document.getElementById('rec-sl-vehicle-block');
   const cascade = document.getElementById('rec-train-cascade');
@@ -1549,8 +1565,10 @@ function applyRecTrainCategory(cat) {
     if (cascade) cascade.style.display = 'none';
     populateSlVehiclePicker();
   } else if (cat) {
-    if (slBlock) slBlock.style.display = 'none';
+    // v374: 特急等でも slBlock を併存表示 (系統別車両形式選択を可能に)
+    if (slBlock) slBlock.style.display = 'block';
     if (cascade) cascade.style.display = 'block';
+    populateSlVehiclePicker();
     // cascade 内部 (列車 dropdown) は 02 側の onTrainCategoryChange が populate する
   } else {
     // 「指定しない」
@@ -1646,12 +1664,19 @@ function populateSlVehiclePicker() {
 function selectSlChip(slId) {
   const T = NORIRECO.trains;
   T.selectedCarModelBySl = T.selectedCarModelBySl || {};
-  // v371: 切替前に現在 chip の選択を Map に保存。新 chip の値を Map から復元。
-  if (T.activeChipSlId && T.activeChipSlId !== slId) {
-    T.selectedCarModelBySl[T.activeChipSlId] = T.selectedCarModel || null;
+  // v371→v374: 切替前に「現在 chip の SL dropdown DOM 値」を Map に save。
+  //   T.selectedCarModel は cascade (列車種別) と共有してしまうと衝突するので参照しない。
+  //   DOM (#rec-sl-vehicle-select) の現在値を一次情報として読む。
+  {
+    const prevSel = document.getElementById('rec-sl-vehicle-select');
+    const prevCustom = document.getElementById('rec-sl-vehicle-custom');
+    if (T.activeChipSlId && T.activeChipSlId !== slId && prevSel) {
+      let cur = prevSel.value;
+      if (cur === '__custom__' && prevCustom) cur = (prevCustom.value || '').trim();
+      T.selectedCarModelBySl[T.activeChipSlId] = cur || null;
+    }
   }
   T.activeChipSlId = slId;
-  T.selectedCarModel = T.selectedCarModelBySl[slId] || null;
   const bySlId = NORIRECO.serviceLineVehicles?.bySlId || {};
   // chip の active 切替
   document.querySelectorAll('[id^="rec-sl-chip-"]').forEach(el => {
@@ -1685,17 +1710,17 @@ function selectSlChip(slId) {
   selectEl.innerHTML = html;
   // 候補ゼロのときは説明文を出す
   if (emptyEl) emptyEl.style.display = (vehicles.length === 0) ? 'block' : 'none';
-  // 既存の T.selectedCarModel が新しい候補にあれば維持、無ければ custom input の値か null
-  // v371: T は関数冒頭で宣言済み (selectedCarModelBySl 同期のため)
+  // v374: Map から新 chip の値を読んで dropdown 復元 (T.selectedCarModel に依存しない)
   const customEl = document.getElementById('rec-sl-vehicle-custom');
-  const inDropdown = vehicles.some(v => v.vehicle === T.selectedCarModel);
-  if (T.selectedCarModel && inDropdown) {
-    selectEl.value = T.selectedCarModel;
+  const restored = T.selectedCarModelBySl[slId] || null;
+  const inDropdown = vehicles.some(v => v.vehicle === restored);
+  if (restored && inDropdown) {
+    selectEl.value = restored;
     if (customEl) { customEl.style.display = 'none'; customEl.value = ''; }
-  } else if (T.selectedCarModel) {
+  } else if (restored) {
     // 自由入力済の値が残っていれば custom モードに復元
     selectEl.value = '__custom__';
-    if (customEl) { customEl.style.display = 'block'; customEl.value = T.selectedCarModel; }
+    if (customEl) { customEl.style.display = 'block'; customEl.value = restored; }
   } else {
     selectEl.value = '';
     if (customEl) { customEl.style.display = 'none'; customEl.value = ''; }
@@ -1707,28 +1732,22 @@ function onSlVehicleChange() {
   const customEl = document.getElementById('rec-sl-vehicle-custom');
   if (!selectEl) return;
   const T = NORIRECO.trains;
+  T.selectedCarModelBySl = T.selectedCarModelBySl || {};
   const v = selectEl.value;
+  // v374: SL chip dropdown は selectedCarModelBySl 専用。T.selectedCarModel (cascade 専用) は触らない。
+  let mapValue;
   if (v === '__custom__') {
-    // 自由入力モードに切替: input を表示 + focus、T.selectedCarModel は input の値で上書き (まずは現在値を保つ)
     if (customEl) {
       customEl.style.display = 'block';
-      customEl.value = T.selectedCarModel && !isInDropdown(T.selectedCarModel, selectEl) ? T.selectedCarModel : '';
-      T.selectedCarModel = customEl.value || null;
+      customEl.value = '';
       customEl.focus();
     }
+    mapValue = null;
   } else {
     if (customEl) { customEl.style.display = 'none'; customEl.value = ''; }
-    T.selectedCarModel = v || null;
+    mapValue = v || null;
   }
-  // v371: 系統別 Map にも書き込み (active chip に紐付け)
-  T.selectedCarModelBySl = T.selectedCarModelBySl || {};
-  if (T.activeChipSlId) T.selectedCarModelBySl[T.activeChipSlId] = T.selectedCarModel || null;
-  // 新 UI で選んだら列車種別はクリア (普通電車パターン)
-  if (T.selectedCarModel) {
-    T.selectedTrainId = null;
-    T.selectedTrainName = null;
-    T.selectedTrainCategory = null;
-  }
+  if (T.activeChipSlId) T.selectedCarModelBySl[T.activeChipSlId] = mapValue;
 }
 window.onSlVehicleChange = onSlVehicleChange;
 
@@ -1741,14 +1760,9 @@ function onSlVehicleCustomInput() {
   const customEl = document.getElementById('rec-sl-vehicle-custom');
   if (!customEl) return;
   const T = NORIRECO.trains;
-  T.selectedCarModel = customEl.value.trim() || null;
-  // v371: 系統別 Map にも書き込み
   T.selectedCarModelBySl = T.selectedCarModelBySl || {};
-  if (T.activeChipSlId) T.selectedCarModelBySl[T.activeChipSlId] = T.selectedCarModel || null;
-  if (T.selectedCarModel) {
-    T.selectedTrainId = null;
-    T.selectedTrainName = null;
-    T.selectedTrainCategory = null;
-  }
+  // v374: SL chip 自由入力は selectedCarModelBySl 専用。T.selectedCarModel は cascade 専用。
+  const mapValue = customEl.value.trim() || null;
+  if (T.activeChipSlId) T.selectedCarModelBySl[T.activeChipSlId] = mapValue;
 }
 window.onSlVehicleCustomInput = onSlVehicleCustomInput;

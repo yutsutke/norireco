@@ -44,6 +44,46 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 224. v374 — 記録モード「特急選択時も系統別車両形式」対応 + state 分離 (2026-05-27)
+
+### 背景
+
+v371 の「系統別車両形式」実装後、ユスケから「普通を選ぶとそれぞれで選べるけど、特急を選ぶと一つしか選べない」との指摘。
+
+原因は v352 で導入した「列車種別 cascade と SL chip 排他表示」設計。普通電車 (`cat='local'`) のとき SL chip 表示、特急など (`cat='shinkansen'` etc) のとき cascade 表示、と完全に分けていたため、特急選択時は SL chip が出ず系統別選択できなかった。
+
+### 設計判断
+
+- **排他撤回 → 併存**: `applyRecTrainCategory()` で「指定しない以外」は SL chip + cascade 両方を表示。特急で列車 (あずさ) を選びつつ、系統別に車両形式 (E353 / E257 等) を選べる
+- **state 分離**: 元 v371 では `T.selectedCarModel` を SL chip dropdown と cascade で共有してしまっていた。これが衝突の原因:
+  - cascade で E353 を選ぶ → `T.selectedCarModel = 'E353系'`
+  - SL chip B に切替 → `selectedCarModelBySl[A] = T.selectedCarModel = 'E353系'` (cascade 値が SL Map に紛れ込む)
+- v374 で完全分離:
+  - `T.selectedCarModel`: cascade (列車種別 + 車両形式) 専用、trip 全体の代表
+  - `T.selectedCarModelBySl`: SL chip 経由のみ、per-segment 個別指定
+  - SL chip dropdown 操作 (`onSlVehicleChange` / `onSlVehicleCustomInput`) は DOM value 経由で Map 同期、`T.selectedCarModel` には書かない
+  - `selectSlChip` 切替時の save / restore も DOM (`#rec-sl-vehicle-select.value`) 一次情報、`T.selectedCarModel` 参照しない
+- **saveTrip 集約ルール強化**: `seg.car_model = Map[lineId] || T.selectedCarModel || null` の fallback で「cascade で E353 を選んだだけ」のときも全 segment に E353 が入る。trip.car_model 集約は v371 と同様だが「全 null かつ cascade 値あり」のときも cascade 値を採用
+- **クリアロジック撤廃**: 旧 `onSlVehicleChange` の「車両を選んだら列車種別をクリア (普通電車パターン)」は cascade 併存設計と矛盾するので削除
+
+### 変更
+
+- `js/07-record-mode.js`:
+  - `applyRecTrainCategory()`: `else if (cat)` ブロックで `slBlock.style.display = 'block'` + `populateSlVehiclePicker()` 呼び出しを追加
+  - `selectSlChip()`: 切替 save / restore を `#rec-sl-vehicle-select.value` 経由に変更、`T.selectedCarModel` 参照削除
+  - `onSlVehicleChange()` / `onSlVehicleCustomInput()`: `T.selectedCarModel` を更新せず Map のみ更新、クリアロジック削除
+  - `saveTrip` 内 save 直前同期: DOM value から Map に書く方式に
+  - `saveTrip` 内 `segCarModel`: `Map[lineId] || T.selectedCarModel || null` で cascade fallback
+  - `saveTrip` 内 `trip.car_model` 集約: 全 null のとき cascade 値 fallback
+
+### 教訓
+
+- **state 共有は衝突の元**。元 v371 で「SL chip dropdown と cascade dropdown は別 DOM だが同じ `T.selectedCarModel` を読み書きしていた」のは設計ミス。今回完全分離
+- 「排他 UI で同じ state を共有」は OK だが、「併存 UI で同じ state を共有」は破綻する。UI モード変更 (排他 → 併存) のときは state も見直すべき
+- DOM 一次情報の原則: ユーザーが触る dropdown の値は DOM (`element.value`) が真。JS の state はそのキャッシュ。dropdown 同士が複数あって state を共有すると、どちらが「真」か曖昧になる。今回は SL chip dropdown は DOM 一次、cascade dropdown は state 一次、と分けた
+
+---
+
 ## 223. v373 — 旅程編集モーダルも per-segment 車両形式編集に対応 (2026-05-27)
 
 ### 背景
