@@ -30,3 +30,5 @@ ORDER BY column_name;
 -- 期待値:
 --   car_model  | text | YES
 --   train_name | text | YES
+
+-- Applied: 2026-05-27 by yutsutke
