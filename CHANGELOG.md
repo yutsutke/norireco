@@ -40,6 +40,50 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 205. v355 — 旅程編集モーダル整理: カテゴリ「普通」先頭 + 列車名 input を「普通」/「指定しない」で hide (2026-05-26)
+
+### 背景
+
+v354 で旅程一覧カードに車両形式表示を追加した後、ユスケから「旅程タブの編集画面を修正して」との要望。スクショでは「列車種別」カテゴリ dropdown で「🚉 普通」選択中なのに「列車名 (例: あずさ9号、富士回遊3号)」placeholder の input が空で残っていて、普通電車記録の編集で違和感があった。記録モーダル側 (v350-v354) と編集モーダル側で UI 哲学が揃っていなかった。
+
+### 設計判断
+
+- **案 A (軽い修正) 採用**: マニアトグル + sl レーンへの全面置換 (案 B) は工数大きい。編集モーダルは「すでに記録された値を直す」用途なので、簡易入力 (text input ベース) のまま、カテゴリ駆動で入力欄を出し分ける程度に留める
+- **「普通」は列車名 input 不要**: 普通電車に固有列車名はない (`local` カテゴリは trains_master 0 件) → hide が筋
+- **「指定しない」は両方 hide**: 「カテゴリ未指定なら列車名・車両形式も記録しない」が自然
+- **hide 時は value も '' clear**: saveTripEdit が trim 後 null にする仕様なので、hide 状態の隠れた input value が予期せず保存されるのを防ぐ
+- **「普通」先頭ソート**: v353 (記録モーダル) と同じ整理を編集モーダルにも適用
+
+### 変更
+
+- [noritetsu-map.html:1461-1467](noritetsu-map.html#L1461):
+  - `#trip-edit-train-category` に `onchange="onTripEditCategoryChange()"` を追加
+  - `#trip-edit-train-name` / `#trip-edit-car-model` の inline style に `display:none` を追加 (default hide、JS が show を切替)
+- [js/13b-trips.js:324](js/13b-trips.js#L324) `openTripEditModal`:
+  - カテゴリ dropdown 構築前に `Object.entries(cats)` を `local` 先頭 stable sort
+  - 末尾で `applyTripEditCategoryVisibility(trip.train_category || '')` を呼んで現状反映
+- [js/13b-trips.js](js/13b-trips.js) 新規関数:
+  - `applyTripEditCategoryVisibility(cat)` (internal): `!cat` → 両方 hide / `cat === 'local'` → name hide + car show / それ以外 → 両方 show。hide 時は value も clear
+  - `onTripEditCategoryChange()` (window 公開): select onchange ハンドラ
+- sw.js: CACHE_VERSION 'v354' → 'v355'
+
+### 検証 (Claude Preview)
+
+mock TRAIN_CATEGORIES を仕込んで dropdown populate 後の挙動確認:
+
+| 操作 | name | car | name.value | car.value |
+|---|---|---|---|---|
+| dropdown order | `['', 'local', 'shinkansen', 'limited_express', 'rapid', 'express', 'sleeper']` | | | |
+| 「指定しない」 | none | none | '' | '' |
+| 「普通」 | none | block | '' | '' |
+| 「特急」 | block | block | (入力可) | (入力可) |
+| 「新幹線」 | block | block | (入力可) | (入力可) |
+| 「特急」→ 値入力 → 「指定しない」 | none | none | '' (clear) | '' (clear) |
+
+全パターン期待通り。
+
+---
+
 ## 204. v354 — 旅程カードに車両形式を表示 (普通=車両形式のみ / 特急=列車名+車両形式) (2026-05-26)
 
 ### 背景

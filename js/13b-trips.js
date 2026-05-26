@@ -321,11 +321,17 @@ function openTripEditModal(tripId) {
   if (arrInp) arrInp.value = toHm(trip.arrive_time);
 
   // v226: 🚆 列車種別 — TRAIN_CATEGORIES から category dropdown 構築
+  // v355: 「普通」を先頭に (v353 と同じ整理)。カテゴリ別に列車名 / 車両形式 input を出し分け
   const catSel = document.getElementById('trip-edit-train-category');
   if (catSel) {
     let catHtml = '<option value="">指定しない</option>';
     const cats = (NORIRECO.trains && NORIRECO.trains.TRAIN_CATEGORIES) || {};
-    for (const [k, v] of Object.entries(cats)) {
+    const catEntries = Object.entries(cats).sort((a, b) => {
+      if (a[0] === 'local') return -1;
+      if (b[0] === 'local') return 1;
+      return 0;
+    });
+    for (const [k, v] of catEntries) {
       catHtml += `<option value="${k}">${v.icon || ''} ${v.label || k}</option>`;
     }
     catSel.innerHTML = catHtml;
@@ -335,6 +341,8 @@ function openTripEditModal(tripId) {
   const carModelInp = document.getElementById('trip-edit-car-model');
   if (trainNameInp) trainNameInp.value = trip.train_name || '';
   if (carModelInp) carModelInp.value = trip.car_model || '';
+  // v355: カテゴリに応じて input を出し分け
+  applyTripEditCategoryVisibility(trip.train_category || '');
 
   // v258: 📷 写真エリアを再生成 (createPhotoArea を使って最大 5 枚)
   if (_tripEditPhotoArea) {
@@ -356,6 +364,30 @@ function openTripEditModal(tripId) {
 }
 window.openTripEditModal = openTripEditModal;
 NORIRECO.mypage.openTripEditModal = openTripEditModal;
+
+// v355: 編集モーダルのカテゴリ select onchange ハンドラ。
+// 指定しない → 両方 hide / 普通 → 列車名 hide + 車両形式 show / それ以外 → 両方 show
+// hide 時は value を '' に clear して saveTripEdit で null になるように
+function applyTripEditCategoryVisibility(cat) {
+  const trainNameInp = document.getElementById('trip-edit-train-name');
+  const carModelInp  = document.getElementById('trip-edit-car-model');
+  const showName = !!(cat && cat !== 'local');
+  const showCar  = !!cat;
+  if (trainNameInp) {
+    trainNameInp.style.display = showName ? 'block' : 'none';
+    if (!showName) trainNameInp.value = '';
+  }
+  if (carModelInp) {
+    carModelInp.style.display = showCar ? 'block' : 'none';
+    if (!showCar) carModelInp.value = '';
+  }
+}
+
+function onTripEditCategoryChange() {
+  const cat = document.getElementById('trip-edit-train-category')?.value || '';
+  applyTripEditCategoryVisibility(cat);
+}
+window.onTripEditCategoryChange = onTripEditCategoryChange;
 
 function closeTripEditModal() {
   document.getElementById('trip-edit-modal')?.classList.remove('open');
