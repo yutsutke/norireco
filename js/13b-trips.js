@@ -222,6 +222,27 @@ function applyTripFilters(trips) {
   const _stq = (NORIRECO.mypage.state.mpTripFilter.station || '').trim();
   const _stResult = _stq ? resolveStationQuery(_stq) : null;
   const _stScope = NORIRECO.mypage.state.mpTripFilter.stationScope || { from:true, end:true, transfer:true, pass:true };
+  // v369: 路線 substring 検索 — SERVICE_LINES の name にマッチする lineId の Set を 1 回だけ構築。
+  //   segments[].lineName は記録時に null になりがちなので一次情報は lineId。
+  //   候補 id は SERVICE_LINES.id だけでなく candidateN02Ids も含める (`s_*` ベース + 旧 N02 ID 両対応)。
+  const _lnq = (NORIRECO.mypage.state.mpTripFilter.line || '').trim();
+  let _lnMatchIds = null;
+  if (_lnq) {
+    const lnqLower = _lnq.toLowerCase();
+    const SL = NORIRECO.data?.SERVICE_LINES || [];
+    _lnMatchIds = new Set();
+    for (const sl of SL) {
+      const name = (sl.name || '').toLowerCase();
+      const id = (sl.id || '').toLowerCase();
+      if (name.includes(lnqLower) || id.includes(lnqLower)) {
+        _lnMatchIds.add(sl.id);
+        if (Array.isArray(sl.candidateN02Ids)) {
+          for (const cid of sl.candidateN02Ids) _lnMatchIds.add(cid);
+        }
+      }
+    }
+    if (_lnMatchIds.size === 0) _lnMatchIds = new Set(['__nomatch__']);
+  }
   const filtered = trips.filter(t => {
     // 記録種別
     if (NORIRECO.mypage.state.mpTripFilter.auth === 'verified' && !t.verified) return false;
@@ -272,16 +293,11 @@ function applyTripFilters(trips) {
     if (cmq) {
       if (!t.car_model || !t.car_model.toLowerCase().includes(cmq.toLowerCase())) return false;
     }
-    // v369: 路線 substring 検索。segments[].lineName / lineId のいずれかに含めば一致
-    const lnq = (NORIRECO.mypage.state.mpTripFilter.line || '').trim();
-    if (lnq) {
+    // v369: 路線 substring 検索。segments[].lineId を SERVICE_LINES で逆引きして name と照合
+    // (lineName は記録時に null になりがちなので一次情報は lineId、name は SERVICE_LINES から引く)
+    if (_lnMatchIds) {
       const segs = Array.isArray(t.segments) ? t.segments : [];
-      const lnqLower = lnq.toLowerCase();
-      const hit = segs.some(s => {
-        const name = (s.lineName || '').toLowerCase();
-        const id = (s.lineId || '').toLowerCase();
-        return name.includes(lnqLower) || id.includes(lnqLower);
-      });
+      const hit = segs.some(s => s.lineId && _lnMatchIds.has(s.lineId));
       if (!hit) return false;
     }
     return true;

@@ -44,6 +44,31 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 220. v370 — 路線フィルタを `lineId × SERVICE_LINES` 逆引き方式に修正 (2026-05-27)
+
+### 背景
+
+v369 の路線フィルタで「東金」と入力したら 0 / 139 件になる事故。`segments[].lineName` を substring 検索する設計だったが、実際のデータ構造を確認すると `lineName` は記録時 `null` になるケースが多く (`js/17-station-actions.js:485` で `lineName: sl?.name || null`、`js/16-memos.js:595` 同様)、`lineId` (`s_*`) が一次情報だった。代わりに表示時は `SERVICE_LINES.find(l => l.id === seg.lineId)?.name` で逆引きしている (`js/13a-stats.js` 多数)。
+
+### 設計判断
+
+- 駅検索 v317 と同じパターンで実装: filter loop の外で `SERVICE_LINES` を 1 回スキャンしてマッチする `lineId` Set を構築 → loop 内では `segments[].lineId` が Set に含まれるかだけ判定 (O(L + N))
+- `candidateN02Ids` も Set に含める。SERVICE_LINES の `id` (`s_*`) と旧 N02 ID の両方が segments にあり得るため (v330 関連)
+- マッチ 0 件のときは `Set(['__nomatch__'])` を入れて all-false にする。`null` のままだと「フィルタ無効」と区別がつかない
+
+### 変更
+
+- `js/13b-trips.js:225` 付近: `_lnq` / `_lnMatchIds` を filter loop 前で構築
+- `js/13b-trips.js:272` 付近: filter callback 内は `_lnMatchIds.has(s.lineId)` だけに簡略化
+
+### 教訓
+
+- **データ構造の一次情報を確認せずに「ありそうな key」で検索するのは事故のもと**。v369 では `lineName / lineId` を OR で見ていたが、`lineName` が null 主体なら無いも同然
+- 表示用 (lineName, fromStation 等) と保存用 (lineId, station_id) でデータの「信頼度」が違う。フィルタ・検索などのロジックは保存用 (id) を一次情報として組むべき
+- 駅検索 v317 で同じ罠を踏んでいた (id Set 化したのも同じ理由)。「id 一次情報パターン」は再利用可能なテンプレートとして覚えておく
+
+---
+
 ## 219. v369 — マイページ旅程タブに「🛤 路線」substring フィルタ追加 (2026-05-27)
 
 ### 背景
