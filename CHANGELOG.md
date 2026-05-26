@@ -44,6 +44,44 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 223. v373 — 旅程編集モーダルも per-segment 車両形式編集に対応 (2026-05-27)
+
+### 背景
+
+v371 で記録モードの系統別車両形式に対応したが、マイページ旅程編集モーダル (`openTripEditModal`) は依然として trip 単位の `car_model` input 1 つだけだった。乗換ありの旅程を編集すると trip.car_model が上書きされ、v371 で保存した `segments[].car_model` との整合が崩れる潜在的問題があった (v371 STATUS で「将来課題 (Step 2)」と明記済)。
+
+ユスケから「こちらの編集画面も乗換対応に修正しましょう」との指示。
+
+### 設計判断
+
+- **per-segment 入力に集約**: segments がある旅程では各区間行に「🚆 車両形式」input を追加し、これを一次入力に。trip 単位の `#trip-edit-car-model` input は hide。記録モード v371 と思想を統一
+- **trip.car_model の集約**: v371 と同じく「全 segment 一致なら値 / 不一致なら null」で再計算。マイページ「🚆 車両」フィルタは v371 ですでに segments 走査対応済なので破綻なし
+- **visit-only / segments 空のケース**: 従来通り trip 単位 input を使う。区別は `existingSegs.length > 0 && segCarInputs.length === existingSegs.length` で安全判定
+- **dropdown 候補ピッカーは見送り**: 記録モード v347 の dropdown + 自由入力 UX は採用せず自由入力のみ。実装が重い + 編集モーダルは「後から微修正」用途が主なので自由入力で十分。要望次第で Step 2b
+- **列車種別 (train_id/train_name/train_category) は trip 単位のまま**: 新規記録モードでも trip 単位なので整合的
+
+### 変更
+
+- `js/13b-trips.js`:
+  - `openTripEditModal`: 区間表示部 (`#trip-edit-segments`) の innerHTML を改修、各行に `<input class="te-seg-car" data-seg-idx="${i}">` を生成。`_hasSegmentsForEdit` フラグで segments 有無を判定し、true のとき trip 単位 car_model input + 弟の説明 div を hide
+  - `saveTripEdit`: `document.querySelectorAll('#trip-edit-segments .te-seg-car')` で各 input 読み込み、`existingSegs.length === segCarInputs.length` のとき newSegments を構築して `tripPatch.segments` / 集約 `tripPatch.car_model` をセット
+
+### Supabase 連携
+
+- `segments` は jsonb 列 (既存)。PATCH ペイロードに `segments` を含めると上書きされる
+- v371 で新規記録時に segments[].car_model 入れてもエラー出なかったため、jsonb 列は新フィールド受け入れに問題なし
+
+### 残課題
+
+- 編集モーダルの per-seg input は自由入力のみ。記録モード相当の dropdown 候補ピッカー (service_line_vehicles.json から populate) は将来課題 (Step 2b)
+- 列車種別 (train_id/train_name) の per-segment 対応は不要 (新規でも trip 単位)。要望出てから検討
+
+### 教訓
+
+- 「将来課題」を STATUS に明記しておくと、ユーザーから自然なタイミングで指示が来る。v371 STATUS で「残: 旅程編集モーダルでの per-segment 編集は将来課題」と書いておいたのが今回のトリガに
+
+---
+
 ## 222. v372 — v371 hotfix: `const T` 二重宣言で画面真っ黒 (2026-05-27)
 
 ### 背景

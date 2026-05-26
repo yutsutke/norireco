@@ -337,17 +337,35 @@ function openTripEditModal(tripId) {
     subTitle.textContent = `${label} を編集します。`;
   }
 
-  // v226: 📍 区間 (read-only 表示)
+  // v226: 📍 区間 表示。区間そのものは read-only。
+  // v373: 各 segment 行に「🚆 車両形式」input を追加 (per-segment 編集対応)。
+  //   segments があるときは trip 単位の car_model input は hide にして、per-seg input が一次入力に。
+  //   trip.car_model は保存時に「全 segment 一致なら値 / 不一致なら null」で再集約 (v371 と同じ)。
   const segEl = document.getElementById('trip-edit-segments');
+  let _hasSegmentsForEdit = false;
   if (segEl) {
     const segs = Array.isArray(trip.segments) ? trip.segments : [];
     if (segs.length === 0) {
       // v326: name 列 DROP 後は id → MERGED_STATIONS で逆引き
       segEl.innerHTML = `<span style="color:var(--silver)">${getTripStationName(trip, 'from') || '?'} → ${getTripStationName(trip, 'to') || '?'}</span>`;
     } else {
+      _hasSegmentsForEdit = true;
+      // v371 で trip.car_model が混在時 null になる仕様のため、編集時に「初期表示は seg.car_model が
+      // なければ trip.car_model を fallback として埋める」運用にすると、不意に上書きが起きる。
+      // よって seg.car_model が無い場合は空のままにし、ユーザーが明示的に入力したものだけ保存する。
       segEl.innerHTML = segs.map((s, i) => {
         const lineLabel = s.lineName || s.lineId || '?';
-        return `<div style="margin-bottom:${i < segs.length - 1 ? '4px' : '0'}"><span style="color:var(--gold);font-size:10px">${i+1}.</span> ${s.from || '?'} → ${s.to || '?'} <span style="color:var(--silver);font-size:10px">[${lineLabel}]</span></div>`;
+        const carValue = s.car_model ? escapeAttr(s.car_model) : '';
+        const isLast = i === segs.length - 1;
+        return `
+          <div class="te-seg" style="margin-bottom:${isLast ? '0' : '10px'}">
+            <div><span style="color:var(--gold);font-size:10px">${i+1}.</span> ${s.from || '?'} → ${s.to || '?'} <span style="color:var(--silver);font-size:10px">[${lineLabel}]</span></div>
+            <div style="margin-top:4px;padding-left:18px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <span style="font-size:11px;color:var(--silver)">🚆 車両形式</span>
+              <input type="text" class="te-seg-car" data-seg-idx="${i}" value="${carValue}" placeholder="例: E235系 (任意)" style="flex:1;min-width:120px;padding:4px 8px;background:rgba(20,32,46,.8);color:var(--silver);border:1px solid var(--track);border-radius:6px;font-size:11px">
+            </div>
+          </div>
+        `;
       }).join('');
     }
   }
@@ -389,6 +407,14 @@ function openTripEditModal(tripId) {
   if (carModelInp) carModelInp.value = trip.car_model || '';
   // v355: カテゴリに応じて input を出し分け
   applyTripEditCategoryVisibility(trip.train_category || '');
+  // v373: segments があれば trip 単位の car_model input は hide (per-seg input が一次入力)。
+  //   applyTripEditCategoryVisibility 後に上書きする必要があるので最後に実行。
+  if (_hasSegmentsForEdit && carModelInp) {
+    carModelInp.style.display = 'none';
+    // 弟の説明 <div> (※ 簡易入力です…) もまとめて hide。
+    const nextDiv = carModelInp.nextElementSibling;
+    if (nextDiv && nextDiv.tagName === 'DIV') nextDiv.style.display = 'none';
+  }
   // v356: 特急など (cat !== '' && cat !== 'local') のとき、列車 dropdown の値復元
   //   - train_id あり (マスター列車)  → dropdown で該当 option 選択、train_name input は hide (shadow value は不要、value は trip.train_name 済)
   //   - train_id なし + train_name あり → dropdown="__custom__" + train_name input show
@@ -583,7 +609,29 @@ async function saveTripEdit() {
   const carRaw = (document.getElementById('trip-edit-car-model')?.value || '').trim();
   tripPatch.train_category = catRaw || null;
   tripPatch.train_name = tnameRaw || null;
-  tripPatch.car_model = carRaw || null;
+  // v373: per-segment 車両形式編集対応 (乗換ありの旅程で系統ごとに別車両を保存)。
+  //   segments があれば各 `.te-seg-car` input を読んで segments[i].car_model に書き、
+  //   trip.car_model は集約ルール (全 segment 一致なら値 / 不一致なら null、v371 と同じ)。
+  //   visit-only や segments 空のときだけ従来通り trip 直下の car_model input を使う。
+  const segCarInputs = document.querySelectorAll('#trip-edit-segments .te-seg-car');
+  const existingSegs = Array.isArray(trip.segments) ? trip.segments : [];
+  if (existingSegs.length > 0 && segCarInputs.length === existingSegs.length) {
+    const newSegments = existingSegs.map((s, i) => {
+      const v = (segCarInputs[i].value || '').trim() || null;
+      return { ...s, car_model: v };
+    });
+    tripPatch.segments = newSegments;
+    const set = new Set(newSegments.map(s => s.car_model || ''));
+    if (set.size === 1) {
+      const only = [...set][0];
+      tripPatch.car_model = only || null;
+    } else {
+      tripPatch.car_model = null;
+    }
+  } else {
+    // visit-only / segments 空: 従来通り trip 単位 input から
+    tripPatch.car_model = carRaw || null;
+  }
   // v356: train_id は dropdown 経由で取得。マスター選択時のみ非 null、__custom__ や 普通カテゴリでは null
   if (tidRaw && tidRaw !== '__custom__') {
     tripPatch.train_id = tidRaw;
