@@ -1703,6 +1703,9 @@ function populateSlVehiclePicker() {
   const targetSlId = (activeId && slIds.some(x => x.id === activeId)) ? activeId : slIds[0].id;
   selectSlChip(targetSlId);
 }
+// v375: 02-data-loaders.js の onTrainCategoryChange から window.populateSlVehiclePicker で呼べるよう公開。
+//   export せず window 経由のみ (02 → 07 の import で循環参照を作らない)
+window.populateSlVehiclePicker = populateSlVehiclePicker;
 
 function selectSlChip(slId) {
   const T = NORIRECO.trains;

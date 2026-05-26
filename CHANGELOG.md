@@ -44,6 +44,25 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 226. v376 — v375 hotfix: `window.populateSlVehiclePicker` 未公開 (2026-05-27)
+
+### 背景
+
+v375 で `02-data-loaders.js` の `onTrainCategoryChange` から `window.populateSlVehiclePicker()` を呼ぶように変えたが、07 側で `window.populateSlVehiclePicker = ...` を書き忘れた。結果、カテゴリ「観光列車」「特急」等を選んでも cascade dropdown が populate されず、ユーザーが chip を再クリックするまで列車 dropdown が出ない (chip クリック経由の `selectSlChip` で populate される)。
+
+ユスケから「特急を選択すぐには次のカスケードはでない / 五日市線をクリックすると次のカスケードが出る」と現象報告。
+
+### 変更
+
+- `js/07-record-mode.js:1705`: `window.populateSlVehiclePicker = populateSlVehiclePicker;` を追加
+
+### 教訓
+
+- 02→07 の循環 import を避けて window 経由で関数を渡す設計は維持しているが、「window. に exposed すべき関数を書き忘れる」事故が起きやすい
+- 動作確認できない (preview の ES module キャッシュ問題) と、こういう「呼ばれてるはずだが function が undefined」型のバグが本番に出る。今後 `window.xxx` 公開漏れを Stop hook で機械チェックする案を検討する価値あり (TODO 候補)
+
+---
+
 ## 225. v375 — 記録モード「区間 → カスケード」順に再編 + 完全 per-segment 化 (2026-05-27)
 
 ### 背景
