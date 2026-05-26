@@ -40,6 +40,50 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 215. v365 — 記録モード: 別系統 2 駅選択時に乗換駅候補を自動提案 (2026-05-27)
+
+### 背景
+
+記録モードで A 駅 (例: 浅草) と B 駅 (例: 新宿) を選ぶと、両方を含む単一の営業系統が無い場合「⚠️ 共通する運行系統がありません(乗換可能な駅を間に追加してください)」と表示されるだけで行き止まりだった。ユーザーは自分で乗換駅を思い出して間にタップする必要があり、土地勘の無い地域では特に詰まる。1 hop で繋がる経路は機械的に列挙できるので、候補を chip で並べてタップ 1 つで挿入できるようにする。
+
+### 設計判断
+
+- **1 hop only (v1)**: 「a を含む系統 linesA × b を含む系統 linesB」を直交で見て、両方に乗る駅 x を抽出する素直な実装。Japan の都市鉄道網だと 95%+ のケースで 1 hop で繋がるはず (例: 札幌 ↔ 鹿児島中央 のような長距離だけ落ちる)。2 hop は UI が複雑化するので必要が出たら v2 で
+- **駅一致は id ベース (v293 で付与した `sl.stations[].id`)**: 同名異所の高松 3 駅問題 / 同名異所の伊勢崎 (東武・JR) 等で「物理的には乗換できない同名駅」を候補から除外できる。id 無いケースは name fallback (極稀)
+- **ソートは「総駅数」昇順**: a→x along lineA + x→b along lineB の合計駅数。rec-panel の「合計 N駅」表示と完全一致させるため、乗換駅は 2 系統ぶん重複カウント (重複除外で 1 計算後に表示と 1 駅ズレた → 即修正)
+- **chip タップで自動 pre-select**: 挿入と同時に `R.pairLineChoices` に lineA/lineB を set。dropdown で上書きはできる。「ユーザーは新宿乗換を選んだ → 銀座線→中央線快速を勝手に決めるのは余計」とも考えたが、勝手に決めて「気に入らなければ dropdown で変更」のほうが圧倒的に手数少ない
+- **dedupe (駅単位)**: 同じ x を複数の (lineA, lineB) ペアが指す (例: 新宿 = 山手線→中央線 / 山手線→丸ノ内線 / 山手線→小田急) ことが頻発するので、駅ごとに最良 (totalStations 最小) のみ採用
+- **Top 5**: モバイル rec-panel (max-height:50vh) に収まる範囲。それ以上は情報過多
+
+### 変更
+
+- [js/07-record-mode.js](js/07-record-mode.js):
+  - `findCommonServiceLines` 直下に新規 3 関数を追加:
+    - `resolveSelectionStationId(st)` — R.selection の `{name, lat, lon}` から `MERGED_STATIONS` の駅 id を逆引き (1e-5 tolerance)
+    - `findTransferCandidates(a, b, maxResults=5)` — 1 hop 乗換候補を totalStations 昇順で返す。id ベース判定 + name fallback、駅単位 dedupe
+    - `insertTransferStation(pairIdx, name, lat, lon, lineAId, lineBId)` — R.selection に挿入 + 既存 pairLineChoices を +1 シフト + lineA/lineB を pre-select。window 公開 (chip onclick から呼ぶため)
+  - `refreshRecPanel` の `seg.error` 分岐を全面置換: 旧「乗換可能な駅を間に追加してください」テキストを撤廃し、`findTransferCandidates` の結果を縦並びチップで提示。lineA・lineB の色付きドット + 系統名 + 合計駅数を 1 chip に集約
+  - 候補ゼロのときは「1 回乗換で繋がる経路が見つかりません。経由駅を手動で追加してください」とガイダンス
+- [sw.js](sw.js): CACHE_VERSION v363 → v365 (v364 は no-deploy だった)
+
+### 検証
+
+- 浅草 → 新宿 (1 hop で繋がる典型例) で候補が出るか preview_eval で確認:
+  - 神田 (銀座線 → 中央本線快速) 11駅 ← 最短
+  - 秋葉原 (常磐新線 → 中央・総武各駅停車) 13駅
+  - 浅草橋 (都営浅草線 → 中央・総武各駅停車) 14駅
+  - 上野 (銀座線 → 山手線) 17駅
+  - 大門 (都営浅草線 → 都営大江戸線) 18駅
+  - 5 件で総駅数昇順、現実的にも妥当な順序
+- 神田 chip をクリック → R.selection に `['浅草', '神田', '新宿']` 挿入、segments が `銀座線 浅草→神田 (7駅)` + `中央本線快速 神田→新宿 (4駅)` に分かれ、rec-panel 下部に「合計 11駅 / 乗換 1回」と表示。chip 内の「合計 11駅」と完全一致
+
+### 残課題
+
+- 2 hop 乗換 (e.g. 札幌 ↔ 鹿児島中央) は候補ゼロのまま「手動追加してください」フォールバック。需要が出たら 2 hop も実装 (UI 設計をどうするかが論点 — 経由 2 駅をまとめて 1 chip にするか、2 段階で出すか)
+- through_lines (直通系統) は SERVICE_LINES の独立系統として表現されているため、「実質乗換不要」な区間も「乗換候補」として出る可能性。例: 副都心線 ↔ 東急東横線 の渋谷。今回触らず、必要なら through_lines を見て「直通あり」表示を追加
+
+---
+
 ## 214. v364 (no deploy) — CHANGELOG 行数チェックを Stop hook → セッション末手続きに移管 (2026-05-27)
 
 ### 背景

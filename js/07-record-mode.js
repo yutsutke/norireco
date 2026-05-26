@@ -160,6 +160,100 @@ function findCommonServiceLines(stations) {
   });
 }
 
+// v365: R.selection の station ({name, lat, lon}) から merged_stations の id を解決。
+// 同名異所の駅 (例: 高松 3 駅) を区別するため、name + lat/lon マッチで一意に。
+function resolveSelectionStationId(st) {
+  const MS = NORIRECO.data?.MERGED_STATIONS;
+  if (!Array.isArray(MS) || !st) return null;
+  const ms = MS.find(m => m.name === st.name
+    && Math.abs(m.lat - st.lat) < 1e-5 && Math.abs(m.lon - st.lon) < 1e-5);
+  return ms?.id || null;
+}
+
+// v365: 別系統の 2 駅を選んだとき、1 hop で繋がる乗換駅候補を返す。
+// - a/b の id ベース判定 (resolveSelectionStationId) で a を含む系統 linesA / b を含む系統 linesB を列挙
+// - lineA × lineB の組合せごとに、lineA・lineB 両方に乗る駅 x (a/b 以外) を抽出
+// - 駅一致は v293 で付与した sl.stations[].id ベース (同名異所の高松問題回避)、id 無ければ name fallback
+// - 駅ごとに dedupe (同じ x が複数経路で出るときは「総駅数最小」のみ採用)
+// - 総駅数 = (a→x along lineA) + (x→b along lineB) で昇順ソート、Top N 返す
+//   (rec-panel の「合計 N駅」表示と同じく、乗換駅を 2 系統ぶん重複カウント。これで chip と
+//    挿入後表示が一致する)
+function findTransferCandidates(a, b, maxResults = 5) {
+  const SL = NORIRECO.data.SERVICE_LINES || [];
+  if (SL.length === 0) return [];
+
+  const aId = resolveSelectionStationId(a);
+  const bId = resolveSelectionStationId(b);
+
+  const indexOnLine = (line, target, targetId) => {
+    if (targetId) {
+      const i = line.stations.findIndex(s => s.id === targetId);
+      if (i >= 0) return i;
+    }
+    return line.stations.findIndex(s => s.name === target.name);
+  };
+
+  const linesA = SL.filter(sl => indexOnLine(sl, a, aId) >= 0);
+  const linesB = SL.filter(sl => indexOnLine(sl, b, bId) >= 0);
+  if (linesA.length === 0 || linesB.length === 0) return [];
+
+  // station key → 最良候補 (totalStations 最小)
+  const bestByStation = new Map();
+  for (const lineA of linesA) {
+    const aIdx = indexOnLine(lineA, a, aId);
+    for (let i = 0; i < lineA.stations.length; i++) {
+      if (i === aIdx) continue;
+      const x = lineA.stations[i];
+      if (x.name === a.name || x.name === b.name) continue;
+      const stationsA = Math.abs(i - aIdx) + 1;
+      for (const lineB of linesB) {
+        if (lineB.id === lineA.id) continue;
+        const xIdxOnB = x.id
+          ? lineB.stations.findIndex(s => s.id === x.id)
+          : lineB.stations.findIndex(s => s.name === x.name);
+        if (xIdxOnB < 0) continue;
+        const bIdxOnB = indexOnLine(lineB, b, bId);
+        if (bIdxOnB < 0 || bIdxOnB === xIdxOnB) continue;
+        const stationsB = Math.abs(bIdxOnB - xIdxOnB) + 1;
+        const total = stationsA + stationsB;
+        const key = x.id || `${x.name}|${x.lat.toFixed(4)}|${x.lon.toFixed(4)}`;
+        const prev = bestByStation.get(key);
+        if (!prev || total < prev.totalStations) {
+          bestByStation.set(key, {
+            name: x.name, lat: x.lat, lon: x.lon, id: x.id || null,
+            lineA, lineB, totalStations: total,
+          });
+        }
+      }
+    }
+  }
+  return Array.from(bestByStation.values())
+    .sort((p, q) => p.totalStations - q.totalStations)
+    .slice(0, maxResults);
+}
+
+// v365: 乗換候補チップから呼ばれる挿入処理。
+// pairIdx 番目の pair (= R.selection[pairIdx] → R.selection[pairIdx+1]) の間に新駅を割込ませ、
+// 既存の pairLineChoices をシフト + 自動 pre-select。
+function insertTransferStation(pairIdx, stationName, lat, lon, lineAId, lineBId) {
+  const station = { name: stationName, lat: lat, lon: lon };
+  // 既に selection に同じ駅があったら何もしない (toggle にしない方が誤操作を防げる)
+  if (R.selection.some(s => sameStation(s, station))) return;
+  R.selection.splice(pairIdx + 1, 0, station);
+  addRecordHighlight(station);
+  // 既存 pairLineChoices を index > pairIdx だけ +1 シフト
+  const newChoices = new Map();
+  for (const [k, v] of R.pairLineChoices) {
+    newChoices.set(k <= pairIdx ? k : k + 1, v);
+  }
+  // 新しく生まれた 2 pair に lineA / lineB を pre-select (ユーザーは dropdown で上書き可)
+  if (lineAId) newChoices.set(pairIdx, lineAId);
+  if (lineBId) newChoices.set(pairIdx + 1, lineBId);
+  R.pairLineChoices = newChoices;
+  refreshRecPanel();
+}
+window.insertTransferStation = insertTransferStation;
+
 // 候補リスト群の積集合 (id ベース)
 function intersectLineLists(lists) {
   if (!lists || lists.length === 0) return [];
@@ -270,7 +364,24 @@ function refreshRecPanel() {
       if (seg.error) {
         hasError = true;
         div.className = 'rec-seg err';
-        div.innerHTML = `<span style="color:#ff7070;font-size:11px">⚠️ ${seg.from.name} → ${seg.to.name}: 共通する運行系統がありません(乗換可能な駅を間に追加してください)</span>`;
+        div.style.flexDirection = 'column';
+        div.style.alignItems = 'stretch';
+        // v365: 1 hop 乗換候補を抽出してチップ列で提示
+        const pairIdx = seg.pairIndices[0];
+        const cands = findTransferCandidates(seg.from, seg.to, 5);
+        let html = `<div style="color:#ff7070;font-size:11px">⚠️ ${seg.from.name} → ${seg.to.name}: 共通する運行系統がありません</div>`;
+        if (cands.length > 0) {
+          html += `<div style="font-size:10px;color:var(--gold);margin-top:6px">💡 乗換候補 (タップで挿入)</div>`;
+          html += `<div style="display:flex;flex-direction:column;gap:4px;margin-top:4px">`;
+          for (const c of cands) {
+            const nm = c.name.replace(/'/g, "\\'");
+            html += `<button type="button" onclick="insertTransferStation(${pairIdx},'${nm}',${c.lat},${c.lon},'${c.lineA.id}','${c.lineB.id}')" style="text-align:left;padding:6px 8px;background:rgba(140,160,179,.15);border:1px solid var(--track);border-radius:6px;color:var(--white);cursor:pointer;font-size:11px;font-family:inherit;line-height:1.4">🔁 <b>${c.name}</b> で乗換<span style="color:var(--silver);font-size:10px;display:block;margin-top:2px"><span style="color:${c.lineA.color}">●</span> ${c.lineA.name} → <span style="color:${c.lineB.color}">●</span> ${c.lineB.name} ・ 合計 ${c.totalStations}駅</span></button>`;
+          }
+          html += `</div>`;
+        } else {
+          html += `<div style="font-size:10px;color:var(--silver);margin-top:4px">1 回乗換で繋がる経路が見つかりません。経由駅を手動で追加してください</div>`;
+        }
+        div.innerHTML = html;
       } else {
         const ln = seg.line;
         const fromIdx = ln.stations.findIndex(s => s.name === seg.from.name);
