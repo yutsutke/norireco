@@ -695,13 +695,15 @@ function drawStationsLayer() {
     if (_mapMode === 'unridden' && ridden) continue;
 
     // v186/v187: stop_type ('alighted' | 'boarded' | 'passed' | 未訪問は 'unvisited' 扱い)
-    //  - サイズ倍率: alighted=1.25 / boarded=1.0 / passed=0.8 / unvisited=1.0
+    //  - サイズ倍率: alighted=2.5 (v381〜) / boarded=1.0 / passed=0.8 / unvisited=1.0
     //  - フィルタ: 該当 stype が false ならその駅を skip (未訪問駅も含む)
     // v323 (Phase 3): slStopType は駅 id キー化。ms.id を直接引く。
+    // v381: ユスケ要望「乗降した駅 (alighted: 始点/終点/乗換) を目立たせたい、大きさは今の倍」に対応。
+    //   alighted の stypeMul を 1.25 → 2.5。tier ベースのズーム表示タイミングは変えない。
     const stype = ridden ? (slStopType[ms.id] || 'boarded') : 'unvisited';
     const stf = window._stopTypeFilter || { alighted: true, boarded: true, passed: true, unvisited: true };
     if (stf[stype] === false) continue;
-    const stypeMul = stype === 'alighted' ? 1.25 : stype === 'passed' ? 0.8 : 1.0;
+    const stypeMul = stype === 'alighted' ? 2.5 : stype === 'passed' ? 0.8 : 1.0;
 
     // 訪問回数 → 個人化レベル (1-4回:Lv1, 5-9:Lv2, 10-49:Lv3, 50+:Lv4)
     // v317 (Phase 3-e): slVisitCount は駅 id キーに移行 (SERVICE_LINES ベース集計)。
