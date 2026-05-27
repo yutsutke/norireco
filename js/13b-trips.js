@@ -870,8 +870,12 @@ async function saveTripEdit() {
     console.warn('[マイページ] localStorage 更新失敗:', e.message);
   }
 
-  // v226: Supabase 側も同期 (date/depart_time/arrive_time/total_minutes/date_precision/train_* は既存列)
-  // notes / delay_minutes は schema 未拡張のため送信ペイロードから除外
+  // v226 → v395: Supabase 側も同期 (date/depart_time/arrive_time/total_minutes/date_precision/train_* は既存列)。
+  //   v395 で delay_minutes / notes を tripPatch に含めるよう修正 (Supabase 列は既に存在、REST 確認済)。
+  //   v181 のコメント「schema 未拡張のため除外」は誤り (dashboard で列追加後の追従漏れ) — その間
+  //   syncFromSupabase が localStorage を null で上書きして編集後リロード時に値消失していた既存バグ。
+  tripPatch.delay_minutes = newDelay;
+  tripPatch.notes = newNotes;
   let supabaseOk = true;
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_trips?id=eq.${tripId}`, {

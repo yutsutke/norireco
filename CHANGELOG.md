@@ -44,6 +44,59 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 245. v395 — hotfix: 旅程の delay_minutes / notes が編集後リロードで消える既存バグ修正 (2026-05-27)
+
+### 背景
+
+§244 (v394, B-3a) で 13b の ⏱ 遅延 + 📝 自由メモ を factory に集約。ユスケ実機 (norireco.app) で編集確認後、「保存まではいくけど、リロードすると消えちゃう」と報告。
+
+### 真因 (v181 から潜在していた追従漏れ)
+
+`norireco_trips` の Supabase スキーマには **`delay_minutes` と `notes` カラムが実は最初から存在** (REST `select=id,delay_minutes,notes&limit=1` で `status: 200`, `[{id, delay_minutes: null, notes: null}]` を確認)。
+
+しかし JS 側は v181 で「schema 未拡張」と判断して両フィールドを除外する設計を入れていた:
+
+1. **07 `tripForSupabase(trip)`**: 新規記録の POST body から `notes / delay_minutes` を destructure で剥がす
+2. **13b `saveTripEdit`**: 編集の PATCH body (`tripPatch`) に両フィールドを含めない
+
+結果として両フィールドは **localStorage のみに保存**され、`syncFromSupabase()` (06-map-leaflet 起動時 + 12-auth SIGNED_IN/INITIAL_SESSION) が `localStorage.setItem('norireco_trips', JSON.stringify(trips))` で localStorage を Supabase 値 (null) で上書きすると消失する。
+
+なぜスキーマ追加に追従できなかったかは不明 (dashboard で列追加した記録が migration ファイルにない — CLAUDE.md「Applied 規約」導入は v333 のため v181 当時はまだ migration を git 管轄に置く運用がなかった)。13-mypage-common.js `loadTripsIfNeeded` は merge-back を持っていたが、これは mypage view 表示専用で `syncFromSupabase` の破壊操作の前段ではなかったため救済できていなかった。
+
+### 修正
+
+3 箇所:
+
+1. **`js/07-record-mode.js` `tripForSupabase`** — `return trip` の pass-through に変更 (destructure-strip 撤回)。新規記録 POST に `notes / delay_minutes` が乗るようになる。trip オブジェクトのその他フィールドは v181 以前から送られていたため、追加で送るのはこの 2 カラムのみ。Supabase REST は未知の列を無視するため schema 増減でも 400 にならない (PATCH 検証: `id=eq.trip_xxx_test_nonexistent` への PATCH で `status: 204` を確認、列認識 OK)。
+
+2. **`js/13b-trips.js` `saveTripEdit`** — Supabase PATCH の直前で `tripPatch.delay_minutes = newDelay; tripPatch.notes = newNotes;` を追加。`newDelay/newNotes` は factory の `_tripEditMetaEditor.getDraft()` 経由で正規化済 (B-3a)。
+
+3. **`js/05-supabase-data.js` `syncFromSupabase`** — `const trips` を `let trips` に変えて、`localStorage.setItem` の直前に localStorage から `notes / delay_minutes` を merge back する処理を追加。これは v395 以前に発生した「localStorage にしかない既存データ」の救済策。次回その trip を編集 + 保存すると Supabase 側にも届く (v395 修正後の経路で)。同形 merge は 13-mypage-common.js にも残置 (UI 表示用、二重防護)。
+
+### 検証
+
+- 3 ファイル `node --check --input-type=module` 共に OK
+- `.claude/agents/js-syntax-guard.md` 実行: ESM 構文・グローバル衝突なし、`let trips` への変更も同関数内再代入と整合
+- preview 経由で Supabase REST 直叩き PATCH (`delay_minutes: 75, notes: 'schema test'`) → `status: 204` (列 accept 確認)
+
+### 教訓
+
+- Supabase 列の存在は **REST で実際に叩いて確かめる** のが最も信頼できる (schema 追加が migration ファイルに記録されていない場合も)。CLAUDE.md「Applied 規約」は v333 以降の write 履歴を救うが、それ以前の dashboard 追加分は遡れない
+- `tripForSupabase` のような「送信時除外フィルタ」は将来の schema 変化に追従するのが難しい。**列が存在しないことの判定は POST 時の 400 で受けてから outage を直す方が安全** — preemptive strip は schema 進化と乖離する
+- `syncFromSupabase` のような **destructive overwrite operation** には常に merge-back の余地を残すべき (もしくは少なくとも警告を出すべき)。今回は 13-mypage-common.js が部分的に補っていたが、UI 層に限定されていたため恒久的な救済にならなかった
+
+### dead code (B-4 撤去対象、§243-§244 と合算)
+
+新規追加なし (本コミットは hotfix のため)。
+
+### 次
+
+v394 の §244 next 計画通り: B-3b (13b time row) → B-3c (07 への移植) → B-3d (07 time row) → B-4 → A。
+
+CHANGELOG.md §244 (B-3a) からの続き。
+
+---
+
 ## 244. v394 — trip 詳細エディタ B-3a 完了: 13b の ⏱ 遅延 + 📝 自由メモ を factory に集約 (2026-05-27)
 
 ### 背景

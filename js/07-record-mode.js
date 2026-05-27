@@ -1152,12 +1152,13 @@ window.selectEndStationCand = selectEndStationCand;
 window.closeEndStation = closeEndStation;
 window.confirmEndStation = confirmEndStation;
 
-// Supabase スキーマ未拡張のフィールドを送信時に除外 (列追加されたら撤去)
-// v122→v123 で認証フィールド向けに同じパターンを使い、列追加後に撤去した前例あり
-// 現状: notes / delay_minutes (v181)
+// v395: notes / delay_minutes の Supabase 列は実は既に存在していた (REST 確認、status 200)。
+//   v181 で「スキーマ未拡張」と判断して除外していたが、その後の dashboard 追加に追従漏れ。
+//   結果: 編集後リロード時に syncFromSupabase が localStorage を Supabase 値 (null) で上書きし
+//   delay/notes が消失する既存バグ。除外を撤回して pass-through。
+//   既存呼出 (saveMultiSegmentTrip line 1425 / window.tripForSupabase) は維持。
 function tripForSupabase(trip) {
-  const { notes, delay_minutes, ...rest } = trip;
-  return rest;
+  return trip;
 }
 window.tripForSupabase = tripForSupabase;
 
@@ -1403,8 +1404,8 @@ async function saveMultiSegmentTrip() {
       }
       return null;
     })(),
-    // 後追い記録モード拡張 (v181): メモ・遅延 — Supabase スキーマ追加待ちのため
-    // tripForSupabase() で送信時に除外。localStorage には保存される
+    // 後追い記録モード拡張 (v181) / v395: notes / delay_minutes は localStorage と Supabase の両方に保存。
+    //   v395 で tripForSupabase の strip を撤回 — schema は実は v181 以前から両カラムを持っていた (REST 確認済)。
     notes: tripNotes,
     delay_minutes: delayMinutes,
     // 所有者 (ログイン中なら uid、未ログインなら null → 初回ログイン時 backfill 対象)

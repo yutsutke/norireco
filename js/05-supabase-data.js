@@ -396,8 +396,30 @@ export async function syncFromSupabase() {
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${authBearerToken()}` } }
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const trips = await res.json();
+    let trips = await res.json();
     if (!trips.length) return;
+
+    // v395: 以前は notes / delay_minutes が Supabase に送られず localStorage のみだった (v181〜v394 のバグ)。
+    //   syncFromSupabase が localStorage を Supabase 値 (null) で上書きすると v395 以前の編集が消える。
+    //   救済策として、localStorage に値が残っていて Supabase 側が空のフィールドは localStorage から merge back。
+    //   次回その trip を編集 + 保存すると Supabase 側にも届く (v395 修正後の `tripPatch.delay_minutes/notes` 経由)。
+    //   13-mypage-common.js loadTripsIfNeeded も同形の merge を持つ (UI 表示用、こちらは破壊操作の手前で merge)。
+    try {
+      const localTrips = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
+      if (Array.isArray(localTrips) && localTrips.length > 0) {
+        const localById = new Map(localTrips.map(t => [t.id, t]));
+        trips = trips.map(t => {
+          const lt = localById.get(t.id);
+          if (!lt) return t;
+          const merged = { ...t };
+          if (merged.notes == null && lt.notes != null) merged.notes = lt.notes;
+          if (merged.delay_minutes == null && lt.delay_minutes != null) merged.delay_minutes = lt.delay_minutes;
+          return merged;
+        });
+      }
+    } catch (e) {
+      console.warn('[syncFromSupabase] localStorage merge エラー:', e.message);
+    }
 
     console.log(`[乗レコ] Supabase同期: ${trips.length}件`);
     localStorage.setItem('norireco_trips', JSON.stringify(trips));
