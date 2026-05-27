@@ -603,7 +603,9 @@ function applyTripEditSegCategoryVisibility(idx, cat) {
     if (tidEl) tidEl.value = '';
     if (tnameEl) tnameEl.value = '';
     if (carSelEl) { carSelEl.style.display = 'none'; carSelEl.value = ''; }
-    if (carInpEl) carInpEl.style.display = 'block';
+    // v384: cat 切替時 (例: express→local) に前 cat の値が残らないよう必ずクリア。
+    // 初期 render の local 値は restoreTripEditSegCascade が seg.car_model から書き戻す。
+    if (carInpEl) { carInpEl.style.display = 'block'; carInpEl.value = ''; }
     return;
   }
   // 特急など — 列車 dropdown populate
@@ -627,9 +629,12 @@ function applyTripEditSegCategoryVisibility(idx, cat) {
   }
   // train_name_row は __custom__ 選択時のみ show (restore 側で制御)。デフォルトは hide。
   if (trainNameRow) trainNameRow.style.display = 'none';
+  // v384: cat 切替時に前 cat の手入力値 (列車名 / 車両形式) が残らないようクリア。
+  // 初期 render の値は restoreTripEditSegCascade / populateTripEditSegCarSelect が seg.* から書き戻す。
+  if (tnameEl) tnameEl.value = '';
   // car_dropdown は train 未選択なら hide + input のみ。train 選択後に populateTripEditSegCarSelect で切替。
   if (carSelEl) { carSelEl.style.display = 'none'; carSelEl.value = ''; }
-  if (carInpEl) carInpEl.style.display = 'block';
+  if (carInpEl) { carInpEl.style.display = 'block'; carInpEl.value = ''; }
 }
 
 // master 列車を選択したときに、その car_models[] を dropdown に流し込む。
@@ -669,11 +674,17 @@ function populateTripEditSegCarSelect(idx, trainId, restoreValue) {
 // applyTripEditSegCategoryVisibility 直後に呼ばれる前提 (dropdown は populate 済)。
 function restoreTripEditSegCascade(idx, seg) {
   const cat = seg.train_category || '';
-  if (!cat || cat === 'local') return;  // local / 空は visibility helper で input 値も初期化済
+  if (!cat) return;  // 空は visibility helper で初期化済
+  const carInpEl = document.querySelector(`.te-seg-car[data-seg-idx="${idx}"]`);
+  if (cat === 'local') {
+    // v384: visibility helper が carInpEl を unconditionally clear するようになったため、
+    // local の car_model 復元は restore 側で seg.car_model から書き戻す。
+    if (carInpEl) carInpEl.value = seg.car_model || '';
+    return;
+  }
   const tidEl = document.querySelector(`.te-seg-train-id[data-seg-idx="${idx}"]`);
   const trainNameRow = document.querySelector(`.te-seg-train-name-row[data-seg-idx="${idx}"]`);
   const tnameEl = document.querySelector(`.te-seg-train-name[data-seg-idx="${idx}"]`);
-  const carInpEl = document.querySelector(`.te-seg-car[data-seg-idx="${idx}"]`);
   if (!tidEl) return;
   if (seg.train_id) {
     tidEl.value = seg.train_id;

@@ -44,6 +44,54 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 234. v384 — 旅程編集モーダル: cat 切替時の DOM 値残り問題を解消 (2026-05-27)
+
+### 背景
+
+v383 で旅程編集モーダルにも per-seg フル cascade を入れた直後の残課題。`applyTripEditSegCategoryVisibility` が cat 別に visibility を切り替える際、`cat='local'` 分岐は `carInpEl.value` を、`cat=other` 分岐は `tnameEl.value` と `carInpEl.value` をクリアせず、HTML レンダ直後の値をそのまま温存していた。これは初期 render では `restoreTripEditSegCascade` が直後に値を書き戻す前提で機能していたが、ユーザー操作で cat を切替えると以下の stale 値残りが起きていた:
+
+- local (211系) → 特急 に切替: carInp の "211系" が残ったまま master cascade に進む
+- 特急 (__custom__ + 手入力列車名 + 手入力車両) → local: 手入力列車名 / 手入力車両がそのまま残る
+
+CHANGELOG §233 の残課題で「helper に input clear を足す」または「記録モード `selectedXxxBySl` 形式の Map 管理に統一」のどちらかを選ぶ判断を保留していたもの。
+
+### 設計判断
+
+- **DOM 直接管理を維持、helper を「cat 切替後に常にクリーンな状態」役割に統一** (Map 不採用)。
+  - 編集モーダルは「seg 全部が常に画面上に並ぶ」UI で記録モード (chip + active 1 seg のみ) と DOM 構造が違うため、per-cat Map は overkill。
+  - 副作用: cat を A→B→A と往復しても A の前回値は復活しない (記録モードは復活する)。これは「編集モーダルで cat を変える=新しい値を入れ直す意思」と解釈して許容。
+- **helper でクリア + restore で書き戻し**: 既存の cat=other 経路は restore が必ず seg.car_model を書き戻すので問題なし。**cat='local' は従来 restore が早期 return していたため helper クリアと両立しない** → restore に local 分岐を追加して seg.car_model を書き戻すよう拡張。
+- **代替案 (採用せず)**: helper を「visibility 専任」に絞り、クリアは `onTripEditSegCategoryChange` 側に置く案も検討したが、helper の責務が「visibility に応じた DOM 状態の確定」なので値クリアも helper に集約した方が呼び出し側が短くなる。
+
+### 変更
+
+- `js/13b-trips.js`
+  - `applyTripEditSegCategoryVisibility` (line 580 周辺):
+    - `cat='local'` 分岐: `if (carInpEl) { carInpEl.style.display = 'block'; carInpEl.value = ''; }` に変更 (value クリア追加)
+    - `cat=other` 分岐: `if (tnameEl) tnameEl.value = '';` と `if (carInpEl) { carInpEl.style.display = 'block'; carInpEl.value = ''; }` を追加
+  - `restoreTripEditSegCascade` (line 670 周辺): 早期 return 条件を `!cat` のみに変更、`cat === 'local'` を新分岐として追加し `carInpEl.value = seg.car_model || ''` で local の車両形式を書き戻す
+- `sw.js`: CACHE_VERSION v383 → v384
+
+### 検証 (preview MCP)
+
+v383 と同じ 3 区間テスト trip (seg0=azusa+E353系 / seg1=__custom__+手入力 / seg2=local+211系) を `_mypageCache` に注入して `openTripEditModal` 実行:
+
+- **初期 render**: seg0/seg1/seg2 全て期待通り値復元 ✓
+  - 特に seg2 (local + 211系) が新 restore 経路で carInp='211系' に正しく書き戻されることを確認
+- **cat 切替テスト** (6 ケース全パス):
+  - (A) seg2 を local → limited_express: carInp='', tname='' ✓ (旧バグの 211系 残留解消)
+  - (B) seg2 を express → local: carInp='', tname='' ✓ (Map 不採用方針通り前 cat 値復活せず)
+  - (C) seg1 を express → local: tname='', carInp='' ✓ (__custom__ 手入力が消える)
+  - (D) seg1 を local → express: tname='', carInp='' ✓
+  - (E) seg0 を limited_express → shinkansen: tid='', tname='', carSel='', carInp='' ✓
+  - (F) seg0 を express → '' (指定しない): 全 row hide + 全値 '' ✓
+
+### 残課題
+
+なし (v383 の残課題を本回で解消)。記録モードと同形の per-cat Map preservation が将来必要になれば別タスク化。
+
+---
+
 ## 233. v383 — 旅程編集モーダルも per-seg フル cascade (マスター列車 dropdown + 車両形式 dropdown) 対応 (2026-05-27)
 
 ### 背景
