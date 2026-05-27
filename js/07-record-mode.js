@@ -783,6 +783,17 @@ function openRecConfirm() {
         <span><b>${seg.line.name}</b> &nbsp; ${seg.from.name} → ${seg.to.name}</span>
       </div>`;
     }).join('');
+    // v385: 乗換あり (segments >= 2) のとき、時刻データの仕様 (trip 全体に 1 セット / 系統別に持たない)
+    //   を事前注記する。「個別系統の乗車時間統計」自体は現状未実装だが、データモデル上ゼロになることを
+    //   ユスケが想定したいので保存前に明示。代替手段 (系統ごと分割 + 立ち寄り) も同時に案内。
+    const transferNoteHtml = (R.segments.length >= 2) ? `
+      <div style="margin-top:10px;padding:8px 10px;background:rgba(95,181,255,.08);border-left:3px solid #5fb5ff;border-radius:0 6px 6px 0;font-size:11px;color:var(--silver);line-height:1.55">
+        <div style="color:#5fb5ff;margin-bottom:4px;font-weight:600">ℹ️ 乗換あり旅程の時刻仕様</div>
+        出発〜到着の合計時間は正しく記録されますが、各系統の乗車時間は保持しません (路線別の乗車時間統計を見る場合は 0 分扱い)。<br>
+        ▸ 系統ごとの時間を正確に残したい場合: <b>系統ごとに分けて記録</b> (1 旅程 1 系統)<br>
+        ▸ 乗換時の待ち時間を残したい場合: <b>「📍 立ち寄り」</b> (1 駅だけ選択して保存) で別途記録
+      </div>
+    ` : '';
     body.innerHTML = `
       <div class="rec-confirm-route">${routeHtml}</div>
       <div class="rec-confirm-stat-row">
@@ -793,6 +804,7 @@ function openRecConfirm() {
         <span class="rec-confirm-stat-lbl">🚉 駅数 / 区間</span>
         <span class="rec-confirm-stat-val">${totalStations}駅 / ${R.segments.length}区間</span>
       </div>
+      ${transferNoteHtml}
       ${timeRowHtml}
       <div class="rec-confirm-stat-row">
         <span class="rec-confirm-stat-lbl">🛡 認証</span>

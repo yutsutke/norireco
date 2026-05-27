@@ -44,6 +44,51 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 235. v385 — 確認モーダルに「乗換あり旅程の時刻仕様」注記を追加 (2026-05-27)
+
+### 背景
+
+データモデル調査の延長で、ユスケから「乗換ありで記録すると全体の乗車時間は正しく合うが、segments[] には時刻フィールドが無いので個別系統の乗車時間統計を出したら 0 分になる。この仕様を保存前に説明書きしておきたい」という要望。
+
+確認したところ:
+- `tripSegments.push({...})` は `lineId / from / to / from_id / to_id / train_category / train_id / train_name / car_model` のみ書き込み (depart_time / arrive_time / total_minutes は **trip 直下のみ**)
+- マイページの 16 統計を見ても「路線別の乗車時間」統計は現状未実装 (路線タイムラインは初回/最新乗車日と完乗達成日のみ)
+- ただしデータモデル上は 0 分扱いとなるため、将来「路線別乗車時間」統計を追加すれば顕在化する制約
+
+### 設計判断
+
+- **注記位置は記録モード確認モーダル** (`openRecConfirm`) — 保存ボタンを押す直前に見える位置。旅程編集モーダルは保存済 trip の編集なので注記不要 (新規記録時に伝われば十分)。
+- **表示条件は `R.segments.length >= 2`** (= 乗換あり)。1 区間や立ち寄りでは無関係なので非表示。
+- **代替手段の案内も同梱**: (1) 系統ごと分割記録 / (2) 乗換時の待ち時間は「📍 立ち寄り」(1 駅だけ選択して保存) で記録 — ユスケ依頼の通り 2 つの選択肢を併記。
+- **styling は既存 info-box (rec-edit-unknown-row) に合わせる**: `background:rgba(95,181,255,.08) + border-left:3px solid #5fb5ff`。新規 CSS class は作らず inline で。
+
+### 変更
+
+- `js/07-record-mode.js`
+  - `openRecConfirm` (multi-segment branch、line 786 周辺): `const transferNoteHtml = (R.segments.length >= 2) ? \`...\` : '';` を追加し、body.innerHTML 内で `🚉 駅数 / 区間` 行と `${timeRowHtml}` の間に挿入。
+- `sw.js`: CACHE_VERSION v384 → v385
+
+### 検証 (preview MCP)
+
+NORIRECO.record の selection / segments を 3 ケース synthetic に注入して `openRecConfirm` 実行:
+
+- **(1) 乗換あり** (segments=2、東京→新宿 [中央本線] / 篠ノ井→塩尻 [篠ノ井線]): 注記表示 ✓、テキスト 全文一致確認 ✓
+- **(2) 乗換なし** (segments=1、東京→新宿): 注記非表示 ✓
+- **(3) 立ち寄り** (visit-only、東京 1 駅): 注記非表示 ✓
+- スクリーンショット: 駅数/区間行と乗車時刻行の間に青系 info-box で「ℹ️ 乗換あり旅程の時刻仕様」見出し + 本文 + 2 bullet が想定通り表示 ✓
+
+### 補足: 検証時の SW キャッシュ罠
+
+preview MCP で `noritetsu-map.html` を reload しても新コードが見えなかった。原因は **`networkFirst` の `fetch(request)` がブラウザの HTTP cache を経由していて古い JS を取得 → cache.put で SW キャッシュも古い内容で上書き**。一度キャッシュが汚れると `fetch('/js/x.js')` は古いまま、`fetch('/js/x.js?bust=N')` や `fetch(url, {cache:'reload'})` だと新しいバイト数で取れることを確認した。
+
+本番では CACHE_VERSION を毎 push で bump するので最終的には反映されるが、**SW の `networkFirst` に `cache: 'reload'` または `cache: 'no-store'` を付ける改善余地あり** (将来の TODO)。今回は ESM 動的 import (`import('/js/07-record-mode.js?_freshtest=' + Date.now())`) でモジュール再評価して `window.openRecConfirm` を上書きし、無事ブラウザ render を確認できた。
+
+### 残課題
+
+- SW `networkFirst` の HTTP cache バイパス改善 (低優先) — preview MCP 検証の DX 改善のみ、本番影響なし
+
+---
+
 ## 234. v384 — 旅程編集モーダル: cat 切替時の DOM 値残り問題を解消 (2026-05-27)
 
 ### 背景
