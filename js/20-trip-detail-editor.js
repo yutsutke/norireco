@@ -56,6 +56,14 @@ import { createPhotoArea } from './18-photo-area.js';
 
 const DEFAULT_PRECISIONS = ['minute', 'day', 'month', 'year', 'unknown'];
 
+// Module-level escape (innerHTML 経由でユーザー由来文字列を挿入する箇所で使う。
+//   per-seg-rows の lineName / from / to は Supabase の trip データ由来)。
+function _escHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[c]);
+}
+
 export function createTripDetailEditor(opts) {
   const {
     container,
@@ -544,16 +552,341 @@ export function createTripDetailEditor(opts) {
     }
     return st;
   }
+  // ── per-seg-rows mode (v393 B-2): 13b 旅程編集モーダル用 ──────
+  // 全 seg を同時に row 描画。chip 切替なしの代わりに各 row が独立の cat/train/car cascade。
+  // 13b 旧実装 (applyTripEditSegCategoryVisibility / populateTripEditSegCarSelect /
+  //   restoreTripEditSegCascade + 3 onTripEditSeg* handler) を本クロージャに集約。
+  // DOM が同時に全部見えているため _segState mirror は使わず、collect 時に row から直接読む。
   function initTrainPickerRows() {
-    // TODO (B-2): 13b の applyTripEditSegCategoryVisibility / populateTripEditSegCarSelect /
-    //   restoreTripEditSegCascade / onTripEditSegCategoryChange / onTripEditSegTrainChange /
-    //   onTripEditSegCarChange を本コンポーネントに移植 (全 seg 同時 row 描画)。
-    _trainEl.innerHTML = '<!-- TODO B-2: per-seg-rows train picker -->';
+    const segs = draft.segments;
+    if (!segs || segs.length === 0) {
+      _trainEl.innerHTML = '';
+      return;
+    }
+    const inpStyle = 'flex:1;min-width:120px;padding:4px 8px;background:rgba(20,32,46,.8);color:var(--silver);border:1px solid var(--track);border-radius:6px;font-size:11px';
+    const customInpStyle = inpStyle.replace('border:1px solid var(--track)', 'border:1px solid var(--gold)');
+    const selStyle = 'min-width:140px;padding:4px 8px;background:rgba(20,32,46,.8);color:var(--silver);border:1px solid var(--track);border-radius:6px;font-size:11px';
+    const lblStyle = 'font-size:11px;color:var(--silver);min-width:64px';
+    const rowStyle = 'margin-top:4px;padding-left:18px;display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+    const rowStyleHide = rowStyle + ';display:none';
+
+    _trainEl.innerHTML = segs.map((s, i) => {
+      const lineLabel = _escHtml(s.lineName || s.lineId || '?');
+      const fromLabel = _escHtml(s.from || '?');
+      const toLabel = _escHtml(s.to || '?');
+      const isLast = i === segs.length - 1;
+      return `
+        <div class="tde-rows-seg" data-seg-idx="${i}" style="margin-bottom:${isLast ? '0' : '12px'}">
+          <div><span style="color:var(--gold);font-size:10px">${i + 1}.</span> ${fromLabel} → ${toLabel} <span style="color:var(--silver);font-size:10px">[${lineLabel}]</span></div>
+          <div style="${rowStyle}">
+            <span style="${lblStyle}">📋 種別</span>
+            <select class="tde-rows-cat" data-seg-idx="${i}" style="${selStyle}"></select>
+          </div>
+          <div class="tde-rows-train-row" data-seg-idx="${i}" style="${rowStyleHide}">
+            <span style="${lblStyle}">🚆 列車</span>
+            <select class="tde-rows-train-id" data-seg-idx="${i}" style="${selStyle}"></select>
+          </div>
+          <div class="tde-rows-train-name-row" data-seg-idx="${i}" style="${rowStyleHide}">
+            <span style="${lblStyle}">📝 列車名</span>
+            <input type="text" class="tde-rows-train-name" data-seg-idx="${i}" placeholder="例: あずさ (任意)" style="${customInpStyle}">
+          </div>
+          <div class="tde-rows-car-row" data-seg-idx="${i}" style="${rowStyleHide}">
+            <span style="${lblStyle}">🚆 車両形式</span>
+            <select class="tde-rows-car-select" data-seg-idx="${i}" style="${selStyle};display:none"></select>
+            <input type="text" class="tde-rows-car" data-seg-idx="${i}" placeholder="例: E353系 (任意)" style="${inpStyle}">
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // 各 row を初期化 (cat populate + 値復元 + handler bind)。
+    segs.forEach((s, i) => {
+      const row = _trainEl.querySelector(`.tde-rows-seg[data-seg-idx="${i}"]`);
+      if (!row) return;
+      const catEl = row.querySelector('.tde-rows-cat');
+      _populateCategorySelect(catEl);
+      catEl.value = s.train_category || '';
+      _applyRowVisibility(row, s.train_category || '');
+      _restoreRowCascade(row, s);
+      _bindRowHandlers(row);
+    });
   }
+
+  function _applyRowVisibility(row, cat) {
+    const trainRow = row.querySelector('.tde-rows-train-row');
+    const trainNameRow = row.querySelector('.tde-rows-train-name-row');
+    const carRow = row.querySelector('.tde-rows-car-row');
+    const tidEl = row.querySelector('.tde-rows-train-id');
+    const tnameEl = row.querySelector('.tde-rows-train-name');
+    const carSelEl = row.querySelector('.tde-rows-car-select');
+    const carInpEl = row.querySelector('.tde-rows-car');
+
+    if (!cat) {
+      if (trainRow) trainRow.style.display = 'none';
+      if (trainNameRow) trainNameRow.style.display = 'none';
+      if (carRow) carRow.style.display = 'none';
+      if (tidEl) tidEl.value = '';
+      if (tnameEl) tnameEl.value = '';
+      if (carSelEl) { carSelEl.style.display = 'none'; carSelEl.value = ''; }
+      if (carInpEl) carInpEl.value = '';
+      return;
+    }
+    if (cat === 'local') {
+      if (trainRow) trainRow.style.display = 'none';
+      if (trainNameRow) trainNameRow.style.display = 'none';
+      if (carRow) carRow.style.display = 'flex';
+      if (tidEl) tidEl.value = '';
+      if (tnameEl) tnameEl.value = '';
+      if (carSelEl) { carSelEl.style.display = 'none'; carSelEl.value = ''; }
+      // 13b v384 と同形: cat 切替時に前 cat の値が残らないよう必ずクリア。
+      // 初期 render の local 値は _restoreRowCascade が seg.car_model から書き戻す。
+      if (carInpEl) { carInpEl.style.display = 'block'; carInpEl.value = ''; }
+      return;
+    }
+    // 特急など — 列車 dropdown populate
+    if (trainRow) trainRow.style.display = 'flex';
+    if (carRow) carRow.style.display = 'flex';
+    if (tidEl) _populateTrainCascadeOptions(tidEl, cat);
+    // train_name_row は __custom__ 選択時のみ show (restore 側で制御)。デフォルトは hide。
+    if (trainNameRow) trainNameRow.style.display = 'none';
+    if (tnameEl) tnameEl.value = '';
+    if (carSelEl) { carSelEl.style.display = 'none'; carSelEl.value = ''; }
+    if (carInpEl) { carInpEl.style.display = 'block'; carInpEl.value = ''; }
+  }
+
+  function _populateRowCarSelect(row, trainId, restoreValue) {
+    const carSelEl = row.querySelector('.tde-rows-car-select');
+    const carInpEl = row.querySelector('.tde-rows-car');
+    if (!carSelEl) return;
+    const train = ((window.NORIRECO?.trains?.TRAINS) || []).find(t => t.id === trainId);
+    if (train && Array.isArray(train.car_models) && train.car_models.length > 0) {
+      let html = '<option value="">車両形式を選ぶ (任意)...</option>';
+      for (const m of train.car_models) html += `<option value="${_escHtml(m)}">${_escHtml(m)}</option>`;
+      html += '<option value="__custom__">📝 リストにない (手入力)</option>';
+      carSelEl.innerHTML = html;
+      carSelEl.style.display = 'block';
+      if (restoreValue && train.car_models.includes(restoreValue)) {
+        carSelEl.value = restoreValue;
+        if (carInpEl) { carInpEl.style.display = 'none'; carInpEl.value = ''; }
+      } else if (restoreValue) {
+        carSelEl.value = '__custom__';
+        if (carInpEl) { carInpEl.style.display = 'block'; carInpEl.value = restoreValue; }
+      } else {
+        carSelEl.value = '';
+        if (carInpEl) { carInpEl.style.display = 'none'; carInpEl.value = ''; }
+      }
+    } else {
+      carSelEl.style.display = 'none';
+      if (carInpEl) {
+        carInpEl.style.display = 'block';
+        carInpEl.value = restoreValue || '';
+      }
+    }
+  }
+
+  function _restoreRowCascade(row, seg) {
+    const cat = seg.train_category || '';
+    if (!cat) return;
+    const carInpEl = row.querySelector('.tde-rows-car');
+    if (cat === 'local') {
+      if (carInpEl) carInpEl.value = seg.car_model || '';
+      return;
+    }
+    const tidEl = row.querySelector('.tde-rows-train-id');
+    const trainNameRow = row.querySelector('.tde-rows-train-name-row');
+    const tnameEl = row.querySelector('.tde-rows-train-name');
+    if (!tidEl) return;
+    if (seg.train_id) {
+      tidEl.value = seg.train_id;
+      if (trainNameRow) trainNameRow.style.display = 'none';
+      if (tnameEl) tnameEl.value = '';
+      _populateRowCarSelect(row, seg.train_id, seg.car_model || null);
+    } else if (seg.train_name) {
+      tidEl.value = '__custom__';
+      if (trainNameRow) trainNameRow.style.display = 'flex';
+      if (tnameEl) tnameEl.value = seg.train_name;
+      if (carInpEl) { carInpEl.style.display = 'block'; carInpEl.value = seg.car_model || ''; }
+    } else {
+      tidEl.value = '';
+      if (trainNameRow) trainNameRow.style.display = 'none';
+      if (tnameEl) tnameEl.value = '';
+      if (carInpEl) { carInpEl.style.display = 'block'; carInpEl.value = seg.car_model || ''; }
+    }
+  }
+
+  function _bindRowHandlers(row) {
+    const catEl = row.querySelector('.tde-rows-cat');
+    const tidEl = row.querySelector('.tde-rows-train-id');
+    const tnameEl = row.querySelector('.tde-rows-train-name');
+    const trainNameRow = row.querySelector('.tde-rows-train-name-row');
+    const carSelEl = row.querySelector('.tde-rows-car-select');
+    const carInpEl = row.querySelector('.tde-rows-car');
+
+    if (catEl) catEl.addEventListener('change', () => {
+      _applyRowVisibility(row, catEl.value || '');
+      if (onChange) try { onChange(); } catch (e) {}
+    });
+    if (tidEl) tidEl.addEventListener('change', () => {
+      const v = tidEl.value;
+      if (v === '__custom__') {
+        if (trainNameRow) trainNameRow.style.display = 'flex';
+        if (tnameEl) { tnameEl.value = ''; tnameEl.focus(); }
+        if (carSelEl) { carSelEl.style.display = 'none'; carSelEl.value = ''; }
+        if (carInpEl) { carInpEl.style.display = 'block'; carInpEl.value = ''; }
+      } else if (v === '') {
+        if (trainNameRow) trainNameRow.style.display = 'none';
+        if (tnameEl) tnameEl.value = '';
+        if (carSelEl) { carSelEl.style.display = 'none'; carSelEl.value = ''; }
+        if (carInpEl) { carInpEl.style.display = 'block'; carInpEl.value = ''; }
+      } else {
+        if (trainNameRow) trainNameRow.style.display = 'none';
+        if (tnameEl) tnameEl.value = '';
+        _populateRowCarSelect(row, v, null);
+      }
+      if (onChange) try { onChange(); } catch (e) {}
+    });
+    if (carSelEl) carSelEl.addEventListener('change', () => {
+      const v = carSelEl.value;
+      if (v === '__custom__') {
+        if (carInpEl) { carInpEl.style.display = 'block'; carInpEl.value = ''; carInpEl.focus(); }
+      } else {
+        if (carInpEl) { carInpEl.style.display = 'none'; carInpEl.value = ''; }
+      }
+      if (onChange) try { onChange(); } catch (e) {}
+    });
+    if (tnameEl) tnameEl.addEventListener('input', () => {
+      if (onChange) try { onChange(); } catch (e) {}
+    });
+    if (carInpEl) carInpEl.addEventListener('input', () => {
+      if (onChange) try { onChange(); } catch (e) {}
+    });
+  }
+
+  // ── trip-level mode (v393 B-2): segments なし旧 trip / visit-only 用 ─
+  // 13b 旧 HTML の trip-edit-train-category / train-id / train-name / car-model 4 input を
+  // class セレクタで本コンポーネント内に複製。`train_name` は master 選択時に shadow value を持つ
+  // (13b v356 と同形 — saveTripEdit が input から読む前提で master の name をシャドウ書き込み)。
   function initTrainPickerTripLevel() {
-    // TODO (B-2): segments なし旧 trip 用、trip 単位 1 set の cat/train_id/train_name/car_model。
-    //   13b の trip-edit-train-category 等の 4 input を本コンポーネントに移植。
-    _trainEl.innerHTML = '<!-- TODO B-2: trip-level train picker -->';
+    const inputStyle = 'width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;margin-bottom:6px;box-sizing:border-box';
+    const customInputStyle = inputStyle.replace('border:1px solid var(--track)', 'border:1px solid var(--gold)');
+
+    _trainEl.innerHTML = `
+      <select class="tde-trip-category" style="${inputStyle}">
+        <option value="">指定しない</option>
+      </select>
+      <select class="tde-trip-train-id" style="display:none;${inputStyle}">
+        <option value="">列車を選ぶ...</option>
+      </select>
+      <input class="tde-trip-train-name" type="text" placeholder="列車名 (例: あずさ9号、富士回遊3号)" style="display:none;${customInputStyle}">
+      <input class="tde-trip-car-model" type="text" placeholder="車両形式 (例: E353系、209系2000番台)" style="display:none;${inputStyle}">
+      <div style="font-size:9px;color:var(--silver);opacity:.7;line-height:1.5;margin-top:4px">
+        ※ 簡易入力です。マスター列車の cascading 選択は新規記録の確認モーダルでのみ可能。
+      </div>
+    `;
+
+    const catSel = _trainEl.querySelector('.tde-trip-category');
+    const trainSel = _trainEl.querySelector('.tde-trip-train-id');
+    const trainNameInp = _trainEl.querySelector('.tde-trip-train-name');
+    const carModelInp = _trainEl.querySelector('.tde-trip-car-model');
+
+    _populateCategorySelect(catSel);
+    catSel.value = draft.train_category || '';
+
+    function applyVisibility(cat) {
+      if (!cat) {
+        trainSel.style.display = 'none'; trainSel.value = '';
+        trainNameInp.style.display = 'none'; trainNameInp.value = '';
+        carModelInp.style.display = 'none'; carModelInp.value = '';
+        return;
+      }
+      if (cat === 'local') {
+        trainSel.style.display = 'none'; trainSel.value = '';
+        trainNameInp.style.display = 'none'; trainNameInp.value = '';
+        carModelInp.style.display = 'block';
+        return;
+      }
+      _populateTrainCascadeOptions(trainSel, cat);
+      trainSel.style.display = 'block';
+      carModelInp.style.display = 'block';
+      // trainNameInp の visibility は train change / restore で制御
+    }
+
+    applyVisibility(draft.train_category || '');
+    // train_id / train_name の値復元 (13b v356 と同形)
+    if (draft.train_category && draft.train_category !== 'local') {
+      if (draft.train_id) {
+        trainSel.value = draft.train_id;
+        trainNameInp.style.display = 'none';
+        trainNameInp.value = draft.train_name || '';  // shadow value
+      } else if (draft.train_name) {
+        trainSel.value = '__custom__';
+        trainNameInp.style.display = 'block';
+        trainNameInp.value = draft.train_name;
+      } else {
+        trainSel.value = '';
+        trainNameInp.style.display = 'none';
+        trainNameInp.value = '';
+      }
+    }
+    if (carModelInp.style.display !== 'none') carModelInp.value = draft.car_model || '';
+
+    catSel.addEventListener('change', () => {
+      applyVisibility(catSel.value || '');
+      if (onChange) try { onChange(); } catch (e) {}
+    });
+    trainSel.addEventListener('change', () => {
+      const v = trainSel.value;
+      if (v === '__custom__') {
+        trainNameInp.style.display = 'block';
+        trainNameInp.value = '';
+        trainNameInp.focus();
+      } else if (v === '') {
+        trainNameInp.style.display = 'none';
+        trainNameInp.value = '';
+      } else {
+        const train = ((window.NORIRECO?.trains?.TRAINS) || []).find(t => t.id === v);
+        trainNameInp.style.display = 'none';
+        trainNameInp.value = train ? (train.name || '') : '';  // shadow
+      }
+      if (onChange) try { onChange(); } catch (e) {}
+    });
+    trainNameInp.addEventListener('input', () => {
+      if (onChange) try { onChange(); } catch (e) {}
+    });
+    carModelInp.addEventListener('input', () => {
+      if (onChange) try { onChange(); } catch (e) {}
+    });
+  }
+
+  // 共有ヘルパ (rows / trip-level 両方が使う。chip mode は B-1 で自前実装済のため重複維持)
+  function _populateCategorySelect(sel) {
+    const cats = (window.NORIRECO?.trains?.TRAIN_CATEGORIES) || {};
+    const entries = Object.entries(cats).sort((a, b) => {
+      if (a[0] === 'local') return -1;
+      if (b[0] === 'local') return 1;
+      return 0;
+    });
+    let html = '<option value="">指定しない</option>';
+    for (const [k, v] of entries) {
+      html += `<option value="${_escHtml(k)}">${v.icon || ''} ${_escHtml(v.label || k)}</option>`;
+    }
+    sel.innerHTML = html;
+  }
+  function _populateTrainCascadeOptions(sel, cat) {
+    const trains = ((window.NORIRECO?.trains?.TRAINS) || [])
+      .filter(t => t.category === cat)
+      .sort((a, b) => {
+        if (!!a.discontinued !== !!b.discontinued) return a.discontinued ? 1 : -1;
+        return (a.name || '').localeCompare(b.name || '', 'ja');
+      });
+    let html = '<option value="">列車を選ぶ...</option>';
+    for (const t of trains) {
+      const disc = t.discontinued ? ' (廃止)' : '';
+      const rarity = t.rarity === 'legendary' ? ' ⭐' : (t.rarity === 'rare' ? ' ✨' : '');
+      html += `<option value="${_escHtml(t.id)}">${_escHtml(t.name)}${rarity}${disc}</option>`;
+    }
+    html += '<option value="__custom__">📝 リストにない (手入力)</option>';
+    sel.innerHTML = html;
   }
   function collectTrainPicker() {
     // v392: per-seg-chip mode は各 handler が同期書き込みしているので _segState は最新。
@@ -572,9 +905,62 @@ export function createTripDetailEditor(opts) {
         }
       }
     } else if (featTrain === 'per-seg-rows') {
-      // TODO (B-2): 全 row 走査で各 row の DOM 値を読んで draft.segments[*] に反映
+      // v393 (B-2): 各 row の DOM 値を直接読んで draft.segments[*] に反映。
+      //   DOM が同時に全部見えているため _segState mirror は不要 — DOM 自体が state。
+      //   集約ルール (trip.train_* = all-seg-match ? value : null) は呼出側 (saveTripEdit) で行う。
+      const TRAINS = (window.NORIRECO?.trains?.TRAINS) || [];
+      for (let i = 0; i < draft.segments.length; i++) {
+        const seg = draft.segments[i];
+        if (!seg) continue;
+        const row = _trainEl.querySelector(`.tde-rows-seg[data-seg-idx="${i}"]`);
+        if (!row) continue;
+        const cat = ((row.querySelector('.tde-rows-cat')?.value) || '').trim() || null;
+        seg.train_category = cat;
+        if (cat === 'local') {
+          seg.train_id = null;
+          seg.train_name = null;
+          seg.car_model = ((row.querySelector('.tde-rows-car')?.value) || '').trim() || null;
+        } else if (cat) {
+          const tidVal = ((row.querySelector('.tde-rows-train-id')?.value) || '').trim();
+          if (tidVal && tidVal !== '__custom__') {
+            seg.train_id = tidVal;
+            const train = TRAINS.find(t => t.id === tidVal);
+            seg.train_name = train?.name || null;
+          } else if (tidVal === '__custom__') {
+            seg.train_id = null;
+            seg.train_name = ((row.querySelector('.tde-rows-train-name')?.value) || '').trim() || null;
+          } else {
+            seg.train_id = null;
+            seg.train_name = null;
+          }
+          const carSelVal = ((row.querySelector('.tde-rows-car-select')?.value) || '').trim();
+          if (carSelVal && carSelVal !== '__custom__') {
+            seg.car_model = carSelVal;
+          } else {
+            seg.car_model = ((row.querySelector('.tde-rows-car')?.value) || '').trim() || null;
+          }
+        } else {
+          seg.train_id = null;
+          seg.train_name = null;
+          seg.car_model = null;
+        }
+      }
     } else if (featTrain === 'trip-level') {
-      // TODO (B-2): draft.train_category / train_id / train_name / car_model に DOM 値を反映
+      // v393 (B-2): 4 input の DOM 値を draft.train_* に反映。
+      //   train_id は dropdown 値が master id なら採用、'__custom__' or '' なら null。
+      //   train_name は input から取得 (master 選択時は shadow value、__custom__ 時は手入力)。
+      const catSel = _trainEl.querySelector('.tde-trip-category');
+      const trainSel = _trainEl.querySelector('.tde-trip-train-id');
+      const trainNameInp = _trainEl.querySelector('.tde-trip-train-name');
+      const carModelInp = _trainEl.querySelector('.tde-trip-car-model');
+      const cat = ((catSel?.value) || '').trim() || null;
+      const tidRaw = ((trainSel?.value) || '').trim();
+      const tname = ((trainNameInp?.value) || '').trim() || null;
+      const car = ((carModelInp?.value) || '').trim() || null;
+      draft.train_category = cat;
+      draft.train_id = (tidRaw && tidRaw !== '__custom__') ? tidRaw : null;
+      draft.train_name = tname;
+      draft.car_model = car;
     }
   }
 

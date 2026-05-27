@@ -1441,24 +1441,20 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
     </div>
 
     <!-- 🚆 列車種別 -->
-    <div style="margin-bottom:12px;border-top:1px solid var(--track);padding-top:10px">
+    <!-- v393 (B-2): trip-level / per-seg-rows 両方とも factory (createTripDetailEditor) が中身を render。
+         per-seg-rows のときは下の section 自体を hide (#trip-edit-segments に factory が cascade を出す)。
+         旧 4 input + 旧 helper text は B-4 で撤去予定。display:none で dead code 化。 -->
+    <div id="trip-edit-train-section" style="margin-bottom:12px;border-top:1px solid var(--track);padding-top:10px">
       <div style="font-size:11px;color:var(--gold);margin-bottom:6px">🚆 列車種別 (任意)</div>
-      <select id="trip-edit-train-category" onchange="onTripEditCategoryChange()" style="width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;margin-bottom:6px">
+      <div id="trip-edit-train-picker-container"></div>
+      <select id="trip-edit-train-category" onchange="onTripEditCategoryChange()" style="display:none">
         <option value="">指定しない</option>
       </select>
-      <!-- v356: 列車 dropdown (特急など、マスターから populate)。「リストにない (手入力)」で
-           下の text input に切替。普通カテゴリでは hide。dropdown value がそのまま train_id。 -->
-      <select id="trip-edit-train-id" onchange="onTripEditTrainChange()"
-              style="display:none;width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;margin-bottom:6px">
+      <select id="trip-edit-train-id" onchange="onTripEditTrainChange()" style="display:none">
         <option value="">列車を選ぶ...</option>
       </select>
-      <input id="trip-edit-train-name" type="text" placeholder="列車名 (例: あずさ9号、富士回遊3号)"
-             style="display:none;width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--gold);border-radius:6px;font-size:12px;margin-bottom:6px;box-sizing:border-box">
-      <input id="trip-edit-car-model" type="text" placeholder="車両形式 (例: E353系、209系2000番台)"
-             style="display:none;width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;box-sizing:border-box">
-      <div style="font-size:9px;color:var(--silver);opacity:.7;line-height:1.5;margin-top:4px">
-        ※ 簡易入力です。マスター列車の cascading 選択は新規記録の確認モーダルでのみ可能。
-      </div>
+      <input id="trip-edit-train-name" type="text" style="display:none">
+      <input id="trip-edit-car-model" type="text" style="display:none">
     </div>
 
     <!-- ⏱ 遅延 -->

@@ -44,6 +44,73 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 243. v393 — trip 詳細エディタ B-2 完了: 13b 旅程編集モーダルを per-seg-rows / trip-level mode で factory に移行 (2026-05-27)
+
+### 背景
+
+v392 (§242) で B-1 (07 確認モーダル → per-seg-chip mode) を deploy し実機 (norireco.app) で動作確認済。次段階の **B-2** は同 factory `createTripDetailEditor` で **13b 旅程編集モーダル** (`#trip-edit-modal`) をカバーする。13b は 2 ケースを扱う:
+
+- **segments あり** (通常の手動/GPS 記録): 各区間に種別 + 列車 + 車両形式の cascade。v383 で per-seg フル cascade 化済。
+- **segments なし旧 trip / visit-only**: 旅程 1 つに対して trip 単位 1 set の 4 input (`trip-edit-train-category` / `train-id` / `train-name` / `car-model`)。v356 で master 選択 + `__custom__` 切替対応済。
+
+これら 2 ケースを factory の `per-seg-rows` mode と `trip-level` mode に統合する。
+
+### 設計判断
+
+- **per-seg-rows** mode: 全 seg を同時に row 描画。chip 切替 (per-seg-chip mode 特有) なしのため、`_segState` mirror は使わず **DOM 自体が state**。`collectTrainPicker` で DOM を直読みして `draft.segments[i].train_*` に反映。
+- **trip-level** mode: `train_id` select が master 値なら採用 + `train_name` input に master の name を **shadow value** で書き込み (v356 の挙動踏襲、`saveTripEdit` が input から読む前提)。`__custom__` で手入力に切替、`local` カテゴリでは car_model input のみ表示。
+- **集約ルール (per-seg-rows のみ)**: `trip.train_*` は **全 seg 一致なら値 / 不一致なら null** (v371 / v375 / v383 と同形)。factory は draft.segments のみ更新し、集約は呼出側 `saveTripEdit` で行う (v392 B-1 で 07 が同じく集約を保持しているのと同形)。
+- **共有ヘルパ**: `_populateCategorySelect / _populateTrainCascadeOptions / _populateRowCarSelect / _applyRowVisibility / _restoreRowCascade / _bindRowHandlers / _escHtml` を factory 内に追加。chip mode (B-1 で自前実装済) は触らずに rows / trip-level に再利用。chip mode の populate ロジック重複は許容 (refactor リスクを取らない方針)。
+- **mount 戦略**: per-seg-rows は `#trip-edit-segments` を factory に明け渡し (seg header 込みで render)、🚆 列車種別 section 全体は hide。trip-level は `#trip-edit-segments` に "from → to" read-only を残しつつ、新設の `#trip-edit-train-picker-container` (🚆 列車種別 section 内) に factory mount。
+- **旧 4 input / 旧 9 関数の扱い**: HTML 側で `display:none` 固定 + JS 側で呼ばれなくなった (dead code)。B-4 で撤去予定。B-1 で 07/02 dead code を温存したのと同形。
+
+### 実装範囲
+
+`js/20-trip-detail-editor.js` (+418 行):
+
+- `initTrainPickerRows()` — per-seg-rows mode 本実装。`segs.map(...)` で row HTML 生成 (`tde-rows-seg[data-seg-idx]` / `tde-rows-cat` / `tde-rows-train-id` / `tde-rows-train-name` / `tde-rows-car-select` / `tde-rows-car` クラスセレクタ)。
+- `initTrainPickerTripLevel()` — trip-level mode 本実装。4 input (`tde-trip-category` / `tde-trip-train-id` / `tde-trip-train-name` / `tde-trip-car-model`) + 説明 div。
+- `collectTrainPicker()` の per-seg-rows / trip-level 分岐実装 (DOM 直読み)。
+- 共有ヘルパ + `_escHtml` (lineName / from / to の HTML escape)。
+
+`js/13b-trips.js` (+25 / −145 行 net):
+
+- `openTripEditModal`: `segs.length >= 1` 分岐で per-seg-rows mode (#trip-edit-segments に factory mount + #trip-edit-train-section hide)、segments なしで trip-level mode (#trip-edit-train-picker-container に factory mount)。trip-level 用の trip-level 4 input 復元ブロック (旧 30 行) を削除。
+- `closeTripEditModal`: `_tripEditDetailEditor.destroy()` 追加。
+- `saveTripEdit`: per-seg / trip-level の DOM 読み出しブロック (旧 70 行) を `editor.getDraft()` 経由に置換。集約ルールは保持。
+
+`noritetsu-map.html` (−15 行 net):
+
+- 🚆 列車種別 section に `id="trip-edit-train-section"` + 新 `<div id="trip-edit-train-picker-container"></div>`。
+- 旧 4 input は `style="display:none"` 固定 (B-4 撤去まで dead code)。
+- 旧 helper text 撤去 (factory 側で複製済)。
+
+### 検証
+
+`node --check --input-type=module < js/20-trip-detail-editor.js` / `js/13b-trips.js` 共に OK。`.claude/agents/js-syntax-guard.md` 実行: ESM 構文エラー・グローバル衝突・class 命名衝突なし、clean。
+
+preview server (http://localhost:8000) で `import('/js/20-trip-detail-editor.js?fresh=...')` 経由で factory を直接 mount し getDraft() round-trip を確認:
+
+- **trip-level**: 初期 `cat=limited_express, tid=azusa, tname=あずさ, car=E353系` を draft に正しく復元。`cat→local` change event + `car=キハ110系` input で `cat=local, tid=null, tname=null, car=キハ110系` に正しく更新。
+- **per-seg-rows**: 3 seg 初期 (limited_express+azusa+E353系 / local+E235系 / 空) を全 row 復元。seg 3 を `cat=limited_express` + `tid=mt_takao` に change event で flip し、seg 3 のみ `cat=limited_express, tid=mt_takao, tname='Mt.TAKAO号'` (master 自動補完) に更新、seg 1/2 は元値維持で row 間の独立性を確認。
+
+(preview server の HTTP cache が `js/05-supabase-data.js` の古い版 (2026-05-20、`applyDateFilter` 未追加) を握っていたため、`window.openTripEditModal` 経由のフルフロー確認は 13b の binding error で阻まれた。`fetch(..., { cache: 'no-store' })` で disk と HTTP server が一致することは確認済、Cloudflare Pages 本番では Cache-Control が正しいため再現しない。本番デプロイ後にユスケ実機で動作確認予定)
+
+### dead code (B-4 撤去対象)
+
+- `js/13b-trips.js`: `applyTripEditCategoryVisibility` / `populateTripEditTrainDropdown` / `onTripEditCategoryChange` / `onTripEditTrainChange` / `applyTripEditSegCategoryVisibility` / `populateTripEditSegCarSelect` / `restoreTripEditSegCascade` / `onTripEditSegCategoryChange` / `onTripEditSegTrainChange` / `onTripEditSegCarChange` の 10 関数 (window 公開含む)。HTML 側の inline `onchange="onTripEditCategoryChange()"` / `onchange="onTripEditTrainChange()"` も dead (target の input が display:none)。`onTripEditSeg*` 3 関数は呼ばれるエントリポイントすら存在しない (旧 `te-seg-*` クラスの inline onchange は v393 で factory に置換)。
+- `noritetsu-map.html`: 4 input (`#trip-edit-train-category` / `#trip-edit-train-id` / `#trip-edit-train-name` / `#trip-edit-car-model`) と `onchange="onTripEdit*"` inline 属性。
+
+### 次
+
+- **B-3**: 時刻行 (`#rec-time-edit-section` + `onRecEditPrecisionChange` + `updateRecConfirmTimeRow`) / 遅延 / メモ を factory に移植。features 定義済の `timeRow` / `delay` / `notes` を本実装化。
+- **B-4**: `NORIRECO.trains.selectedXxxBySl` / `activeChipSlId` グローバル Map 撤廃 + 13b の dead 10 関数 + HTML の dead input 撤去。07/02 の dead helper (B-1 で残置) も同時に撤去。
+- **A**: 一括記録パネル本体 (Notion §1.3) — `noritetsu-log.html` 廃止の受け皿。1 行 = 1 trip、行展開で factory を inline mount。
+
+CHANGELOG.md §242 (B-1) からの続き。
+
+---
+
 ## 242. v392 — trip 詳細エディタ B-1 完了: `createTripDetailEditor` per-seg-chip 本実装 + 07 確認モーダル切替 + B 段階の API 設計合意 (2026-05-27)
 
 ### 背景
