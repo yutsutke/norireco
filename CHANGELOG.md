@@ -44,6 +44,40 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 239. v389 — 旅程削除後に駅アクションシートの trip カードも即座に消える (2026-05-27)
+
+### 背景
+
+v388 で削除→マップ即時反映は入ったが、ユスケから追加報告: 駅アクションシートの **「この駅を含む旅程」一覧モーダル内のカード自体** は「削除しました」トースト後も残ったまま (リロードで初めて消える)。
+
+`deleteTripFromMypage` は `_mypageCache` を filter / `applyMpSection` / `applyDateFilter` (マップ) を呼ぶが、駅アクションシート (`station-action-modal`) の trip リスト DOM は触らないため、削除直後の見た目に取り残されていた。
+
+### 修正
+
+- `js/17-station-actions.js`:
+  - `refreshTripListIfOpen()` を新規追加し `NORIRECO.stationActions.refreshTripListIfOpen` として公開。
+  - `S.currentMs` がセットされ、`station-action-modal` が `.open` で、かつ `#sa-actions` が trip 一覧モード (「を含む旅程」or「この駅を含む旅程はまだ」ラベル検出) のときだけ、`getTripsAtStation(ms)` + `renderTripListInSheet` で再描画。それ以外は no-op。
+- `js/13b-trips.js`:
+  - `deleteTripFromMypage` 末尾に `try { NORIRECO.stationActions?.refreshTripListIfOpen?.(); } catch(e) {}` を追加。
+- `sw.js`: CACHE_VERSION v388 → v389
+
+### 設計判断
+
+- **public API は名前空間 bridge** (`NORIRECO.stationActions.refreshTripListIfOpen`): 13b → 17 への直 import を増やすと依存方向が広がるため、既存の bridge パターン (17 の各メソッドが NORIRECO.stationActions に並んでいる) に合わせた。
+- **trip 一覧モードの検出は innerHTML 文字列マッチ**: 「を含む旅程」/「この駅を含む旅程はまだ」のラベルが他用途で出ない前提。専用 data 属性を足す案も検討したが、現状唯一の判定なので軽量に。
+
+### 検証 (preview MCP)
+
+fresh dynamic import で `refreshTripListIfOpen` が NORIRECO 名前空間に公開されていることを確認後、_mypageCache に synthetic trip を入れて DOM を trip 一覧モードに置き、3 ステップで検証:
+
+- **初期**: trip カードが DOM に存在 ✓
+- **`_mypageCache=[]` にして refreshTripListIfOpen 呼出**: カード消える + 「この駅を含む旅程はまだありません」表示 ✓
+- **モーダル閉じた状態で呼出**: 何も書き換わらない (no-op) ✓
+
+ローカル SW HTTP cache の制約は v388 と同じ。本番デプロイ後に視認確認お願いします。
+
+---
+
 ## 238. v388 — 旅程削除後にマップへ即時反映 (リロード不要に) (2026-05-27)
 
 ### 背景

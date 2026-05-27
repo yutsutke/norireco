@@ -593,6 +593,25 @@ function renderTripListInSheet(trips, stationName) {
   `;
 }
 
+// v388: 旅程削除後にアクションシートが「この駅を含む旅程」リスト表示中なら
+//   その場でリストを再描画して、削除されたカードを即座に消す (リロード不要に)。
+//   currentMs が無い / シートが trip 一覧モードでない / lazy fetch 中などの場合は何もしない。
+function refreshTripListIfOpen() {
+  const ms = S.currentMs;
+  if (!ms) return;
+  const sheet = document.getElementById('station-action-modal');
+  if (!sheet || !sheet.classList.contains('open')) return;
+  const container = document.getElementById('sa-actions');
+  if (!container) return;
+  // 「を含む旅程」ラベル or「この駅を含む旅程はまだありません」が出ているとき = trip 一覧モード
+  const inTripMode = /を含む旅程|この駅を含む旅程はまだ/.test(container.innerHTML);
+  if (!inTripMode) return;
+  if (!Array.isArray(NORIRECO.mypage?.state?._mypageCache)) return;
+  const trips = getTripsAtStation(ms);
+  renderTripListInSheet(trips, ms.name);
+}
+NORIRECO.stationActions.refreshTripListIfOpen = refreshTripListIfOpen;
+
 // ── window bridge ──────────────────────────────────────────────
 window.closeStationActionSheet = closeStationActionSheet;
 window.onSaShowCharacter = onSaShowCharacter;

@@ -1115,6 +1115,10 @@ async function deleteTripFromMypage(tripId) {
   //   applyDateFilter は localStorage を再読込 → RIDDEN_SEGS 再構築 → rideRecord.rebuild() →
   //   updateOverlays() + drawLines() まで一気に通すので 1 呼び出しで足りる。
   try { applyDateFilter(); } catch(e) {}
+  // v388: 駅アクションシートが「この駅を含む旅程」一覧モードで開いていれば
+  //   その場でリストを再描画して、削除されたカードを即座に消す。
+  //   17-station-actions.js が NORIRECO.stationActions.refreshTripListIfOpen として公開。
+  try { NORIRECO.stationActions?.refreshTripListIfOpen?.(); } catch(e) {}
 }
 window.deleteTripFromMypage = deleteTripFromMypage;
 NORIRECO.mypage.deleteTripFromMypage = deleteTripFromMypage;
