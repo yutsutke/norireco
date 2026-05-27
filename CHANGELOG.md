@@ -44,6 +44,59 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 238. v388 — 旅程削除後にマップへ即時反映 (リロード不要に) (2026-05-27)
+
+### 背景
+
+ユスケから「マップのモーダル (駅アクションシート →「この駅を含む旅程」一覧) から旅程を削除しても、マップにすぐ反映されずリロードが必要」報告。
+
+`deleteTripFromMypage` (`js/13b-trips.js:1055`) は:
+- ✅ Supabase 側で DELETE
+- ✅ localStorage の `norireco_trips` から filter out
+- ✅ `_mypageCache` からも除去 (mypage 側 UI は即座に更新)
+- ✅ `applyMpSection()` でマイページ再描画
+- ✅ 完乗率カード再計算
+- ❌ **マップ側 (`RIDDEN_SEGS` / `slRiddenSt` / `slStopType` / `slVisitCount`) は更新せず、`drawLines()` も呼ばない**
+
+→ マップ上の駅ドット / パイチャート / 路線実線 (= 乗車済) は古いまま、リロードで初めて反映されていた。
+
+### 修正
+
+`js/05-supabase-data.js` の `applyDateFilter()` を **export** 化。この関数は元々:
+- localStorage から trips 再読込
+- `RIDDEN_SEGS` 再構築
+- `NORIRECO.rideRecord.rebuild()` (slRiddenSt / slStopType / slVisitCount 再計算)
+- `updateOverlays()` (ヘッダ完乗率カード更新)
+- `drawLines()` (地図再描画)
+
+を 1 関数で一気通貫に行う。trip 削除後にこれを 1 回呼ぶだけで「localStorage 変更 → マップ反映」の全層が揃う。
+
+`js/13b-trips.js`:
+- `import { filterTripsByDate, applyDateFilter } from './05-supabase-data.js'` に `applyDateFilter` 追加
+- `deleteTripFromMypage` 末尾 (applyMpSection / 完乗率カード再描画 の後) で `try { applyDateFilter(); } catch(e) {}` を呼ぶ
+
+`sw.js`: CACHE_VERSION v387 → v388
+
+### 検証 (preview MCP — 部分)
+
+ローカルで end-to-end の動作確認は SW `networkFirst` の HTTP cache バイパス不全 (v385 検証で記録済) のため不可:
+- ブラウザの HTTP cache が古い `/js/05-supabase-data.js` を返し続け、SW の cache.put がそれで上書き → 何度 reload しても古い JS が動く
+- query string 付きで fetch すれば fresh content が取れることを確認 (HTTP cache miss する)
+
+そこで以下で代替検証:
+- **静的 source 検証**: `applyDateFilter` の export 化 ✓、`13b-trips.js` の import 行に追加 ✓、delete 末尾の `try { applyDateFilter(); } catch(e) {}` 挿入 ✓
+- **dynamic import 単体**: `import('/js/05-supabase-data.js?_v=N')` で fresh load した applyDateFilter を実行 → `rideRecord.rebuild` が呼ばれることを spy で確認 ✓
+- **syntax check**: 両ファイル `node --check --input-type=module` pass ✓
+
+本番 (Cloudflare Pages) は CACHE_VERSION v388 bump + fresh 訪問者の HTTP cache miss で確実に反映される (v385 と同じ理屈)。
+
+### 残課題
+
+- 旅程**編集** (`saveTripEdit`) も同様の地図反映不足あり。ただし編集の典型ケース (車両形式 / メモ / 遅延の変更) は slRiddenSt / slStopType / slVisitCount を変えないので影響軽微。train_category の変更だけ地図表示と関係があるが、現状は触らず据置。必要になったら同じ `applyDateFilter()` 呼び出しで対応可
+- SW `networkFirst` の `fetch(request, { cache: 'reload' })` 化 (v385 既述の dev DX 改善)
+
+---
+
 ## 237. v387 — 駅フィルタ「乗車のみ」が実質効かない問題を解消 (`slStopType` 集計を `slRiddenSt` と同ループに統合) (2026-05-27)
 
 ### 背景

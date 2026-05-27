@@ -241,7 +241,11 @@ function filterTripsByCurrentUser(trips) {
   return trips.filter(t => !t.user_id || t.user_id === uid);
 }
 
-function applyDateFilter() {
+// v388: 旅程削除など「localStorage の trips が変わった」タイミングからも呼べるよう export 化。
+//       date filter を介さず純粋に「再構築 + 地図再描画」だけ行いたい場合も、
+//       現在の date filter を維持する形で同じ rebuild → drawLines パスを通せばよいので
+//       この関数自体を再利用する (新たな関数を増やさない)。
+export function applyDateFilter() {
   let trips = [];
   try { trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]'); } catch(e) {}
   // v234: localStorage が空なら空配列 (旧 RIDDEN_SEGS_STATIC フォールバックは撤去)

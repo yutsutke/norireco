@@ -32,7 +32,7 @@ import {
   resolveStationQuery,
   getTripStationName,
 } from './13-mypage-common.js';
-import { filterTripsByDate } from './05-supabase-data.js';
+import { filterTripsByDate, applyDateFilter } from './05-supabase-data.js';
 // v258: 旅程の写真添付 (memo と共通の写真エリアコンポーネント)
 // v267+: deletePhotoByUrl は trip 削除時の R2 cleanup でも使う
 import { createPhotoArea, deletePhotoByUrl } from './18-photo-area.js';
@@ -1108,6 +1108,13 @@ async function deleteTripFromMypage(tripId) {
       pinned.appendChild(NORIRECO.mypage.buildCompletionCards(tripsForCards));
     }
   } catch(e) {}
+  // v388: マップも即時再描画 — 削除した trip のセグメントが地図上に残らないように。
+  //   従来は localStorage 更新だけで RIDDEN_SEGS / slRiddenSt / slStopType / slVisitCount が
+  //   stale なまま放置され、リロードしないと駅ドットの大きさ・パイチャート・路線実線/点線が
+  //   反映されなかった (ユスケ報告 / 2026-05-27)。
+  //   applyDateFilter は localStorage を再読込 → RIDDEN_SEGS 再構築 → rideRecord.rebuild() →
+  //   updateOverlays() + drawLines() まで一気に通すので 1 呼び出しで足りる。
+  try { applyDateFilter(); } catch(e) {}
 }
 window.deleteTripFromMypage = deleteTripFromMypage;
 NORIRECO.mypage.deleteTripFromMypage = deleteTripFromMypage;
