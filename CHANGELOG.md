@@ -44,6 +44,35 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 236. v386 — ロゴクリックでマップ画面トップへ遷移 (2026-05-27)
+
+### 背景
+
+ユスケから「左上のロゴ (乗レコ NORITSUBU MAP) をクリックすると `https://norireco.app/noritetsu-map` をクリックしたのと同じ状態に遷移できると良い」要望。
+従来は `<div class="logo">` で無反応 (cursor も default)。マイページ深堀り中などに「マップ画面のトップに戻りたい」操作が想定通りに動かない細かい不便。
+
+### 変更
+
+- `noritetsu-map.html`:
+  - `.logo` の CSS に `text-decoration:none;color:inherit;cursor:pointer;` + `:hover` で em の opacity を僅かに下げる
+  - `<div class="logo">` を `<a class="logo" href="noritetsu-map.html" title="マップ画面トップへ">` に変更
+- `noritetsu-log.html`: 同様の修正 (log 画面のロゴもマップ画面へ)
+- `sw.js`: CACHE_VERSION v385 → v386
+
+### 検証 (preview MCP)
+
+- 静的: `fetch('/noritetsu-map.html')` / `fetch('/noritetsu-log.html')` で `<a class="logo" href="noritetsu-map.html">` 形式の置換を確認 ✓
+- 動的: ブラウザロード後 `document.querySelector('.logo')` が `<a>` 要素で `href=noritetsu-map.html` / `title=マップ画面トップへ` / `cursor=pointer` / `text-decoration=none` / `color` 継承 / `font-size 19px / font-weight 900` 維持 ✓
+- スクリーンショット: ロゴ見た目変化なし、マップ表示は遷移後の default state (日本全体) ✓
+
+### 設計判断
+
+- **href は相対パス** (`noritetsu-map.html`): localhost と本番 (Cloudflare Pages が `/noritetsu-map` ↔ `/noritetsu-map.html` 両対応) どちらでも素直に動く。
+- **`<a>` への置換は安全** (HTML5 で a は block content OK)、追加 JS なし。
+- log 画面のロゴも同時に対応 — 「ロゴ=ホーム=マップトップ」のメンタルモデルを統一。
+
+---
+
 ## 235. v385 — 確認モーダルに「乗換あり旅程の時刻仕様」注記を追加 (2026-05-27)
 
 ### 背景

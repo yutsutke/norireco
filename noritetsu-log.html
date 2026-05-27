@@ -22,7 +22,7 @@
 body{background:var(--navy);color:var(--white);font-family:'Noto Sans JP',sans-serif;min-height:100vh;overflow-x:hidden;}
 
 header{background:var(--steel);border-bottom:3px solid var(--red);padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:200;}
-.logo{font-size:20px;font-weight:700;}.logo span{color:var(--red);}
+.logo{font-size:20px;font-weight:700;text-decoration:none;color:inherit;cursor:pointer;}.logo span{color:var(--red);}.logo:hover span{opacity:.85;}
 .badge{margin-left:auto;font-family:'DM Mono',monospace;font-size:10px;padding:3px 9px;border-radius:20px;background:var(--track);color:var(--silver);letter-spacing:1px;}
 .badge.rec{background:rgba(232,53,42,.2);color:var(--red);animation:pulse 1.5s infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
@@ -174,7 +174,7 @@ select:focus{outline:none;border-color:var(--red);}
 <body>
 
 <header>
-  <div class="logo">乗<span>レコ</span></div>
+  <a class="logo" href="noritetsu-map.html" title="マップ画面トップへ">乗<span>レコ</span></a>
   <span class="app-ver-badge checking" id="app-ver-badge" onclick="checkAppVersion(true)" title="バージョン確認中">⏳ …</span>
   <div class="badge" id="badge">待機中</div>
 </header>
