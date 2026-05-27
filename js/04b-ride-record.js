@@ -308,7 +308,18 @@
     //   trip が拾えなくなって全 SL が「乗車なし」扱い (実線が出ず点線のみ) になっていた。
     //   resolve 経路 (resolveByServiceLine / resolveServiceTrip / resolveSegments) も
     //   使って物理路線 N02 id から SL を 1 つ推定 → そこに add する形に拡張。
+    // v387: slRiddenSt と slStopType を同じループで構築する。
+    //   v186〜v386 は別々の 2 パスで、slRiddenSt 側だけ resolve 経路 fallback (旧 N02 id 救済) を
+    //   持ち、slStopType 側は seg.lineId 直接 match のみだった。結果、旧形式 trip の seg は
+    //   slStopType に登録されず、描画側の `slStopType[ms.id] || 'boarded'` フォールバックで
+    //   全駅が一律 "boarded" 扱いになり、フィルタ「乗車のみ」が実質効かなくなっていた
+    //   (ユスケ報告 / 2026-05-27)。
     Object.keys(slRiddenSt).forEach(k => delete slRiddenSt[k]);
+    Object.keys(slStopType).forEach(k => delete slStopType[k]);
+    const _mergeStopType = (sid, type) => {
+      const cur = slStopType[sid];
+      if (!cur || _STYPE_PRIORITY[type] > _STYPE_PRIORITY[cur]) slStopType[sid] = type;
+    };
     if (NORIRECO.data.SERVICE_LINES && NORIRECO.data.SERVICE_LINES.length > 0) {
       const SL = NORIRECO.data.SERVICE_LINES;
       for (const seg of RIDDEN_SEGS) {
@@ -337,16 +348,18 @@
         // targetSl 内で seg.from/to が見つかれば駅順展開、見つからなければ
         // resolve 結果の駅名で照合 (旧 N02 形式 trip のための救済)
         // v317 (Phase 3-e): 同じループ内で slVisitCount[st.id] も +1 (個人化 Lv 用)。
+        // v387: stop_type も同じループで集計。位置 (fromIdx / toIdx) or 駅名 (seg.from / seg.to) で判定。
         const fromIdx = targetSl.stations.findIndex(s => s.name === seg.from);
         const toIdx = targetSl.stations.findIndex(s => s.name === seg.to);
         if (fromIdx >= 0 && toIdx >= 0) {
           const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
           for (let i = a; i <= b; i++) {
             const st = targetSl.stations[i];
-            if (st.id) {
-              slRiddenSt[targetSl.id].add(st.id);
-              slVisitCount[st.id] = (slVisitCount[st.id] || 0) + 1;
-            }
+            if (!st.id) continue;
+            slRiddenSt[targetSl.id].add(st.id);
+            slVisitCount[st.id] = (slVisitCount[st.id] || 0) + 1;
+            const stype = (i === fromIdx) ? 'boarded' : (i === toIdx) ? 'alighted' : 'passed';
+            _mergeStopType(st.id, stype);
           }
         } else {
           // resolve 結果の駅名を targetSl の駅と照合 (1 SL に限定)
@@ -361,47 +374,18 @@
               for (let i = Math.min(fi, ti); i <= Math.max(fi, ti); i++) {
                 const stName = line.stations[i].n;
                 const slSt = targetSl.stations.find(s => s.name === stName);
-                if (slSt && slSt.id) {
-                  slRiddenSt[targetSl.id].add(slSt.id);
-                  slVisitCount[slSt.id] = (slVisitCount[slSt.id] || 0) + 1;
-                }
+                if (!slSt || !slSt.id) continue;
+                slRiddenSt[targetSl.id].add(slSt.id);
+                slVisitCount[slSt.id] = (slVisitCount[slSt.id] || 0) + 1;
+                // seg.from / seg.to は trip 全体の始終駅 → 駅名一致で boarded / alighted、それ以外は passed。
+                // 同 seg 内に同名駅 (ループ等) があると誤判定するが、典型的な旅程では十分。
+                const stype = (stName === seg.from) ? 'boarded' : (stName === seg.to) ? 'alighted' : 'passed';
+                _mergeStopType(slSt.id, stype);
               }
             }
           }
         }
       }
-    }
-
-    // v186: 駅ごとの stop_type 集計 (営業系統 NORIRECO.data.SERVICE_LINES ベース)
-    //   - seg.from = boarded (乗車駅)
-    //   - seg.to   = alighted (降車駅)
-    //   - 中間駅   = passed (通過)
-    // 複数 seg / 複数 trip で同じ駅が出る場合は最高優先度 (alighted > boarded > passed) を採用。
-    // 乗換駅は実質「降りて乗った」ので alighted 扱いになる (どこかの seg.to に必ず該当)。
-    // v323 (Phase 3): キーを駅名 → 駅 id (s_NNNNN) に切替。同名異所駅 (例: 高松 香川/石川/多摩)
-    //   を別駅として stop_type 判定するため。08-rendering の参照側も ms.id に切替済。
-    Object.keys(slStopType).forEach(k => delete slStopType[k]);
-    if (NORIRECO.data.SERVICE_LINES && NORIRECO.data.SERVICE_LINES.length > 0) {
-      RIDDEN_SEGS.forEach(seg => {
-        const sl = NORIRECO.data.SERVICE_LINES.find(x => x.id === seg.lineId);
-        if (!sl || !sl.stations) return;
-        const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
-        const toIdx = sl.stations.findIndex(s => s.name === seg.to);
-        if (fromIdx < 0 || toIdx < 0) return;
-        const lo = Math.min(fromIdx, toIdx), hi = Math.max(fromIdx, toIdx);
-        for (let i = lo; i <= hi; i++) {
-          const sid = sl.stations[i].id;
-          if (!sid) continue;  // v293 以降 SERVICE_LINES.stations[].id は必ず付くが防御
-          let type;
-          if (i === fromIdx) type = 'boarded';
-          else if (i === toIdx) type = 'alighted';
-          else type = 'passed';
-          const cur = slStopType[sid];
-          if (!cur || _STYPE_PRIORITY[type] > _STYPE_PRIORITY[cur]) {
-            slStopType[sid] = type;
-          }
-        }
-      });
     }
 
     if (RIDDEN_SEGS.length > 0) {

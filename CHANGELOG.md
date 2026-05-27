@@ -44,6 +44,53 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 237. v387 — 駅フィルタ「乗車のみ」が実質効かない問題を解消 (`slStopType` 集計を `slRiddenSt` と同ループに統合) (2026-05-27)
+
+### 背景
+
+ユスケから「マップ表示、◎乗車だけ ON にしても乗車でない駅まで表示される」報告。スクリーンショットで駅フィルタ box の "◎乗車" だけ active なのに、alighted/passed のはずの駅 (始終駅・通過駅) も大量に表示されていた。
+
+### 原因
+
+`slStopType` の集計が `slRiddenSt` と別パスで実装されていた。
+
+- `slRiddenSt` 側 ([js/04b-ride-record.js:311](js/04b-ride-record.js:311) 周辺): seg.lineId の直接 match 失敗時に **3 段 fallback** (`candidateN02Ids` → `resolveByServiceLine` → `resolveServiceTrip` → `resolveSegments`) で SERVICE_LINE を探し、見つかれば駅を ridden 化していた。
+- `slStopType` 側 ([js/04b-ride-record.js:383](js/04b-ride-record.js:383) 周辺): `SL.find(x => x.id === seg.lineId)` のみ。**fallback 一切なし**。
+
+結果、旧形式 trip (`seg.lineId` が N02 id `auto_中央線_東日本旅客鉄道` 等) は:
+- `slRiddenSt` には fallback 経由で登録される
+- `slStopType` には登録されない
+- 描画側 ([js/08-rendering.js:705](js/08-rendering.js:705)) の `slStopType[ms.id] || 'boarded'` フォールバックで **全駅が一律 "boarded" 扱い**
+- → フィルタ「◎乗車」を ON にすると本来 alighted/passed の駅も「boarded として表示」されてしまい、実質フィルタが機能しない
+
+ユスケの環境は migration 前の旧 N02 形式 trip がまだ多く残っていたためこの問題が顕在化。
+
+### 修正
+
+`slStopType` 集計を `slRiddenSt` ループに統合 (2 パス → 1 パスへ):
+
+- 旧第 2 パス (lines 383-405) を削除
+- 第 1 パス内で `targetSl` 確定後、`slRiddenSt` / `slVisitCount` への add と同時に `slStopType` も `_mergeStopType(stId, stype)` で集計
+- direct match 経路 (fromIdx/toIdx in targetSl): 位置で stype 判定 (fromIdx=boarded / toIdx=alighted / 中間=passed)
+- resolve fallback 経路: 駅名で stype 判定 (`stName === seg.from` → boarded / `=== seg.to` → alighted / それ以外 → passed)
+
+副次効果: 同じ seg を 2 回ループ走査していた処理が 1 回で済むので軽くもなる。
+
+### 検証 (preview MCP)
+
+synthetic RIDDEN_SEGS を `RIDDEN_SEGS` に注入して `rebuild()` 実行:
+
+- **新形式 seg** (`lineId='jr_chuo_rapid'`, from='東京', to='八王子'): 直接 match 経路で集計 → 東京=boarded / 吉祥寺=passed / 八王子=alighted ✓
+- **旧形式 seg** (`lineId='中央線_東日本旅客鉄道'` = N02 id, 同 from/to): resolve fallback 経路で集計 → 同 3 駅 同じ stype に正しく分類 ✓ (修正前は何も登録されず 'boarded' フォールバックされていた)
+- `Object.keys(slStopType).length` = 22 (東京〜八王子間の駅数とほぼ一致)
+- 検証後 `RIDDEN_SEGS` を元に戻して再 rebuild、副作用なし
+
+### 残課題
+
+- (実機ユスケアカウントで「◎乗車のみ ON」で本当に表示数が減るか) 本番 deploy 後に視認確認
+
+---
+
 ## 236. v386 — ロゴクリックでマップ画面トップへ遷移 (2026-05-27)
 
 ### 背景
