@@ -1454,6 +1454,21 @@ async function saveMultiSegmentTrip() {
   redrawAllLinesAfterTripChange();
   updateOverlays();
 
+  // v390: マイページの _mypageCache が初期化済 (= 過去にマイページ開封済 or 駅アクションシート
+  //   から lazy fetch 済) なら、保存直後にこちらにも append する。
+  //   理由: 保存直後にマップへ戻って駅マーカーをタップすると駅アクションシートの
+  //   「この駅を含む旅程」カウントが「(なし)」と出てしまう (cache に新 trip が無いため)。
+  //   マイページを一度開いてから戻ると正しく反映されるバグ報告 (ユスケ / 2026-05-27)。
+  //   cache 未初期化 (null/undefined) のときは次に必要になったタイミングで lazy fetch されるので
+  //   触らない (空配列を作ってしまうとその後 lazy fetch が走らなくなる)。
+  try {
+    const mc = NORIRECO.mypage?.state?._mypageCache;
+    if (Array.isArray(mc)) mc.push(trip);
+  } catch (e) {}
+  // v390: 駅アクションシートが「この駅を含む旅程」リスト表示中なら再描画
+  //   (v388 で delete 側に入れた refreshTripListIfOpen を save 側にも対称適用)
+  try { NORIRECO.stationActions?.refreshTripListIfOpen?.(); } catch (e) {}
+
   if (saved) {
     // 記録バッジ: GPS=📍 / 手動=📝
     const recTag = trip.verified ? ' 📍' : ' 📝';

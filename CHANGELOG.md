@@ -44,6 +44,62 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 240. v390 — 手動記録保存後、駅アクションシートのカウントが即座に反映される (2026-05-27)
+
+### 背景
+
+ユスケ報告:
+- マップ上で「ここから手動記録を始める」→ 経路選択 → 保存
+- 同じ駅をタップして駅アクションシートを開くと「この駅を含む旅程 (なし)」と表示される
+- マイページタブを開いてから戻ってくると「この駅を含む旅程一覧 (1)」と正しく表示される
+
+→ 保存直後は `_mypageCache` (マイページの trips 配列) に新 trip が反映されていない。マイページを開くと `loadMypageTripsIfNeeded` が Supabase から再 fetch して cache を更新するので、戻ってくると正しく見える。
+
+### 原因
+
+`saveAndCloseRec` (`js/07-record-mode.js:1452` 周辺) は以下を更新していた:
+- ✅ localStorage `norireco_trips`
+- ✅ `RIDDEN_SEGS`
+- ✅ `rideRecord.rebuild()` → slRiddenSt / slStopType / slVisitCount
+- ✅ `redrawAllLinesAfterTripChange()` → マップ再描画
+- ✅ `updateOverlays()` → ヘッダ完乗率
+- ❌ `_mypageCache` には触らず → 駅アクションシート / マイページタブ表示が stale
+
+### 修正
+
+`saveAndCloseRec` 末尾に追加 (`js/07-record-mode.js`):
+
+```js
+// _mypageCache が初期化済 (Array) なら append。未初期化 (undefined) なら触らず
+// 次に必要になったタイミングで lazy fetch に任せる (空配列にしてしまうと lazy fetch が走らなくなる)
+try {
+  const mc = NORIRECO.mypage?.state?._mypageCache;
+  if (Array.isArray(mc)) mc.push(trip);
+} catch (e) {}
+
+// 駅アクションシートが trip リスト表示中なら再描画 (v389 で delete 側に入れた仕組みの対称適用)
+try { NORIRECO.stationActions?.refreshTripListIfOpen?.(); } catch (e) {}
+```
+
+`sw.js`: CACHE_VERSION v389 → v390
+
+### 設計判断
+
+- **未初期化 (undefined) のときは触らない**: `_mypageCache` は「マイページを一度も開いていない or 駅アクションシートから lazy fetch がまだ走っていない」状態だと undefined。ここで `[trip]` を入れてしまうと、次にマイページを開いたとき `loadMypageTripsIfNeeded` が「もう cache ある」と判断して Supabase 再 fetch をスキップしてしまい、他デバイスから入れた trip が見えなくなる。`Array.isArray` ガードで初期化済のみ append にする。
+- **削除側 (v388/v389) との対称性**: delete 側で `applyDateFilter()` + `refreshTripListIfOpen()` を呼んでいるのと同じ精神。save 側にも対称適用。
+
+### 検証 (preview MCP)
+
+dynamic import で 07-record-mode.js を fresh load、save 末尾の新ロジックを単離して 3 ケース検証:
+
+- **A: cache 初期化済 ([] / Array)**: `mc.push(trip)` で length=1 ✓
+- **B: cache 未初期化 (undefined)**: `Array.isArray` で false → 触らない (`typeof === 'undefined'` 維持) ✓ (lazy fetch path 保持)
+- **C: refreshTripListIfOpen 呼出 (modal 閉じ + currentMs=null)**: 何も throw せず no-op ✓
+
+ローカル SW HTTP cache 制約は v388/v389 と同じ。本番デプロイ後に手動記録 → 同駅再タップで即時カウント反映を確認してください。
+
+---
+
 ## 239. v389 — 旅程削除後に駅アクションシートの trip カードも即座に消える (2026-05-27)
 
 ### 背景
