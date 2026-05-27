@@ -44,8 +44,11 @@ import { createTripDetailEditor } from './20-trip-detail-editor.js';
 
 // 旅程編集モーダル内の写真エリアコントローラ (createPhotoArea 戻り値、null = 未生成)
 let _tripEditPhotoArea = null;
-// v393 (B-2): 旅程編集モーダル内の trip 詳細エディタ (createTripDetailEditor 戻り値、null = 未生成)
+// v393 (B-2): 旅程編集モーダル内の trip 詳細エディタ — 列車種別 / 車両形式 担当 (per-seg-rows / trip-level)
 let _tripEditDetailEditor = null;
+// v394 (B-3a): 旅程編集モーダル内の trip 詳細エディタ — 遅延 + メモ 担当 (2nd instance、draft は独立)
+//   将来 B-4 で 1 instance に統合予定。
+let _tripEditMetaEditor = null;
 
 // v332 (Phase 3): getTripStationName は循環 import 回避のため 13-mypage-common.js に移動。
 //   import 経由で参照する (v331 で 13b に置いて 13-common から循環 import → 初期化事故、v332 解消)。
@@ -327,16 +330,10 @@ function openTripEditModal(tripId) {
   const trip = (NORIRECO.mypage.state._mypageCache || []).find(t => t.id === tripId);
   if (!trip) { alert('旅程が見つかりません'); return; }
   const idInp = document.getElementById('trip-edit-id');
-  const delayHInp = document.getElementById('trip-edit-delay-h');
-  const delayMInp = document.getElementById('trip-edit-delay-m');
-  const notesInp = document.getElementById('trip-edit-notes');
   const subTitle = document.getElementById('trip-edit-subtitle');
   if (idInp) idInp.value = tripId;
-  // v185: 既存 delay_minutes を 時間+分 に分解してプリセット
-  const total = (typeof trip.delay_minutes === 'number' && trip.delay_minutes > 0) ? trip.delay_minutes : 0;
-  if (delayHInp) delayHInp.value = total >= 60 ? String(Math.floor(total / 60)) : '';
-  if (delayMInp) delayMInp.value = (total % 60) > 0 ? String(total % 60) : (total > 0 && total < 60 ? String(total) : '');
-  if (notesInp) notesInp.value = trip.notes || '';
+  // v394 (B-3a): delay_minutes / notes プリセットは createTripDetailEditor (_tripEditMetaEditor) が initial で受ける。
+  //   旧 #trip-edit-delay-h/m + #trip-edit-notes の直接代入は不要 (factory 内 textarea/number input が値復元)。
   if (subTitle) {
     const label = trip.name || tripId;
     subTitle.textContent = `${label} を編集します。`;
@@ -421,6 +418,31 @@ function openTripEditModal(tripId) {
   // v393 (B-2): 🚆 列車種別 / 車両形式の DOM 操作は createTripDetailEditor (per-seg-rows / trip-level mode)
   //   が完全に担当。13b 旧実装 (v226〜v384 の per-seg cascade 直書き + trip 単位 4 input の visibility 制御)
   //   はファクトリ移行で不要化。旧 4 input は HTML 側で display:none 固定、旧 onTripEdit* 関数は dead code。
+
+  // v394 (B-3a): ⏱ 遅延 + 📝 自由メモ は 2nd factory instance (`_tripEditMetaEditor`) が担当。
+  //   1 modal に editor を 2 つ持つのは中間状態 — 将来 B-4 で time / train picker / delay / notes を
+  //   1 instance に統合予定。draft も分離されているため saveTripEdit で各 editor の getDraft() を merge する。
+  if (_tripEditMetaEditor) {
+    try { _tripEditMetaEditor.destroy(); } catch (e) {}
+    _tripEditMetaEditor = null;
+  }
+  const metaContainer = document.getElementById('trip-edit-meta-container');
+  if (metaContainer) {
+    _tripEditMetaEditor = createTripDetailEditor({
+      container: metaContainer,
+      initial: {
+        delay_minutes: trip.delay_minutes || null,
+        notes: trip.notes || null,
+      },
+      features: {
+        trainPicker: false,
+        timeRow: false,
+        delay: true,
+        notes: true,
+        photos: false,
+      },
+    });
+  }
 
   // v258: 📷 写真エリアを再生成 (createPhotoArea を使って最大 5 枚)
   if (_tripEditPhotoArea) {
@@ -715,10 +737,15 @@ function closeTripEditModal() {
     try { _tripEditPhotoArea.destroy(); } catch (e) {}
     _tripEditPhotoArea = null;
   }
-  // v393 (B-2): trip 詳細エディタも破棄
+  // v393 (B-2): trip 詳細エディタ (列車種別 / 車両形式) も破棄
   if (_tripEditDetailEditor) {
     try { _tripEditDetailEditor.destroy(); } catch (e) {}
     _tripEditDetailEditor = null;
+  }
+  // v394 (B-3a): メタエディタ (遅延 + メモ) も破棄
+  if (_tripEditMetaEditor) {
+    try { _tripEditMetaEditor.destroy(); } catch (e) {}
+    _tripEditMetaEditor = null;
   }
 }
 window.closeTripEditModal = closeTripEditModal;
@@ -730,19 +757,15 @@ async function saveTripEdit() {
   const trip = (NORIRECO.mypage.state._mypageCache || []).find(t => t.id === tripId);
   if (!trip) { alert('旅程が見つかりません'); closeTripEditModal(); return; }
 
-  // v185: 時間+分 から delay_minutes (分) を算出
-  const delayHRaw = document.getElementById('trip-edit-delay-h')?.value;
-  const delayMRaw = document.getElementById('trip-edit-delay-m')?.value;
-  const notesRaw = document.getElementById('trip-edit-notes')?.value;
-  const dh = (delayHRaw !== undefined && delayHRaw !== null && delayHRaw !== '')
-    ? Math.max(0, Math.min(99, parseInt(delayHRaw, 10) || 0))
-    : 0;
-  const dm = (delayMRaw !== undefined && delayMRaw !== null && delayMRaw !== '')
-    ? Math.max(0, Math.min(59, parseInt(delayMRaw, 10) || 0))
-    : 0;
-  const dTotal = dh * 60 + dm;
-  const newDelay = (dTotal > 0) ? Math.min(5999, dTotal) : null;
-  const newNotes = (notesRaw || '').trim() || null;
+  // v394 (B-3a): delay_minutes / notes は _tripEditMetaEditor.getDraft() 経由で取得。
+  //   factory 内の collectDelay (h/m → 分集約、5999 クランプ) / collectNotes (trim、空→null) と同形の正規化。
+  let metaDraft = null;
+  if (_tripEditMetaEditor) {
+    try { metaDraft = _tripEditMetaEditor.getDraft(); }
+    catch (e) { console.warn('[saveTripEdit] metaEditor.getDraft() failed:', e); }
+  }
+  const newDelay = (metaDraft && typeof metaDraft.delay_minutes === 'number') ? metaDraft.delay_minutes : null;
+  const newNotes = metaDraft?.notes || null;
 
   // v345: 「verified を守る」目的のロック撤回。GPS 記録も時刻編集可
   const tripPatch = {};

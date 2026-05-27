@@ -964,23 +964,61 @@ export function createTripDetailEditor(opts) {
     }
   }
 
-  // ── delay section ─────────────────────────────────────────────
+  // ── delay section (v394 B-3a) ───────────────────────────────────
+  // 13b v185 / 07 v185 の h/m number input ペアを factory 側に複製。
+  //   - 表示: 時間 (0-99) + 分 (0-59) + 「分遅れ」ラベル、flex 並び
+  //   - collect: h*60 + m を draft.delay_minutes (0 なら null、上限 5999 にクランプ)
+  //   - 07 の mania toggle (#rec-delay-toggle) は呼出側 wrapper の display 制御責務。
+  //     factory の .tde-delay は features.delay=true のとき常時 display:block (default)。
   function initDelay() {
-    // TODO (B-3): h/m input。07 は独立トグル (rec-delay-toggle) で hide/show、13b は常時表示。
-    //   features.delay は boolean のみ (toggle 挙動はモーダル外側に残す方針) でいったん作る。
-    _delayEl.innerHTML = '<!-- TODO B-3: delay (h/m inputs) -->';
+    const inputStyle = 'width:64px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:\'DM Mono\',monospace;font-size:12px;color-scheme:dark';
+    const lblStyle = 'font-size:10px;color:var(--silver)';
+    const headerStyle = 'font-size:11px;color:var(--gold);margin-bottom:6px';
+    const total = (typeof draft.delay_minutes === 'number' && draft.delay_minutes > 0) ? draft.delay_minutes : 0;
+    const hVal = total >= 60 ? String(Math.floor(total / 60)) : '';
+    const mVal = (total % 60) > 0 ? String(total % 60) : (total > 0 && total < 60 ? String(total) : '');
+    _delayEl.innerHTML = `
+      <div class="tde-delay-header" style="${headerStyle}">⏱ 遅延</div>
+      <div class="tde-delay-row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="number" class="tde-delay-h" min="0" max="99" step="1" placeholder="0" value="${_escHtml(hVal)}" style="${inputStyle}">
+        <span style="${lblStyle}">時間</span>
+        <input type="number" class="tde-delay-m" min="0" max="59" step="1" placeholder="0" value="${_escHtml(mVal)}" style="${inputStyle}">
+        <span style="${lblStyle}">分遅れ</span>
+      </div>
+    `;
+    if (onChange) {
+      _delayEl.querySelector('.tde-delay-h')?.addEventListener('input', () => { try { onChange(); } catch (e) {} });
+      _delayEl.querySelector('.tde-delay-m')?.addEventListener('input', () => { try { onChange(); } catch (e) {} });
+    }
   }
   function collectDelay() {
-    // TODO (B-3): h*60 + m を delay_minutes に集約 (0 のときは null)
+    const hRaw = _delayEl.querySelector('.tde-delay-h')?.value;
+    const mRaw = _delayEl.querySelector('.tde-delay-m')?.value;
+    const h = (hRaw != null && hRaw !== '') ? Math.max(0, Math.min(99, parseInt(hRaw, 10) || 0)) : 0;
+    const m = (mRaw != null && mRaw !== '') ? Math.max(0, Math.min(59, parseInt(mRaw, 10) || 0)) : 0;
+    const total = h * 60 + m;
+    draft.delay_minutes = (total > 0) ? Math.min(5999, total) : null;
   }
 
-  // ── notes section ─────────────────────────────────────────────
+  // ── notes section (v394 B-3a) ───────────────────────────────────
+  // 13b の #trip-edit-notes / 07 の #rec-edit-notes と同形の textarea。
+  //   - rows=2、resize:vertical、min-height:48px。space-only は null。
   function initNotes() {
-    // TODO (B-3): 自由メモ textarea
-    _notesEl.innerHTML = '<!-- TODO B-3: notes textarea -->';
+    const headerStyle = 'font-size:11px;color:var(--gold);margin:10px 0 6px';
+    _notesEl.innerHTML = `
+      <div class="tde-notes-header" style="${headerStyle}">📝 自由メモ</div>
+      <textarea class="tde-notes-textarea" rows="3" placeholder="自由メモ (車内エピソード・運休情報など)"
+        style="width:100%;box-sizing:border-box;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:8px;font-size:12px;resize:vertical;min-height:64px;font-family:inherit"></textarea>
+    `;
+    const ta = _notesEl.querySelector('.tde-notes-textarea');
+    if (ta) {
+      ta.value = draft.notes || '';
+      if (onChange) ta.addEventListener('input', () => { try { onChange(); } catch (e) {} });
+    }
   }
   function collectNotes() {
-    // TODO (B-3): textarea から trim して draft.notes に反映
+    const raw = _notesEl.querySelector('.tde-notes-textarea')?.value;
+    draft.notes = (raw || '').trim() || null;
   }
 
   // ── photos section (B-1 段階で唯一実体化済 — PhotoArea を wrap するだけ) ──

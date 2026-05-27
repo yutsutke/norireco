@@ -1457,24 +1457,14 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
       <input id="trip-edit-car-model" type="text" style="display:none">
     </div>
 
-    <!-- ⏱ 遅延 -->
-    <div style="margin-bottom:8px;border-top:1px solid var(--track);padding-top:10px">
-      <div style="font-size:11px;color:var(--gold);margin-bottom:6px">⏱ 遅延</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <input type="number" id="trip-edit-delay-h" min="0" max="99" step="1" placeholder="0"
-               style="width:64px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
-        <span style="font-size:10px;color:var(--silver)">時間</span>
-        <input type="number" id="trip-edit-delay-m" min="0" max="59" step="1" placeholder="0"
-               style="width:64px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
-        <span style="font-size:10px;color:var(--silver)">分遅れ</span>
-      </div>
-    </div>
-
-    <!-- 📝 メモ -->
+    <!-- ⏱ 遅延 + 📝 自由メモ — v394 (B-3a) factory 統合 mount。
+         旧 #trip-edit-delay-h/m + #trip-edit-notes は display:none で dead code (B-4 撤去予定)。
+         factory の .tde-delay / .tde-notes 内部に「⏱ 遅延」「📝 自由メモ」見出しを持たせる。 -->
     <div style="margin-bottom:10px;border-top:1px solid var(--track);padding-top:10px">
-      <div style="font-size:11px;color:var(--gold);margin-bottom:6px">📝 自由メモ</div>
-      <textarea id="trip-edit-notes" rows="3" placeholder="自由メモ (車内エピソード・運休情報など)"
-                style="width:100%;box-sizing:border-box;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:8px;font-size:12px;resize:vertical;min-height:64px;font-family:inherit"></textarea>
+      <div id="trip-edit-meta-container"></div>
+      <input type="number" id="trip-edit-delay-h" style="display:none">
+      <input type="number" id="trip-edit-delay-m" style="display:none">
+      <textarea id="trip-edit-notes" style="display:none"></textarea>
     </div>
 
     <!-- 📷 写真 (v258) -->

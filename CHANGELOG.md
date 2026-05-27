@@ -44,6 +44,77 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 244. v394 — trip 詳細エディタ B-3a 完了: 13b の ⏱ 遅延 + 📝 自由メモ を factory に集約 (2026-05-27)
+
+### 背景
+
+§243 (v393, B-2) で 13b 旅程編集モーダルの 🚆 列車種別 / 車両形式 を `createTripDetailEditor` (per-seg-rows / trip-level mode) に移行済。次は同 modal の ⏱ 遅延 + 📝 自由メモ + 🕒 乗車日時を factory に集約する **B-3**。スコープが大きいので段階分割:
+
+- **B-3a (本コミット v394)**: 遅延 + メモ (シンプル、toggle なし) → 13b
+- B-3b (次): 時刻行 (5 精度切替 + GPS preset) → 13b は `['minute', 'day']` 限定
+- B-3c (次々): 07 確認モーダルへ移植 (mania toggle `#rec-delay-toggle` の visibility 制御は呼出側に残す)
+
+### 設計判断
+
+- **2nd factory instance** `_tripEditMetaEditor` を 13b モーダルに追加 mount。既存の `_tripEditDetailEditor` (列車種別 / 車両形式 担当) と並列で動く。drafts は分離されているため `saveTripEdit` で各 editor の `getDraft()` を merge する。1 modal 2 editor instance は中間状態 — 将来 B-4 で time / train / delay / notes を 1 instance に統合予定。
+- **section header を factory 側に持たせる** — `initDelay` は `<div class="tde-delay-header">⏱ 遅延</div>` + h/m input、`initNotes` は `<div class="tde-notes-header">📝 自由メモ</div>` + textarea を render。modal HTML 側は単一 `<div id="trip-edit-meta-container">` だけ持てばよい。
+- **factory の delay 集約規約**: `h*60 + m`、`0 → null`、上限 `5999` (99h59m) クランプ — 13b v185 + 07 v185 の `saveTripEdit` ロジックと同形。
+- **factory の notes 集約規約**: `.trim() || null` (空白のみは null)。
+- **mania toggle (07 の `#rec-delay-toggle`) の挙動**: factory の `.tde-delay` 表示制御は呼出側の責務。07 (B-3c) では `#rec-delay-row` ラッパの display を toggle で切替、factory の delay section をその中に配置する想定。13b には toggle なし (常時表示)。
+
+### 実装範囲
+
+`js/20-trip-detail-editor.js` (+42 行):
+
+- `initDelay()` — h/m number input ペア (class `tde-delay-h` / `tde-delay-m`) + section header (`tde-delay-header`)。 initial.delay_minutes を h/m に分解してプリセット (13b v185 と同形)、`onChange` callback も bind。
+- `collectDelay()` — DOM 直読み、`h*60+m` を `draft.delay_minutes` に集約 (0→null, 5999 クランプ)。
+- `initNotes()` — textarea (class `tde-notes-textarea`) + section header (`tde-notes-header`)。initial.notes プリセット + `onChange` bind。
+- `collectNotes()` — textarea を trim、空 → null で `draft.notes` に反映。
+
+`js/13b-trips.js` (+30 / −24 行 net):
+
+- module-level `let _tripEditMetaEditor = null` 追加。
+- `openTripEditModal`: `delayHInp / delayMInp / notesInp` 直接代入ブロック (8 行) を撤去。代わりに `_tripEditMetaEditor` を `#trip-edit-meta-container` に mount (initial に `delay_minutes` / `notes` を渡す)。
+- `closeTripEditModal`: `_tripEditMetaEditor.destroy()` 追加。
+- `saveTripEdit`: 旧 DOM query (`#trip-edit-delay-h/m` + `#trip-edit-notes` から値取得 + 正規化 12 行) を `_tripEditMetaEditor.getDraft()` 経由 (3 行) に置換。集約は factory の `collectDelay/collectNotes` が完結。
+
+`noritetsu-map.html` (−18 行 net):
+
+- ⏱ 遅延 section + 📝 自由メモ section の HTML inline (h/m input + textarea) を単一 `<div id="trip-edit-meta-container"></div>` に統合。
+- 旧 4 要素 (`#trip-edit-delay-h` / `#trip-edit-delay-m` / `#trip-edit-notes`) は `style="display:none"` 固定 (B-4 撤去まで dead code)。
+- 旧 2 つの section wrapper (`margin-bottom + border-top` 装飾) の 1 つも削除 (factory の section header + 1 wrapper で表示が成立)。
+
+### 検証
+
+`node --check --input-type=module < js/20-trip-detail-editor.js` / `js/13b-trips.js` 共に OK。`.claude/agents/js-syntax-guard.md` 実行: ESM 構文エラー・グローバル衝突・class 命名衝突 (`tde-delay-* / tde-notes-*` 系) なし、clean。
+
+preview server で factory を fresh import → `#trip-edit-meta-container` に mount → 5 ケース getDraft() round-trip:
+
+| 入力 | 期待 delay_minutes | 期待 notes | 結果 |
+|---|---|---|---|
+| initial: 75 / "事故影響あり" | 75 (1h15m 表示) | "事故影響あり" | ✅ |
+| h/m emptied | null | (unchanged) | ✅ |
+| notes whitespace-only | null | null | ✅ |
+| 2h30m / "雷雨" | 150 | "雷雨" | ✅ |
+| 99h59m | 5999 (max clamp) | (unchanged) | ✅ |
+
+(window.openTripEditModal 経由のフルフロー確認は preview 環境の HTTP cache が `js/05-supabase-data.js` の applyDateFilter 未追加版を握る v393 と同じ理由で阻まれた。本番 Cloudflare では再現しない)
+
+### dead code (B-4 撤去対象、§243 と合算)
+
+`noritetsu-map.html`: `#trip-edit-delay-h` / `#trip-edit-delay-m` / `#trip-edit-notes` (今回追加)。
+
+### 次
+
+- **B-3b**: 13b の 🕒 乗車日時 を factory の `timeRow` section (precisions=['minute','day']) に集約。13b は精度 5 種すべては要らない (date_precision のうち minute/day のみ編集可、month/year/unknown は新規作成で固定)。
+- **B-3c**: 07 確認モーダルへ delay + notes 移植。`#rec-delay-toggle` mania toggle の visibility 制御は呼出側 (07) に残し、factory の `.tde-delay` を `#rec-delay-row` 内に配置する設計。
+- **B-3 締め (B-3d?)**: 07 の `#rec-time-edit-section` (5 精度 + GPS preset + `updateRecConfirmTimeRow` の dynamic 更新) も factory に移植。
+- **B-4**: グローバル Map + 13b 旧 9 関数 + HTML dead input 撤去 + 1 modal 1 editor instance に統合。
+
+CHANGELOG.md §243 (B-2) からの続き。
+
+---
+
 ## 243. v393 — trip 詳細エディタ B-2 完了: 13b 旅程編集モーダルを per-seg-rows / trip-level mode で factory に移行 (2026-05-27)
 
 ### 背景
