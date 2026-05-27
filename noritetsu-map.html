@@ -1332,7 +1332,10 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
     </div>
     <!-- 列車・車両形式 (任意・マニア向け) — v347 で toggle 化。
          Lv0/1 (素人) には UI が見えないようデフォ非表示、トグル ON 時のみ展開。
-         localStorage `norireco.prefs.showTrainSelector` に状態保存。 -->
+         localStorage `norireco.prefs.showTrainSelector` に状態保存。
+         v392 (B-1 続き): 旧 chip / cat / sl-block / cascade の inline HTML を撤去し、
+         createTripDetailEditor (per-seg-chip mode) を rec-train-picker-container に mount する。
+         editor は openRecConfirm + onRecTrainToggle で生成・destroy 制御。 -->
     <div style="margin-top:14px;border-top:1px solid var(--track);padding-top:12px">
       <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver);cursor:pointer;user-select:none">
         <input type="checkbox" id="rec-train-toggle" onchange="onRecTrainToggle()"
@@ -1340,47 +1343,7 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
         <span>📋 列車・車両形式も記録する</span>
       </label>
       <div id="rec-train-picker" style="display:none;margin-top:10px">
-        <!-- v375: 区間 chip を最上位に移動。「区間を選んでから車両形式のカスケード」フロー。
-             chip 切替で active な区間に紐づく category / train / car_model を Map から復元。 -->
-        <div id="rec-seg-chips-wrap" style="display:none;margin-bottom:10px">
-          <div style="font-size:11px;color:var(--silver);margin-bottom:6px">🚉 区間を選ぶ (区間ごとに列車・車両を記録できます)</div>
-          <div id="rec-sl-chips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-        </div>
-        <!-- v352: ラジオ撤廃、カテゴリ dropdown を picker 直下に。
-             cat='local' (普通) → sl レーン / cat='その他' → cascade レーン
-             v375: per-segment 化、active chip の category を表示する -->
-        <select id="rec-train-category" onchange="onTrainCategoryChange()"
-                style="width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;margin-bottom:10px">
-          <option value="">指定しない</option>
-        </select>
-        <!-- 普通カテゴリ用: 現役車両 dropdown (sl レーン)。区間 chip は picker 上位に移動済み (v375) -->
-        <div id="rec-sl-vehicle-block" style="display:none">
-          <div style="font-size:11px;color:var(--silver);margin-bottom:6px">🚆 この区間の車両形式</div>
-          <select id="rec-sl-vehicle-select" onchange="onSlVehicleChange()"
-                  style="width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px">
-            <option value="">車両形式を選ぶ (任意)...</option>
-          </select>
-          <input id="rec-sl-vehicle-custom" type="text" oninput="onSlVehicleCustomInput()" placeholder="例: E235系1500番台、外部車両など"
-                  style="display:none;width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--gold);border-radius:6px;font-size:12px;margin-top:6px;box-sizing:border-box" />
-          <div id="rec-sl-vehicle-empty" style="display:none;font-size:10px;color:var(--silver);opacity:.7;margin-top:6px;line-height:1.5">
-            この系統の車両データはまだ未登録です。dropdown 末尾の「✏️ 別形式を入力」から自由記述できます。
-          </div>
-        </div>
-        <!-- 特急/新幹線/観光列車等のカテゴリ用: 列車 → 車両形式 cascade レーン -->
-        <div id="rec-train-cascade" style="display:none">
-          <select id="rec-train-id" onchange="onTrainChange()"
-                  style="display:none;width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;margin-bottom:6px">
-            <option value="">列車を選ぶ...</option>
-          </select>
-          <input id="rec-train-custom" type="text" oninput="onTrainCustomInput()" placeholder="例: 湘南ライナー、北越急行スーパー特急 など"
-                  style="display:none;width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--gold);border-radius:6px;font-size:12px;margin-bottom:6px;box-sizing:border-box" />
-          <select id="rec-car-model" onchange="onCarModelChange()"
-                  style="display:none;width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;margin-bottom:6px">
-            <option value="">車両形式を選ぶ (任意)...</option>
-          </select>
-          <input id="rec-car-model-custom" type="text" oninput="onCarModelCustomInput()" placeholder="例: 209系2000番台、ED75、キハ110系 など"
-                  style="display:none;width:100%;padding:8px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--gold);border-radius:6px;font-size:12px;margin-bottom:6px;box-sizing:border-box" />
-        </div>
+        <div id="rec-train-picker-container"></div>
       </div>
     </div>
     <!-- 📝 メモ (任意) — 後追い記録・GPS 記録どちらでも入力可。

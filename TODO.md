@@ -82,6 +82,27 @@ git log --oneline -20
   - `noritetsu-log.html` は別ページだとほぼ見ない → 地図画面のサブタブとして埋め込み
   - 利点: 過去の旅程をまとめて編集、後から特急列車種別を登録、メモ追記が片手間にできる
   - 地図 / 📋 ログ / 👤 マイページ の 3 タブナビに統合
+  - **注 (2026-05-26)**: Notion §1.3 で「一括記録 (まとめて記録)」として再設計済。旧ログ画面の「1 件ずつフォーム」を復活させるのではなく、営業系統チェックリスト形式で "一気に塗る" 手段を新設する方向。下記の「一括記録」項目とセット
+
+- [ ] **一括記録 (まとめて記録) — noritetsu-log.html 廃止の受け皿** (Notion §1.3 設計確定 / v392 で B-1 着手)
+  - **動機 2 層**:
+    - マニア層 (Lv3): 過去何十年ぶんの乗車を遡って一括入力。路線・区間まで正確に
+    - 新規〜ライト層 (Lv0/1): 登録直後の空マップを「乗ったことある路線」で塗って初期状態作り (虚無対策 / シェア・OGP に効く)
+  - **形式**: 営業系統チェックリスト (検索 + 「近く / 会社 / 都道府県」フィルタ)。タップ = 全線完乗の draft trip (`source=manual, verified=false, date_precision='unknown'`)。アコーディオン同時 1 行で詳細フォーム展開
+  - **入口**: マイページ「過去の乗車をまとめて記録」 + 空マップ時オンボーディングバナー
+  - **UI 本体**: 地図にかぶせるボトムシート (オーバーレイ)。チェックするたび背面の地図が塗られ完乗率が上がる "可視化で報酬"
+  - **必須前提**: trip 詳細エディタ抽出。確認モーダル中身を 02/07/13b 3 箇所重複 (v383 落とし穴) から単一 `createTripDetailEditor` に集約
+  - **段階**:
+    - ✅ B-1 (v392): `js/20-trip-detail-editor.js` skeleton 配置 + API 設計合意 (factory + features + internal クロージャ state + photos 実体化)
+    - ✅ B-1 続き (v392): per-seg-chip mode 本実装 (`selectSlChip` / `applyRecTrainCategory` / `populateSlVehiclePicker` / 02 dropdown handlers をクロージャ移植) + 07 確認モーダルを component 経由に書き換え + noritetsu-map.html `#rec-train-picker` 圧縮 + preview server 実機 simulate で動作確認
+    - 未 B-2: 13b 編集モーダルを per-seg-rows / trip-level mode で本コンポーネントに移行 (02/13b の重複ロジック削除)
+    - 未 B-3: 時刻 / 遅延 / メモ も完全に本コンポーネントへ集約、両モーダル HTML を圧縮
+    - 未 B-4: グローバル `NORIRECO.trains.selectedXxxBySl` / `activeChipSlId` 撤廃
+    - 未 A: 一括記録パネル本体 (B-3 完了後着手)。② 地図上路線直接タップ / ③ 都道府県シードは別段階・後回し
+  - **要検討 (実装時に潰す)**:
+    - `date_precision='unknown'` の集計経路 — 採用 (a) 2026-05-26: 期間フィルタからは除外維持、地図の塗り・完乗率には含める (嘘の年で埋めない方針)。実装時に「集計が期間フィルタの unknown 除外と別経路になっているか」要確認
+    - 一括保存の途中失敗: 部分コミット許容か全ロールバックか、写真 R2 ゴミ方針 (v258 同様 "一部残り許容")
+    - `node --check --input-type=module < file` でシンタックスチェック (v372 教訓) — js-syntax-guard サブエージェント (v391-v392) で自動化済
 
 - [ ] **後追い記録モードの拡張（駅メモ + Supabase 列追加）**
   - v178 で「乗車日 / 出発 / 到着」の手動入力対応済（`date_precision='minute'`）
