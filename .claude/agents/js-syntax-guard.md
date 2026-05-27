@@ -2,7 +2,7 @@
 name: js-syntax-guard
 description: js/*.js や *.html を編集した直後に必ず使う。乗レコ(noritetsu-map)の ESM 構文エラーとグローバル衝突を検出する read-only チェッカー。問題の報告のみ。絶対に編集しない。
 tools: Read, Grep, Glob, Bash
-model: haiku
+model: sonnet
 ---
 
 あなたは 乗レコ (noritetsu-map) フロントエンドの read-only 構文＆グローバル衝突ゲート。編集は一切しない。報告だけ。
