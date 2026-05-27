@@ -44,6 +44,71 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 241. v391 (no deploy) — サブエージェント `js-syntax-guard` 配置 (Notion 「🤖 サブエージェント方針」実装) (2026-05-27)
+
+### 背景
+
+Notion 「🤖 サブエージェント方針 — 調査・検証の切り出し」(2026-05-26 ドラフト) で次の方針が確定していた:
+
+- サブエージェントは「本筋のコンテキストを汚さず、調査と検証を切り出す」方向で使う。**実装の並列化には使わない**。
+- 組み込み Explore を意識的に使う (read-only, 既定 Haiku, 設定不要)。
+- custom サブエージェントは **read-only の構文＆グローバル衝突ゲート 1 個だけ** から始める。
+- 多段パイプライン (PM→設計→実装→QA) は今はやらない (ソロ + 13 ファイル密結合フロントには過剰)。
+
+これを実装した最初の (そして当面唯一の) custom subagent が `js-syntax-guard`。
+
+### 配置
+
+`.claude/agents/js-syntax-guard.md` (Notion ドラフトそのまま):
+
+```yaml
+---
+name: js-syntax-guard
+description: js/*.js や *.html を編集した直後に必ず使う。乗レコ(noritetsu-map)の ESM 構文エラーとグローバル衝突を検出する read-only チェッカー。問題の報告のみ。絶対に編集しない。
+tools: Read, Grep, Glob, Bash
+model: haiku
+---
+```
+
+本文は以下 2 つの再発事故を仕組みで踏まなくするためのプロンプト:
+
+1. **ESM 固有の構文エラーや関数内 const 重複を plain な `node --check` が見逃す** (CommonJS として解釈するため。**v372 教訓**)。エージェントは必ず `node --check --input-type=module < <file>` を使う。
+2. **グローバルスコープを共有する複数ファイル間で、トップレベルの `const` / `let` / `function` 名が衝突 → アプリ全体が SyntaxError** (**v127 教訓**: `const grid` を `09-tabs-stats` と `07-record-mode` の両方で宣言)。クラシック `<script>` 群を横断 grep。
+
+### 設計判断
+
+- **配置場所**: `.claude/agents/` (project スコープ・git 管轄)。Notion ページは「方針と参照ドラフトのみ、実体は git」と明記してあるため二重管理回避。
+- **モデル**: Haiku 既定。read-only + 機械的チェックで十分。
+- **権限**: `Bash(node --check *)` は v273 で既に project shared 設定に許可済みのため、新規 permission prompt は出ない見込み。
+- **CLAUDE.md には書かない**: Notion 方針が「任意ヘルパー」と位置づけているため、強制化しない。push フック (TODO 「PreToolUse (git push) フックの設計と実装」) が最終ゲート (強制・ブロック) として後で入る想定で、サブエージェントは編集ループ中の早期検出という役割分担。
+- **deploy 不要**: `.claude/` 配下は Cloudflare Pages の deploy 対象外 (dot-dir は無視される慣例) かつ public/cdn には出ないため、`sw.js` CACHE_VERSION は v390 のまま据え置き。
+
+### 既存の仕組みとの棲み分け (Notion 方針より)
+
+- サブエージェント = 編集ループ中の早期検出 (コンテキストを汚さず・任意)
+- PreToolUse(git push) フック (TODO §🔧) = 最終ゲート (強制・ブロック)
+
+役割が違うので両立する。重複ではなく層。
+
+### 動作確認
+
+現セッション中に `subagent_type: js-syntax-guard` で呼び出してみたところ:
+
+```
+Agent type 'js-syntax-guard' not found. Available agents: claude, claude-code-guide, Explore, general-purpose, Plan, statusline-setup
+```
+
+Claude Code は SessionStart 時に `.claude/agents/` を読み込む仕様のため、**次セッション起動後から認識される想定**。配置自体は完了。
+
+利用方法 (次セッション以降): js/*.js や *.html を編集した直後に Agent ツールで `subagent_type: js-syntax-guard` を指定して呼び出す。description が「編集した直後に必ず使う」なので、Claude 本体が自動委譲する判断も期待できる。
+
+### 残課題
+
+- 次セッションで実ファイル編集 → 自動委譲が走るかの動作確認
+- PreToolUse(git push) フック (TODO 🔧) と統合した最終ゲート設計
+
+---
+
 ## 240. v390 — 手動記録保存後、駅アクションシートのカウントが即座に反映される (2026-05-27)
 
 ### 背景
