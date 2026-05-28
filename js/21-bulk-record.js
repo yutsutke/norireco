@@ -480,6 +480,26 @@ function _esc(s) {
 }
 
 // ──────────────────────────────────────────────────────────────
+// A-6: 空マップ時オンボーディングバナー — Notion §1.3 入口 (b)
+//
+// 表示条件: 旅程が 1 件もない (localStorage `norireco_trips` 空 AND
+//   `window.RIDDEN_SEGS.length === 0`)。
+// 何らかの記録があれば即 hide。saveBulkDrafts / 通常記録モード両方の保存後
+// に呼ぶ必要があるが、bulk 側からは直接、通常記録は将来 hook を入れるか
+// init 時に 1 回呼ぶだけでも当面十分 (新規ユーザーは bulk が主導線)。
+// ──────────────────────────────────────────────────────────────
+
+export function updateOnboardingBanner() {
+  const banner = document.getElementById('empty-onboarding-banner');
+  if (!banner) return;
+  let lsLen = 0;
+  try { lsLen = (JSON.parse(localStorage.getItem('norireco_trips') || '[]')).length; } catch (e) {}
+  const segsLen = Array.isArray(window.RIDDEN_SEGS) ? window.RIDDEN_SEGS.length : 0;
+  const isEmpty = lsLen === 0 && segsLen === 0;
+  banner.hidden = !isEmpty;
+}
+
+// ──────────────────────────────────────────────────────────────
 // A-3: 一括保存 MVP
 //
 // draft 1 件 → trip 1 件として個別に POST する素直な実装。
@@ -650,6 +670,8 @@ async function saveBulkDrafts() {
 
   _saving = false;
   closeBulkRecordSheet();
+  // A-6: 空マップ banner を再評価 (1 件でも保存していれば自動で消える)
+  updateOnboardingBanner();
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -697,4 +719,23 @@ window.closeBulkRecordSheet = closeBulkRecordSheet;
 NORIRECO.bulkRecord.open  = openBulkRecordSheet;
 NORIRECO.bulkRecord.close = closeBulkRecordSheet;
 NORIRECO.bulkRecord.save  = saveBulkDrafts;
+NORIRECO.bulkRecord.updateOnboardingBanner = updateOnboardingBanner;
 NORIRECO.bulkRecord._debugGetDrafts = _debugGetDrafts;
+
+// A-6: ページ初期化時にも banner 評価。
+//   - DOMContentLoaded 後に呼ぶ (banner element が存在する必要あり)
+//   - RIDDEN_SEGS の populate は 05-supabase-data の async 同期後、
+//     さらに数秒かかる可能性 → 初回チェック + 3 秒後フォローアップで十分カバー。
+//   - 通常記録モード (saveMultiSegmentTrip) からの hook は別 issue (07 側で
+//     window.NORIRECO.bulkRecord.updateOnboardingBanner?.() を呼ぶ追加が必要)。
+if (typeof window !== 'undefined') {
+  const _onReady = () => {
+    updateOnboardingBanner();
+    setTimeout(updateOnboardingBanner, 3000);
+  };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _onReady, { once: true });
+  } else {
+    _onReady();
+  }
+}

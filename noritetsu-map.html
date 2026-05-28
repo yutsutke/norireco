@@ -446,6 +446,30 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .bulk-accordion-body .tde-delay,
 .bulk-accordion-body .tde-notes{min-height:0;}
 
+/* A-6 (v405 〜): 空マップ時オンボーディングバナー
+   - 地図画面中央下にフロート、riddenSt 0 件のときだけ表示
+   - タップで一括記録ボトムシート起動 */
+.empty-onboarding-banner{
+  position:absolute;left:50%;bottom:96px;transform:translateX(-50%);
+  z-index:120;max-width:min(360px, calc(100vw - 32px));
+  display:flex;align-items:center;gap:12px;padding:13px 18px;
+  background:linear-gradient(135deg, rgba(242,169,0,.95), rgba(232,128,0,.9));
+  color:#0e1824;border:1px solid rgba(255,221,128,.9);border-radius:14px;
+  box-shadow:0 6px 18px rgba(0,0,0,.4), 0 0 0 1px rgba(242,169,0,.3);
+  cursor:pointer;animation:eob-bounce 1.6s ease-in-out infinite;
+}
+.empty-onboarding-banner[hidden]{display:none;}
+.empty-onboarding-banner:hover{filter:brightness(1.08);}
+.empty-onboarding-banner:active{transform:translateX(-50%) scale(.98);}
+.eob-icon{font-size:24px;flex-shrink:0;}
+.eob-text{flex:1;min-width:0;}
+.eob-title{font-size:13px;font-weight:700;line-height:1.35;}
+.eob-sub{font-size:10px;opacity:.7;margin-top:3px;}
+@keyframes eob-bounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50%      { transform: translateX(-50%) translateY(-4px); }
+}
+
 /* フィルタバー */
 .mp-filter-bar{display:flex;gap:8px;flex-wrap:wrap;padding:10px 12px;background:rgba(14,24,36,.5);border-bottom:1px solid var(--track);align-items:center;position:sticky;top:84px;z-index:3;}
 .mp-filter-row{display:flex;align-items:center;gap:5px;flex:1;min-width:130px;}
@@ -1286,6 +1310,18 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
       <div class="ms-row" id="storage-row" style="margin-top:4px;padding-top:4px;border-top:1px solid var(--track)">
         <span class="ms-lbl" style="font-size:9px" id="storage-lbl">📱 local</span>
         <span style="font-size:9px;color:var(--silver)" id="storage-count"></span>
+      </div>
+    </div>
+    <!-- A-6 (v405 〜): 空マップ時オンボーディングバナー — Notion §1.3 入口 (b)。
+         旅程が 1 件もない (riddenSt 全空 + localStorage 0) ときだけ表示、
+         タップで一括記録ボトムシートを開く。21-bulk-record.js が updateOnboardingBanner
+         で表示/非表示を制御。 -->
+    <div class="empty-onboarding-banner" id="empty-onboarding-banner" hidden
+         onclick="openBulkRecordSheet()">
+      <div class="eob-icon">📋</div>
+      <div class="eob-text">
+        <div class="eob-title">乗ったことのある路線で<br>マップを塗ろう</div>
+        <div class="eob-sub">タップして「過去の乗車をまとめて記録」を開く</div>
       </div>
     </div>
     <button class="map-mode-fab" id="map-mode-btn" onclick="cycleMapMode()" title="背景切替">🗺️</button>

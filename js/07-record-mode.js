@@ -1414,6 +1414,8 @@ async function saveMultiSegmentTrip() {
     try { _recEditor.destroy(); } catch (e) {}
     _recEditor = null;
   }
+  // A-6 (v405): 通常記録モードからも空マップ banner を再評価 (1 件でも記録があれば hide)
+  try { window.NORIRECO?.bulkRecord?.updateOnboardingBanner?.(); } catch (e) {}
   // verified=true の trip なら自動獲得チェックが発動する
   setTimeout(() => runCharacterGrantCheck(), 800);
   // 記録モードを終了 (R.mode=true → false に切替、最寄駅パネルが「開始駅選択」に戻る)

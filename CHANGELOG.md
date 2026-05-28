@@ -48,6 +48,167 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 255. v405 — 一括記録 A-6+A-7 完了 (A 段階完結): オンボーディングバナー + unknown 集計検証 (2026-05-28)
+
+### 背景
+
+§254 (v404, A-5) でフル機能版完成。残 A-6 (オンボーディング) + A-7 (unknown 集計検証) を 1 commit に統合して A 段階を完結させる。
+
+### A-6: 空マップ時オンボーディングバナー
+
+Notion §1.3 入口 (b) の実装。新規ユーザーが初回マップを開いた瞬間に「ここから何をすれば良いか」を視覚的に誘導する。
+
+#### `noritetsu-map.html`
+
+新規 element (地図画面中央下に absolute float):
+
+```html
+<div class="empty-onboarding-banner" id="empty-onboarding-banner" hidden
+     onclick="openBulkRecordSheet()">
+  <div class="eob-icon">📋</div>
+  <div class="eob-text">
+    <div class="eob-title">乗ったことのある路線で<br>マップを塗ろう</div>
+    <div class="eob-sub">タップして「過去の乗車をまとめて記録」を開く</div>
+  </div>
+</div>
+```
+
+CSS:
+- `.empty-onboarding-banner`: absolute / bottom 96px / 中央 / gold グラデーション / 矢印アニメ (eob-bounce 1.6s ease-in-out infinite で `translateY(-4px)` 往復)
+- `.eob-icon` / `.eob-title` / `.eob-sub`: 階層表示
+
+#### `js/21-bulk-record.js`
+
+新規 export:
+
+```js
+export function updateOnboardingBanner() {
+  const banner = document.getElementById('empty-onboarding-banner');
+  if (!banner) return;
+  let lsLen = 0;
+  try { lsLen = (JSON.parse(localStorage.getItem('norireco_trips') || '[]')).length; } catch (e) {}
+  const segsLen = Array.isArray(window.RIDDEN_SEGS) ? window.RIDDEN_SEGS.length : 0;
+  const isEmpty = lsLen === 0 && segsLen === 0;
+  banner.hidden = !isEmpty;
+}
+```
+
+呼出点:
+1. **DOMContentLoaded / readyState != 'loading'** で初回チェック + 3 秒後フォローアップ (5-supabase-data の async 同期完了を待つ)
+2. **saveBulkDrafts 末尾** で再評価 (1 件でも保存すれば hide)
+3. **`window.NORIRECO.bulkRecord.updateOnboardingBanner`** で window 公開
+
+#### `js/07-record-mode.js`
+
+通常記録モードからも hook 1 行追加:
+
+```js
+// saveMultiSegmentTrip 末尾 (1418 行あたり)
+try { window.NORIRECO?.bulkRecord?.updateOnboardingBanner?.(); } catch (e) {}
+```
+
+import を増やさず optional chain で side effect 注入 → 循環 import 回避 (07 が 21 を import しない)。
+
+### A-7: unknown 集計検証
+
+#### 検証結果
+
+`applyDateFilter` (05-supabase-data.js:248) を読むと:
+
+```js
+export function applyDateFilter() {
+  let trips = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
+  // ...
+  const filtered = filterTripsByDate(trips);   // unknown は specific フィルタで除外 (line 201)
+  segs = tripsToSegs(filtered);
+  RIDDEN_SEGS.length = 0;
+  segs.forEach(s => RIDDEN_SEGS.push(s));      // ← 期間フィルタの結果が地図塗りソースになる
+  NORIRECO.rideRecord.rebuild();
+  // ...
+}
+```
+
+つまり **期間フィルタが地図塗り (RIDDEN_SEGS/riddenSt) にも適用される**。Notion §1.3 末尾の採用 (a) (「期間フィルタからは除外維持、地図塗りには含む」) と実装が逆。
+
+#### 対応方針: 現状 (b) で確定 (ユスケ判断)
+
+二系統化案 (a 実装) との対比:
+
+| 案 | 実装コスト | UX |
+|---|---|---|
+| **(b) 現状維持** ✅ | ゼロ | 「期間フィルタ = 日時判明 trip 内で絞る」意味論で整合。bulk-record 大量 unknown を入れても、デフォルト (mode='all') では全部見える。期間絞り込み時は「いつ乗ったか不明」が消えるのは自然 |
+| (a) 二系統化 | applyDateFilter 大改修、RIDDEN_SEGS 単一参照を二系統化、後続コード広範影響 | 「今年」フィルタでも unknown が地図に塗られたまま。意味論的にやや不自然 |
+
+→ **(b) 採用**。実装変更ゼロ、Notion §1.3 採用 (a) は (b) に更新する。
+
+### `sw.js` v404 → v405
+
+### 検証 (preview eval)
+
+| シナリオ | 期待 | 実測 |
+|---|---|---|
+| `bannerExists` | true | ✅ |
+| 既存 trips あり (lsLen=14) | banner.hidden=true | true ✅ |
+| 空状態シミュレート (ls/segs clear) → `updateOnboardingBanner()` | banner.hidden=false + テキスト表示 | hidden=false / "📋 乗ったことのある路線でマップを塗ろう..." ✅ |
+| 復元 + `updateOnboardingBanner()` | banner.hidden=true | true ✅ |
+| 空状態 + banner.click() | sheet 開く | sheetOpenAfterBannerClick=true ✅ |
+| A-7: `filterTripsByDate` で specific (`thisYear`) | unknown 除外 | line 201 で実装確認 ✅ |
+| A-7: `applyDateFilter` 内で `RIDDEN_SEGS = tripsToSegs(filtered)` | 期間フィルタ specific 時に地図塗りも unknown 除外 | コード確認 ✅ (= 現状 (b)) |
+| console error | 0 | 0 ✅ |
+| js-syntax-guard | ESM clean + 衝突なし | OK ✅ |
+
+### 設計判断ログ
+
+#### banner の表示位置
+
+| 案 | 採用 |
+|---|---|
+| 地図中央下 absolute (bottom:96px) | ✅ — FAB (📝/🎭/📍) と重ならず、画面中央付近で視認性高 |
+| 地図上部 fixed | ❌ — ヘッダ完乗率/系統数表示と被る |
+| 地図中央モーダル | ❌ — 強引、初回タップで操作中断 |
+
+#### banner の永続化
+
+`localStorage.norireco_trips` 空 AND `RIDDEN_SEGS` 空 = 真に「乗車記録ゼロ」のときだけ表示。ログインしていれば Supabase 同期後に `RIDDEN_SEGS` populate → banner 自動非表示。未ログインでも localStorage 1 件でも入れば消える。
+
+`saveBulkDrafts` 後 + `saveMultiSegmentTrip` 後の両方で評価して、保存即時 hide。
+
+#### saveMultiSegmentTrip からの hook 方式
+
+| 方式 | 採用 |
+|---|---|
+| 07 が 21 を import | ❌ — 循環 import (21 が 07 から redrawAll/showRecordToast import 中) |
+| `window.NORIRECO?.bulkRecord?.updateOnboardingBanner?.()` で side effect | ✅ — optional chain で 21 未ロード時も安全 |
+| Custom Event dispatch + addEventListener | △ — 過剰設計、1 関数だけなら直接呼出が読みやすい |
+
+#### A-7 で (b) 採用の理由
+
+「期間フィルタは日時情報を持つ trip の中で絞る」という意味論で十分整合。bulk-record で大量 unknown を作っても、ユーザーが期間絞り込みを使う場面は「いつ乗ったかを基準に整理したい」意図なので、unknown が消えるのは妥当。
+
+採用 (a) の二系統化は applyDateFilter / RIDDEN_SEGS の単一参照を破壊するため、副作用 (マイページ完駅率カード / GPS 完駅率 / 旅程グラフ / ヘッダ統計の整合性) を全部確認する必要があり、A 段階の終盤で着手する変更としては重い。
+
+### 関連
+
+- §250〜§254 (v400〜v404) — A-1〜A-5 の前提
+- Notion §1.3 末尾「データの流れ」+「要検討」セクション (採用 (a) → (b) に更新が必要)
+
+### A 段階完結
+
+| 段階 | 機能 | バージョン |
+|---|---|---|
+| A-1 | skeleton (open/close + 入口ボタン) | v400 |
+| A-2 | チェックリスト + たたむモード | v401 |
+| A-3 | 一括保存 MVP | v402 |
+| A-4 | 検索 + 並び替え + 地域フィルタ | v403 |
+| A-5 | アコーディオン展開 (factory mount) | v404 |
+| **A-6+A-7** | **オンボーディングバナー + unknown 集計検証** | **v405** |
+
+残課題 (別タスク):
+- **環状線対応** — 山手線 17/30 駅塗り問題、N02 line データ補完 (Phase 3 駅 ID 体系の延長)
+- **写真添付** — A-5 では skip、bulk-record アコーディオン展開時の photos セクション (factory は対応済)
+
+---
+
 ## 254. v404 — 一括記録 A-5 完了: アコーディオン展開 (createTripDetailEditor 行内 mount) (2026-05-28)
 
 ### 背景
