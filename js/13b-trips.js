@@ -49,6 +49,10 @@ let _tripEditDetailEditor = null;
 // v394 (B-3a): 旅程編集モーダル内の trip 詳細エディタ — 遅延 + メモ 担当 (2nd instance、draft は独立)
 //   将来 B-4 で 1 instance に統合予定。
 let _tripEditMetaEditor = null;
+// v396 (B-3b): 旅程編集モーダル内の trip 詳細エディタ — 乗車時刻 担当 (3rd instance、draft 独立)
+//   precisions=['minute','day'] のみ。UI 配置上 time / train / delay+notes を section で挟むため別 instance。
+//   将来 B-4 で _tripEditDetailEditor / _tripEditMetaEditor と共に 1 instance に統合予定。
+let _tripEditTimeEditor = null;
 
 // v332 (Phase 3): getTripStationName は循環 import 回避のため 13-mypage-common.js に移動。
 //   import 経由で参照する (v331 で 13b に置いて 13-common から循環 import → 初期化事故、v332 解消)。
@@ -401,19 +405,35 @@ function openTripEditModal(tripId) {
     }
   }
 
-  // v345: 「verified を守る」目的のロック撤回。GPS 記録も時刻編集可
-  const timeLockEl = document.getElementById('trip-edit-time-lock');
-  const timeInputsEl = document.getElementById('trip-edit-time-inputs');
-  if (timeLockEl) timeLockEl.style.display = 'none';
-  if (timeInputsEl) timeInputsEl.style.display = 'block';
-  const dateInp = document.getElementById('trip-edit-date');
-  const depInp = document.getElementById('trip-edit-depart');
-  const arrInp = document.getElementById('trip-edit-arrive');
-  if (dateInp) dateInp.value = (trip.date && trip.date_precision !== 'unknown') ? trip.date : '';
-  // depart_time / arrive_time は HH:MM:SS 形式。input[type=time] は HH:MM を期待
-  const toHm = (v) => (typeof v === 'string' && v.length >= 5) ? v.slice(0, 5) : '';
-  if (depInp) depInp.value = toHm(trip.depart_time);
-  if (arrInp) arrInp.value = toHm(trip.arrive_time);
+  // v396 (B-3b): 乗車時刻も factory (_tripEditTimeEditor) に集約。
+  //   - 旧 #trip-edit-date / depart / arrive の DOM 直書きは廃止 (HTML 側は display:none で dead code)
+  //   - precisions=['minute','day'] の 2 精度ロジック (date 空 → 元値温存 / dep+arr 両方 → minute 計算 /
+  //     片方のみ → minute だが total_minutes 不定 / dep+arr 空 → 'minute' 元精度から 'day' 降格) は factory 内蔵
+  //   - v345 の「verified ロック撤回」もここで完結 (lock 表示の出し分けは廃止済)
+  if (_tripEditTimeEditor) {
+    try { _tripEditTimeEditor.destroy(); } catch (e) {}
+    _tripEditTimeEditor = null;
+  }
+  const timeContainer = document.getElementById('trip-edit-time-container');
+  if (timeContainer) {
+    _tripEditTimeEditor = createTripDetailEditor({
+      container: timeContainer,
+      initial: {
+        date:           trip.date           || null,
+        depart_time:    trip.depart_time    || null,
+        arrive_time:    trip.arrive_time    || null,
+        date_precision: trip.date_precision || 'minute',
+        total_minutes:  (typeof trip.total_minutes === 'number') ? trip.total_minutes : null,
+      },
+      features: {
+        timeRow: { precisions: ['minute', 'day'] },
+        trainPicker: false,
+        delay: false,
+        notes: false,
+        photos: false,
+      },
+    });
+  }
 
   // v393 (B-2): 🚆 列車種別 / 車両形式の DOM 操作は createTripDetailEditor (per-seg-rows / trip-level mode)
   //   が完全に担当。13b 旧実装 (v226〜v384 の per-seg cascade 直書き + trip 単位 4 input の visibility 制御)
@@ -747,6 +767,10 @@ function closeTripEditModal() {
     try { _tripEditMetaEditor.destroy(); } catch (e) {}
     _tripEditMetaEditor = null;
   }
+  if (_tripEditTimeEditor) {
+    try { _tripEditTimeEditor.destroy(); } catch (e) {}
+    _tripEditTimeEditor = null;
+  }
 }
 window.closeTripEditModal = closeTripEditModal;
 NORIRECO.mypage.closeTripEditModal = closeTripEditModal;
@@ -767,37 +791,23 @@ async function saveTripEdit() {
   const newDelay = (metaDraft && typeof metaDraft.delay_minutes === 'number') ? metaDraft.delay_minutes : null;
   const newNotes = metaDraft?.notes || null;
 
-  // v345: 「verified を守る」目的のロック撤回。GPS 記録も時刻編集可
+  // v396 (B-3b): 乗車時刻も factory (_tripEditTimeEditor) 経由 — 2 精度ロジック (空入力 → 元値温存 /
+  //   dep+arr 入力 → minute + total_minutes / dep+arr 空 → 元 'minute' のみ 'day' 降格) は factory 内蔵。
+  //   v345 のロック撤回もここで完結 (lock 表示は廃止)。
+  let timeDraft = null;
+  if (_tripEditTimeEditor) {
+    try { timeDraft = _tripEditTimeEditor.getDraft(); }
+    catch (e) { console.warn('[saveTripEdit] timeEditor.getDraft() failed:', e); }
+  }
   const tripPatch = {};
-  {
-    const dateRaw = document.getElementById('trip-edit-date')?.value || '';
-    const depRaw = document.getElementById('trip-edit-depart')?.value || '';
-    const arrRaw = document.getElementById('trip-edit-arrive')?.value || '';
-    if (dateRaw) {
-      tripPatch.date = dateRaw;
-      // 精度判定: depart/arrive どちらか入力されていれば 'minute'、なければ 'day'
-      if (depRaw || arrRaw) {
-        tripPatch.date_precision = 'minute';
-        tripPatch.depart_time = depRaw ? `${depRaw}:00` : '';
-        tripPatch.arrive_time = arrRaw ? `${arrRaw}:00` : '';
-        // 両方入力で total_minutes 再計算 (日跨ぎ補正)
-        if (depRaw && arrRaw) {
-          const [dhh, dmm] = depRaw.split(':').map(Number);
-          const [ahh, amm] = arrRaw.split(':').map(Number);
-          let diff = (ahh * 60 + amm) - (dhh * 60 + dmm);
-          if (diff < 0) diff += 24 * 60;
-          tripPatch.total_minutes = diff;
-        }
-      } else {
-        // 日付のみ → 既存の精度が minute なら day に下げる。それ以外 (day/month/year/unknown) は据置
-        if (trip.date_precision === 'minute') {
-          tripPatch.date_precision = 'day';
-          tripPatch.depart_time = '';
-          tripPatch.arrive_time = '';
-          tripPatch.total_minutes = 0;
-        }
-      }
-    }
+  if (timeDraft && timeDraft.date) {
+    tripPatch.date = timeDraft.date;
+    if (timeDraft.date_precision) tripPatch.date_precision = timeDraft.date_precision;
+    // depart_time / arrive_time: factory は dep/arr 片方のみのとき total_minutes=null を返す。
+    // ここでは「key を patch に含める = 値を上書きする」原則を保つ (旧実装と同じ)。
+    if (timeDraft.depart_time != null) tripPatch.depart_time = timeDraft.depart_time;
+    if (timeDraft.arrive_time != null) tripPatch.arrive_time = timeDraft.arrive_time;
+    if (typeof timeDraft.total_minutes === 'number') tripPatch.total_minutes = timeDraft.total_minutes;
   }
 
   // v226 → v356 → v380 → v383 → v393 (B-2): 🚆 列車種別 / 車両形式 —

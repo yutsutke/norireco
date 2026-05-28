@@ -95,6 +95,7 @@ export function createTripDetailEditor(opts) {
     depart_time:    initial.depart_time    || null,
     arrive_time:    initial.arrive_time    || null,
     date_precision: initial.date_precision || 'minute',
+    total_minutes:  (typeof initial.total_minutes === 'number') ? initial.total_minutes : null,
     segments:       Array.isArray(initial.segments) ? initial.segments.map(s => ({ ...s })) : [],
     train_category: initial.train_category || null,
     train_id:       initial.train_id       || null,
@@ -104,6 +105,9 @@ export function createTripDetailEditor(opts) {
     notes:          initial.notes          || null,
     photos:         Array.isArray(initial.photos) ? initial.photos.slice() : [],
   };
+  // collectTimeRow が「日付のみ入力時に 'minute' → 'day' へ下げる」判定に使う初期精度の snapshot。
+  // draft.date_precision は collect で書き換わるため、別 closure 変数で持つ必要がある。
+  const _initialPrecision = initial.date_precision || null;
 
   // per-seg state (chip/rows 共通の data layer)
   // - per-seg-chip: chip 切替 + cascade restore で参照・更新
@@ -154,16 +158,98 @@ export function createTripDetailEditor(opts) {
   if (featNotes)  initNotes();
   if (featPhotos) initPhotos();
 
-  // ── time section ──────────────────────────────────────────────
+  // ── time section (v396 B-3b: precisions=['minute','day'] 用に本実装) ─────
+  // 13b 旅程編集モーダル用の 2 精度ロジック:
+  //   - dateRaw 空     → draft.date=null (呼出側で「key 自体を patch に入れない」判定して元値温存)
+  //   - dateRaw あり + dep/arr いずれか → date_precision='minute', 両方なら total_minutes 計算
+  //   - dateRaw あり + dep/arr 共に空  → 初期精度が 'minute' なら 'day' に降格、それ以外は据置
+  // 07 が要求する 5 精度 (month/year/unknown 切替 + GPS preset) は B-3c で本実装する。
+  // それまで precisions に month/year/unknown が含まれていたら TODO comment を残す。
+  function _supportsFull5Precisions() {
+    const p = (featTime && featTime.precisions) || [];
+    return p.includes('month') || p.includes('year') || p.includes('unknown');
+  }
   function initTimeRow() {
-    // TODO (B-3): 5 精度 (minute/day/month/year/unknown) 切替 UI を 07 から移植
-    //   - 現状: 07 の #rec-time-edit-section + onRecEditPrecisionChange + updateRecConfirmTimeRow
-    //   - features.timeRow.precisions で表示可能な精度を絞る (13b は ['minute','day'] のみ)
-    //   - DOM id 衝突を避けるため、内部要素は class 名 (.tde-time-*) で参照する
-    _timeEl.innerHTML = '<!-- TODO B-3: time row (precisions=' + (featTime.precisions || []).join(',') + ') -->';
+    if (_supportsFull5Precisions()) {
+      // TODO (B-3c): 5 精度 (minute/day/month/year/unknown) 切替 UI を 07 から移植
+      //   - 07 の #rec-time-edit-section + onRecEditPrecisionChange + updateRecConfirmTimeRow を本クロージャに集約
+      //   - mania toggle 連動 (display は呼出側 wrapper の責務)
+      //   - GPS preset (verified 記録の depart/arrive プリフィル) も factory 内で対応
+      _timeEl.innerHTML = '<!-- TODO B-3c: 5-precision time row (precisions=' + (featTime.precisions || []).join(',') + ') -->';
+      return;
+    }
+    const headerStyle = 'font-size:11px;color:var(--gold);margin-bottom:6px';
+    const labelStyle = 'font-size:10px;color:var(--silver);min-width:40px';
+    const dateInpStyle = "flex:1;min-width:140px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark";
+    const timeInpStyle = "flex:1;min-width:110px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark";
+    const toHm = (v) => (typeof v === 'string' && v.length >= 5) ? v.slice(0, 5) : '';
+    // 13b 旧実装と同じ: date_precision='unknown' のときは date を空に倒す (年/月だけ知ってる扱いではない)
+    const dateVal = (draft.date && draft.date_precision !== 'unknown') ? draft.date : '';
+
+    _timeEl.innerHTML = `
+      <div class="tde-time-header" style="${headerStyle}">🕒 乗車時刻</div>
+      <div class="tde-time-inputs">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+          <label style="${labelStyle}">📅 乗車日</label>
+          <input type="date" class="tde-time-date" value="${_escHtml(dateVal)}" style="${dateInpStyle}">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+          <label style="${labelStyle}">🕐 出発</label>
+          <input type="time" class="tde-time-depart" value="${_escHtml(toHm(draft.depart_time))}" style="${timeInpStyle}">
+          <label style="${labelStyle}">🕑 到着</label>
+          <input type="time" class="tde-time-arrive" value="${_escHtml(toHm(draft.arrive_time))}" style="${timeInpStyle}">
+        </div>
+        <div style="font-size:9px;color:var(--silver);opacity:.7;line-height:1.5">
+          ※ 日付のみ入力で「日付精度」、出発+到着両方で「正確な時刻」として保存されます。精度を月/年/不明に下げる場合は新規記録で作り直してください。
+        </div>
+      </div>
+    `;
+    if (onChange) {
+      _timeEl.querySelector('.tde-time-date')?.addEventListener('input', () => { try { onChange(); } catch (e) {} });
+      _timeEl.querySelector('.tde-time-depart')?.addEventListener('input', () => { try { onChange(); } catch (e) {} });
+      _timeEl.querySelector('.tde-time-arrive')?.addEventListener('input', () => { try { onChange(); } catch (e) {} });
+    }
   }
   function collectTimeRow() {
-    // TODO (B-3): DOM から date / depart_time / arrive_time / date_precision を読んで draft に反映
+    if (_supportsFull5Precisions()) return; // B-3c で対応
+    const dateRaw = (_timeEl.querySelector('.tde-time-date')?.value || '').trim();
+    const depRaw = (_timeEl.querySelector('.tde-time-depart')?.value || '').trim();
+    const arrRaw = (_timeEl.querySelector('.tde-time-arrive')?.value || '').trim();
+
+    if (!dateRaw) {
+      // 13b 旧実装と同じ「date 空入力なら patch から除外して元値温存」を実現するため、
+      // draft.date を null にする (呼出側で if (draft.date) でガード)。他フィールドも null。
+      draft.date = null;
+      draft.depart_time = null;
+      draft.arrive_time = null;
+      draft.total_minutes = null;
+      // date_precision は据置 (initial 由来の値が draft に残る)
+      return;
+    }
+    draft.date = dateRaw;
+    if (depRaw || arrRaw) {
+      draft.date_precision = 'minute';
+      draft.depart_time = depRaw ? `${depRaw}:00` : '';
+      draft.arrive_time = arrRaw ? `${arrRaw}:00` : '';
+      if (depRaw && arrRaw) {
+        const [dhh, dmm] = depRaw.split(':').map(Number);
+        const [ahh, amm] = arrRaw.split(':').map(Number);
+        let diff = (ahh * 60 + amm) - (dhh * 60 + dmm);
+        if (diff < 0) diff += 24 * 60;
+        draft.total_minutes = diff;
+      } else {
+        // 片方しか入力されていない場合は total_minutes 不定 → 既存値を上書きしない印として null
+        draft.total_minutes = null;
+      }
+    } else {
+      // dateだけ → 初期精度が 'minute' なら 'day' に下げる、それ以外 (day/month/year) は据置
+      if (_initialPrecision === 'minute') {
+        draft.date_precision = 'day';
+        draft.depart_time = '';
+        draft.arrive_time = '';
+        draft.total_minutes = 0;
+      }
+    }
   }
 
   // ── train picker section ──────────────────────────────────────

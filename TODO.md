@@ -84,7 +84,7 @@ git log --oneline -20
   - 地図 / 📋 ログ / 👤 マイページ の 3 タブナビに統合
   - **注 (2026-05-26)**: Notion §1.3 で「一括記録 (まとめて記録)」として再設計済。旧ログ画面の「1 件ずつフォーム」を復活させるのではなく、営業系統チェックリスト形式で "一気に塗る" 手段を新設する方向。下記の「一括記録」項目とセット
 
-- [ ] **一括記録 (まとめて記録) — noritetsu-log.html 廃止の受け皿** (Notion §1.3 設計確定 / v392-v394 で B-1/B-2/B-3a 完了、B-3b〜B-4 残)
+- [ ] **一括記録 (まとめて記録) — noritetsu-log.html 廃止の受け皿** (Notion §1.3 設計確定 / v392-v396 で B-1/B-2/B-3a/B-3b 完了、B-3c〜B-4 残)
   - **動機 2 層**:
     - マニア層 (Lv3): 過去何十年ぶんの乗車を遡って一括入力。路線・区間まで正確に
     - 新規〜ライト層 (Lv0/1): 登録直後の空マップを「乗ったことある路線」で塗って初期状態作り (虚無対策 / シェア・OGP に効く)
@@ -97,10 +97,9 @@ git log --oneline -20
     - ✅ B-1 続き (v392): per-seg-chip mode 本実装 (`selectSlChip` / `applyRecTrainCategory` / `populateSlVehiclePicker` / 02 dropdown handlers をクロージャ移植) + 07 確認モーダルを component 経由に書き換え + noritetsu-map.html `#rec-train-picker` 圧縮 + preview server 実機 simulate で動作確認
     - ✅ B-2 (v393): 13b 編集モーダルを per-seg-rows / trip-level mode で factory 移行。`saveTripEdit` を `editor.getDraft()` 経由に統一。CHANGELOG §243
     - ✅ B-3a (v394): 13b の ⏱ 遅延 + 📝 自由メモ を 2nd factory instance (`_tripEditMetaEditor`) に集約。CHANGELOG §244
-    - 未 B-3b: 13b の 🕒 乗車日時を factory `timeRow` に集約 (`precisions=['minute','day']`)
-    - 未 B-3c: 07 確認モーダルへ delay / notes 移植 (`#rec-delay-toggle` mania toggle 対応)
-    - 未 B-3d: 07 の 5 精度 time row + GPS preset (`updateRecConfirmTimeRow`) 移植
-    - 未 B-4: グローバル `NORIRECO.trains.selectedXxxBySl` / `activeChipSlId` 撤廃 + 13b dead 10 関数 + HTML dead input 撤去 + 1 modal 1 editor instance 統合
+    - ✅ B-3b (v396): 13b の 🕒 乗車時刻を 3rd factory instance (`_tripEditTimeEditor`) に集約 (`precisions=['minute','day']` 専用ロジック、closure に `_initialPrecision` snapshot)。`features.timeRow` を `{ precisions: [...] }` object に拡張、5 精度版は `_supportsFull5Precisions()` 分岐で TODO 残置。CHANGELOG §246
+    - 未 B-3c: 07 確認モーダルへ delay / notes 移植 (`#rec-delay-toggle` mania toggle 対応) + 07 の 5 精度 time row + GPS preset (`updateRecConfirmTimeRow`) 移植 — factory の `_supportsFull5Precisions()` ブランチに本実装
+    - 未 B-4: グローバル `NORIRECO.trains.selectedXxxBySl` / `activeChipSlId` 撤廃 + 13b dead 10 関数 + HTML dead input 撤去 + 1 modal 3 instance (`_tripEditDetailEditor + _tripEditMetaEditor + _tripEditTimeEditor`) を 1 instance に統合
     - 未 A: 一括記録パネル本体 (B-3 完了後着手)。② 地図上路線直接タップ / ③ 都道府県シードは別段階・後回し
   - **要検討 (実装時に潰す)**:
     - `date_precision='unknown'` の集計経路 — 採用 (a) 2026-05-26: 期間フィルタからは除外維持、地図の塗り・完乗率には含める (嘘の年で埋めない方針)。実装時に「集計が期間フィルタの unknown 除外と別経路になっているか」要確認

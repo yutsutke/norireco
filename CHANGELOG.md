@@ -44,6 +44,67 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 246. v396 — trip 詳細エディタ B-3b 完了 (13b の time row も createTripDetailEditor に集約) (2026-05-28)
+
+### 背景
+
+§244 (v394, B-3a) で 13b の ⏱ 遅延 + 📝 自由メモ、§243 (v393, B-2) で 🚆 列車種別 / 車両形式を factory に集約済。13b 旅程編集モーダルで残っていた「🕒 乗車時刻」セクション (date + depart + arrive の 3 input + 暗黙の 2 精度ロジック) を factory に移すのが B-3b。これで 13b 編集モーダルの主要 4 セクション (time / train / delay / notes) は全て factory mount 経由に揃う。
+
+### 方針
+
+factory `createTripDetailEditor` の `features.timeRow` を従来の `false` 固定から「`{ precisions: [...] }` を受け付ける object」に拡張。precisions の値で実装を分岐:
+
+- `['minute', 'day']` → **本実装** (13b 旅程編集モーダル専用 2 精度ロジック)
+- `month / year / unknown` のどれかを含む → **TODO 残置** (B-3c で 07 確認モーダルから 5 精度切替 UI を移植)
+
+`_supportsFull5Precisions()` helper を closure 内に追加し、init / collect の冒頭で early-return。これにより同じ factory で「2 精度 (13b)」「5 精度 (07・B-3c で追加)」「一括記録 (将来 A、5 精度 unknown default)」を呼出側 features で出し分けられる設計を維持。
+
+### 実装
+
+#### 1. factory (`js/20-trip-detail-editor.js`)
+
+- closure 冒頭に `const _initialPrecision = initial.date_precision || null` を保持 (collect で「元 'minute' のみ 'day' 降格」判定に使う)
+- `draft.total_minutes` を追加 (initial 由来の値を保持、collect で必要に応じて再計算)
+- `initTimeRow()` を本実装: header「🕒 乗車時刻」 + 3 input (`.tde-time-date / .tde-time-depart / .tde-time-arrive`) + 注記。`date_precision === 'unknown'` のときは date input を空に倒す (13b 旧実装と同形)
+- `collectTimeRow()` を本実装: 4 分岐
+  - dateRaw 空 → `draft.date=null` (呼出側で「key を patch に入れない」判定して元値温存)
+  - dateRaw あり + dep/arr 両方入力 → `date_precision='minute' + total_minutes = (arr-dep+1440)%1440` で日跨ぎ補正
+  - dateRaw あり + dep/arr 片方のみ → `date_precision='minute'` で空側を空文字、`total_minutes=null` (不定マーカー、呼出側で patch から除外)
+  - dateRaw あり + dep/arr 共に空 → 初期精度が `minute` なら `day` 降格 (depart/arrive=空文字 + total=0)、それ以外は据置
+
+#### 2. 13b (`js/13b-trips.js`)
+
+- 新 module-level `let _tripEditTimeEditor = null` (3rd instance、draft 独立)
+- `openTripEditModal`: 旧 `dateInp/depInp/arrInp + timeLockEl/timeInputsEl` 直書き 13 行を削除し、`createTripDetailEditor({ container: #trip-edit-time-container, initial: { date, depart_time, arrive_time, date_precision, total_minutes }, features: { timeRow: { precisions: ['minute','day'] }, … } })` を mount
+- `closeTripEditModal`: 他 3 editor (`_tripEditPhotoArea / _tripEditDetailEditor / _tripEditMetaEditor`) と同パターンで `_tripEditTimeEditor.destroy()` を追加
+- `saveTripEdit`: 旧 770-801 行の DOM 直読み + 2 精度ロジック 30 行を、`_tripEditTimeEditor.getDraft()` の参照 7 行に置換。`if (timeDraft.date)` ガードで「date 空入力 → patch から除外」を実現。`depart_time / arrive_time` は `!= null` で「key を patch に含めるか」を判定 (片方のみ入力で total_minutes=null のとき total キーは patch から除外、旧実装互換)
+
+#### 3. HTML (`noritetsu-map.html`)
+
+- `#trip-edit-time-section` の中身を `<div id="trip-edit-time-container"></div>` に置換 (factory mount 先)
+- 旧 3 input (`#trip-edit-date / #trip-edit-depart / #trip-edit-arrive`) と `#trip-edit-time-lock / #trip-edit-time-inputs` は `display:none` で dead code 化 (B-4 撤去予定)。section wrapper の border-top + padding-top は維持 (UI 上の区切り)
+
+### 検証
+
+preview server (`python -m http.server 8000`) で 4 シナリオを fetch monkey-patch で round-trip:
+
+| シナリオ | 入力 | tripPatch | 判定 |
+|---|---|---|---|
+| 1) 無変更 minute trip | date=2026-05-20, dep=09:30, arr=10:45 | `date+date_precision=minute+depart=09:30:00+arrive=10:45:00+total=75` | ✅ |
+| 2) date クリア | date=空 | time 系 key 全て無し (元値温存) | ✅ |
+| 3) dep/arr クリアで降格 | date 残し + dep/arr 空 | `date_precision=day+depart=arrive=空文字+total=0` | ✅ |
+| 4) day → minute 昇格 | date+dep=08:00+arr=09:15 | `date_precision=minute+depart=08:00:00+arrive=09:15:00+total=75` | ✅ |
+
+`node --check --input-type=module` 全 module clean、`js-syntax-guard` サブエージェント (sonnet) で構文 + グローバル衝突 + 循環 import 全項目 clean。console error 0 (warn は fetch monkey-patch の Response 204+body コンストラクタ例外のみ、本番無関係)。
+
+### 残課題
+
+- **B-3c**: 07 確認モーダルへの移植 (mania toggle 連動 + 5 精度 (minute/day/month/year/unknown) 切替 UI + GPS preset プリフィル)。factory の `_supportsFull5Precisions()` 分岐に本実装を入れる。
+- **B-4**: 13b 編集モーダルの 3 instance (`_tripEditDetailEditor + _tripEditMetaEditor + _tripEditTimeEditor`) を 1 instance に統合 + 旧 dead code (HTML の display:none input + 旧 onTripEdit* 関数 + 旧 helper) を撤去。1 modal 3 instance は中間状態。
+- **A**: 一括記録パネル本体 (Notion §1.3) — 行展開で同 factory を per-seg-rows + timeRow 5 精度 unknown default で mount
+
+---
+
 ## 245. v395 — hotfix: 旅程の delay_minutes / notes が編集後リロードで消える既存バグ修正 (2026-05-27)
 
 ### 背景
