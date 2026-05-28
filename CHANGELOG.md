@@ -52,6 +52,28 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 258. v408 — 時刻セクションのラベルから「（後追い記録向け）」を削除
+
+**バージョン**: v408 (CACHE_VERSION)
+**日付**: 2026-05-29
+**カテゴリ**: A（UI 文言修正）
+
+### 背景
+
+`createTripDetailEditor` factory の 5 精度 time row (`_initTimeRowFull5`, `js/20-trip-detail-editor.js:302`) のヘッダが「🕒 乗車日時（後追い記録向け）」だった。この文言は 5 段階 `date_precision` 導入時 (CHANGELOG_PHASE3.8-early §72 付近)、記録確認モーダルで「手動記録のみ展開する後追い記録専用の補助」として作られた名残。
+
+その後 factory 集約 (B-1〜B-4-b) で同じ time row が 07 経路確認モーダル（ライブ記録直後）・13b 旅程編集・一括記録アコーディオンの 3 箇所で共有されるようになり、**乗ったばかりで日時が既に正しく埋まっているライブ記録の確認画面でも「(後追い記録向け)」と出てミスリード**になっていた。精度ドロップダウン「📐 記憶の精度」自体が後追い用途を伝えるので括弧書きは冗長。
+
+### 変更
+
+- `js/20-trip-detail-editor.js:302`: 「🕒 乗車日時（後追い記録向け）」→「🕒 乗車日時」
+- 2 精度版 (`_initTimeRow`, line 227) のヘッダ「🕒 乗車時刻」は元から括弧書きなしのため変更なし
+- CACHE_VERSION v407 → v408
+
+preview で factory を 5 精度 time で mount しヘッダ textContent が「🕒 乗車日時」になることを確認、map 全モジュール console error 0。
+
+---
+
 ## 257. v407 — 旧 `noritetsu-log.html` 削除（一括記録による完全置換）
 
 **バージョン**: v407 (CACHE_VERSION)

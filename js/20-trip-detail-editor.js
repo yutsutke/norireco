@@ -299,7 +299,7 @@ export function createTripDetailEditor(opts) {
     }
 
     _timeEl.innerHTML = `
-      <div class="tde-time-header" style="${headerStyle}">🕒 乗車日時（後追い記録向け）</div>
+      <div class="tde-time-header" style="${headerStyle}">🕒 乗車日時</div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
         <label style="${labelStyleWide}">📐 記憶の精度</label>
         <select class="tde-time-prec" style="flex:1;min-width:160px;${inputBg}">
