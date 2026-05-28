@@ -446,6 +446,17 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .bulk-accordion-body .tde-delay,
 .bulk-accordion-body .tde-notes{min-height:0;}
 
+/* A-8 (v406 〜): 区間ピッカー — アコーディオン body 先頭 */
+.bulk-segment-picker{display:flex;flex-direction:column;gap:5px;padding:8px 10px;background:rgba(14,24,36,.5);border:1px solid var(--track);border-radius:8px;}
+.bsp-label{font-size:11px;color:var(--gold);font-weight:600;}
+.bsp-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.bsp-sel{flex:1;min-width:90px;padding:5px 7px;background:var(--navy);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:11px;font-family:inherit;outline:none;cursor:pointer;}
+.bsp-sel:focus{border-color:var(--gold);}
+.bsp-arrow{font-size:13px;color:var(--silver);flex-shrink:0;}
+.bsp-meta{font-size:10px;color:var(--silver);opacity:.75;padding-top:2px;}
+.bsp-meta-full{color:var(--gold);opacity:1;}
+.bsp-warn{font-size:11px;color:var(--red);padding:6px 0;}
+
 /* A-6 (v405 〜): 空マップ時オンボーディングバナー
    - 地図画面中央下にフロート、riddenSt 0 件のときだけ表示
    - タップで一括記録ボトムシート起動 */

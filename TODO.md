@@ -84,7 +84,7 @@ git log --oneline -20
   - 地図 / 📋 ログ / 👤 マイページ の 3 タブナビに統合
   - **注 (2026-05-26)**: Notion §1.3 で「一括記録 (まとめて記録)」として再設計済。旧ログ画面の「1 件ずつフォーム」を復活させるのではなく、営業系統チェックリスト形式で "一気に塗る" 手段を新設する方向。下記の「一括記録」項目とセット
 
-- [ ] **一括記録 (まとめて記録) — noritetsu-log.html 廃止の受け皿** (Notion §1.3 設計確定 / B カテゴリ完結 v392-v399 / **A 段階 A-1〜A-7 完結 v400-v405** = 全機能完成、残: 環状線対応 + 写真添付 = 別タスク)
+- [ ] **一括記録 (まとめて記録) — noritetsu-log.html 廃止の受け皿** (Notion §1.3 設計確定 / B カテゴリ完結 v392-v399 / **A 段階 A-1〜A-8 完結 v400-v406** = 全機能 + 区間ピッカー、残: 環状線対応 + 写真添付 = 別タスク)
   - **動機 2 層**:
     - マニア層 (Lv3): 過去何十年ぶんの乗車を遡って一括入力。路線・区間まで正確に
     - 新規〜ライト層 (Lv0/1): 登録直後の空マップを「乗ったことある路線」で塗って初期状態作り (虚無対策 / シェア・OGP に効く)
@@ -106,7 +106,8 @@ git log --oneline -20
     - ✅ A-3 (v402) **MVP 完成**: 一括保存 — `saveBulkDrafts` で draft 配列を順次 trip 構築 → Supabase POST (anon Bearer) → localStorage push (部分コミット許容) → 全件後に RIDDEN_SEGS bulk push + `rebuild()` 1 回 + `redrawAllLinesAfterTripChange` + `updateOverlays` + `_mypageCache.push` + `renderMpTripsResultOnly` + 駅シート refresh + トースト + sheet 自動 close。trip 構造: `id=trip_${baseTime}_${idx}` / `name=${lineName} 全線` / `transfers=0` / `total_stations=stations.length`。preview 3 件保存検証で riddenSt 全展開 + 完乗率更新 + console error 0 確認。CHANGELOG §252
     - ✅ A-4 (v403): 検索 + 並び替え + 地域フィルタ — `_filter = { query, sort: 'near'|'name', group }` state、検索 input (系統名/会社/id 部分一致 + 空白 AND)、`近く順 (lastUserGps > map center)` / `名前順 (50 音)`、地域 group dropdown (13 値)。`_renderChecklistOnly()` でフィルタバー保持 + checklist だけ再描画 (IME 安定 / mp-trip-filter と同設計)。preview 5 シナリオ + チェック保持 全 OK。運営会社 dropdown は 180 件で UI 不向きのため検索 input に統合 (「JR東日本 新幹線」のような AND 検索で代替)。CHANGELOG §253
     - ✅ A-5 (v404): アコーディオン展開 — 行右端 ▶/▼ ボタンで `createTripDetailEditor` (`trainPicker='per-seg-rows'` + 5 精度 time + delay + notes、photos は将来) を multi-container API で行内 mount。Notion §1.3 確定の「同時 1 行制御」: 別行を開くと現開行は close 時に `editor.getDraft()` で `_bulkDrafts` 上書き (`_edited: true` フラグ) + destroy。`_buildTripFromDraft` を `_edited` 分岐対応。編集済み行は名前に ✏️ マーク。preview で展開→入力→別行展開→上書き→保存→trip 反映 全 OK。**環状線対応**: 半周分割を検証したが SERVICE_LINES と N02 line の駅順ズレで根本解決せず A-5 スコープ外へ (山手線 17/30 駅塗りの既知制約として bulk-note に明記)。CHANGELOG §254
-    - ✅ A-6+A-7 (v405) **A 段階完結**: 空マップ時オンボーディングバナー + unknown 集計検証 — gold + 矢印アニメ banner を地図中央下に、旅程 0 件 (localStorage AND RIDDEN_SEGS 空) で表示、タップで bulk sheet 起動。`updateOnboardingBanner()` を `saveBulkDrafts` 後 + `saveMultiSegmentTrip` 後 (07 に hook 1 行追加) + DOMContentLoaded で呼ぶ。A-7 検証: 期間フィルタが地図塗りにも影響することを確認、ユスケ判断で現状 (b) 確定 = 「期間フィルタ = 日時判明 trip 内で絞る」意味論で整合、Notion §1.3 採用 (a) を撤回。CHANGELOG §255
+    - ✅ A-6+A-7 (v405): 空マップ時オンボーディングバナー + unknown 集計検証 — gold + 矢印アニメ banner を地図中央下に、旅程 0 件 (localStorage AND RIDDEN_SEGS 空) で表示、タップで bulk sheet 起動。`updateOnboardingBanner()` を `saveBulkDrafts` 後 + `saveMultiSegmentTrip` 後 (07 に hook 1 行追加) + DOMContentLoaded で呼ぶ。A-7 検証: 期間フィルタが地図塗りにも影響することを確認、ユスケ判断で現状 (b) 確定 = 「期間フィルタ = 日時判明 trip 内で絞る」意味論で整合、Notion §1.3 採用 (a) を撤回。CHANGELOG §255
+    - ✅ A-8 (v406) **A 段階完結 + 区間ピッカー**: アコーディオン body 先頭に「🚉 区間」セクション、from/to 2 select + 駅数 meta (全線/区間自動判別)、change で `_bulkDrafts.segments[0]` 更新 + `_edited=true` + factory 再 mount。`_buildTripFromDraft` の name と total_stations を segments[0] from/to で動的化 (両端=「全線」、中間=「from→to」+ 区間内駅数)。preview で「中央本線快速 新宿→高尾 20 駅」+「上野東京ライン 全線 44 駅」両立保存 OK。CHANGELOG §256
     - 別タスク (A 段階外、別途): **環状線対応** — N02 山手線 line データに東京〜上野間補完 or SERVICE_LINES.candidateN02Ids の環状線専用ロジック (A-5 で根本解決不可と判明、駅 ID 体系延長作業として別途)
     - 別タスク (A 段階外、別途): **bulk-record アコーディオンに写真添付** — A-5 で `photos: false` で skip、factory は対応済なので追加は軽い
     - 別段階・後回し: ② 地図上路線直接タップ / ③ 都道府県シード

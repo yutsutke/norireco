@@ -48,6 +48,153 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 256. v406 — 一括記録 A-8 完了: 区間ピッカー (from/to 2 select) (2026-05-28)
+
+### 背景
+
+§255 (v405) で A-1〜A-7 が一区切り、ユスケから「どこからどこへ乗ったのかも選べるようにしたい」という追加要望。
+
+たたむ default = 全線 (`stations[0]→stations[-1]`) は Notion §1.3 通りだが、アコーディオン展開時に区間を変更できないのは UX 上の不足。Notion §1.3「フル入力」項目には「区間」も含まれている (`時刻精度・**区間**・per-seg 列車車両・遅延・メモ・写真`) ので、A-8 として区間ピッカーを追加。
+
+`createTripDetailEditor` の per-seg-rows mode は「既存 segments を表示するだけ」で区間そのものの編集機能はない (13b 旅程編集モーダルでも segments の追加/削除/経路変更は別タスク扱い)。→ bulk-record 専用に区間ピッカーを実装。
+
+### 実装
+
+#### UI パターン選択
+
+ユスケ判断で **「from/to 2 select だけ (シンプル案)」** を採用:
+
+| パターン | 採否 |
+|---|---|
+| ✅ from/to 2 select だけ | シンプル。両端 = 「全線 N 駅」、中間 = 「区間 M 駅」を meta 表示で自動判別 |
+| 全線/区間ラジオ + from/to | UI 要素多め、選択 1 段増 |
+| 駅チップ 2 個選択 | 長路線 (東海道線 100+ 駅) でかさばる |
+
+#### `js/21-bulk-record.js`
+
+新規 module-private 関数:
+
+| 関数 | 役割 |
+|---|---|
+| `_mountSegmentPicker(sl, body)` | 区間ピッカー mount。stations 全駅を 2 つの select に表示、change で `_bulkDrafts.segments[0]` 更新 + `_edited=true` + meta 更新 + factory 再 mount |
+| `_mountDetailEditor(sl, body)` | A-5 で `_openAccordion` 内に直書きしていた `createTripDetailEditor` 呼出を独立関数化。`_mountSegmentPicker` からも再 mount 用に呼ぶ |
+| `_refreshLineHeader(lineId)` | 行ヘッダの ✏️ マーク再描画 (segment change で `_edited=true` になった後) |
+
+`_openAccordion` 簡素化:
+```js
+_mountSegmentPicker(sl, body);
+_mountDetailEditor(sl, body);
+```
+
+`_buildLineItem` の accordion body 構造に `<div class="bulk-segment-picker"></div>` を先頭に追加 (tde-time / train / delay / notes の前)。
+
+##### 区間ピッカー HTML
+
+```html
+<div class="bsp-label">🚉 区間</div>
+<div class="bsp-row">
+  <select class="bsp-sel bsp-from">{stations 全駅 option}</select>
+  <span class="bsp-arrow">→</span>
+  <select class="bsp-sel bsp-to">{stations 全駅 option}</select>
+</div>
+<div class="bsp-meta">{駅数表示}</div>
+```
+
+##### change handler の挙動
+
+1. from/to index を取得、`lo=min(f,t)`, `hi=max(f,t)` で正規化 (前後反転は resolveByServiceLine が結果同じなので順序だけ整える)
+2. `stations[lo].name/id` を `seg.from/from_station_id`、`stations[hi].name/id` を `seg.to/to_station_id` に
+3. `_bulkDrafts.set(sl.id, { ...cur, segments: [{...新seg}], _edited: true })` (train_* は引き継ぐ)
+4. meta 更新 (`24 駅 (全線)` / `20 駅 / 24 駅中`)
+5. 現 `_openEditor.getDraft()` で time/delay/notes 編集値を draft に保存 → `destroy()` → null
+6. `_mountDetailEditor` を呼んで factory 再 mount (initial の segments を新 from/to で渡し直し)
+7. `_refreshLineHeader` で ✏️ マーク反映
+
+##### `_buildTripFromDraft` の動的 name + total_stations
+
+旧 (A-3〜A-7) は `name = ${lineName} 全線` / `total_stations = stations.length` 固定。A-8 で動的化:
+
+```js
+let totalStations = stations.length;
+let tripName = `${lineName} 全線`;
+if (segs[0]) {
+  const fromIdx = stations.findIndex(s => s.name === seg.from);
+  const toIdx   = stations.findIndex(s => s.name === seg.to);
+  if (fromIdx >= 0 && toIdx >= 0) {
+    const lo = Math.min(fromIdx, toIdx), hi = Math.max(fromIdx, toIdx);
+    totalStations = hi - lo + 1;
+    const isFull = (lo === 0 && hi === stations.length - 1);
+    tripName = isFull ? `${lineName} 全線` : `${lineName} ${seg.from}→${seg.to}`;
+  }
+}
+```
+
+#### `noritetsu-map.html` CSS (~10 ルール)
+
+- `.bulk-segment-picker` — 区間 box (navy + gold border)
+- `.bsp-label` — gold "🚉 区間"
+- `.bsp-row` — flex から/到 select 横並び + arrow
+- `.bsp-sel` — dropdown スタイル
+- `.bsp-meta` — 駅数 (`.bsp-meta-full` で gold 強調)
+- `.bsp-warn` — 駅情報不足のエラー表示用
+
+#### `sw.js` v405 → v406
+
+### 検証 (preview eval)
+
+| シナリオ | 期待 | 実測 |
+|---|---|---|
+| accordion 展開で区間ピッカー mount | from/to 24 option / from=東京 / to=高尾 / meta="24 駅 (全線)" | 全て一致 ✅ |
+| from を「新宿」に変更 | seg.from=新宿 / from_station_id=s_00004 / meta="20 駅 / 24 駅中" / metaFull=false | 一致 ✅ |
+| change 後 `_edited=true` + ✏️ マーク | nameHasEditedMark=true | true ✅ |
+| change 後 factory 再 mount | tde-time / tde-train が再生成 firstChild あり | 両方 true ✅ |
+| 保存 trip (たたむ default 上野東京) | name="上野東京ライン(熱海〜宇都宮) 全線" / total_stations=44 | 一致 ✅ |
+| 保存 trip (区間指定 中央線快速 新宿→高尾) | name="中央本線快速 新宿→高尾" / total_stations=20 | 一致 ✅ |
+| console error | 0 | 0 ✅ |
+| js-syntax-guard | clean | clean ✅ |
+
+### 設計判断ログ
+
+#### factory 再 mount vs partial update
+
+`createTripDetailEditor` には `updateSegments()` のような部分更新 API がない (per-seg-rows mode は initial の segments を mount 時に DOM 生成し、change で `getDraft()` 経由で取り出す設計)。区間変更時に factory に segments 注入する API を追加するか、再 mount するかの 2 択。
+
+| 案 | 採否 |
+|---|---|
+| ✅ 再 mount | 既存 API で完結、コード追加なし。各 sub-section DOM 再生成は 1 行 = 数十 ms で UX 上問題なし |
+| factory に updateSegments() 追加 | 20-trip-detail-editor.js に新 API、テスト負荷増。本来の factory 責務 (display + collect) を逸脱 |
+
+→ 再 mount 採用。time/delay/notes 編集値は再 mount 前に `getDraft()` で保存して `_bulkDrafts` に反映。
+
+#### `_buildLineItem` 構造変更による A-5 影響
+
+A-5 で `_buildLineItem` 内の accordion body に `tde-time/train/delay/notes` 4 子要素を直書き → A-8 で先頭に `bulk-segment-picker` を 1 つ追加。factory の `containers: {time, train, delay, notes}` 指定箇所は変更不要 (querySelector で各 .tde-* を取る限り影響なし)。
+
+#### 前後反転 (from index > to index) の扱い
+
+UI で from に「高尾」を選び to に「東京」を選ぶケース → 内部で `lo=min, hi=max` に正規化、`stations[lo]` を seg.from に。**ユーザーが意図して「折返し」記録したい場合**は対応できないが、その場合は通常の手動記録モード (07) を使うべき。bulk-record は「ざっくり全線/区間」を一気に記録する用途で、折返しのような細かい記録は別経路。
+
+#### name 表示の動的化
+
+旧 "全線" 固定 → 動的 "全線" / "from→to" 切替。理由:
+- 名前で何の trip かがすぐ分かる (マイページ旅程リスト視認性)
+- 区間 trip を後から editorial 編集する際、検索性が上がる
+- total_stations と name の整合 (24 駅で "全線" だったのが 20 駅で "全線" のままだと違和感)
+
+### 残課題 / 次のステップ
+
+- **環状線対応** — 引き続き持ち越し
+- bulk アコーディオンに写真添付 — 引き続き持ち越し
+- 区間ピッカーの **複数 segment 対応** (現状は 1 系統 1 segment 想定) — 「上野東京ライン上野→大宮 + 大宮→宇都宮 で乗換 1 回」のような分割記録ニーズが出てきたら検討。今は 1 系統 1 trip の方が UX シンプル
+
+### 関連
+
+- §250〜§255 (v400〜v405) — A-1〜A-7 の前提
+- Notion §1.3「フル入力」項目 (区間も含む)
+- §249 (v399 B-4-b) — multi-container API が A-8 の factory 再 mount を支える
+
+---
+
 ## 255. v405 — 一括記録 A-6+A-7 完了 (A 段階完結): オンボーディングバナー + unknown 集計検証 (2026-05-28)
 
 ### 背景

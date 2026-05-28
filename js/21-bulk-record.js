@@ -281,6 +281,7 @@ function _buildLineItem(sl) {
       </button>
     </label>
     <div class="bulk-accordion-body" data-line-id="${_esc(sl.id)}"${isOpen ? '' : ' hidden'}>
+      <div class="bulk-segment-picker"></div>
       <div class="tde-time"></div>
       <div class="tde-train"></div>
       <div class="tde-delay"></div>
@@ -328,7 +329,133 @@ function _openAccordion(sl) {
   if (!body) { _updateSummary(); return; }
   body.hidden = false;
 
-  // factory mount (multi-container API)
+  // A-8: 区間ピッカー (from/to select) を mount。dropdown change で draft.segments
+  //   を更新 → factory を再 mount (initial 渡し直し)。
+  _mountSegmentPicker(sl, body);
+  _mountDetailEditor(sl, body);
+
+  // toggle ボタン ▶ → ▼ + scrollIntoView (展開部分が画面外なら見せる)
+  const tgl = document.querySelector(`.bulk-line-row[data-line-id="${CSS.escape(sl.id)}"] .bulk-accordion-toggle`);
+  if (tgl) { tgl.textContent = '▼'; tgl.setAttribute('aria-expanded', 'true'); }
+  setTimeout(() => { try { body.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {} }, 30);
+  _updateSummary();
+}
+
+// A-8: 区間ピッカー (from/to select) を mount。
+//   - stations 全駅を 2 つの select に表示
+//   - 初期値は draft.segments[0] の from/to (たたむ default なら両端)
+//   - change で draft.segments[0] を更新 + _edited=true + meta 表示更新 +
+//     factory 再 mount (initial 渡し直し)
+//   - from >= to は許可しない (前後反転は dropdown 操作で起き得るので、
+//     change 時に小さい方を from、大きい方を to に正規化)
+function _mountSegmentPicker(sl, body) {
+  const container = body.querySelector('.bulk-segment-picker');
+  if (!container || !sl) return;
+  const stations = Array.isArray(sl.stations) ? sl.stations : [];
+  if (stations.length < 2) {
+    container.innerHTML = '<div class="bsp-warn">⚠️ 駅情報不足 (区間指定不可)</div>';
+    return;
+  }
+  const draft = _bulkDrafts.get(sl.id);
+  const seg0 = draft?.segments?.[0];
+  let fromIdx = stations.findIndex(s => s.name === seg0?.from);
+  let toIdx   = stations.findIndex(s => s.name === seg0?.to);
+  if (fromIdx < 0) fromIdx = 0;
+  if (toIdx   < 0) toIdx   = stations.length - 1;
+
+  const opts = stations.map((s, i) => `<option value="${i}">${_esc(s.name)}</option>`).join('');
+  container.innerHTML = `
+    <div class="bsp-label">🚉 区間</div>
+    <div class="bsp-row">
+      <select class="bsp-sel bsp-from">${opts}</select>
+      <span class="bsp-arrow">→</span>
+      <select class="bsp-sel bsp-to">${opts}</select>
+    </div>
+    <div class="bsp-meta" data-bsp-meta></div>
+  `;
+  const fromSel = container.querySelector('.bsp-from');
+  const toSel   = container.querySelector('.bsp-to');
+  fromSel.value = String(fromIdx);
+  toSel.value   = String(toIdx);
+
+  const updateMeta = () => {
+    const f = parseInt(fromSel.value, 10);
+    const t = parseInt(toSel.value, 10);
+    const lo = Math.min(f, t), hi = Math.max(f, t);
+    const segCount = hi - lo + 1;
+    const isFull = (lo === 0 && hi === stations.length - 1);
+    const meta = container.querySelector('[data-bsp-meta]');
+    if (meta) {
+      meta.textContent = isFull
+        ? `${segCount} 駅 (全線)`
+        : `${segCount} 駅 / ${stations.length} 駅中`;
+      meta.classList.toggle('bsp-meta-full', isFull);
+    }
+  };
+  updateMeta();
+
+  const onChange = () => {
+    const f = parseInt(fromSel.value, 10);
+    const t = parseInt(toSel.value, 10);
+    if (Number.isNaN(f) || Number.isNaN(t)) return;
+    // 正規化: 前後反転は使い手の意図次第 (折返し記録) だが、resolveByServiceLine は
+    //   lo..hi で範囲展開するため from/to の前後は同じ結果。順序保存だけ整える。
+    const lo = Math.min(f, t), hi = Math.max(f, t);
+    const fromSt = stations[lo];
+    const toSt   = stations[hi];
+    const cur = _bulkDrafts.get(sl.id);
+    if (cur) {
+      _bulkDrafts.set(sl.id, {
+        ...cur,
+        segments: [{
+          lineId: sl.id,
+          from:   fromSt.name,
+          to:     toSt.name,
+          from_station_id: fromSt.id || null,
+          to_station_id:   toSt.id   || null,
+          // 既存 segments[0] に train_* があれば引き継ぐ (factory 再 mount で再表示用)
+          train_category: cur.segments?.[0]?.train_category || null,
+          train_id:       cur.segments?.[0]?.train_id       || null,
+          train_name:     cur.segments?.[0]?.train_name     || null,
+          car_model:      cur.segments?.[0]?.car_model      || null,
+        }],
+        _edited: true,
+      });
+    }
+    updateMeta();
+    // factory を再 mount (initial の segments を新値で渡し直し)。
+    //   現 editor の time / delay / notes の編集状態を draft に保存してから再生成。
+    if (_openEditor) {
+      try {
+        const ed = _openEditor.getDraft();
+        const cur2 = _bulkDrafts.get(sl.id);
+        if (cur2) {
+          _bulkDrafts.set(sl.id, {
+            ...cur2,
+            date:           ed.date           || null,
+            depart_time:    ed.depart_time    || null,
+            arrive_time:    ed.arrive_time    || null,
+            date_precision: ed.date_precision || cur2.date_precision || 'unknown',
+            delay_minutes:  (typeof ed.delay_minutes === 'number') ? ed.delay_minutes : null,
+            notes:          ed.notes || null,
+            // segments は今 picker で書き換えた新値を保持 (ed.segments は古い from/to)
+          });
+        }
+        _openEditor.destroy();
+      } catch (e) { console.warn('[bulk-record] editor.getDraft (segment change) failed:', e); }
+      _openEditor = null;
+    }
+    _mountDetailEditor(sl, body);
+    // 行ヘッダの ✏️ マーク反映
+    _refreshLineHeader(sl.id);
+  };
+  fromSel.addEventListener('change', onChange);
+  toSel.addEventListener('change', onChange);
+}
+
+// A-5: detail editor mount (区間 picker と分離、A-8 で picker change 時の
+//   再 mount 呼出のため独立関数化)。
+function _mountDetailEditor(sl, body) {
   const draft = _bulkDrafts.get(sl.id);
   try {
     _openEditor = createTripDetailEditor({
@@ -344,19 +471,30 @@ function _openAccordion(sl) {
         trainPicker: 'per-seg-rows',
         delay:       true,
         notes:       true,
-        photos:      false,    // A-5 では写真 skip (将来追加可)
+        photos:      false,
       },
     });
   } catch (e) {
     console.warn('[bulk-record] createTripDetailEditor failed:', e);
-    body.innerHTML = `<div style="padding:12px;color:var(--red);font-size:11px">⚠️ 詳細フォーム生成失敗: ${_esc(e.message || String(e))}</div>`;
+    body.querySelector('.tde-time').innerHTML =
+      `<div style="padding:12px;color:var(--red);font-size:11px">⚠️ 詳細フォーム生成失敗: ${_esc(e.message || String(e))}</div>`;
   }
+}
 
-  // toggle ボタン ▶ → ▼ + scrollIntoView (展開部分が画面外なら見せる)
-  const tgl = document.querySelector(`.bulk-line-row[data-line-id="${CSS.escape(sl.id)}"] .bulk-accordion-toggle`);
-  if (tgl) { tgl.textContent = '▼'; tgl.setAttribute('aria-expanded', 'true'); }
-  setTimeout(() => { try { body.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {} }, 30);
-  _updateSummary();
+// 行ヘッダの ✏️ マーク / アイコン状態を再描画 (segment change で _edited=true になった
+// 後に呼ぶ)。アコーディオン展開中は ▼ のまま残す。
+function _refreshLineHeader(lineId) {
+  const wrap = document.querySelector(`.bulk-line-row[data-line-id="${CSS.escape(lineId)}"]`);
+  if (!wrap) return;
+  const nameEl = wrap.querySelector('.bulk-line-name');
+  const d = _bulkDrafts.get(lineId);
+  const SL = (window.NORIRECO?.data?.SERVICE_LINES) || [];
+  const sl = SL.find(x => x.id === lineId);
+  if (nameEl && sl) {
+    const circularMark = sl.circular ? ' 🔄' : '';
+    const editedMark   = d?._edited ? ' ✏️' : '';
+    nameEl.textContent = `${sl.name || sl.id}${circularMark}${editedMark}`;
+  }
 }
 
 function _closeAccordion() {
@@ -514,9 +652,6 @@ function _buildTripFromDraft(draft, idx, ctx) {
   const stations = sl?.stations || [];
   // A-5: 編集済み draft なら editor 値を採用。未編集 (たたむ default) は従来通り。
   const edited = !!draft._edited;
-  // 全線完乗想定の自己申告。環状線は SERVICE_LINES と N02 line の駅順ズレで
-  // resolve が部分塗りになる既知問題あり (A-5 でも完全解決せず、別タスクへ持ち越し)。
-  const totalStations = stations.length;
   const lineName = draft.lineName;
   // 編集済みなら segments に train/列車情報が乗っているかも → name に反映
   const segs = (draft.segments || []).map(s => ({
@@ -533,6 +668,26 @@ function _buildTripFromDraft(draft, idx, ctx) {
   const fromStId = segs[0]?.from_id || null;
   const toStId   = segs[segs.length - 1]?.to_id || null;
 
+  // A-8: total_stations と name は segments[0] の from/to から計算。
+  //   - 全線 (両端) なら "{線名} 全線" / stations.length 駅
+  //   - 区間指定なら "{線名} {from}→{to}" / 区間内駅数
+  //   環状線は SERVICE_LINES と N02 line の駅順ズレで resolve が部分塗りになる
+  //   既知問題あり (A-5 でも完全解決せず、別タスクへ持ち越し)。total_stations 自己申告は
+  //   stations 配列 index ベースで素直に計算。
+  let totalStations = stations.length;
+  let tripName = `${lineName} 全線`;
+  if (segs[0]) {
+    const seg = segs[0];
+    const fromIdx = stations.findIndex(s => s.name === seg.from);
+    const toIdx   = stations.findIndex(s => s.name === seg.to);
+    if (fromIdx >= 0 && toIdx >= 0) {
+      const lo = Math.min(fromIdx, toIdx), hi = Math.max(fromIdx, toIdx);
+      totalStations = hi - lo + 1;
+      const isFull = (lo === 0 && hi === stations.length - 1);
+      tripName = isFull ? `${lineName} 全線` : `${lineName} ${seg.from}→${seg.to}`;
+    }
+  }
+
   // trip 直下の train_* 集約 (saveMultiSegmentTrip v375 と同形)
   const aggTrain = (key) => {
     if (segs.length === 0) return null;
@@ -545,7 +700,7 @@ function _buildTripFromDraft(draft, idx, ctx) {
     // 編集済みなら editor の date / precision を使う。未編集なら today (NOT NULL 制約のため、
     // dp='unknown' のときも Supabase 側で除外フィルタが効く)
     date: edited ? (draft.date || ctx.today) : ctx.today,
-    name: `${lineName} 全線`,
+    name: tripName,
     photos: [],
     from_station_id: fromStId,
     to_station_id:   toStId,
