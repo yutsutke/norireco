@@ -84,7 +84,19 @@ export function createTripDetailEditor(opts) {
                   || features.trainPicker === 'per-seg-rows'
                   || features.trainPicker === 'trip-level')
                     ? features.trainPicker : null;
-  const featDelay = !!features.delay;
+  // v397 (B-3c): delay を boolean OR { maniaToggle, prefKey } object 両対応に。
+  //   - true        → 常時表示 (13b)
+  //   - false       → セクション自体 OFF
+  //   - { maniaToggle:true, prefKey:'norireco.prefs.showDelayInput' } → checkbox + localStorage 永続化 (07)
+  let featDelay = null;
+  if (features.delay === true) {
+    featDelay = { maniaToggle: false, prefKey: null };
+  } else if (features.delay && typeof features.delay === 'object') {
+    featDelay = {
+      maniaToggle: !!features.delay.maniaToggle,
+      prefKey:     features.delay.prefKey || null,
+    };
+  }
   const featNotes = !!features.notes;
   const featPhotos = (features.photos && typeof features.photos === 'object') ? features.photos : null;
 
@@ -171,11 +183,7 @@ export function createTripDetailEditor(opts) {
   }
   function initTimeRow() {
     if (_supportsFull5Precisions()) {
-      // TODO (B-3c): 5 精度 (minute/day/month/year/unknown) 切替 UI を 07 から移植
-      //   - 07 の #rec-time-edit-section + onRecEditPrecisionChange + updateRecConfirmTimeRow を本クロージャに集約
-      //   - mania toggle 連動 (display は呼出側 wrapper の責務)
-      //   - GPS preset (verified 記録の depart/arrive プリフィル) も factory 内で対応
-      _timeEl.innerHTML = '<!-- TODO B-3c: 5-precision time row (precisions=' + (featTime.precisions || []).join(',') + ') -->';
+      _initTimeRowFull5();
       return;
     }
     const headerStyle = 'font-size:11px;color:var(--gold);margin-bottom:6px';
@@ -210,8 +218,193 @@ export function createTripDetailEditor(opts) {
       _timeEl.querySelector('.tde-time-arrive')?.addEventListener('input', () => { try { onChange(); } catch (e) {} });
     }
   }
+  // ── 5 精度 time row (v397 B-3c): 07 確認モーダル用 ─────
+  // 精度 select (minute/day/month/year/unknown) + 行表示切替 + 年月 select populate + collect。
+  // features.timeRow.precisions が subset (例 ['minute','day']) でも option を絞れる。
+  // GPS preset (depart/arrive プリフィル) は呼出側で initial に渡す責務 — factory は draft.depart_time/arrive_time/date を見て埋めるだけ。
+  function _initTimeRowFull5() {
+    const PREC_LABELS = {
+      minute:  '⏱ 正確な時刻まで',
+      day:     '📅 日付のみ覚えてる',
+      month:   '🗓 月までしか覚えてない',
+      year:    '📆 年だけ覚えてる',
+      unknown: '❓ 思い出せない',
+    };
+    const precs = featTime.precisions;
+    const inputBg = "background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-size:12px";
+    const inputMono = "background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark";
+    const labelStyle = 'font-size:10px;color:var(--silver);min-width:40px';
+    const labelStyleWide = 'font-size:10px;color:var(--silver);min-width:60px';
+    const headerStyle = 'font-size:11px;color:var(--gold);margin-bottom:8px';
+
+    const toHm = (v) => (typeof v === 'string' && v.length >= 5) ? v.slice(0, 5) : '';
+    const dateVal = (draft.date && draft.date_precision !== 'unknown') ? draft.date : '';
+    const depVal  = toHm(draft.depart_time);
+    const arrVal  = toHm(draft.arrive_time);
+    // month/year 用の初期 select 値: draft.date が 'YYYY-MM-DD' 形式なら分解、なければ今年/今月
+    const now = new Date();
+    const curY = now.getFullYear();
+    const curM = String(now.getMonth() + 1).padStart(2, '0');
+    let initY = String(curY), initM = curM;
+    if (draft.date && /^\d{4}-\d{2}-\d{2}$/.test(draft.date)) {
+      initY = draft.date.slice(0, 4);
+      initM = draft.date.slice(5, 7);
+    }
+
+    // 精度 select option を precisions 配列で絞る (順序固定)
+    const PREC_ORDER = ['minute', 'day', 'month', 'year', 'unknown'];
+    const enabledPrecs = PREC_ORDER.filter(p => precs.includes(p));
+    const initPrec = (enabledPrecs.includes(draft.date_precision || '') ? draft.date_precision : enabledPrecs[0]) || 'minute';
+
+    let precOptions = '';
+    for (const p of enabledPrecs) precOptions += `<option value="${p}">${_escHtml(PREC_LABELS[p])}</option>`;
+
+    // 年/月 select option: 過去 20 年
+    const startY = curY - 20;
+    let yearOptions = '';
+    for (let y = curY; y >= startY; y--) yearOptions += `<option value="${y}">${y}</option>`;
+    let monthOptions = '';
+    for (let m = 1; m <= 12; m++) {
+      const mm = String(m).padStart(2, '0');
+      monthOptions += `<option value="${mm}">${m}</option>`;
+    }
+
+    _timeEl.innerHTML = `
+      <div class="tde-time-header" style="${headerStyle}">🕒 乗車日時（後追い記録向け）</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+        <label style="${labelStyleWide}">📐 記憶の精度</label>
+        <select class="tde-time-prec" style="flex:1;min-width:160px;${inputBg}">
+          ${precOptions}
+        </select>
+      </div>
+      <div class="tde-time-date-row" style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+        <label style="${labelStyle}">📅 乗車日</label>
+        <input type="date" class="tde-time-date" value="${_escHtml(dateVal)}" style="flex:1;min-width:140px;${inputMono}">
+      </div>
+      <div class="tde-time-time-row" style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+        <label style="${labelStyle}">🕐 出発</label>
+        <input type="time" class="tde-time-depart" value="${_escHtml(depVal)}" style="flex:1;min-width:110px;${inputMono}">
+        <label style="${labelStyle}">🕑 到着</label>
+        <input type="time" class="tde-time-arrive" value="${_escHtml(arrVal)}" style="flex:1;min-width:110px;${inputMono}">
+      </div>
+      <div class="tde-time-month-row" style="display:none;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+        <label style="${labelStyle}">🗓 年月</label>
+        <select class="tde-time-year-m" style="${inputBg}">${yearOptions}</select>年
+        <select class="tde-time-month-m" style="${inputBg}">${monthOptions}</select>月
+      </div>
+      <div class="tde-time-year-row" style="display:none;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+        <label style="${labelStyle}">📆 年</label>
+        <select class="tde-time-year-y" style="${inputBg}">${yearOptions}</select>年
+      </div>
+      <div class="tde-time-unknown-row" style="display:none;padding:8px 10px;background:rgba(95,181,255,.08);border-left:3px solid #5fb5ff;border-radius:0 6px 6px 0;font-size:11px;color:var(--silver);line-height:1.5">
+        日時を入力せず保存します。乗車駅・系統は記録されますが、期間フィルタ (今年/〜月指定など) には現れません。
+      </div>
+      <div style="font-size:9px;color:var(--silver);opacity:.7;line-height:1.5;margin-top:6px">記録時刻 (recorded_at) は常に「保存ボタン押下時」が保存されます。</div>
+    `;
+
+    const precSel  = _timeEl.querySelector('.tde-time-prec');
+    const dateRow  = _timeEl.querySelector('.tde-time-date-row');
+    const timeRow  = _timeEl.querySelector('.tde-time-time-row');
+    const monthRow = _timeEl.querySelector('.tde-time-month-row');
+    const yearRow  = _timeEl.querySelector('.tde-time-year-row');
+    const unkRow   = _timeEl.querySelector('.tde-time-unknown-row');
+    const yearMSel = _timeEl.querySelector('.tde-time-year-m');
+    const monthSel = _timeEl.querySelector('.tde-time-month-m');
+    const yearYSel = _timeEl.querySelector('.tde-time-year-y');
+
+    // 初期 select 値設定
+    if (precSel) precSel.value = initPrec;
+    if (yearMSel) yearMSel.value = initY;
+    if (monthSel) monthSel.value = initM;
+    if (yearYSel) yearYSel.value = initY;
+
+    function applyPrecVisibility(prec) {
+      if (dateRow)  dateRow.style.display  = (prec === 'minute' || prec === 'day') ? 'flex' : 'none';
+      if (timeRow)  timeRow.style.display  = (prec === 'minute') ? 'flex' : 'none';
+      if (monthRow) monthRow.style.display = (prec === 'month') ? 'flex' : 'none';
+      if (yearRow)  yearRow.style.display  = (prec === 'year') ? 'flex' : 'none';
+      if (unkRow)   unkRow.style.display   = (prec === 'unknown') ? 'block' : 'none';
+    }
+    applyPrecVisibility(initPrec);
+
+    // 全 input の change/input で onChange 通知 (外側 updateRecConfirmTimeRow 用)
+    const fire = () => { if (onChange) try { onChange(); } catch (e) {} };
+    if (precSel) precSel.addEventListener('change', () => { applyPrecVisibility(precSel.value); fire(); });
+    [
+      _timeEl.querySelector('.tde-time-date'),
+      _timeEl.querySelector('.tde-time-depart'),
+      _timeEl.querySelector('.tde-time-arrive'),
+      yearMSel, monthSel, yearYSel,
+    ].forEach(el => { if (el) el.addEventListener('input', fire); });
+    if (yearMSel) yearMSel.addEventListener('change', fire);
+    if (monthSel) monthSel.addEventListener('change', fire);
+    if (yearYSel) yearYSel.addEventListener('change', fire);
+  }
+
+  function _collectTimeRowFull5() {
+    const prec = (_timeEl.querySelector('.tde-time-prec')?.value || 'minute');
+    if (prec === 'minute') {
+      const dateRaw = (_timeEl.querySelector('.tde-time-date')?.value || '').trim();
+      const depRaw  = (_timeEl.querySelector('.tde-time-depart')?.value || '').trim();
+      const arrRaw  = (_timeEl.querySelector('.tde-time-arrive')?.value || '').trim();
+      draft.date_precision = 'minute';
+      draft.date = dateRaw || null;
+      draft.depart_time = depRaw ? `${depRaw}:00` : '';
+      draft.arrive_time = arrRaw ? `${arrRaw}:00` : '';
+      if (depRaw && arrRaw) {
+        const [dhh, dmm] = depRaw.split(':').map(Number);
+        const [ahh, amm] = arrRaw.split(':').map(Number);
+        let diff = (ahh * 60 + amm) - (dhh * 60 + dmm);
+        if (diff < 0) diff += 24 * 60;
+        draft.total_minutes = diff;
+      } else {
+        draft.total_minutes = 0;
+      }
+      return;
+    }
+    if (prec === 'day') {
+      const dateRaw = (_timeEl.querySelector('.tde-time-date')?.value || '').trim();
+      draft.date_precision = 'day';
+      draft.date = dateRaw || null;
+      draft.depart_time = '';
+      draft.arrive_time = '';
+      draft.total_minutes = 0;
+      return;
+    }
+    if (prec === 'month') {
+      const y = (_timeEl.querySelector('.tde-time-year-m')?.value || '').trim();
+      const m = (_timeEl.querySelector('.tde-time-month-m')?.value || '').trim();
+      draft.date_precision = 'month';
+      draft.date = (y && m) ? `${y}-${m}-01` : null;
+      draft.depart_time = '';
+      draft.arrive_time = '';
+      draft.total_minutes = 0;
+      return;
+    }
+    if (prec === 'year') {
+      const y = (_timeEl.querySelector('.tde-time-year-y')?.value || '').trim();
+      draft.date_precision = 'year';
+      draft.date = y ? `${y}-01-01` : null;
+      draft.depart_time = '';
+      draft.arrive_time = '';
+      draft.total_minutes = 0;
+      return;
+    }
+    if (prec === 'unknown') {
+      // 07 旧実装: tripDate には保存日 (recorded_at の日付) を入れる方針だが、
+      //   factory は呼出側に判断を委ねる: draft.date は null にしておき、呼出側で
+      //   「prec='unknown' なら localDateStr() を入れる」を実装する。
+      draft.date_precision = 'unknown';
+      draft.date = null;
+      draft.depart_time = '';
+      draft.arrive_time = '';
+      draft.total_minutes = 0;
+      return;
+    }
+  }
+
   function collectTimeRow() {
-    if (_supportsFull5Precisions()) return; // B-3c で対応
+    if (_supportsFull5Precisions()) { _collectTimeRowFull5(); return; }
     const dateRaw = (_timeEl.querySelector('.tde-time-date')?.value || '').trim();
     const depRaw = (_timeEl.querySelector('.tde-time-depart')?.value || '').trim();
     const arrRaw = (_timeEl.querySelector('.tde-time-arrive')?.value || '').trim();
@@ -1050,12 +1243,12 @@ export function createTripDetailEditor(opts) {
     }
   }
 
-  // ── delay section (v394 B-3a) ───────────────────────────────────
-  // 13b v185 / 07 v185 の h/m number input ペアを factory 側に複製。
-  //   - 表示: 時間 (0-99) + 分 (0-59) + 「分遅れ」ラベル、flex 並び
-  //   - collect: h*60 + m を draft.delay_minutes (0 なら null、上限 5999 にクランプ)
-  //   - 07 の mania toggle (#rec-delay-toggle) は呼出側 wrapper の display 制御責務。
-  //     factory の .tde-delay は features.delay=true のとき常時 display:block (default)。
+  // ── delay section (v394 B-3a / v397 B-3c で maniaToggle 拡張) ─────
+  // 13b v185 / 07 v185 の h/m number input ペアを factory に複製。
+  //   - features.delay = true                                    → 常時表示 (13b)
+  //   - features.delay = { maniaToggle:true, prefKey:'…' }       → checkbox + localStorage 永続化 (07)
+  //   collect: h*60 + m を draft.delay_minutes (0 なら null、上限 5999 にクランプ)
+  //   maniaToggle が ON で checkbox OFF のとき: h/m input は hide。collect は null を返す (入力 cleared)。
   function initDelay() {
     const inputStyle = 'width:64px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:\'DM Mono\',monospace;font-size:12px;color-scheme:dark';
     const lblStyle = 'font-size:10px;color:var(--silver)';
@@ -1063,21 +1256,66 @@ export function createTripDetailEditor(opts) {
     const total = (typeof draft.delay_minutes === 'number' && draft.delay_minutes > 0) ? draft.delay_minutes : 0;
     const hVal = total >= 60 ? String(Math.floor(total / 60)) : '';
     const mVal = (total % 60) > 0 ? String(total % 60) : (total > 0 && total < 60 ? String(total) : '');
+
+    // maniaToggle 初期 ON/OFF を localStorage から復元 (失敗時は OFF デフォルト)。
+    let maniaOn = false;
+    if (featDelay.maniaToggle && featDelay.prefKey) {
+      try { maniaOn = (localStorage.getItem(featDelay.prefKey) === '1'); } catch (e) {}
+    }
+    // 初期値が delay_minutes > 0 なら maniaToggle 関係なく row 表示 (古い値が hide で消えるのを防ぐ)
+    const showRowInit = featDelay.maniaToggle ? (maniaOn || total > 0) : true;
+
+    let toggleHtml = '';
+    if (featDelay.maniaToggle) {
+      toggleHtml = `
+        <label class="tde-delay-toggle-lbl" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver);cursor:pointer;user-select:none;margin-bottom:6px">
+          <input type="checkbox" class="tde-delay-toggle" ${showRowInit ? 'checked' : ''} style="margin:0;cursor:pointer">
+          <span>⏱ 遅延も記録する</span>
+        </label>
+      `;
+    }
     _delayEl.innerHTML = `
-      <div class="tde-delay-header" style="${headerStyle}">⏱ 遅延</div>
-      <div class="tde-delay-row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      ${featDelay.maniaToggle ? '' : `<div class="tde-delay-header" style="${headerStyle}">⏱ 遅延</div>`}
+      ${toggleHtml}
+      <div class="tde-delay-row" style="display:${showRowInit ? 'flex' : 'none'};gap:8px;align-items:center;flex-wrap:wrap">
         <input type="number" class="tde-delay-h" min="0" max="99" step="1" placeholder="0" value="${_escHtml(hVal)}" style="${inputStyle}">
         <span style="${lblStyle}">時間</span>
         <input type="number" class="tde-delay-m" min="0" max="59" step="1" placeholder="0" value="${_escHtml(mVal)}" style="${inputStyle}">
         <span style="${lblStyle}">分遅れ</span>
       </div>
     `;
+    if (featDelay.maniaToggle) {
+      const tgl = _delayEl.querySelector('.tde-delay-toggle');
+      const row = _delayEl.querySelector('.tde-delay-row');
+      if (tgl && row) {
+        tgl.addEventListener('change', () => {
+          const on = tgl.checked;
+          row.style.display = on ? 'flex' : 'none';
+          if (featDelay.prefKey) {
+            try { localStorage.setItem(featDelay.prefKey, on ? '1' : '0'); } catch (e) {}
+          }
+          if (!on) {
+            // OFF にしたら入力値クリア (隠れた state を残さない、07 旧 onRecDelayToggle と同形)
+            const h = _delayEl.querySelector('.tde-delay-h');
+            const m = _delayEl.querySelector('.tde-delay-m');
+            if (h) h.value = '';
+            if (m) m.value = '';
+          }
+          if (onChange) try { onChange(); } catch (e) {}
+        });
+      }
+    }
     if (onChange) {
       _delayEl.querySelector('.tde-delay-h')?.addEventListener('input', () => { try { onChange(); } catch (e) {} });
       _delayEl.querySelector('.tde-delay-m')?.addEventListener('input', () => { try { onChange(); } catch (e) {} });
     }
   }
   function collectDelay() {
+    // maniaToggle が ON 状態で row hide のとき (= checkbox OFF) は入力値があっても無視 → null
+    if (featDelay.maniaToggle) {
+      const tgl = _delayEl.querySelector('.tde-delay-toggle');
+      if (tgl && !tgl.checked) { draft.delay_minutes = null; return; }
+    }
     const hRaw = _delayEl.querySelector('.tde-delay-h')?.value;
     const mRaw = _delayEl.querySelector('.tde-delay-m')?.value;
     const h = (hRaw != null && hRaw !== '') ? Math.max(0, Math.min(99, parseInt(hRaw, 10) || 0)) : 0;

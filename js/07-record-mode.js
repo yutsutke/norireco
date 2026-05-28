@@ -24,6 +24,13 @@ import { createTripDetailEditor } from './20-trip-detail-editor.js';
 let _recPhotoArea = null;
 // v392: 列車 picker (per-seg-chip mode) の component インスタンス。null = 未生成 or マニアトグル OFF
 let _recDetailEditor = null;
+// v397 (B-3c): 確認モーダルの 🕒 乗車日時 (5 精度 + GPS preset) を担当する 2nd factory instance。
+//   GPS 記録時は features.timeRow=false で skip (section 全体 hide)、手動記録時のみ生成。
+let _recTimeEditor = null;
+// v397 (B-3c): 確認モーダルの ⏱ 遅延 + 📝 自由メモ を担当する 3rd factory instance。
+//   features.delay = { maniaToggle:true, prefKey: PREF_SHOW_DELAY_INPUT } で旧 #rec-delay-toggle 動作を再現。
+//   将来 B-4 で _recDetailEditor / _recTimeEditor と共に 1 instance に統合予定。
+let _recMetaEditor = null;
 import {
   cycleLocationMode,
   stopLocationTracking,
@@ -823,54 +830,82 @@ function openRecConfirm() {
       ? '💾 GPS で保存する'
       : '💾 手動で保存する';
   }
-  // 時刻編集セクション: 手動記録のときだけ表示、初期値は記録モード突入時刻
+  // v397 (B-3c): 時刻編集セクション (手動記録のみ) + ⏱ 遅延 + 📝 自由メモ を factory に集約。
+  //   - GPS 記録: time section 全体を hide、_recTimeEditor は生成しない (factory 不要)
+  //   - 手動記録: precisions=['minute','day','month','year','unknown'] の 5 精度 UI を mount。
+  //               initial に date / depart_time / arrive_time を渡す (記録モード突入時刻 = startTs から計算)
+  //   - delay/notes は GPS/手動どちらでも mount。delay は maniaToggle + localStorage 永続化。
+  if (_recTimeEditor) {
+    try { _recTimeEditor.destroy(); } catch (e) {}
+    _recTimeEditor = null;
+  }
   const timeSec = document.getElementById('rec-time-edit-section');
   if (timeSec) {
     if (NORIRECO.gps.recordStartedViaGPS) {
       timeSec.style.display = 'none';
     } else {
       timeSec.style.display = '';
-      // 精度セレクタは minute (正確な時刻) で初期化
-      const precSel = document.getElementById('rec-edit-precision');
-      if (precSel) precSel.value = 'minute';
-      // 年/月セレクタを populate
-      _populateRecEditYearMonth();
-      // minute 用の入力初期値
-      const dateInp = document.getElementById('rec-edit-date');
-      const depInp = document.getElementById('rec-edit-depart');
-      const arrInp = document.getElementById('rec-edit-arrive');
+      // 初期 depart/arrive: GPS なしでも記録モード突入時刻 (startTs) と現在時刻 (endTs) から計算
+      let initDate = (typeof localDateStr === 'function') ? localDateStr() : new Date().toISOString().slice(0, 10);
+      let initDep = '';
+      let initArr = '';
       if (startTs) {
         const sd = new Date(startTs);
-        const ymd = `${sd.getFullYear()}-${String(sd.getMonth()+1).padStart(2,'0')}-${String(sd.getDate()).padStart(2,'0')}`;
-        if (dateInp) dateInp.value = ymd;
-        if (depInp) depInp.value = sd.toTimeString().slice(0,5);
-      } else {
-        if (dateInp) dateInp.value = (typeof localDateStr === 'function') ? localDateStr() : new Date().toISOString().slice(0,10);
-        if (depInp) depInp.value = '';
+        initDate = `${sd.getFullYear()}-${String(sd.getMonth()+1).padStart(2,'0')}-${String(sd.getDate()).padStart(2,'0')}`;
+        initDep = sd.toTimeString().slice(0, 8);
       }
-      if (arrInp) {
-        const endTs = NORIRECO.gps.recordEndTime || new Date().toISOString();
-        const ed = new Date(endTs);
-        arrInp.value = ed.toTimeString().slice(0,5);
+      const endTsLocal = NORIRECO.gps.recordEndTime || new Date().toISOString();
+      const ed = new Date(endTsLocal);
+      initArr = ed.toTimeString().slice(0, 8);
+
+      const timeContainer = document.getElementById('rec-time-edit-container');
+      if (timeContainer) {
+        _recTimeEditor = createTripDetailEditor({
+          container: timeContainer,
+          initial: {
+            date: initDate,
+            depart_time: initDep,
+            arrive_time: initArr,
+            date_precision: 'minute',
+          },
+          features: {
+            timeRow: { precisions: ['minute', 'day', 'month', 'year', 'unknown'] },
+            trainPicker: false,
+            delay: false,
+            notes: false,
+            photos: false,
+          },
+          // 入力が変わるたびに確認モーダル上部の 🕒 時刻行を更新
+          onChange: () => { try { updateRecConfirmTimeRow(); } catch (e) {} },
+        });
       }
-      // 行の表示状態をデフォルト (minute) に
-      onRecEditPrecisionChange();
     }
   }
-  // 確認モーダル上部の 🕒 時刻行を確実に更新 (GPS 記録は実時刻、手動はプレースホルダ非表示)
+  // 確認モーダル上部の 🕒 時刻行を確実に更新 (GPS 記録は実時刻、手動は factory draft 経由)
   updateRecConfirmTimeRow();
   document.getElementById('rec-confirm-modal')?.classList.add('open');
   // v392 (B-1 続き): 「列車・車両形式」トグルを localStorage から復元 + ON なら editor mount。
-  // 旧 resetTrainSelector / populateSlVehiclePicker / applyRecTrainCategory はマニア picker 内部に
-  // 統合されたため呼出不要。
   initRecTrainToggle();
-  // メモ・遅延もリセット (前回値を持ち越さない) — v185: 時間+分の 2 input
-  const delayHInp = document.getElementById('rec-edit-delay-h');
-  const delayMInp = document.getElementById('rec-edit-delay-m');
-  const notesInp = document.getElementById('rec-edit-notes');
-  if (delayHInp) delayHInp.value = '';
-  if (delayMInp) delayMInp.value = '';
-  if (notesInp) notesInp.value = '';
+  // v397 (B-3c): ⏱ 遅延 + 📝 自由メモ を factory に集約 (delay は maniaToggle + localStorage 永続化)。
+  //   毎回 destroy → 再生成 (前回値を持ち越さない、旧 input.value='' 相当)。
+  if (_recMetaEditor) {
+    try { _recMetaEditor.destroy(); } catch (e) {}
+    _recMetaEditor = null;
+  }
+  const metaContainer = document.getElementById('rec-meta-container');
+  if (metaContainer) {
+    _recMetaEditor = createTripDetailEditor({
+      container: metaContainer,
+      initial: { delay_minutes: null, notes: null },
+      features: {
+        trainPicker: false,
+        timeRow: false,
+        delay: { maniaToggle: true, prefKey: PREF_SHOW_DELAY_INPUT },
+        notes: true,
+        photos: false,
+      },
+    });
+  }
 
   // v258: 📷 写真エリアもリセット (空のエリアを再生成、blob URL 既存ぶんは destroy で revoke)
   if (_recPhotoArea) {
@@ -917,6 +952,15 @@ function discardRecord() {
     try { _recDetailEditor.destroy(); } catch (e) {}
     _recDetailEditor = null;
   }
+  // v397 (B-3c): time / meta editor も破棄
+  if (_recTimeEditor) {
+    try { _recTimeEditor.destroy(); } catch (e) {}
+    _recTimeEditor = null;
+  }
+  if (_recMetaEditor) {
+    try { _recMetaEditor.destroy(); } catch (e) {}
+    _recMetaEditor = null;
+  }
   if (R.mode) toggleRecordMode(); // off に
   showRecordToast('🗑 記録を破棄しました', 'warn', 2500);
 }
@@ -945,7 +989,10 @@ function onRecEditPrecisionChange() {
 }
 window.onRecEditPrecisionChange = onRecEditPrecisionChange;
 
-// 確認モーダル上部の 🕒 時刻行を、記録種別 + 精度 + 入力値に応じて書き換え
+// v397 (B-3c): 確認モーダル上部の 🕒 時刻行を、factory editor の draft + GPS 状態から再描画。
+//   - GPS 記録: 実 GPS 時刻 (startTs/endTs) を直接読む
+//   - 手動記録: _recTimeEditor.getDraft() で精度 + 値を取得して表現を変える
+//   呼出元: openRecConfirm 初回 + _recTimeEditor の onChange callback (precSel / 各 input の input/change)
 function updateRecConfirmTimeRow() {
   const row = document.getElementById('rec-confirm-time-row');
   const lbl = document.getElementById('rec-confirm-time-lbl');
@@ -965,47 +1012,47 @@ function updateRecConfirmTimeRow() {
     return;
   }
 
-  // 手動記録: 精度セレクタの値に応じて表現を変える
-  const prec = document.getElementById('rec-edit-precision')?.value || 'minute';
+  // 手動記録: factory editor の draft 経由
+  if (!_recTimeEditor) { row.style.display = 'none'; return; }
+  let td = null;
+  try { td = _recTimeEditor.getDraft(); } catch (e) { row.style.display = 'none'; return; }
+  if (!td) { row.style.display = 'none'; return; }
+  const prec = td.date_precision || 'minute';
+  const toHm = (v) => (typeof v === 'string' && v.length >= 5) ? v.slice(0, 5) : '';
+
   if (prec === 'minute') {
-    const dep = document.getElementById('rec-edit-depart')?.value;
-    const arr = document.getElementById('rec-edit-arrive')?.value;
-    const date = document.getElementById('rec-edit-date')?.value;
+    const dep = toHm(td.depart_time);
+    const arr = toHm(td.arrive_time);
     if (dep && arr) {
-      const [dh,dm] = dep.split(':').map(Number);
-      const [ah,am] = arr.split(':').map(Number);
-      let diff = (ah*60+am) - (dh*60+dm);
-      if (diff < 0) diff += 24*60;
+      const totalM = (typeof td.total_minutes === 'number') ? td.total_minutes : 0;
       lbl.textContent = '🕒 乗車時刻';
-      val.textContent = `${date || ''} ${dep} → ${arr} (${diff}分)`;
+      val.textContent = `${td.date || ''} ${dep} → ${arr} (${totalM}分)`;
       row.style.display = '';
     } else {
       row.style.display = 'none';
     }
   } else if (prec === 'day') {
-    const date = document.getElementById('rec-edit-date')?.value;
-    if (date) {
+    if (td.date) {
       lbl.textContent = '📅 乗車日';
-      val.textContent = date;
+      val.textContent = td.date;
       row.style.display = '';
     } else {
       row.style.display = 'none';
     }
   } else if (prec === 'month') {
-    const y = document.getElementById('rec-edit-year-m')?.value;
-    const m = document.getElementById('rec-edit-month-m')?.value;
-    if (y && m) {
+    if (td.date && /^\d{4}-\d{2}-/.test(td.date)) {
+      const y = td.date.slice(0, 4);
+      const m = parseInt(td.date.slice(5, 7), 10);
       lbl.textContent = '🗓 乗車月';
-      val.textContent = `${y}年${parseInt(m,10)}月ごろ`;
+      val.textContent = `${y}年${m}月ごろ`;
       row.style.display = '';
     } else {
       row.style.display = 'none';
     }
   } else if (prec === 'year') {
-    const y = document.getElementById('rec-edit-year-y')?.value;
-    if (y) {
+    if (td.date && /^\d{4}-/.test(td.date)) {
       lbl.textContent = '📆 乗車年';
-      val.textContent = `${y}年ごろ`;
+      val.textContent = `${td.date.slice(0, 4)}年ごろ`;
       row.style.display = '';
     } else {
       row.style.display = 'none';
@@ -1269,69 +1316,35 @@ async function saveMultiSegmentTrip() {
       totalMinutes = Math.max(0, Math.round((endDate - startDate) / 60000));
     }
   }
-  // 手動記録: 精度セレクタで選んだ粒度に応じて trip フィールドを構築
-  // (GPS 記録は実時刻が正確なので上書きしない)
+  // v397 (B-3c): 手動記録の time / delay / notes は factory editor の getDraft() 経由で取得。
+  //   - GPS 記録 (recordStartedViaGPS=true): 実時刻 (startTs/endTs) が真実、_recTimeEditor は生成されない
+  //   - 手動記録: precisions=['minute','day','month','year','unknown'] の 5 精度ロジックは factory 内蔵
+  //     - unknown のとき draft.date は null → tripDate には today (recorded_at の日付) を入れる
+  //       (Supabase の NOT NULL 制約回避、フィルタは date_precision='unknown' で別途除外)
   let datePrecision = 'day';
   if (!NORIRECO.gps.recordStartedViaGPS) {
-    const prec = document.getElementById('rec-edit-precision')?.value || 'minute';
-    if (prec === 'minute') {
-      const editDate = document.getElementById('rec-edit-date')?.value;
-      const editDep = document.getElementById('rec-edit-depart')?.value;
-      const editArr = document.getElementById('rec-edit-arrive')?.value;
-      if (editDate) tripDate = editDate;
-      if (editDep) departTime = `${editDep}:00`;
-      if (editArr) arriveTime = `${editArr}:00`;
-      datePrecision = (editDep || editArr) ? 'minute' : 'day';
-      // 出発・到着両方入力されたら所要分を再計算 (日跨ぎ補正)
-      if (editDep && editArr) {
-        const [dh,dm] = editDep.split(':').map(Number);
-        const [ah,am] = editArr.split(':').map(Number);
-        let diff = (ah*60+am) - (dh*60+dm);
-        if (diff < 0) diff += 24*60;
-        totalMinutes = diff;
-      }
-    } else if (prec === 'day') {
-      const editDate = document.getElementById('rec-edit-date')?.value;
-      if (editDate) tripDate = editDate;
-      departTime = ''; arriveTime = ''; totalMinutes = 0;
-      datePrecision = 'day';
-    } else if (prec === 'month') {
-      const y = document.getElementById('rec-edit-year-m')?.value;
-      const m = document.getElementById('rec-edit-month-m')?.value;
-      if (y && m) {
-        tripDate = `${y}-${m}-01`;
-        departTime = ''; arriveTime = ''; totalMinutes = 0;
-        datePrecision = 'month';
-      }
-    } else if (prec === 'year') {
-      const y = document.getElementById('rec-edit-year-y')?.value;
-      if (y) {
-        tripDate = `${y}-01-01`;
-        departTime = ''; arriveTime = ''; totalMinutes = 0;
-        datePrecision = 'year';
-      }
-    } else if (prec === 'unknown') {
-      // 日時不明: date を null にすると Supabase の NOT NULL 制約で失敗するため、
-      // 保存日 (recorded_at の日付) を入れておく。フィルタは date_precision='unknown' で別途除外
-      tripDate = today;
-      departTime = ''; arriveTime = ''; totalMinutes = 0;
-      datePrecision = 'unknown';
+    let timeDraft = null;
+    if (_recTimeEditor) {
+      try { timeDraft = _recTimeEditor.getDraft(); }
+      catch (e) { console.warn('[saveMultiSegmentTrip] timeEditor.getDraft() failed:', e); }
+    }
+    if (timeDraft) {
+      datePrecision = timeDraft.date_precision || 'day';
+      // factory: unknown のとき date=null → today を埋める
+      tripDate = timeDraft.date || (datePrecision === 'unknown' ? today : tripDate);
+      departTime = timeDraft.depart_time != null ? timeDraft.depart_time : '';
+      arriveTime = timeDraft.arrive_time != null ? timeDraft.arrive_time : '';
+      totalMinutes = (typeof timeDraft.total_minutes === 'number') ? timeDraft.total_minutes : 0;
     }
   }
-  // 後追い記録モード拡張: メモ・遅延 (v181, v185 で時間+分対応)
-  // 空 input は null として保存 (Supabase 側のフィルタ/表示で扱いやすい)
-  const delayHRaw = document.getElementById('rec-edit-delay-h')?.value;
-  const delayMRaw = document.getElementById('rec-edit-delay-m')?.value;
-  const notesRaw = document.getElementById('rec-edit-notes')?.value;
-  const delayH = (delayHRaw !== undefined && delayHRaw !== null && delayHRaw !== '')
-    ? Math.max(0, Math.min(99, parseInt(delayHRaw, 10) || 0))
-    : 0;
-  const delayM = (delayMRaw !== undefined && delayMRaw !== null && delayMRaw !== '')
-    ? Math.max(0, Math.min(59, parseInt(delayMRaw, 10) || 0))
-    : 0;
-  const delayTotal = delayH * 60 + delayM;
-  const delayMinutes = (delayTotal > 0) ? Math.min(5999, delayTotal) : null;
-  const tripNotes = (notesRaw || '').trim() || null;
+  // v397 (B-3c): メモ・遅延も _recMetaEditor 経由 (factory が正規化済 — 0/空→null、上限 5999 クランプ)。
+  let metaDraft = null;
+  if (_recMetaEditor) {
+    try { metaDraft = _recMetaEditor.getDraft(); }
+    catch (e) { console.warn('[saveMultiSegmentTrip] metaEditor.getDraft() failed:', e); }
+  }
+  const delayMinutes = (metaDraft && typeof metaDraft.delay_minutes === 'number') ? metaDraft.delay_minutes : null;
+  const tripNotes    = metaDraft?.notes || null;
 
   const tripId = `trip_${Date.now()}`;
 
@@ -1488,6 +1501,15 @@ async function saveMultiSegmentTrip() {
     try { _recDetailEditor.destroy(); } catch (e) {}
     _recDetailEditor = null;
   }
+  // v397 (B-3c): time / meta editor も破棄
+  if (_recTimeEditor) {
+    try { _recTimeEditor.destroy(); } catch (e) {}
+    _recTimeEditor = null;
+  }
+  if (_recMetaEditor) {
+    try { _recMetaEditor.destroy(); } catch (e) {}
+    _recMetaEditor = null;
+  }
   // verified=true の trip なら自動獲得チェックが発動する
   setTimeout(() => runCharacterGrantCheck(), 800);
   // 記録モードを終了 (R.mode=true → false に切替、最寄駅パネルが「開始駅選択」に戻る)
@@ -1617,8 +1639,9 @@ function initRecTrainToggle() {
     }
     if (saved) _mountRecDetailEditor();
   }
-  // 遅延入力トグル (v350)
-  initRecDelayToggle();
+  // v397 (B-3c): 遅延入力トグルは createTripDetailEditor (_recMetaEditor) が
+  //   features.delay = { maniaToggle: true, prefKey: PREF_SHOW_DELAY_INPUT } で内蔵管理。
+  //   旧 initRecDelayToggle / onRecDelayToggle は dead code (B-4 撤去予定)。
 }
 
 function onRecTrainToggle() {

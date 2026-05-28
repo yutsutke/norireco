@@ -44,6 +44,77 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 247. v397 — trip 詳細エディタ B-3c 完了 (07 確認モーダルへ time/delay/notes 移植 + 5 精度 + maniaToggle) (2026-05-28)
+
+### 背景
+
+§246 (v396, B-3b) で 13b の 🕒 乗車時刻 row を factory に集約。残った 07 確認モーダル側の time row (5 精度 + GPS preset 連動) + ⏱ 遅延 (mania toggle + localStorage 永続化) + 📝 自由メモ も同じ factory に移植するのが B-3c。これで「確認モーダル中身が 02/07/13b 3 箇所重複していた v383 落とし穴」の主要 4 セクション (time / train / delay / notes) は全て factory 経由に揃う。
+
+### 方針
+
+#### factory 拡張
+
+1. **5 精度 time row** (`_initTimeRowFull5` / `_collectTimeRowFull5` を closure 内に追加):
+   - `_supportsFull5Precisions()` (precisions に month/year/unknown のどれかを含む) で early-dispatch
+   - 精度 select の option は `features.timeRow.precisions` 配列で絞れる (将来 A 一括記録の「全 5 + unknown default」も同じ仕組みで対応)
+   - 行表示切替: minute=date+time、day=date のみ、month=年月 select、year=年 select、unknown=注記のみ
+   - 年/月 select は過去 20 年で初期 populate (旧 `_populateRecEditYearMonth` 相当)
+   - collect: precision ごとに draft.date / depart_time / arrive_time / total_minutes / date_precision を埋める
+   - **unknown のときの date 扱い**: factory は draft.date=null にして呼出側に判断を委ねる (Supabase の NOT NULL 制約は呼出側で today を入れる責務)
+
+2. **delay maniaToggle** (`features.delay` を boolean OR object 両対応に拡張):
+   - `true` → 常時表示 (13b 互換)
+   - `{ maniaToggle:true, prefKey:'norireco.prefs.showDelayInput' }` → checkbox + localStorage 永続化 (07)
+   - checkbox OFF で h/m input は hide + value クリア + collect は null を返す
+   - 初期値が `delay_minutes > 0` (= 既存記録) なら maniaToggle 関係なく row 表示 (古い値が hide で消えるのを防ぐ)
+
+#### 07 (`js/07-record-mode.js`)
+
+- 新 module-level `let _recTimeEditor` / `let _recMetaEditor`
+- `openRecConfirm`: 旧 `timeSec` DOM 直書き 35 行 + `_populateRecEditYearMonth` 呼出 を削除し、`createTripDetailEditor({ timeRow:{precisions:[...5精度...]}, onChange: updateRecConfirmTimeRow })` mount に置換。GPS 記録時は section 全体 hide で factory mount skip。delay/notes は GPS / 手動どちらでも mount (`features.delay = { maniaToggle:true, prefKey: PREF_SHOW_DELAY_INPUT }`、`features.notes=true`)
+- `closeRecConfirm` (戻って編集) は modal close のみ — destroy は次回 openRecConfirm 冒頭で行う
+- `discardRecord` / `saveMultiSegmentTrip` 末尾で `_recTimeEditor` / `_recMetaEditor` を destroy
+- `saveMultiSegmentTrip`: 時刻計算ブロック 60 行 を `_recTimeEditor.getDraft()` + `_recMetaEditor.getDraft()` 経由の 13 行に圧縮。unknown のとき `tripDate = today` の特殊処理は呼出側に残置
+- `updateRecConfirmTimeRow`: 旧 DOM 直読み 50 行 を factory draft 経由の 40 行に書き換え。GPS 記録時は実 GPS 時刻 (startTs/endTs) 直接読み (不変)
+- 旧 `onRecEditPrecisionChange` / `_populateRecEditYearMonth` / `initRecDelayToggle` / `onRecDelayToggle` は dead code (B-4 撤去予定)
+- `initRecTrainToggle()` 末尾の `initRecDelayToggle()` 呼出を撤去
+
+#### HTML (`noritetsu-map.html`)
+
+- `#rec-time-edit-section`: 精度 select + 4 種の精度行 (date/time/month/year/unknown) を `<div id="rec-time-edit-container"></div>` 1 つに置換。旧 input 7 個は display:none で dead code
+- `#rec-memo-section`: delay toggle + h/m + textarea を `<div id="rec-meta-container"></div>` 1 つに置換。📷 写真は別 instance (`_recPhotoArea`) で維持
+
+### 検証 (preview server, fetch monkey-patch で POST body を捕捉)
+
+7 シナリオ完全合致:
+
+| Test | 入力 | 結果 |
+|---|---|---|
+| t1 minute デフォルト | startTs=09:30, endTs=10:45 | `date=2026-05-20, prec=minute, dep=09:30:00, arr=10:45:00, total=75` ✓ |
+| t2 day | precision→day | `prec=day, dep/arr='', total=0` ✓ |
+| t3 month | precision→month, 2024年6月 | `date=2024-06-01, prec=month` ✓ |
+| t4 year | precision→year, 2020年 | `date=2020-01-01, prec=year` ✓ |
+| t5 unknown | precision→unknown | `date=today (2026-05-28), prec=unknown` (factory が null を返し、呼出側が today を埋め) ✓ |
+| t6 delay+notes | maniaToggle ON + 1h30m + "テストメモ" | `delay_minutes=90, notes='テストメモ'` ✓ |
+| t7 GPS 経路 | recordStartedViaGPS=true | `#rec-time-edit-section display='none'` ✓ |
+
+13b regression check: 既存 trip (delay=5, notes='13b 既存値') で `precisions=['minute','day']` mount → 精度 select 非表示 + delay toggle 非表示 (常時表示) + 値復元 OK。
+
+`node --check --input-type=module` 全 module clean、`js-syntax-guard` サブエージェントで構文 + グローバル衝突 + 循環 import 全項目 clean。console error 0。
+
+#### Service Worker キャッシュ事故
+
+検証中、最初の round-trip テストで「factory mount が一切走らない」現象が発生。原因は **Service Worker キャッシュ**: sw.js v395 → v396 のままで preview server 起動 + reload しても、SW が古い 07-record-mode.js をキャッシュから返していた (`updateRecConfirmTimeRow` が旧 DOM 直読み版だった)。sw.js を v397 に bump + 全 SW unregister + caches.delete + cache-busting query 付きで navigate して新版を取得。
+
+教訓: **preview server で大きい module を編集したら、検証前に sw.js を bump しておく** べき。reload(true) は modern browser で ignore、`?nocache=` は HTML には効くが SW controlled fetch は bypass しない。確実な手順は `regs.unregister() + caches.delete() + 新 URL navigate`。
+
+### 残課題
+
+- **B-4**: 13b 3 instance (`_tripEditDetailEditor + _tripEditMetaEditor + _tripEditTimeEditor`) と 07 3 instance (`_recDetailEditor + _recTimeEditor + _recMetaEditor`) を各 modal 1 instance に統合 + HTML 側の display:none input 全撤去 + 旧 helper 関数 (`onRecEditPrecisionChange` / `_populateRecEditYearMonth` / `initRecDelayToggle` / `onRecDelayToggle` / 13b の旧 9 関数) 撤去 + グローバル `NORIRECO.trains.selectedXxxBySl` / `activeChipSlId` 撤廃
+- **A**: 一括記録パネル本体 (Notion §1.3) — 行展開で同 factory を `per-seg-rows + timeRow:{precisions:['minute','day','month','year','unknown']} (unknown default)` で mount
+
+---
+
 ## 246. v396 — trip 詳細エディタ B-3b 完了 (13b の time row も createTripDetailEditor に集約) (2026-05-28)
 
 ### 背景

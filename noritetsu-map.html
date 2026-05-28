@@ -1288,47 +1288,18 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
     <div class="modal-title">📋 経路を確認</div>
     <div class="modal-sub" style="color:var(--silver);font-size:11px;margin-bottom:14px">この内容で記録しますか？</div>
     <div id="rec-confirm-body"></div>
-    <!-- 乗車日時の編集 (手動記録のときだけ表示) -->
+    <!-- 乗車日時の編集 (手動記録のときだけ表示) — v397 (B-3c) factory 統合 mount。
+         旧 #rec-edit-precision / date / depart / arrive / year-m / month-m / year-y / *-row は display:none で dead code (B-4 撤去予定)。
+         factory の .tde-time 内部に「🕒 乗車日時 / 精度 select / 各精度 row / 注記」を持たせる。 -->
     <div id="rec-time-edit-section" style="display:none;margin-top:14px;border-top:1px solid var(--track);padding-top:12px">
-      <div style="font-size:11px;color:var(--gold);margin-bottom:8px">🕒 乗車日時（後追い記録向け）</div>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
-        <label style="font-size:10px;color:var(--silver);min-width:60px">📐 記憶の精度</label>
-        <select id="rec-edit-precision" onchange="onRecEditPrecisionChange()" style="flex:1;min-width:160px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-size:12px">
-          <option value="minute">⏱ 正確な時刻まで</option>
-          <option value="day">📅 日付のみ覚えてる</option>
-          <option value="month">🗓 月までしか覚えてない</option>
-          <option value="year">📆 年だけ覚えてる</option>
-          <option value="unknown">❓ 思い出せない</option>
-        </select>
-      </div>
-      <!-- minute / day モード -->
-      <div id="rec-edit-date-row" style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
-        <label style="font-size:10px;color:var(--silver);min-width:40px">📅 乗車日</label>
-        <input type="date" id="rec-edit-date" oninput="updateRecConfirmTimeRow()" style="flex:1;min-width:140px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
-      </div>
-      <!-- minute モードのみ -->
-      <div id="rec-edit-time-row" style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
-        <label style="font-size:10px;color:var(--silver);min-width:40px">🕐 出発</label>
-        <input type="time" id="rec-edit-depart" oninput="updateRecConfirmTimeRow()" style="flex:1;min-width:110px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
-        <label style="font-size:10px;color:var(--silver);min-width:40px">🕑 到着</label>
-        <input type="time" id="rec-edit-arrive" oninput="updateRecConfirmTimeRow()" style="flex:1;min-width:110px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
-      </div>
-      <!-- month モード -->
-      <div id="rec-edit-month-row" style="display:none;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
-        <label style="font-size:10px;color:var(--silver);min-width:40px">🗓 年月</label>
-        <select id="rec-edit-year-m" onchange="updateRecConfirmTimeRow()" style="background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-size:12px"></select>年
-        <select id="rec-edit-month-m" onchange="updateRecConfirmTimeRow()" style="background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-size:12px"></select>月
-      </div>
-      <!-- year モード -->
-      <div id="rec-edit-year-row" style="display:none;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
-        <label style="font-size:10px;color:var(--silver);min-width:40px">📆 年</label>
-        <select id="rec-edit-year-y" onchange="updateRecConfirmTimeRow()" style="background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-size:12px"></select>年
-      </div>
-      <!-- unknown モード -->
-      <div id="rec-edit-unknown-row" style="display:none;padding:8px 10px;background:rgba(95,181,255,.08);border-left:3px solid #5fb5ff;border-radius:0 6px 6px 0;font-size:11px;color:var(--silver);line-height:1.5">
-        日時を入力せず保存します。乗車駅・系統は記録されますが、期間フィルタ (今年/〜月指定など) には現れません。
-      </div>
-      <div style="font-size:9px;color:var(--silver);opacity:.7;line-height:1.5;margin-top:6px">記録時刻 (recorded_at) は常に「保存ボタン押下時」が保存されます。</div>
+      <div id="rec-time-edit-container"></div>
+      <select id="rec-edit-precision" style="display:none"></select>
+      <input type="date" id="rec-edit-date" style="display:none">
+      <input type="time" id="rec-edit-depart" style="display:none">
+      <input type="time" id="rec-edit-arrive" style="display:none">
+      <select id="rec-edit-year-m" style="display:none"></select>
+      <select id="rec-edit-month-m" style="display:none"></select>
+      <select id="rec-edit-year-y" style="display:none"></select>
     </div>
     <!-- 列車・車両形式 (任意・マニア向け) — v347 で toggle 化。
          Lv0/1 (素人) には UI が見えないようデフォ非表示、トグル ON 時のみ展開。
@@ -1346,24 +1317,19 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
         <div id="rec-train-picker-container"></div>
       </div>
     </div>
-    <!-- 📝 メモ (任意) — 後追い記録・GPS 記録どちらでも入力可。
-         v350: ⏱ 遅延を独立トグル化 (デフォ非表示)。`norireco.prefs.showDelayInput` で永続化 -->
+    <!-- 📝 メモ (任意) — v397 (B-3c) factory 統合 mount。
+         旧 #rec-delay-toggle / row / -h / -m / #rec-edit-notes は display:none で dead code (B-4 撤去予定)。
+         factory の .tde-delay 内部にマニア toggle (⏱ 遅延も記録する) + h/m input、
+         .tde-notes 内部に「📝 自由メモ」見出し + textarea を持たせる。
+         📷 写真は別 instance (_recPhotoArea) で維持。 -->
     <div id="rec-memo-section" style="margin-top:14px;border-top:1px solid var(--track);padding-top:12px">
-      <div style="font-size:11px;color:var(--silver);margin-bottom:6px">📝 メモ (任意)</div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver);cursor:pointer;user-select:none;margin-bottom:6px">
-        <input type="checkbox" id="rec-delay-toggle" onchange="onRecDelayToggle()" style="margin:0;cursor:pointer">
-        <span>⏱ 遅延も記録する</span>
-      </label>
-      <div id="rec-delay-row" style="display:none;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
-        <input type="number" id="rec-edit-delay-h" min="0" max="99" step="1" placeholder="0"
-               style="width:64px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
-        <span style="font-size:10px;color:var(--silver)">時間</span>
-        <input type="number" id="rec-edit-delay-m" min="0" max="59" step="1" placeholder="0"
-               style="width:64px;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;color-scheme:dark">
-        <span style="font-size:10px;color:var(--silver)">分遅れ</span>
+      <div id="rec-meta-container"></div>
+      <input type="checkbox" id="rec-delay-toggle" style="display:none">
+      <div id="rec-delay-row" style="display:none">
+        <input type="number" id="rec-edit-delay-h" style="display:none">
+        <input type="number" id="rec-edit-delay-m" style="display:none">
       </div>
-      <textarea id="rec-edit-notes" rows="2" placeholder="自由メモ (車内エピソード・運休情報など)"
-                style="width:100%;box-sizing:border-box;background:rgba(20,32,46,.8);color:var(--white);border:1px solid var(--track);border-radius:6px;padding:6px 8px;font-size:12px;resize:vertical;min-height:48px;font-family:inherit"></textarea>
+      <textarea id="rec-edit-notes" style="display:none"></textarea>
 
       <!-- v258: 📷 写真添付 (最大 5 枚 / R2 アップロード) -->
       <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--track)">
