@@ -44,6 +44,73 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 248. v398 — trip 詳細エディタ B-4-a 完了 (13b/07 の visible dead code 撤去) (2026-05-28)
+
+### 背景
+
+§247 (v397, B-3c) で 07 確認モーダル側の time/delay/notes を factory 集約。13b/07 で旧 cascade UI (DOM id ベース直書き) + 旧 helper 関数 + 旧 input が display:none で「dead code として残置」状態だった。B-4 は「dead code 撤去 + 3 instance を 1 instance に統合」を含むが、規模が大きいので 2 段階に分割:
+
+- **B-4-a (本 deploy)**: visible な確認モーダル / 編集モーダル内の旧 HTML + 関数撤去
+- **B-4-b (次 deploy 予定)**: グローバル `NORIRECO.trains.selectedXxxBySl / activeChipSlId` 撤廃 + 02-data-loaders の旧 cascade handler + 07 の旧 SL chip ロジック撤去 + 各 modal 3 instance を 1 instance に統合
+
+### 撤去対象
+
+#### 13b (`js/13b-trips.js`、264 行削除)
+旧 10 関数 (line 488-751 だった範囲):
+- `applyTripEditCategoryVisibility` / `populateTripEditTrainDropdown` / `onTripEditCategoryChange`
+- `applyTripEditSegCategoryVisibility` / `populateTripEditSegCarSelect` / `restoreTripEditSegCascade`
+- `onTripEditSegCategoryChange` / `onTripEditSegTrainChange` / `onTripEditSegCarChange` / `onTripEditTrainChange`
+
+factory `createTripDetailEditor` (per-seg-rows / trip-level mode) が完全置き換え (v393 B-2)。`window.xxx` 公開していた 5 関数も削除、HTML 内 onchange ハンドラ参照は HTML 側削除と同時撤去。
+
+#### 07 (`js/07-record-mode.js`、70 行削除)
+旧 4 関数:
+- `onRecEditPrecisionChange` (line 974-988 + window 公開)
+- `_populateRecEditYearMonth` (line 1069-1099)
+- `initRecDelayToggle` (line 1708-1715)
+- `onRecDelayToggle` (line 1717-1731 + window 公開)
+
+factory `_initTimeRowFull5` / `initDelay({ maniaToggle, prefKey })` が完全置き換え (v397 B-3c)。`initRecTrainToggle` 末尾の `initRecDelayToggle()` 呼出は v397 で既に撤去済。
+
+#### HTML (`noritetsu-map.html`、計 19 element 削除)
+- **13b modal**:
+  - `#trip-edit-train-category` (select) / `-id` (select) / `-name` (input) / `-car-model` (input) — 4 select/input
+  - `#trip-edit-date` / `-depart` / `-arrive` / `-time-lock` / `-time-inputs` — 5 element
+  - `#trip-edit-delay-h` / `-m` / `#trip-edit-notes` — 3 element
+- **07 modal**:
+  - `#rec-edit-precision` / `-date` / `-depart` / `-arrive` / `-year-m` / `-month-m` / `-year-y` — 7 element
+  - `#rec-delay-toggle` / `-row` / `#rec-edit-delay-h` / `-m` / `#rec-edit-notes` — 5 element
+
+旧 HTML 内 `onchange="onTripEditCategoryChange()"` 等のハンドラ参照も同時撤去 (関数本体削除と整合)。
+
+### グローバル `selectedXxxBySl / activeChipSlId` 撤廃調査
+
+HTML 側に `#rec-train-category / -id / -name / car-model / rec-sl-chips / rec-sl-vehicle-select 等` の旧 DOM が**既に存在しないこと**を Grep で確認。よって `02-data-loaders.js` の `onTrainCategoryChange / onTrainChange / ...` (line 342-492) と `07-record-mode.js` の `applyRecTrainCategory / clearAllTrainSelections / populateSlVehiclePicker / selectSlChip / onSlVehicleChange / onSlVehicleCustomInput` (line 1626-1917) は実質 dead 確認。グローバル T fields も visit-only fallback (line 1344-1370) を除き dead。
+
+ただし規模 (300+ 行削除 + saveMultiSegmentTrip の visit-only fallback 書き換え) が大きく、本 deploy に詰め込むと test 範囲が広がりすぎるため **B-4-b 別 commit** で対応する判断。今回は visible HTML + 関数のみに留める。
+
+### 検証
+
+`node --check --input-type=module` 全 module clean、`js-syntax-guard` サブエージェントで構文 + window 公開関数の onclick/oninput 残存ゼロ + dead chain 撤去漏れゼロ + 旧 input id の実コード参照ゼロ確認。
+
+preview server で smoke test (sw.js v397→v398 bump + SW unregister + caches clear + cache-busting reload):
+
+| Test | 期待 | 結果 |
+|---|---|---|
+| 07 確認モーダル open (manual, visit-only) | modal open + time editor (5 精度) mount + meta editor (delay toggle + notes) mount | ✅ all true |
+| 13b 編集モーダル open (segments あり) | modal open + time editor (2 精度) mount + meta editor (delay 常時表示) mount + per-seg-rows + notes 値復元 | ✅ all true、`has5PrecUI=false`/`hasDelayToggle=false` (13b の features 通り) |
+
+console error 0。
+
+### 削除行数合計
+
+- 13b: 264 行 (関数群) + α (HTML 内 onchange 参照)
+- 07: 70 行 (4 関数)
+- HTML: 19 element + コメント
+- **合計 ~350 行削除**、可読性が大幅向上
+
+---
+
 ## 247. v397 — trip 詳細エディタ B-3c 完了 (07 確認モーダルへ time/delay/notes 移植 + 5 精度 + maniaToggle) (2026-05-28)
 
 ### 背景

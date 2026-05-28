@@ -84,7 +84,7 @@ git log --oneline -20
   - 地図 / 📋 ログ / 👤 マイページ の 3 タブナビに統合
   - **注 (2026-05-26)**: Notion §1.3 で「一括記録 (まとめて記録)」として再設計済。旧ログ画面の「1 件ずつフォーム」を復活させるのではなく、営業系統チェックリスト形式で "一気に塗る" 手段を新設する方向。下記の「一括記録」項目とセット
 
-- [ ] **一括記録 (まとめて記録) — noritetsu-log.html 廃止の受け皿** (Notion §1.3 設計確定 / v392-v397 で B-1/B-2/B-3a/B-3b/B-3c 完了、B-4 残)
+- [ ] **一括記録 (まとめて記録) — noritetsu-log.html 廃止の受け皿** (Notion §1.3 設計確定 / v392-v398 で B-1/B-2/B-3a/B-3b/B-3c/B-4-a 完了、B-4-b 残)
   - **動機 2 層**:
     - マニア層 (Lv3): 過去何十年ぶんの乗車を遡って一括入力。路線・区間まで正確に
     - 新規〜ライト層 (Lv0/1): 登録直後の空マップを「乗ったことある路線」で塗って初期状態作り (虚無対策 / シェア・OGP に効く)
@@ -99,7 +99,8 @@ git log --oneline -20
     - ✅ B-3a (v394): 13b の ⏱ 遅延 + 📝 自由メモ を 2nd factory instance (`_tripEditMetaEditor`) に集約。CHANGELOG §244
     - ✅ B-3b (v396): 13b の 🕒 乗車時刻を 3rd factory instance (`_tripEditTimeEditor`) に集約 (`precisions=['minute','day']` 専用ロジック、closure に `_initialPrecision` snapshot)。`features.timeRow` を `{ precisions: [...] }` object に拡張、5 精度版は `_supportsFull5Precisions()` 分岐で TODO 残置。CHANGELOG §246
     - ✅ B-3c (v397): 07 確認モーダルへ 🕒 乗車時刻 (5 精度 + GPS preset 連動) + ⏱ 遅延 (mania toggle + localStorage 永続化) + 📝 自由メモ を factory に集約。factory に `_initTimeRowFull5/_collectTimeRowFull5` 追加、`features.delay` を `{ maniaToggle, prefKey }` object 対応に拡張。`saveMultiSegmentTrip` 60 行を 13 行に圧縮、`updateRecConfirmTimeRow` を draft 経由に。CHANGELOG §247
-    - 未 B-4: グローバル `NORIRECO.trains.selectedXxxBySl` / `activeChipSlId` 撤廃 + 13b dead 10 関数 + 07 dead 4 関数 (`onRecEditPrecisionChange / _populateRecEditYearMonth / initRecDelayToggle / onRecDelayToggle`) + HTML dead input 全撤去 + 各 modal 3 instance を 1 instance に統合
+    - ✅ B-4-a (v398): 13b/07 の visible dead code 撤去 (~350 行)。13b: 旧 10 関数 (264 行) + HTML 12 element + onchange 参照削除。07: 旧 4 関数 (70 行) + HTML 12 element 削除。CHANGELOG §248
+    - 未 B-4-b: グローバル `NORIRECO.trains.selectedXxxBySl` / `activeChipSlId` 撤廃 + 02-data-loaders 旧 cascade handler + 07 旧 SL chip ロジック (`applyRecTrainCategory / clearAllTrainSelections / populateSlVehiclePicker / selectSlChip / onSlVehicleChange / onSlVehicleCustomInput`、300+ 行) 撤去 + 各 modal 3 instance を 1 instance に統合 (要 factory 拡張)
     - 未 A: 一括記録パネル本体 (B-3 完了後着手)。② 地図上路線直接タップ / ③ 都道府県シードは別段階・後回し
   - **要検討 (実装時に潰す)**:
     - `date_precision='unknown'` の集計経路 — 採用 (a) 2026-05-26: 期間フィルタからは除外維持、地図の塗り・完乗率には含める (嘘の年で埋めない方針)。実装時に「集計が期間フィルタの unknown 除外と別経路になっているか」要確認

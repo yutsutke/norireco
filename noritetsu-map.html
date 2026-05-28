@@ -1288,18 +1288,10 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
     <div class="modal-title">📋 経路を確認</div>
     <div class="modal-sub" style="color:var(--silver);font-size:11px;margin-bottom:14px">この内容で記録しますか？</div>
     <div id="rec-confirm-body"></div>
-    <!-- 乗車日時の編集 (手動記録のときだけ表示) — v397 (B-3c) factory 統合 mount。
-         旧 #rec-edit-precision / date / depart / arrive / year-m / month-m / year-y / *-row は display:none で dead code (B-4 撤去予定)。
-         factory の .tde-time 内部に「🕒 乗車日時 / 精度 select / 各精度 row / 注記」を持たせる。 -->
+    <!-- 乗車日時の編集 (手動記録のときだけ表示) — factory mount。.tde-time 内部に
+         「🕒 乗車日時 / 精度 select / 各精度 row / 注記」を持たせる。 -->
     <div id="rec-time-edit-section" style="display:none;margin-top:14px;border-top:1px solid var(--track);padding-top:12px">
       <div id="rec-time-edit-container"></div>
-      <select id="rec-edit-precision" style="display:none"></select>
-      <input type="date" id="rec-edit-date" style="display:none">
-      <input type="time" id="rec-edit-depart" style="display:none">
-      <input type="time" id="rec-edit-arrive" style="display:none">
-      <select id="rec-edit-year-m" style="display:none"></select>
-      <select id="rec-edit-month-m" style="display:none"></select>
-      <select id="rec-edit-year-y" style="display:none"></select>
     </div>
     <!-- 列車・車両形式 (任意・マニア向け) — v347 で toggle 化。
          Lv0/1 (素人) には UI が見えないようデフォ非表示、トグル ON 時のみ展開。
@@ -1317,19 +1309,10 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
         <div id="rec-train-picker-container"></div>
       </div>
     </div>
-    <!-- 📝 メモ (任意) — v397 (B-3c) factory 統合 mount。
-         旧 #rec-delay-toggle / row / -h / -m / #rec-edit-notes は display:none で dead code (B-4 撤去予定)。
-         factory の .tde-delay 内部にマニア toggle (⏱ 遅延も記録する) + h/m input、
-         .tde-notes 内部に「📝 自由メモ」見出し + textarea を持たせる。
-         📷 写真は別 instance (_recPhotoArea) で維持。 -->
+    <!-- 📝 メモ (任意) — factory mount。.tde-delay 内部にマニア toggle (⏱ 遅延も記録する) + h/m input、
+         .tde-notes 内部に「📝 自由メモ」見出し + textarea。📷 写真は別 instance (_recPhotoArea) で維持。 -->
     <div id="rec-memo-section" style="margin-top:14px;border-top:1px solid var(--track);padding-top:12px">
       <div id="rec-meta-container"></div>
-      <input type="checkbox" id="rec-delay-toggle" style="display:none">
-      <div id="rec-delay-row" style="display:none">
-        <input type="number" id="rec-edit-delay-h" style="display:none">
-        <input type="number" id="rec-edit-delay-m" style="display:none">
-      </div>
-      <textarea id="rec-edit-notes" style="display:none"></textarea>
 
       <!-- v258: 📷 写真添付 (最大 5 枚 / R2 アップロード) -->
       <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--track)">
@@ -1385,43 +1368,23 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
       </div>
     </div>
 
-    <!-- 🕒 乗車時刻 — v396 (B-3b) factory 統合 mount。
-         旧 #trip-edit-date / depart / arrive と #trip-edit-time-lock / inputs は display:none で dead code (B-4 撤去予定)。
-         factory の .tde-time 内部に「🕒 乗車時刻」見出し + 3 input + 注記を持たせる。 -->
+    <!-- 🕒 乗車時刻 — factory mount。.tde-time 内部に「🕒 乗車時刻」見出し + date/depart/arrive 3 input + 注記。 -->
     <div id="trip-edit-time-section" style="margin-bottom:12px;border-top:1px solid var(--track);padding-top:10px">
       <div id="trip-edit-time-container"></div>
-      <input type="date" id="trip-edit-date" style="display:none">
-      <input type="time" id="trip-edit-depart" style="display:none">
-      <input type="time" id="trip-edit-arrive" style="display:none">
-      <div id="trip-edit-time-lock" style="display:none"></div>
-      <div id="trip-edit-time-inputs" style="display:none"></div>
     </div>
 
-    <!-- 🚆 列車種別 -->
-    <!-- v393 (B-2): trip-level / per-seg-rows 両方とも factory (createTripDetailEditor) が中身を render。
-         per-seg-rows のときは下の section 自体を hide (#trip-edit-segments に factory が cascade を出す)。
-         旧 4 input + 旧 helper text は B-4 で撤去予定。display:none で dead code 化。 -->
+    <!-- 🚆 列車種別 — factory (createTripDetailEditor) が中身を render。
+         per-seg-rows mode (segments あり) では #trip-edit-segments に factory が cascade を出すため、
+         この section 自体を openTripEditModal で hide する。trip-level mode (segments なし) では
+         #trip-edit-train-picker-container に factory が trip 単位の picker を mount。 -->
     <div id="trip-edit-train-section" style="margin-bottom:12px;border-top:1px solid var(--track);padding-top:10px">
       <div style="font-size:11px;color:var(--gold);margin-bottom:6px">🚆 列車種別 (任意)</div>
       <div id="trip-edit-train-picker-container"></div>
-      <select id="trip-edit-train-category" onchange="onTripEditCategoryChange()" style="display:none">
-        <option value="">指定しない</option>
-      </select>
-      <select id="trip-edit-train-id" onchange="onTripEditTrainChange()" style="display:none">
-        <option value="">列車を選ぶ...</option>
-      </select>
-      <input id="trip-edit-train-name" type="text" style="display:none">
-      <input id="trip-edit-car-model" type="text" style="display:none">
     </div>
 
-    <!-- ⏱ 遅延 + 📝 自由メモ — v394 (B-3a) factory 統合 mount。
-         旧 #trip-edit-delay-h/m + #trip-edit-notes は display:none で dead code (B-4 撤去予定)。
-         factory の .tde-delay / .tde-notes 内部に「⏱ 遅延」「📝 自由メモ」見出しを持たせる。 -->
+    <!-- ⏱ 遅延 + 📝 自由メモ — factory mount。.tde-delay / .tde-notes 内部に各見出しを持つ。 -->
     <div style="margin-bottom:10px;border-top:1px solid var(--track);padding-top:10px">
       <div id="trip-edit-meta-container"></div>
-      <input type="number" id="trip-edit-delay-h" style="display:none">
-      <input type="number" id="trip-edit-delay-m" style="display:none">
-      <textarea id="trip-edit-notes" style="display:none"></textarea>
     </div>
 
     <!-- 📷 写真 (v258) -->

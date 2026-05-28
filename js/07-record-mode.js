@@ -970,24 +970,8 @@ window.closeRecConfirm = closeRecConfirm;
 window.confirmAndSaveRecord = confirmAndSaveRecord;
 window.discardRecord = discardRecord;
 
-// 乗車日時編集セクション — 精度セレクタによる表示切替 / 年月セレクタ populate
-function onRecEditPrecisionChange() {
-  const sel = document.getElementById('rec-edit-precision');
-  if (!sel) return;
-  const v = sel.value;
-  const set = (id, show) => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = show ? '' : 'none';
-  };
-  set('rec-edit-date-row',    v === 'minute' || v === 'day');
-  set('rec-edit-time-row',    v === 'minute');
-  set('rec-edit-month-row',   v === 'month');
-  set('rec-edit-year-row',    v === 'year');
-  set('rec-edit-unknown-row', v === 'unknown');
-  // 確認モーダル上部の 🕒 時刻行も精度に合わせて更新
-  updateRecConfirmTimeRow();
-}
-window.onRecEditPrecisionChange = onRecEditPrecisionChange;
+// v398 (B-4-a): 旧 onRecEditPrecisionChange を撤去。精度切替 + 行表示制御 + 年月 populate は
+//   factory `_initTimeRowFull5` が closure 内で全部担当。
 
 // v397 (B-3c): 確認モーダル上部の 🕒 時刻行を、factory editor の draft + GPS 状態から再描画。
 //   - GPS 記録: 実 GPS 時刻 (startTs/endTs) を直接読む
@@ -1065,38 +1049,8 @@ function updateRecConfirmTimeRow() {
 }
 window.updateRecConfirmTimeRow = updateRecConfirmTimeRow;
 
-// 年/月 セレクタを過去 20 年で populate (一度だけ)
-function _populateRecEditYearMonth() {
-  const now = new Date();
-  const curY = now.getFullYear();
-  const startY = curY - 20;
-  const populateYear = (id) => {
-    const sel = document.getElementById(id);
-    if (!sel || sel.options.length > 0) return;
-    for (let y = curY; y >= startY; y--) {
-      const o = document.createElement('option');
-      o.value = String(y); o.textContent = String(y);
-      sel.appendChild(o);
-    }
-  };
-  populateYear('rec-edit-year-m');
-  populateYear('rec-edit-year-y');
-  const mSel = document.getElementById('rec-edit-month-m');
-  if (mSel && mSel.options.length === 0) {
-    for (let m = 1; m <= 12; m++) {
-      const o = document.createElement('option');
-      o.value = String(m).padStart(2,'0'); o.textContent = String(m);
-      mSel.appendChild(o);
-    }
-  }
-  // デフォルト: 今年・今月
-  const yM = document.getElementById('rec-edit-year-m');
-  const mM = document.getElementById('rec-edit-month-m');
-  const yY = document.getElementById('rec-edit-year-y');
-  if (yM && !yM.value) yM.value = String(curY);
-  if (mM && !mM.value) mM.value = String(now.getMonth()+1).padStart(2,'0');
-  if (yY && !yY.value) yY.value = String(curY);
-}
+// v398 (B-4-a): 旧 _populateRecEditYearMonth を撤去。年/月 select の populate は factory
+//   `_initTimeRowFull5` の closure 内で完結 (curY-20 〜 curY 範囲、初期値=今年/今月)。
 
 // ─ 「📍 ここで終了 (GPS)」: 現在地から終点駅を選んで確認モーダルへ ─
 // R.endStationCandidates / R.endStationPickedIdx は NORIRECO.record に集約済み (v197)
@@ -1704,32 +1658,9 @@ function clearAllTrainSelections() {
   if (customEl) { customEl.style.display = 'none'; customEl.value = ''; }
 }
 
-// v350: 遅延入力トグル
-function initRecDelayToggle() {
-  const toggle = document.getElementById('rec-delay-toggle');
-  const row    = document.getElementById('rec-delay-row');
-  if (!toggle || !row) return;
-  const saved = localStorage.getItem(PREF_SHOW_DELAY_INPUT) === '1';
-  toggle.checked = saved;
-  row.style.display = saved ? 'flex' : 'none';
-}
-
-function onRecDelayToggle() {
-  const toggle = document.getElementById('rec-delay-toggle');
-  const row    = document.getElementById('rec-delay-row');
-  if (!toggle || !row) return;
-  const on = toggle.checked;
-  localStorage.setItem(PREF_SHOW_DELAY_INPUT, on ? '1' : '0');
-  row.style.display = on ? 'flex' : 'none';
-  if (!on) {
-    // OFF にしたら入力値をクリア (隠れた state を残さない)
-    const h = document.getElementById('rec-edit-delay-h');
-    const m = document.getElementById('rec-edit-delay-m');
-    if (h) h.value = '';
-    if (m) m.value = '';
-  }
-}
-window.onRecDelayToggle = onRecDelayToggle;
+// v398 (B-4-a): 旧 initRecDelayToggle / onRecDelayToggle (v350) を撤去。
+//   factory `initDelay` が `features.delay = { maniaToggle: true, prefKey: PREF_SHOW_DELAY_INPUT }`
+//   で checkbox + localStorage 永続化 + 入力 hide/clear を完全に担当 (v397 B-3c)。
 
 // 区間 chip + 候補車両 dropdown を生成
 // v375: chip ラッパは picker 直下に移動 (#rec-seg-chips-wrap)、区間が複数あるときだけ表示。
