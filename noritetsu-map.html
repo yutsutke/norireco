@@ -405,6 +405,18 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mp-bulk-entry:hover{background:linear-gradient(135deg,rgba(242,169,0,.2),rgba(242,169,0,.08));}
 .mp-bulk-entry:active{transform:scale(.98);}
 
+/* A-4 (v403 〜): 検索 / 並び替え / 地域 フィルタバー */
+.bulk-filter-bar{display:flex;gap:6px;flex-wrap:wrap;padding:8px 0;align-items:center;}
+.bulk-filter-input{flex:2 1 180px;min-width:0;padding:6px 9px;background:var(--navy);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:12px;font-family:inherit;outline:none;}
+.bulk-filter-input:focus{border-color:var(--gold);}
+.bulk-filter-input::placeholder{color:var(--silver);opacity:.55;}
+.bulk-filter-sel{flex:1 1 130px;min-width:0;padding:6px 7px;background:var(--navy);color:var(--white);border:1px solid var(--track);border-radius:6px;font-size:11px;font-family:inherit;outline:none;cursor:pointer;}
+.bulk-filter-sel:focus{border-color:var(--gold);}
+.bulk-filter-sel option:disabled{color:var(--silver);opacity:.5;}
+.bulk-filter-reset{width:30px;height:30px;background:rgba(140,160,179,.1);color:var(--silver);border:1px solid var(--track);border-radius:6px;font-size:14px;cursor:pointer;font-family:inherit;flex-shrink:0;}
+.bulk-filter-reset:hover{background:rgba(140,160,179,.2);color:var(--white);}
+.bulk-checklist-meta{font-size:11px;color:var(--silver);opacity:.7;padding:4px 4px 6px;}
+
 /* A-2 (v401 〜): 一括記録ボトムシート内のチェックリスト・サマリ・行スタイル */
 .bulk-summary-bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;margin:0 -16px 8px;background:rgba(17,24,39,.95);backdrop-filter:blur(4px);border-bottom:1px solid var(--track);}
 .bulk-summary-count{font-size:12px;color:var(--gold);font-weight:600;flex-shrink:0;}

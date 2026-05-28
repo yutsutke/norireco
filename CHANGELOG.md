@@ -48,6 +48,112 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 253. v403 — 一括記録 A-4 完了: 検索 + 並び替え + 地域フィルタ (2026-05-28)
+
+### 背景
+
+§252 (v402, A-3) で MVP 完成。ただし 638 系統素の縦リストは実用性が低い (Notion §1.3 末尾「全国 606 系統あるので一覧は素では破綻」の通り)。A-4 で実用版に格上げ:
+
+- 検索 input (系統名 / 運営会社 部分一致)
+- 並び替え `近く順` / `名前順`
+- 地域グループ dropdown (13 値)
+- リセットボタン
+
+180 件ある運営会社は dropdown には不向き → 検索 input に統合 (`JR東日本 新幹線` のような AND 検索で代替)。
+
+### 実装
+
+#### `js/21-bulk-record.js`
+
+新規 module-local state:
+
+```js
+const _filter = { query: '', sort: 'near', group: 'all' };
+```
+
+新規関数:
+
+| 関数 | 役割 |
+|---|---|
+| `_getCurrentLocation()` | `NORIRECO.gps.lastUserGps` > `map.getCenter()` の優先順で `{lat, lon}` を返す。両方無ければ null |
+| `_distSq(stA, locB)` | lat/lon の二乗和 (km 単位ではないが順位比較なら十分、`Math.hypot` 等のオーバーヘッドを避ける) |
+| `_applyFilter(SL, filter, loc)` | group → query → sort の順で適用。元配列非破壊、新配列を返す。`'near'` で `loc=null` のときは元順 |
+| `_renderChecklistOnly()` | フィルタバーは触らず checklist 領域だけ再描画。mp-trip-filter と同じ IME 安定パターン |
+
+`_renderBody` 大幅書換:
+- フィルタバー HTML を `bulk-summary-bar` の下に追加
+- 4 つの event listener (input / 2 select / reset)
+- `'near'` で loc 無い場合は `'name'` に自動降格
+- option label を `'近く順 (現在地)'` / `'近く順 (地図中心)'` / `'近く順 (取得不可)'` で動的切替
+
+`openBulkRecordSheet` で `_filter` も毎回リセット (`_bulkDrafts` リセットと同じ open 毎クリーン状態方針)。
+
+#### `noritetsu-map.html` CSS 追加 (~10 ルール)
+
+- `.bulk-filter-bar`: flex 折返し、ボトムシート内に sticky なし (上の summary-bar が sticky)
+- `.bulk-filter-input` / `.bulk-filter-sel`: mp-filter-* と類似のダーク系
+- `.bulk-filter-reset`: 30×30 の ↺ ボタン
+- `.bulk-checklist-meta`: フィルタ結果件数表示 (`N / 638 系統`)
+
+#### `sw.js` v402 → v403
+
+### 検証 (preview eval)
+
+| シナリオ | 期待 | 実測 |
+|---|---|---|
+| 初期 sort | 'near' (地図中心ベース) | 'near'、option label「近く順 (地図中心)」 ✅ |
+| 「近く順」初期先頭 (map center 36.5,138 = 長野県) | 中部地方の路線 | `auto_篠ノ井線_東日本旅客鉄道` ✅ |
+| 検索「山手」 | 山手線 + 神戸市営山手線 | 2/638 ✅ |
+| AND 検索「JR東日本 新幹線」 | JR東日本運営の新幹線 (山形 + 秋田) | 2/638 で正確 ✅ |
+| 地域「関西」 | 関西の系統だけ | 134/638 ✅ |
+| 関西 + 名前順 | 50 音順 | JR京都線, JR神戸線, JR東西線... ✅ |
+| group 変更後もチェック保持 | 別 group の選択が残る | jr_kyoto_line チェック → group=all で 1 件保持 ✅ |
+| リセット | query 空 / sort 'near' / group 'all' / チェックは保持 | 期待通り (チェック保持は仕様通り) ✅ |
+| close → cleanup | sheet hide + _bulkDrafts clear | OK ✅ |
+| console error | 0 | 0 ✅ |
+| js-syntax-guard | clean | clean ✅ |
+
+### 設計判断ログ
+
+#### `近く順` の参照点優先順
+
+| 候補 | 採用 |
+|---|---|
+| `NORIRECO.gps.lastUserGps` | ✅ 第 1 — 実 GPS が一番ユーザーの意図に近い |
+| `map.getCenter()` | ✅ 第 2 — GPS 未許可でもユーザーがマップを動かして見ている領域は意図の表現になる |
+| 全国センター固定 | ❌ — 「近く順」の名に反する |
+| `'near'` 自体を hide | ❌ — フィルタ UI が地域 dropdown 1 つだけになり貧弱 |
+
+#### 運営会社 dropdown を廃止して検索に統合
+
+180 件の operator を dropdown にすると:
+- 縦長すぎてモバイルで使い物にならない
+- 「JR東日本」を選んでも JR本州 3 社の関係性は表現できない (グループフィルタとも被る)
+- 「JR」で部分一致したい (検索 input なら自然) — dropdown だと「JR東日本」「JR西日本」を個別に切替必要
+
+→ 検索 input に「系統名 / 会社 / id」を全部混ぜ込んで、空白 AND で絞り込む方が UX 良い。
+
+#### group は 13 値 → dropdown 採用
+
+`detectServiceLineGroup` の結果は ['首都圏・JR', '関西', '新幹線', '九州', '中国・山陰', '東北', '四国', '東海・中部', '北海道', '首都圏・ローカル', '首都圏・私鉄(南・西)', '首都圏・私鉄(東・北)', '東京メトロ・都営']。スマホでも開閉が現実的なサイズ。
+
+#### リセットボタンの挙動: フィルタだけ vs フィルタ + チェック
+
+mp-trip-filter は「フィルタだけリセット」(チェック概念がない)。bulk-record も同じく「フィルタだけリセット」を採用。チェックリセットは「閉じて開き直す」(open 毎クリーン状態方針) でカバー。
+
+### 残課題 / 次のステップ
+
+- **A-5**: アコーディオン展開で `createTripDetailEditor` (`trainPicker='per-seg-rows'`) を行内 mount + 環状線半周分割
+- A-6: 空マップ時オンボーディングバナー (入り口 (b))
+- A-7: unknown 完乗率/塗り集計の検証 (Notion §1.3 落とし穴 (a))
+
+### 関連
+
+- §250〜§252 (v400〜v402) — A-1〜A-3 の前提
+- Notion §1.3「全国 606 系統あるので一覧は素では破綻。既定は『現在地の近くの路線』、上に検索＋会社/都道府県フィルタ」
+
+---
+
 ## 252. v402 — 一括記録 A-3 完了 (MVP): 一括保存 (saveBulkDrafts) (2026-05-28)
 
 ### 背景

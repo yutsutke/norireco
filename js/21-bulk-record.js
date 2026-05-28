@@ -49,6 +49,12 @@ const _bulkDrafts = new Map();
 // A-3: 一括保存中フラグ。多重クリック防止 + 保存完了まで close 抑止。
 let _saving = false;
 
+// A-4: 検索 / 並び替え / 地域フィルタ state。open 毎にリセット。
+//   - query: 検索文字列 (系統名 / 運営会社名 部分一致、空白区切り AND)
+//   - sort:  'near' (現在地/map center から近い順) | 'name' (50 音順)
+//   - group: 地域グループ ('all' | SL.group 値) - 13 値
+const _filter = { query: '', sort: 'near', group: 'all' };
+
 // ──────────────────────────────────────────────────────────────
 // draft 構築 (たたむモード = ゼロ摩擦)
 // ──────────────────────────────────────────────────────────────
@@ -83,6 +89,61 @@ function _buildDefaultDraft(sl) {
 // レンダリング
 // ──────────────────────────────────────────────────────────────
 
+// A-4: 現在地 (lat,lon) を取得。lastUserGps > map center > null の優先順。
+function _getCurrentLocation() {
+  const gps = window.NORIRECO?.gps?.lastUserGps;
+  if (gps && typeof gps.lat === 'number' && typeof gps.lon === 'number') {
+    return { lat: gps.lat, lon: gps.lon };
+  }
+  const c = window.NORIRECO?.map?.instance?.getCenter?.();
+  if (c && typeof c.lat === 'number' && typeof c.lng === 'number') {
+    return { lat: c.lat, lon: c.lng };
+  }
+  return null;
+}
+
+// 簡易距離 (lat/lon の二乗和。km 単位ではないが順位比較には十分)
+function _distSq(stA, locB) {
+  if (!stA || !locB) return Infinity;
+  const dLat = stA.lat - locB.lat;
+  const dLon = stA.lon - locB.lon;
+  return dLat * dLat + dLon * dLon;
+}
+
+// A-4: filter + sort 適用後の SL 配列を返す。元配列は破壊しない。
+function _applyFilter(SL, filter, loc) {
+  let arr = SL;
+
+  // 地域 group
+  if (filter.group && filter.group !== 'all') {
+    arr = arr.filter(sl => (sl.group || '') === filter.group);
+  }
+
+  // 検索 query (空白 AND、系統名 / 運営会社 / id の小文字部分一致)
+  const q = (filter.query || '').trim().toLowerCase();
+  if (q) {
+    const tokens = q.split(/\s+/).filter(Boolean);
+    arr = arr.filter(sl => {
+      const hay = `${sl.name || ''} ${sl.operator || ''} ${sl.id || ''}`.toLowerCase();
+      return tokens.every(t => hay.includes(t));
+    });
+  }
+
+  // 並び替え
+  if (filter.sort === 'name') {
+    arr = arr.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
+  } else if (filter.sort === 'near' && loc) {
+    arr = arr.slice().sort((a, b) => {
+      const dA = _distSq(a.stations?.[0], loc);
+      const dB = _distSq(b.stations?.[0], loc);
+      return dA - dB;
+    });
+  }
+  // 'near' で loc=null のとき: 元順 (master の登録順)
+
+  return arr;
+}
+
 function _renderBody() {
   const body = document.getElementById(BODY_ID);
   if (!body) return;
@@ -93,8 +154,19 @@ function _renderBody() {
     return;
   }
 
-  // A-2 段階では全 642 系統を素のリストで描画 (検索/フィルタは A-4)。
-  // 件数サマリ + 保存ボタン (disabled) を上部、続いてチェックリスト。
+  // A-4: 地域 group の選択肢を SL から動的生成 (13 値の見込み)。
+  const groups = Array.from(new Set(SL.map(sl => sl.group || '').filter(Boolean))).sort();
+  const groupOpts = ['<option value="all">すべての地域</option>']
+    .concat(groups.map(g => `<option value="${_esc(g)}"${_filter.group === g ? ' selected' : ''}>${_esc(g)}</option>`))
+    .join('');
+
+  // 現在地が取れているかで「近く順」の使用可否を表示
+  const loc = _getCurrentLocation();
+  const nearAvailable = !!loc;
+  const nearLabel = nearAvailable
+    ? (window.NORIRECO?.gps?.lastUserGps ? '近く順 (現在地)' : '近く順 (地図中心)')
+    : '近く順 (取得不可)';
+
   body.innerHTML = `
     <div id="bulk-summary-bar" class="bulk-summary-bar">
       <div class="bulk-summary-count" id="bulk-summary-count">0 件選択中</div>
@@ -102,20 +174,66 @@ function _renderBody() {
         💾 まとめて保存
       </button>
     </div>
-    <div class="bulk-note">
-      🚧 A-2/A-3: 全 ${SL.length} 系統を一覧表示中 / 環状線は 1 駅のみ ridden になります (A-5 で半周分割予定)。検索 / フィルタは A-4 で追加します。
+    <div class="bulk-filter-bar">
+      <input type="search" class="bulk-filter-input" id="bulk-filter-query"
+             placeholder="🔍 系統名 / 運営会社 (空白で AND)" value="${_esc(_filter.query)}">
+      <select class="bulk-filter-sel" id="bulk-filter-sort">
+        <option value="near"${_filter.sort === 'near' ? ' selected' : ''}${nearAvailable ? '' : ' disabled'}>${_esc(nearLabel)}</option>
+        <option value="name"${_filter.sort === 'name' ? ' selected' : ''}>名前順 (50 音)</option>
+      </select>
+      <select class="bulk-filter-sel" id="bulk-filter-group">
+        ${groupOpts}
+      </select>
+      <button class="bulk-filter-reset" id="bulk-filter-reset" title="フィルタをリセット">↺</button>
     </div>
+    <div class="bulk-note">
+      🚧 環状線は 1 駅のみ ridden になります (A-5 で半周分割予定)。
+    </div>
+    <div id="bulk-checklist-meta" class="bulk-checklist-meta"></div>
     <div id="bulk-checklist" class="bulk-checklist"></div>
   `;
 
-  const list = body.querySelector('#bulk-checklist');
-  for (const sl of SL) {
-    list.appendChild(_buildLineItem(sl));
-  }
-  // A-3: 保存ボタンに handler 取付
+  // 保存ボタン
   const saveBtn = body.querySelector('#bulk-save-btn');
   if (saveBtn) saveBtn.addEventListener('click', () => { saveBulkDrafts(); });
+
+  // フィルタイベント (mp-trip-filter と同じパターン: input は触らず checklist だけ再描画)
+  body.querySelector('#bulk-filter-query')?.addEventListener('input', e => {
+    _filter.query = e.target.value;
+    _renderChecklistOnly();
+  });
+  body.querySelector('#bulk-filter-sort')?.addEventListener('change', e => {
+    _filter.sort = e.target.value;
+    _renderChecklistOnly();
+  });
+  body.querySelector('#bulk-filter-group')?.addEventListener('change', e => {
+    _filter.group = e.target.value;
+    _renderChecklistOnly();
+  });
+  body.querySelector('#bulk-filter-reset')?.addEventListener('click', () => {
+    _filter.query = ''; _filter.sort = nearAvailable ? 'near' : 'name'; _filter.group = 'all';
+    _renderBody();    // input 表示値も初期に戻すため全体再描画
+    _updateSummary();
+  });
+
+  // 初期: sort='near' だが loc 無いなら 'name' に降格
+  if (_filter.sort === 'near' && !nearAvailable) _filter.sort = 'name';
+
+  _renderChecklistOnly();
   _updateSummary();
+}
+
+// A-4: フィルタ変更時に呼ぶ。フィルタバーは触らず checklist 領域だけ書き換え。
+function _renderChecklistOnly() {
+  const list = document.getElementById('bulk-checklist');
+  const meta = document.getElementById('bulk-checklist-meta');
+  if (!list) return;
+  const SL = (window.NORIRECO?.data?.SERVICE_LINES) || [];
+  const loc = _getCurrentLocation();
+  const filtered = _applyFilter(SL, _filter, loc);
+  list.innerHTML = '';
+  for (const sl of filtered) list.appendChild(_buildLineItem(sl));
+  if (meta) meta.textContent = `${filtered.length} / ${SL.length} 系統`;
 }
 
 function _buildLineItem(sl) {
@@ -338,6 +456,10 @@ export function openBulkRecordSheet() {
   // A-2: 開く度に draft をリセット (中断状態の永続化はしない方針)。
   //   sheet を閉じずに別 modal を重ねたケースでも、再 open で初期状態に戻す。
   _bulkDrafts.clear();
+  // A-4: フィルタも毎回リセット (open 毎に「今の現在地で近い順」を見せたい)。
+  _filter.query = '';
+  _filter.sort = 'near';
+  _filter.group = 'all';
   _renderBody();
   sheet.classList.add('open');
 }

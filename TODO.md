@@ -84,7 +84,7 @@ git log --oneline -20
   - 地図 / 📋 ログ / 👤 マイページ の 3 タブナビに統合
   - **注 (2026-05-26)**: Notion §1.3 で「一括記録 (まとめて記録)」として再設計済。旧ログ画面の「1 件ずつフォーム」を復活させるのではなく、営業系統チェックリスト形式で "一気に塗る" 手段を新設する方向。下記の「一括記録」項目とセット
 
-- [ ] **一括記録 (まとめて記録) — noritetsu-log.html 廃止の受け皿** (Notion §1.3 設計確定 / B カテゴリ完結 v392-v399 / **A-1〜A-3 MVP 完成 v400-v402**、次は A-4 検索/フィルタ)
+- [ ] **一括記録 (まとめて記録) — noritetsu-log.html 廃止の受け皿** (Notion §1.3 設計確定 / B カテゴリ完結 v392-v399 / **A-1〜A-4 完了 v400-v403** = MVP + 実用フィルタ、次は A-5 アコーディオン)
   - **動機 2 層**:
     - マニア層 (Lv3): 過去何十年ぶんの乗車を遡って一括入力。路線・区間まで正確に
     - 新規〜ライト層 (Lv0/1): 登録直後の空マップを「乗ったことある路線」で塗って初期状態作り (虚無対策 / シェア・OGP に効く)
@@ -104,7 +104,7 @@ git log --oneline -20
     - ✅ A-1 (v400): skeleton — `js/21-bulk-record.js` 新設 (open/close + window 公開) + `#bulk-record-sheet` モーダル枠 (`.memo-modal` 流用) + マイページ旅程サブタブ上部に `.mp-bulk-entry` 常設エントリボタン (13b-trips.js renderMpTripsSection 先頭挿入 + import で間接ロード)。preview で eval 検証 OK。CHANGELOG §250
     - ✅ A-2 (v401): 営業系統チェックリスト本体 + たたむモード — `_bulkDrafts: Map<lineId, draft>` で管理、638 系統 (A-4 までフィルタなし) 全件描画、チェック = 全線 1 segment の draft push (`source=manual, verified=false, date_precision='unknown'`)、アンチェック = Map.delete、サマリ「N 件選択中」リアクティブ更新、保存ボタンは A-3 まで disabled 骨だけ、環状線は 🔄 マーク。CHANGELOG §251
     - ✅ A-3 (v402) **MVP 完成**: 一括保存 — `saveBulkDrafts` で draft 配列を順次 trip 構築 → Supabase POST (anon Bearer) → localStorage push (部分コミット許容) → 全件後に RIDDEN_SEGS bulk push + `rebuild()` 1 回 + `redrawAllLinesAfterTripChange` + `updateOverlays` + `_mypageCache.push` + `renderMpTripsResultOnly` + 駅シート refresh + トースト + sheet 自動 close。trip 構造: `id=trip_${baseTime}_${idx}` / `name=${lineName} 全線` / `transfers=0` / `total_stations=stations.length`。preview 3 件保存検証で riddenSt 全展開 + 完乗率更新 + console error 0 確認。CHANGELOG §252
-    - 未 A-4: 検索 + フィルタ (近く / 会社 / 都道府県) + 既定「近く」並べ替え
+    - ✅ A-4 (v403): 検索 + 並び替え + 地域フィルタ — `_filter = { query, sort: 'near'|'name', group }` state、検索 input (系統名/会社/id 部分一致 + 空白 AND)、`近く順 (lastUserGps > map center)` / `名前順 (50 音)`、地域 group dropdown (13 値)。`_renderChecklistOnly()` でフィルタバー保持 + checklist だけ再描画 (IME 安定 / mp-trip-filter と同設計)。preview 5 シナリオ + チェック保持 全 OK。運営会社 dropdown は 180 件で UI 不向きのため検索 input に統合 (「JR東日本 新幹線」のような AND 検索で代替)。CHANGELOG §253
     - 未 A-5: アコーディオン展開 = factory `createTripDetailEditor` (`trainPicker='per-seg-rows'`) を行内 mount (同時 1 行)
     - 未 A-6: 空マップ時オンボーディングバナー (入口 (b))
     - 未 A-7: unknown 完乗率/塗り集計まわりの検証 + 必要なら期間フィルタ別経路化
