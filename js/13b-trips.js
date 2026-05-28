@@ -41,6 +41,10 @@ import { enableDragSort } from './19-drag-sort.js';
 // v393 (B-2): 列車種別 / 車両形式 入力を 07/13b 共通 factory に集約。
 //   per-seg-rows mode (segments あり) / trip-level mode (segments なし) を切替。
 import { createTripDetailEditor } from './20-trip-detail-editor.js';
+// v400 (A-1): 一括記録 (まとめて記録) — 旅程タブ上部のエントリボタンから開く。
+//   import 自体が 21-bulk-record.js を module ロードし window 公開を走らせるので、
+//   onclick="closeBulkRecordSheet()" 等の HTML 内参照も解決する。
+import { openBulkRecordSheet } from './21-bulk-record.js';
 
 // 旅程編集モーダル内の写真エリアコントローラ (createPhotoArea 戻り値、null = 未生成)
 let _tripEditPhotoArea = null;
@@ -67,6 +71,15 @@ function renderMpTripsSection() {
   const sec = document.getElementById('mp-trip-section');
   if (!sec) return;
   sec.innerHTML = '';
+
+  // A-1 (v400): 一括記録エントリ (フィルタバーの上に常設)。
+  //   Notion §1.3 設計確定の入口 (a)。タップで bulk-record-sheet を開く。
+  const bulkEntry = document.createElement('button');
+  bulkEntry.className = 'mp-bulk-entry';
+  bulkEntry.type = 'button';
+  bulkEntry.innerHTML = '📋 過去の乗車をまとめて記録';
+  bulkEntry.onclick = () => openBulkRecordSheet();
+  sec.appendChild(bulkEntry);
 
   // フィルタバー (1 回だけ生成、以降は触らない)
   sec.appendChild(buildTripFilterBar());

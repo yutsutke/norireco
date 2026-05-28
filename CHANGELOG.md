@@ -48,6 +48,143 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 250. v400 — 一括記録 (まとめて記録) A-1 着手: skeleton + マイページ旅程タブ上部にエントリボタン (2026-05-28)
+
+### 背景
+
+§249 (v399, B-4-b) で trip 詳細エディタ抽出 B カテゴリ完結 = `createTripDetailEditor` factory に **3 mode (per-seg-chip / per-seg-rows / trip-level) + multi-container API** が揃った。これで Notion §1.3「一括記録 (まとめて記録)」設計確定の本体 (A カテゴリ) に着手できる前提が整った。
+
+Notion §1.3 末尾の実装段階見通し:
+
+1. マイページに「過去の乗車をまとめて記録」エントリ + 空マップ時オンボーディングバナー
+2. 地図にかぶせるボトムシート (営業系統チェックリスト + 検索 + フィルタ)
+3. タップで draft trip 生成 (`source=manual, verified=false, date_precision='unknown'`)
+4. アコーディオン展開で `createTripDetailEditor` (`trainPicker='per-seg-rows'`) を行内 mount
+5. 一括保存 (Supabase POST batch)
+
+これを段階分解した A-1〜A-7 の最初 = **A-1: skeleton (open/close + 空ボトムシート + 入口ボタン)**。
+
+### A 段階分解
+
+| 段階 | 内容 |
+|---|---|
+| **A-1 (v400)** | skeleton: `js/21-bulk-record.js` 新設 + マイページに「📋 過去の乗車をまとめて記録」エントリ + 空ボトムシート開閉 |
+| A-2 | 営業系統チェックリスト本体 (642 系統、まだ検索/フィルタなし) + たたむモード (タップ = ゼロ摩擦 draft 1 件) |
+| A-3 | 一括保存 (draft 配列ループ → trip 構築 → Supabase upsert → resolveByServiceLine → redrawAll)。MVP 完成 |
+| A-4 | 検索 + フィルタ (近く / 会社 / 都道府県) + 既定「近く」並べ替え |
+| A-5 | アコーディオン展開 = factory `createTripDetailEditor` (`trainPicker='per-seg-rows'`) を行内 mount |
+| A-6 | 空マップ時オンボーディングバナー (入り口 (b)) |
+| A-7 | unknown 完乗率/塗り集計まわりの検証 + 必要なら期間フィルタ別経路化 |
+
+### 実装
+
+#### 新規 `js/21-bulk-record.js` (~70 行 / skeleton)
+
+ファクトリ的な pure module。`window.NORIRECO.bulkRecord` namespace を初期化し、`openBulkRecordSheet()` / `closeBulkRecordSheet()` の 2 関数を export + `window` 公開。
+
+- `openBulkRecordSheet`: `#bulk-record-sheet` を取得して `.open` クラス付与、body にプレースホルダ HTML を流し込む。A-2 以降で `renderChecklist()` に差し替え予定
+- `closeBulkRecordSheet`: `.open` 外し + body を空に戻す (DOM ゴミ防止)。A-5 以降は factory instance の destroy も呼ぶ
+
+#### `noritetsu-map.html` — ボトムシート + CSS 追加
+
+`#rec-confirm-modal` (`.memo-modal` + `.memo-sheet`) と同じボトムシート構造を流用 (z-index 200 デフォルト、確認モーダルの 9999 と衝突しない)。
+
+```html
+<div class="memo-modal" id="bulk-record-sheet" onclick="if(event.target===this)closeBulkRecordSheet()">
+  <div class="memo-sheet">
+    <div class="sh"></div>
+    <div class="modal-title">📋 過去の乗車をまとめて記録</div>
+    <div class="modal-sub">営業系統をチェックすると、その路線を完乗 (全線) として記録します。</div>
+    <div id="bulk-record-body"></div>
+    <button class="btn-cls" onclick="closeBulkRecordSheet()">閉じる</button>
+  </div>
+</div>
+```
+
+CSS は `.mp-bulk-entry` を新設 (gold 系グラデーション + border-color gold)。
+
+#### `js/13b-trips.js` — エントリボタン挿入
+
+`renderMpTripsSection()` の `sec.innerHTML = ''` 直後 (フィルタバー appendChild の前) に `.mp-bulk-entry` button を生成して挿入。onclick で import 経由の `openBulkRecordSheet` を呼ぶ。
+
+```js
+import { openBulkRecordSheet } from './21-bulk-record.js';
+// ...
+const bulkEntry = document.createElement('button');
+bulkEntry.className = 'mp-bulk-entry';
+bulkEntry.innerHTML = '📋 過去の乗車をまとめて記録';
+bulkEntry.onclick = () => openBulkRecordSheet();
+sec.appendChild(bulkEntry);
+```
+
+import 自体が 21-bulk-record.js を module ロードさせる副作用を持つため、HTML 内の `onclick="closeBulkRecordSheet()"` (`window.closeBulkRecordSheet` 参照) も問題なく解決する。20-trip-detail-editor.js と同じパターン (HTML script タグ無しで、他 module の import 経由で間接ロード)。
+
+#### `sw.js` — CACHE_VERSION v399 → v400 + STATIC_ASSETS 追加
+
+`./js/21-bulk-record.js` を STATIC_ASSETS 配列に追加。
+
+### 検証 (preview server)
+
+- `typeof window.openBulkRecordSheet === 'function'` ✅
+- `typeof window.closeBulkRecordSheet === 'function'` ✅
+- `window.NORIRECO.bulkRecord` namespace ✅
+- `#bulk-record-sheet` element 存在 ✅
+- `renderMpTripsSection()` 直接呼び出しで `.mp-bulk-entry` が `mp-trip-section` の最初の子として描画 ✅
+- ボタン onclick で `openBulkRecordSheet()` 呼出 → `.open` クラス付与 + display:flex + body プレースホルダ表示 ✅
+- `closeBulkRecordSheet()` で `.open` 外し + body 空化 ✅
+- js-syntax-guard サブエージェント: ESM 構文 clean、新規グローバル衝突なし、import 文と export 名一致 ✅
+
+### 設計判断ログ
+
+#### Notion §1.3 末尾「実装段階の見通し」5 ステップを 7 段階に分解した理由
+
+Notion §1.3 末尾は 5 ステップだが、B カテゴリの段階分解 (B-1〜B-4-b の 8 段階) と同じく、各段階を deployable な単位に切る方が安全:
+
+- B カテゴリでは段階内エラーがあっても次段階に進む前に preview 検証で潰せた (例: §245 hotfix が §244 完了後に発覚 → 単発で修正)
+- A もチェックリスト本体 (A-2) / 保存 (A-3) / 検索 (A-4) / アコーディオン (A-5) は副作用の範囲が違うため別 commit に分けたい
+- 既存負債 (オンボーディング A-6) と検証作業 (A-7) を最後に回すことで、コア機能だけのリリースも選択可能に
+
+#### `.memo-modal` 流用 vs 独自ボトムシート
+
+確認モーダル `#rec-confirm-modal` と同じ `.memo-modal` + `.memo-sheet` を流用。
+
+| 比較 | 採用 |
+|---|---|
+| `.memo-modal` 流用 | ✅ — animation, スクロール, 角丸, sh handle まで揃っている。z-index 200 で確認モーダル (9999) と棲み分け可能 |
+| 独自 bottom sheet | ❌ — 既存パターンと外観が違うと違和感、CSS 二重メンテ |
+
+#### import 経由ロード vs HTML script タグ追加
+
+| 比較 | 採用 |
+|---|---|
+| 13b-trips.js から import | ✅ — 依存関係明示、ESM 的に綺麗、20-trip-detail-editor.js と同じパターン |
+| HTML に `<script type="module" src="js/21-bulk-record.js">` 追加 | ❌ — 依存 graph が不明瞭になる |
+
+`closeBulkRecordSheet()` HTML onclick が間接ロードでタイミング的に解決するかは js-syntax-guard で検証 → `<script type="module">` は defer 相当なので DOMContentLoaded 後に実行、ユーザーが閉じるボタンを押せる時点 = sheet 開いてる時点 = 既にロード済み、で問題なし。
+
+#### A-1 で UI 骨だけにしたか
+
+A-1 の段階で営業系統チェックリスト本体 (A-2) まで一気に作る案もあったが、
+
+- skeleton と本体を別 commit にすることで「ボトムシート枠が想定通り表示されるか」を独立検証できる
+- 確認モーダル z-index との衝突や、マイページサブタブ上部のボタン視認性は本体実装前に潰したい
+- A-2 で chip リストを mount する段階で structure (`<div id="bulk-record-body">` の中に何を mount するか) が固まる
+
+→ B-1 (skeleton) と同じく、まず骨を deploy して構造を確認する選択。
+
+### 残課題 / 次のステップ
+
+- **A-2 (次)**: 営業系統チェックリスト本体。`SERVICE_LINES` 642 件をリストアップ (素では破綻、ただし A-2 段階では「全件 + 検索なし」で一旦表示)、タップで `_bulkDrafts` 配列に push (`source=manual, verified=false, date_precision='unknown'`)。たたむ/開く トグル UI もこの段階で
+- **A-3**: 一括保存 — draft 配列ループで trip 構築 → tripForSupabase → upsert。途中失敗時の扱い (部分コミット vs 全ロールバック) は実装時に潰す
+- preview の screenshot が timeout する事案あり (modal 開閉と無関係に発生) — preview tool 側の問題と思われるため deploy 検証は実機で
+
+### 関連
+
+- Notion §1.3「一括記録 (まとめて記録) — noritetsu-log.html 廃止の受け皿」設計確定セクション
+- §242〜§249 (v392〜v399 trip 詳細エディタ抽出 B カテゴリ完結) — A の前提となる factory
+
+---
+
 ## 249. v399 — trip 詳細エディタ B-4-b 完了 (グローバル Map 撤廃 + 旧 cascade handler / SL chip 撤去 + 3 instance を 1 instance に統合) (2026-05-28)
 
 ### 背景
