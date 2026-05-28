@@ -22,15 +22,11 @@ import { createTripDetailEditor } from './20-trip-detail-editor.js';
 
 // 記録モード確認モーダル内の写真エリアコントローラ (createPhotoArea 戻り値、null = 未生成)
 let _recPhotoArea = null;
-// v392: 列車 picker (per-seg-chip mode) の component インスタンス。null = 未生成 or マニアトグル OFF
-let _recDetailEditor = null;
-// v397 (B-3c): 確認モーダルの 🕒 乗車日時 (5 精度 + GPS preset) を担当する 2nd factory instance。
-//   GPS 記録時は features.timeRow=false で skip (section 全体 hide)、手動記録時のみ生成。
-let _recTimeEditor = null;
-// v397 (B-3c): 確認モーダルの ⏱ 遅延 + 📝 自由メモ を担当する 3rd factory instance。
-//   features.delay = { maniaToggle:true, prefKey: PREF_SHOW_DELAY_INPUT } で旧 #rec-delay-toggle 動作を再現。
-//   将来 B-4 で _recDetailEditor / _recTimeEditor と共に 1 instance に統合予定。
-let _recMetaEditor = null;
+// v399 (B-4-b): 確認モーダルの 時刻 / 列車 / 遅延 / メモ を 1 つに統合した factory instance。
+//   旧 _recTimeEditor / _recDetailEditor / _recMetaEditor の 3 instance は multi-container API で
+//   1 instance に集約。containers.train を hide/show するのは外側 #rec-train-picker wrapper (列車
+//   マニアトグル) — editor 自体は常時存在、save 時に toggle OFF なら train fields を null override。
+let _recEditor = null;
 import {
   cycleLocationMode,
   stopLocationTracking,
@@ -41,7 +37,6 @@ import {
   updateLocationButton,
 } from './04-gps-location.js';
 import { drawLines, updateOverlays } from './08-rendering.js';
-import { resetTrainSelector } from './02-data-loaders.js';
 
 // v197 ES Modules パイロット (案 β) — 状態を window.NORIRECO.record に集約。
 // 外部 (04 / 06 / 08) からは NORIRECO.record.mode 等のフルパス、内部は R.X の短縮形。
@@ -830,82 +825,77 @@ function openRecConfirm() {
       ? '💾 GPS で保存する'
       : '💾 手動で保存する';
   }
-  // v397 (B-3c): 時刻編集セクション (手動記録のみ) + ⏱ 遅延 + 📝 自由メモ を factory に集約。
-  //   - GPS 記録: time section 全体を hide、_recTimeEditor は生成しない (factory 不要)
-  //   - 手動記録: precisions=['minute','day','month','year','unknown'] の 5 精度 UI を mount。
-  //               initial に date / depart_time / arrive_time を渡す (記録モード突入時刻 = startTs から計算)
-  //   - delay/notes は GPS/手動どちらでも mount。delay は maniaToggle + localStorage 永続化。
-  if (_recTimeEditor) {
-    try { _recTimeEditor.destroy(); } catch (e) {}
-    _recTimeEditor = null;
+  // v399 (B-4-b): 時刻 / 列車 / 遅延 / メモ を **1 つの** _recEditor に統合。
+  //   旧 3 instance (_recTimeEditor / _recDetailEditor / _recMetaEditor) は multi-container API で集約。
+  //   - GPS 記録: features.timeRow=false で time section skip (外側 #rec-time-edit-section も hide)
+  //   - 手動記録: precisions=['minute','day','month','year','unknown'] の 5 精度 UI を mount
+  //   - 列車セクションは常時生成 — 外側 #rec-train-picker (マニアトグル) の表示制御で hide/show、
+  //     save 時にトグル OFF なら train fields を null override (旧 onRecTrainToggle の destroy 相当)
+  //   - delay は maniaToggle + localStorage 永続化、notes は常時、photos は別 instance (_recPhotoArea)
+  if (_recEditor) {
+    try { _recEditor.destroy(); } catch (e) {}
+    _recEditor = null;
   }
+  const isGpsRec = !!NORIRECO.gps.recordStartedViaGPS;
   const timeSec = document.getElementById('rec-time-edit-section');
-  if (timeSec) {
-    if (NORIRECO.gps.recordStartedViaGPS) {
-      timeSec.style.display = 'none';
-    } else {
-      timeSec.style.display = '';
-      // 初期 depart/arrive: GPS なしでも記録モード突入時刻 (startTs) と現在時刻 (endTs) から計算
-      let initDate = (typeof localDateStr === 'function') ? localDateStr() : new Date().toISOString().slice(0, 10);
-      let initDep = '';
-      let initArr = '';
-      if (startTs) {
-        const sd = new Date(startTs);
-        initDate = `${sd.getFullYear()}-${String(sd.getMonth()+1).padStart(2,'0')}-${String(sd.getDate()).padStart(2,'0')}`;
-        initDep = sd.toTimeString().slice(0, 8);
-      }
-      const endTsLocal = NORIRECO.gps.recordEndTime || new Date().toISOString();
-      const ed = new Date(endTsLocal);
-      initArr = ed.toTimeString().slice(0, 8);
+  if (timeSec) timeSec.style.display = isGpsRec ? 'none' : '';
 
-      const timeContainer = document.getElementById('rec-time-edit-container');
-      if (timeContainer) {
-        _recTimeEditor = createTripDetailEditor({
-          container: timeContainer,
-          initial: {
-            date: initDate,
-            depart_time: initDep,
-            arrive_time: initArr,
-            date_precision: 'minute',
-          },
-          features: {
-            timeRow: { precisions: ['minute', 'day', 'month', 'year', 'unknown'] },
-            trainPicker: false,
-            delay: false,
-            notes: false,
-            photos: false,
-          },
-          // 入力が変わるたびに確認モーダル上部の 🕒 時刻行を更新
-          onChange: () => { try { updateRecConfirmTimeRow(); } catch (e) {} },
-        });
-      }
-    }
+  // 時刻初期値: GPS なしでも記録モード突入時刻 (startTs) と現在時刻 (endTs) から計算
+  let initDate = (typeof localDateStr === 'function') ? localDateStr() : new Date().toISOString().slice(0, 10);
+  let initDep = '';
+  let initArr = '';
+  if (startTs) {
+    const sd = new Date(startTs);
+    initDate = `${sd.getFullYear()}-${String(sd.getMonth()+1).padStart(2,'0')}-${String(sd.getDate()).padStart(2,'0')}`;
+    initDep = sd.toTimeString().slice(0, 8);
   }
+  const endTsLocal = NORIRECO.gps.recordEndTime || new Date().toISOString();
+  initArr = new Date(endTsLocal).toTimeString().slice(0, 8);
+
+  // 列車 picker 用の initial segments (新規記録は train_* 全 null)
+  const initialSegments = (R.segments || []).map(seg => ({
+    lineId: seg.line?.id || null,
+    lineName: seg.line?.name || '',
+    from: seg.from?.name || '',
+    to: seg.to?.name || '',
+    train_category: null,
+    train_id: null,
+    train_name: null,
+    car_model: null,
+  })).filter(s => s.lineId);
+
+  _recEditor = createTripDetailEditor({
+    containers: {
+      time:  document.getElementById('rec-time-edit-container'),
+      train: document.getElementById('rec-train-picker-container'),
+      delay: document.getElementById('rec-delay-container'),
+      notes: document.getElementById('rec-notes-container'),
+    },
+    initial: {
+      date: initDate,
+      depart_time: initDep,
+      arrive_time: initArr,
+      date_precision: 'minute',
+      segments: initialSegments,
+      delay_minutes: null,
+      notes: null,
+    },
+    features: {
+      timeRow: isGpsRec ? false : { precisions: ['minute', 'day', 'month', 'year', 'unknown'] },
+      trainPicker: 'per-seg-chip',
+      delay: { maniaToggle: true, prefKey: PREF_SHOW_DELAY_INPUT },
+      notes: true,
+      photos: false,
+    },
+    // 入力が変わるたびに確認モーダル上部の 🕒 時刻行を更新
+    onChange: () => { try { updateRecConfirmTimeRow(); } catch (e) {} },
+  });
+
   // 確認モーダル上部の 🕒 時刻行を確実に更新 (GPS 記録は実時刻、手動は factory draft 経由)
   updateRecConfirmTimeRow();
   document.getElementById('rec-confirm-modal')?.classList.add('open');
-  // v392 (B-1 続き): 「列車・車両形式」トグルを localStorage から復元 + ON なら editor mount。
+  // 「列車・車両形式」マニアトグルの表示状態を localStorage から復元 (editor は常時生成済)。
   initRecTrainToggle();
-  // v397 (B-3c): ⏱ 遅延 + 📝 自由メモ を factory に集約 (delay は maniaToggle + localStorage 永続化)。
-  //   毎回 destroy → 再生成 (前回値を持ち越さない、旧 input.value='' 相当)。
-  if (_recMetaEditor) {
-    try { _recMetaEditor.destroy(); } catch (e) {}
-    _recMetaEditor = null;
-  }
-  const metaContainer = document.getElementById('rec-meta-container');
-  if (metaContainer) {
-    _recMetaEditor = createTripDetailEditor({
-      container: metaContainer,
-      initial: { delay_minutes: null, notes: null },
-      features: {
-        trainPicker: false,
-        timeRow: false,
-        delay: { maniaToggle: true, prefKey: PREF_SHOW_DELAY_INPUT },
-        notes: true,
-        photos: false,
-      },
-    });
-  }
 
   // v258: 📷 写真エリアもリセット (空のエリアを再生成、blob URL 既存ぶんは destroy で revoke)
   if (_recPhotoArea) {
@@ -947,19 +937,10 @@ function discardRecord() {
     try { _recPhotoArea.destroy(); } catch (e) {}
     _recPhotoArea = null;
   }
-  // v392 (B-1 続き): 列車エディタも破棄
-  if (_recDetailEditor) {
-    try { _recDetailEditor.destroy(); } catch (e) {}
-    _recDetailEditor = null;
-  }
-  // v397 (B-3c): time / meta editor も破棄
-  if (_recTimeEditor) {
-    try { _recTimeEditor.destroy(); } catch (e) {}
-    _recTimeEditor = null;
-  }
-  if (_recMetaEditor) {
-    try { _recMetaEditor.destroy(); } catch (e) {}
-    _recMetaEditor = null;
+  // v399 (B-4-b): 時刻 / 列車 / 遅延 / メモ を統合した単一 editor を破棄
+  if (_recEditor) {
+    try { _recEditor.destroy(); } catch (e) {}
+    _recEditor = null;
   }
   if (R.mode) toggleRecordMode(); // off に
   showRecordToast('🗑 記録を破棄しました', 'warn', 2500);
@@ -973,10 +954,10 @@ window.discardRecord = discardRecord;
 // v398 (B-4-a): 旧 onRecEditPrecisionChange を撤去。精度切替 + 行表示制御 + 年月 populate は
 //   factory `_initTimeRowFull5` が closure 内で全部担当。
 
-// v397 (B-3c): 確認モーダル上部の 🕒 時刻行を、factory editor の draft + GPS 状態から再描画。
+// v397 (B-3c) / v399 (B-4-b): 確認モーダル上部の 🕒 時刻行を、factory editor の draft + GPS 状態から再描画。
 //   - GPS 記録: 実 GPS 時刻 (startTs/endTs) を直接読む
-//   - 手動記録: _recTimeEditor.getDraft() で精度 + 値を取得して表現を変える
-//   呼出元: openRecConfirm 初回 + _recTimeEditor の onChange callback (precSel / 各 input の input/change)
+//   - 手動記録: _recEditor.getDraft() で精度 + 値を取得して表現を変える
+//   呼出元: openRecConfirm 初回 + _recEditor の onChange callback (precSel / 各 input の input/change)
 function updateRecConfirmTimeRow() {
   const row = document.getElementById('rec-confirm-time-row');
   const lbl = document.getElementById('rec-confirm-time-lbl');
@@ -997,9 +978,9 @@ function updateRecConfirmTimeRow() {
   }
 
   // 手動記録: factory editor の draft 経由
-  if (!_recTimeEditor) { row.style.display = 'none'; return; }
+  if (!_recEditor) { row.style.display = 'none'; return; }
   let td = null;
-  try { td = _recTimeEditor.getDraft(); } catch (e) { row.style.display = 'none'; return; }
+  try { td = _recEditor.getDraft(); } catch (e) { row.style.display = 'none'; return; }
   if (!td) { row.style.display = 'none'; return; }
   const prec = td.date_precision || 'minute';
   const toHm = (v) => (typeof v === 'string' && v.length >= 5) ? v.slice(0, 5) : '';
@@ -1172,19 +1153,19 @@ async function saveMultiSegmentTrip() {
   const tripSegments = [];
   let totalStations = 0;
   const lineNames = [];
-  // v392 (B-1 続き): 列車情報は editor の draft から取得 (per-seg-chip mode で _segState 同期済)。
-  //   マニアトグル OFF (editor 未生成) のときは空 Map で全 seg null になる。
-  //   handler が input event で同期書き込みするため __custom__ 値も safety net 不要。
+  // v399 (B-4-b): 統合 _recEditor.getDraft() で全 section (time / segments / delay / notes) を一括取得。
+  //   - 列車マニアトグル OFF (`#rec-train-toggle` unchecked) のときは train fields を null override。
+  //   - per-seg-chip mode で _segState 同期済 (handler が input event で書き込み済) — __custom__ 値も safety net 不要。
+  const editorDraft = _recEditor ? (() => {
+    try { return _recEditor.getDraft(); }
+    catch (e) { console.warn('[saveMultiSegmentTrip] editor.getDraft() failed:', e); return null; }
+  })() : null;
+  const trainToggleOn = (document.getElementById('rec-train-toggle')?.checked) === true;
   const editorSegMap = new Map();
-  if (_recDetailEditor) {
-    try {
-      const editorDraft = _recDetailEditor.getDraft();
-      if (editorDraft && Array.isArray(editorDraft.segments)) {
-        for (const s of editorDraft.segments) {
-          if (s && s.lineId) editorSegMap.set(s.lineId, s);
-        }
-      }
-    } catch (e) { console.warn('[saveMultiSegmentTrip] editor.getDraft() failed:', e); }
+  if (editorDraft && Array.isArray(editorDraft.segments) && trainToggleOn) {
+    for (const s of editorDraft.segments) {
+      if (s && s.lineId) editorSegMap.set(s.lineId, s);
+    }
   }
   if (!isVisitOnly) {
     for (const seg of R.segments) {
@@ -1270,35 +1251,22 @@ async function saveMultiSegmentTrip() {
       totalMinutes = Math.max(0, Math.round((endDate - startDate) / 60000));
     }
   }
-  // v397 (B-3c): 手動記録の time / delay / notes は factory editor の getDraft() 経由で取得。
-  //   - GPS 記録 (recordStartedViaGPS=true): 実時刻 (startTs/endTs) が真実、_recTimeEditor は生成されない
+  // v399 (B-4-b): 手動記録の time / delay / notes は統合 editorDraft から取得 (1 instance に集約済)。
+  //   - GPS 記録 (recordStartedViaGPS=true): features.timeRow=false で time section skip → draft.date は initial 値を維持
   //   - 手動記録: precisions=['minute','day','month','year','unknown'] の 5 精度ロジックは factory 内蔵
   //     - unknown のとき draft.date は null → tripDate には today (recorded_at の日付) を入れる
   //       (Supabase の NOT NULL 制約回避、フィルタは date_precision='unknown' で別途除外)
   let datePrecision = 'day';
-  if (!NORIRECO.gps.recordStartedViaGPS) {
-    let timeDraft = null;
-    if (_recTimeEditor) {
-      try { timeDraft = _recTimeEditor.getDraft(); }
-      catch (e) { console.warn('[saveMultiSegmentTrip] timeEditor.getDraft() failed:', e); }
-    }
-    if (timeDraft) {
-      datePrecision = timeDraft.date_precision || 'day';
-      // factory: unknown のとき date=null → today を埋める
-      tripDate = timeDraft.date || (datePrecision === 'unknown' ? today : tripDate);
-      departTime = timeDraft.depart_time != null ? timeDraft.depart_time : '';
-      arriveTime = timeDraft.arrive_time != null ? timeDraft.arrive_time : '';
-      totalMinutes = (typeof timeDraft.total_minutes === 'number') ? timeDraft.total_minutes : 0;
-    }
+  if (!NORIRECO.gps.recordStartedViaGPS && editorDraft) {
+    datePrecision = editorDraft.date_precision || 'day';
+    tripDate = editorDraft.date || (datePrecision === 'unknown' ? today : tripDate);
+    departTime = editorDraft.depart_time != null ? editorDraft.depart_time : '';
+    arriveTime = editorDraft.arrive_time != null ? editorDraft.arrive_time : '';
+    totalMinutes = (typeof editorDraft.total_minutes === 'number') ? editorDraft.total_minutes : 0;
   }
-  // v397 (B-3c): メモ・遅延も _recMetaEditor 経由 (factory が正規化済 — 0/空→null、上限 5999 クランプ)。
-  let metaDraft = null;
-  if (_recMetaEditor) {
-    try { metaDraft = _recMetaEditor.getDraft(); }
-    catch (e) { console.warn('[saveMultiSegmentTrip] metaEditor.getDraft() failed:', e); }
-  }
-  const delayMinutes = (metaDraft && typeof metaDraft.delay_minutes === 'number') ? metaDraft.delay_minutes : null;
-  const tripNotes    = metaDraft?.notes || null;
+  // 遅延・メモも統合 draft から (factory が正規化済 — 0/空→null、delay 上限 5999 クランプ)
+  const delayMinutes = (editorDraft && typeof editorDraft.delay_minutes === 'number') ? editorDraft.delay_minutes : null;
+  const tripNotes    = editorDraft?.notes || null;
 
   const tripId = `trip_${Date.now()}`;
 
@@ -1340,36 +1308,27 @@ async function saveMultiSegmentTrip() {
     // 列車種別 (任意、確認モーダルで選択 or 手入力)
     // train_id IS NULL かつ train_name IS NOT NULL = マニア手入力 (後でマスター調査・追加用)
     // v375: trip 直下も per-seg 集約 — 全 seg 一致なら値 / 不一致なら null (car_model と同ルール)
+    // v399 (B-4-b): visit-only (segments 空) は editor が `per-seg-chip` mode で chip 0 個のため
+    //   train 情報を入力する UI が無い → null。旧 NORIRECO.trains.selectedXxxx fallback は撤廃。
     train_id: (() => {
-      if (!tripSegments || tripSegments.length === 0) return NORIRECO.trains.selectedTrainId;
+      if (!tripSegments || tripSegments.length === 0) return null;
       const set = new Set(tripSegments.map(s => s.train_id || ''));
       return (set.size === 1 && [...set][0]) ? [...set][0] : null;
     })(),
     train_name: (() => {
-      if (!tripSegments || tripSegments.length === 0) return NORIRECO.trains.selectedTrainName;
+      if (!tripSegments || tripSegments.length === 0) return null;
       const set = new Set(tripSegments.map(s => s.train_name || ''));
       return (set.size === 1 && [...set][0]) ? [...set][0] : null;
     })(),
     train_category: (() => {
-      if (!tripSegments || tripSegments.length === 0) return NORIRECO.trains.selectedTrainCategory;
+      if (!tripSegments || tripSegments.length === 0) return null;
       const set = new Set(tripSegments.map(s => s.train_category || ''));
       return (set.size === 1 && [...set][0]) ? [...set][0] : null;
     })(),
-    // v371→v374: trip.car_model は「旅程レベルの代表値」。
-    //   v374 で seg.car_model が cascade 値の fallback を受け取るようになったので、
-    //   segments の集約だけ見れば「全 segment 同じ非 null 値」になっていれば代表値として有効。
-    //   - segments 空 (visit-only): T.selectedCarModel をそのまま (cascade の値)
-    //   - 全 segment 同じ非 null 値: その値
-    //   - 全 segment null: T.selectedCarModel (= ユーザーは触ったが seg fallback 走らず → 念のため fallback)
-    //   - 混在 (異なる値あり): null (segments[].car_model を一次情報として参照)
     car_model: (() => {
-      if (!tripSegments || tripSegments.length === 0) return NORIRECO.trains.selectedCarModel;
+      if (!tripSegments || tripSegments.length === 0) return null;
       const set = new Set(tripSegments.map(s => s.car_model || ''));
-      if (set.size === 1) {
-        const v = [...set][0];
-        return v || NORIRECO.trains.selectedCarModel || null;
-      }
-      return null;
+      return (set.size === 1 && [...set][0]) ? [...set][0] : null;
     })(),
     // 後追い記録モード拡張 (v181) / v395: notes / delay_minutes は localStorage と Supabase の両方に保存。
     //   v395 で tripForSupabase の strip を撤回 — schema は実は v181 以前から両カラムを持っていた (REST 確認済)。
@@ -1450,19 +1409,10 @@ async function saveMultiSegmentTrip() {
     try { _recPhotoArea.destroy(); } catch (e) {}
     _recPhotoArea = null;
   }
-  // v392 (B-1 続き): 列車エディタも破棄
-  if (_recDetailEditor) {
-    try { _recDetailEditor.destroy(); } catch (e) {}
-    _recDetailEditor = null;
-  }
-  // v397 (B-3c): time / meta editor も破棄
-  if (_recTimeEditor) {
-    try { _recTimeEditor.destroy(); } catch (e) {}
-    _recTimeEditor = null;
-  }
-  if (_recMetaEditor) {
-    try { _recMetaEditor.destroy(); } catch (e) {}
-    _recMetaEditor = null;
+  // v399 (B-4-b): 時刻 / 列車 / 遅延 / メモ を統合した単一 editor を破棄
+  if (_recEditor) {
+    try { _recEditor.destroy(); } catch (e) {}
+    _recEditor = null;
   }
   // verified=true の trip なら自動獲得チェックが発動する
   setTimeout(() => runCharacterGrantCheck(), 800);
@@ -1550,368 +1500,38 @@ window.onRecordStationClick = onRecordStationClick;
 const PREF_SHOW_TRAIN_SELECTOR = 'norireco.prefs.showTrainSelector';
 const PREF_SHOW_DELAY_INPUT    = 'norireco.prefs.showDelayInput';   // v350
 
-// v392 (B-1 続き): editor を rec-train-picker-container に mount する helper。
-//   R.segments を draft.segments の形に変換して initial で渡す (新規記録なので列車情報は全て null)。
-function _mountRecDetailEditor() {
-  const container = document.getElementById('rec-train-picker-container');
-  if (!container) return;
-  const initialSegments = (R.segments || []).map(seg => ({
-    lineId: seg.line?.id || null,
-    lineName: seg.line?.name || '',
-    from: seg.from?.name || '',
-    to: seg.to?.name || '',
-    train_category: null,
-    train_id: null,
-    train_name: null,
-    car_model: null,
-  })).filter(s => s.lineId);
-  _recDetailEditor = createTripDetailEditor({
-    container,
-    initial: { segments: initialSegments },
-    features: {
-      trainPicker: 'per-seg-chip',
-      timeRow: false,
-      delay: false,
-      notes: false,
-      photos: false,
-    },
-  });
-}
-
+// v399 (B-4-b): 列車マニアトグルは外側 wrapper (`#rec-train-picker`) の visibility 制御のみ担当。
+//   editor は openRecConfirm で常時生成 (containers.train = #rec-train-picker-container)、トグル OFF
+//   のときは wrapper hide で UI 上見えなくする + save 時に train fields を null override。
+//   旧 _mountRecDetailEditor / destroy-on-OFF は不要 (1 instance 統合のため)。
 function initRecTrainToggle() {
-  // v392 (B-1 続き): localStorage 復元 + マニアトグル ON なら editor mount。
-  //   既存 editor が残っていたら destroy → 新 R.segments で再 mount。
   const toggle = document.getElementById('rec-train-toggle');
   const picker = document.getElementById('rec-train-picker');
-  if (toggle && picker) {
-    const saved = localStorage.getItem(PREF_SHOW_TRAIN_SELECTOR) === '1';
-    toggle.checked = saved;
-    picker.style.display = saved ? 'block' : 'none';
-    if (_recDetailEditor) {
-      try { _recDetailEditor.destroy(); } catch (e) {}
-      _recDetailEditor = null;
-    }
-    if (saved) _mountRecDetailEditor();
-  }
-  // v397 (B-3c): 遅延入力トグルは createTripDetailEditor (_recMetaEditor) が
-  //   features.delay = { maniaToggle: true, prefKey: PREF_SHOW_DELAY_INPUT } で内蔵管理。
-  //   旧 initRecDelayToggle / onRecDelayToggle は dead code (B-4 撤去予定)。
+  if (!toggle || !picker) return;
+  const saved = localStorage.getItem(PREF_SHOW_TRAIN_SELECTOR) === '1';
+  toggle.checked = saved;
+  picker.style.display = saved ? 'block' : 'none';
 }
 
 function onRecTrainToggle() {
-  // v392 (B-1 続き): トグル切替で editor mount / destroy。
-  //   OFF 時は editor を破棄 (= 保存時に列車情報は null になる)。これは旧 clearAllTrainSelections 相当。
   const toggle = document.getElementById('rec-train-toggle');
   const picker = document.getElementById('rec-train-picker');
   if (!toggle || !picker) return;
   const on = toggle.checked;
   localStorage.setItem(PREF_SHOW_TRAIN_SELECTOR, on ? '1' : '0');
   picker.style.display = on ? 'block' : 'none';
-  if (on) {
-    if (!_recDetailEditor) _mountRecDetailEditor();
-  } else {
-    if (_recDetailEditor) {
-      try { _recDetailEditor.destroy(); } catch (e) {}
-      _recDetailEditor = null;
-    }
-  }
+  // OFF にしても editor は残す (再 ON 時に DOM 値が温存される)。
+  // 保存時 (saveMultiSegmentTrip) にトグル状態を見て train fields を null にするかを判断する。
 }
 window.onRecTrainToggle = onRecTrainToggle;
-
-// v352: cat に応じて sl-block / cascade の表示を排他切替 (元設計)
-// v374: 特急時も sl-block 併存 (廃止 → v375)
-// v375: per-seg 化で「区間ごとに category」を独立指定できるようになったため、cat 別の排他に戻す。
-//   各 chip に紐づく cat が cascade or sl-block どちらか単独を表示する。
-//   02-data-loaders.js の onTrainCategoryChange から window.applyRecTrainCategory(cat) で呼ばれる。
-function applyRecTrainCategory(cat) {
-  const slBlock = document.getElementById('rec-sl-vehicle-block');
-  const cascade = document.getElementById('rec-train-cascade');
-  if (cat === 'local') {
-    if (slBlock) slBlock.style.display = 'block';
-    if (cascade) cascade.style.display = 'none';
-  } else if (cat) {
-    if (slBlock) slBlock.style.display = 'none';
-    if (cascade) cascade.style.display = 'block';
-  } else {
-    // 「指定しない」
-    if (slBlock) slBlock.style.display = 'none';
-    if (cascade) cascade.style.display = 'none';
-  }
-}
-window.applyRecTrainCategory = applyRecTrainCategory;
-
-function clearAllTrainSelections() {
-  const T = NORIRECO.trains;
-  T.selectedCarModel       = null;
-  T.selectedTrainId        = null;
-  T.selectedTrainName      = null;
-  T.selectedTrainCategory  = null;
-  // v371→v375: 系統別 Map もすべてクリア
-  T.selectedCarModelBySl       = {};
-  T.selectedTrainCategoryBySl  = {};
-  T.selectedTrainIdBySl        = {};
-  T.selectedTrainNameBySl      = {};
-  T.activeChipSlId             = null;
-  const sel = document.getElementById('rec-sl-vehicle-select');
-  if (sel) sel.value = '';
-  const customEl = document.getElementById('rec-sl-vehicle-custom');
-  if (customEl) { customEl.style.display = 'none'; customEl.value = ''; }
-}
 
 // v398 (B-4-a): 旧 initRecDelayToggle / onRecDelayToggle (v350) を撤去。
 //   factory `initDelay` が `features.delay = { maniaToggle: true, prefKey: PREF_SHOW_DELAY_INPUT }`
 //   で checkbox + localStorage 永続化 + 入力 hide/clear を完全に担当 (v397 B-3c)。
 
-// 区間 chip + 候補車両 dropdown を生成
-// v375: chip ラッパは picker 直下に移動 (#rec-seg-chips-wrap)、区間が複数あるときだけ表示。
-//   区間 1 つだけや visit-only のときは chip 不要。
-function populateSlVehiclePicker() {
-  const chipsEl = document.getElementById('rec-sl-chips');
-  const chipsWrap = document.getElementById('rec-seg-chips-wrap');
-  const selectEl = document.getElementById('rec-sl-vehicle-select');
-  const emptyEl = document.getElementById('rec-sl-vehicle-empty');
-  if (!chipsEl || !selectEl) return;
-
-  // R.segments から unique sl_id を収集 (重複系統は 1 度だけ)
-  const slIds = [];
-  const seen = new Set();
-  for (const seg of (R.segments || [])) {
-    const id = seg.line?.id;
-    if (id && !seen.has(id)) { seen.add(id); slIds.push({ id, name: seg.line.name }); }
-  }
-
-  // chip 描画
-  chipsEl.innerHTML = '';
-  if (slIds.length === 0) {
-    // 区間情報なし (visit only 等) — chip ラッパは隠す
-    if (chipsWrap) chipsWrap.style.display = 'none';
-    if (emptyEl) emptyEl.style.display = 'none';
-    return;
-  }
-  // v375: 区間 1 個のときも chip を出すか? → 1 個なら chip 不要 (cascade が直接 segments[0] を担当)。
-  //   ただし「active chip」概念のために 1 個でも activeChipSlId を設定する必要があり、
-  //   表示だけ隠す方針にする (描画はする、wrap だけ条件付き hide)。
-  if (chipsWrap) chipsWrap.style.display = (slIds.length >= 2) ? 'block' : 'none';
-  selectEl.style.display = 'block';
-
-  const bySlId = NORIRECO.serviceLineVehicles?.bySlId || {};
-  for (const { id, name } of slIds) {
-    const count = (bySlId[id] || []).length;
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.id = `rec-sl-chip-${id}`;
-    chip.textContent = `${name}${count > 0 ? ` (${count})` : ''}`;
-    chip.style.cssText = 'padding:5px 10px;background:rgba(20,32,46,.8);color:var(--silver);border:1px solid var(--track);border-radius:14px;font-size:11px;cursor:pointer;transition:all .15s';
-    chip.onclick = () => selectSlChip(id);
-    chipsEl.appendChild(chip);
-  }
-  // v375: 既存 active chip を維持 (再描画時に勝手に 0 番目へ戻らない)。無ければ 1 つ目を選択。
-  const activeId = NORIRECO.trains.activeChipSlId;
-  const targetSlId = (activeId && slIds.some(x => x.id === activeId)) ? activeId : slIds[0].id;
-  selectSlChip(targetSlId);
-}
-// v375: 02-data-loaders.js の onTrainCategoryChange から window.populateSlVehiclePicker で呼べるよう公開。
-//   export せず window 経由のみ (02 → 07 の import で循環参照を作らない)
-window.populateSlVehiclePicker = populateSlVehiclePicker;
-
-function selectSlChip(slId) {
-  const T = NORIRECO.trains;
-  T.selectedCarModelBySl = T.selectedCarModelBySl || {};
-  T.selectedTrainCategoryBySl = T.selectedTrainCategoryBySl || {};
-  T.selectedTrainIdBySl = T.selectedTrainIdBySl || {};
-  T.selectedTrainNameBySl = T.selectedTrainNameBySl || {};
-  // v375: chip 切替時、各 handler が Map に同期書き込みしているので save は最小限。
-  //   SL dropdown は __custom__ 状態時の最新 custom input 値だけ DOM 経由で fixup。
-  {
-    const prevSel = document.getElementById('rec-sl-vehicle-select');
-    const prevCustom = document.getElementById('rec-sl-vehicle-custom');
-    if (T.activeChipSlId && T.activeChipSlId !== slId && prevSel && prevSel.value === '__custom__' && prevCustom) {
-      T.selectedCarModelBySl[T.activeChipSlId] = (prevCustom.value || '').trim() || null;
-    }
-  }
-  T.activeChipSlId = slId;
-  const bySlId = NORIRECO.serviceLineVehicles?.bySlId || {};
-  // chip の active 切替
-  document.querySelectorAll('[id^="rec-sl-chip-"]').forEach(el => {
-    const isActive = el.id === `rec-sl-chip-${slId}`;
-    el.style.background = isActive ? 'var(--gold)' : 'rgba(20,32,46,.8)';
-    el.style.color = isActive ? '#000' : 'var(--silver)';
-    el.style.borderColor = isActive ? 'var(--gold)' : 'var(--track)';
-  });
-
-  // v375: per-seg restore — Map から category / train_id / train_name / car_model を引いて DOM に反映。
-  //   category dropdown → applyRecTrainCategory で sl_block / cascade 切替 → cat 別 restore。
-  //   初回 chip 描画時に Map.cat が空で catSel に既存値があれば、それを Map に移管 (cat 先選択フロー対応)
-  const catSelEl = document.getElementById('rec-train-category');
-  let catRestored = T.selectedTrainCategoryBySl[slId] || '';
-  if (!catRestored && catSelEl && catSelEl.value) {
-    catRestored = catSelEl.value;
-    T.selectedTrainCategoryBySl[slId] = catRestored;
-  }
-  const tidRestored = T.selectedTrainIdBySl[slId] || '';
-  const tnameRestored = T.selectedTrainNameBySl[slId] || '';
-  const cmRestored = T.selectedCarModelBySl[slId] || '';
-  if (catSelEl) catSelEl.value = catRestored;
-  applyRecTrainCategory(catRestored);
-
-  if (catRestored && catRestored !== 'local') {
-    // cascade レーンを populate (onTrainCategoryChange の dropdown 構築部分を再現)
-    const trainSel = document.getElementById('rec-train-id');
-    const trainCustom = document.getElementById('rec-train-custom');
-    const carSel = document.getElementById('rec-car-model');
-    const carCustom = document.getElementById('rec-car-model-custom');
-    if (trainSel) {
-      const trains = (T.TRAINS || []).filter(x => x.category === catRestored)
-        .sort((a, b) => {
-          if (!!a.discontinued !== !!b.discontinued) return a.discontinued ? 1 : -1;
-          return (a.name || '').localeCompare(b.name || '', 'ja');
-        });
-      let html = '<option value="">列車を選ぶ...</option>';
-      for (const x of trains) {
-        const discTag = x.discontinued ? ' (廃止)' : '';
-        const rarityTag = x.rarity === 'legendary' ? ' ⭐' : (x.rarity === 'rare' ? ' ✨' : '');
-        html += `<option value="${x.id}">${x.name}${rarityTag}${discTag}</option>`;
-      }
-      html += '<option value="__custom__">📝 リストにない (手入力)</option>';
-      trainSel.innerHTML = html;
-      trainSel.style.display = 'block';
-      // value 復元
-      if (tidRestored) {
-        trainSel.value = tidRestored;
-        if (trainCustom) { trainCustom.style.display = 'none'; trainCustom.value = ''; }
-      } else if (tnameRestored) {
-        trainSel.value = '__custom__';
-        if (trainCustom) { trainCustom.style.display = 'block'; trainCustom.value = tnameRestored; }
-      } else {
-        trainSel.value = '';
-        if (trainCustom) { trainCustom.style.display = 'none'; trainCustom.value = ''; }
-      }
-    }
-    // car_model dropdown / custom restore
-    if (carSel) {
-      if (tidRestored) {
-        const train = (T.TRAINS || []).find(x => x.id === tidRestored);
-        if (train && Array.isArray(train.car_models) && train.car_models.length > 0) {
-          let cmHtml = '<option value="">車両形式を選ぶ (任意)...</option>';
-          for (const m of train.car_models) cmHtml += `<option value="${m}">${m}</option>`;
-          cmHtml += '<option value="__custom__">📝 リストにない (手入力)</option>';
-          carSel.innerHTML = cmHtml;
-          carSel.style.display = 'block';
-          if (cmRestored && train.car_models.includes(cmRestored)) {
-            carSel.value = cmRestored;
-            if (carCustom) { carCustom.style.display = 'none'; carCustom.value = ''; }
-          } else if (cmRestored) {
-            carSel.value = '__custom__';
-            if (carCustom) { carCustom.style.display = 'block'; carCustom.value = cmRestored; }
-          } else {
-            carSel.value = '';
-            if (carCustom) { carCustom.style.display = 'none'; carCustom.value = ''; }
-          }
-        } else {
-          // マスターに car_models 無し → cmCustom のみ
-          carSel.style.display = 'none';
-          if (carCustom) {
-            carCustom.style.display = 'block';
-            carCustom.value = cmRestored || '';
-          }
-        }
-      } else if (tnameRestored) {
-        // 手入力列車 → cmCustom のみ
-        carSel.style.display = 'none';
-        if (carCustom) {
-          carCustom.style.display = 'block';
-          carCustom.value = cmRestored || '';
-        }
-      } else {
-        // 列車未選択
-        carSel.style.display = 'none';
-        if (carCustom) { carCustom.style.display = 'none'; carCustom.value = ''; }
-      }
-    }
-    // cat='local' でないので sl-block dropdown は使わない → 再生成スキップして return
-    return;
-  }
-  // cat=='local' のみ下の sl-block dropdown 再生成ロジックへフォールスルー。
-  // cat='' (指定しない) の場合は何もせず終了。
-  if (catRestored !== 'local') return;
-  // dropdown 再生成: 現役主力 / 導入 / 導入予定 を先頭、引退などは末尾
-  const selectEl = document.getElementById('rec-sl-vehicle-select');
-  const emptyEl = document.getElementById('rec-sl-vehicle-empty');
-  if (!selectEl) return;
-  const vehicles = (bySlId[slId] || []).slice().sort((a, b) => {
-    const order = { '導入予定': 0, '導入': 1, '現役主力': 2, '譲受': 3, '組織再編': 4, '譲渡': 5, '引退': 6 };
-    return (order[a.status] ?? 9) - (order[b.status] ?? 9);
-  });
-  let html = '<option value="">車両形式を選ぶ (任意)...</option>';
-  for (const v of vehicles) {
-    const tag = v.status === '導入予定' ? ' ★新' :
-                v.status === '導入'     ? ' 🆕' :
-                v.status === '引退'     ? ' (引退)' :
-                v.status === '譲受'     ? ' (譲受)' :
-                v.status === '譲渡'     ? ' (譲渡)' : '';
-    html += `<option value="${v.vehicle.replace(/"/g, '&quot;')}">${v.vehicle}${tag}</option>`;
-  }
-  // v351: 末尾に「自由入力」option (vehicles 有無に関わらず常時表示)
-  if (vehicles.length > 0) {
-    html += '<option value="" disabled>──────</option>';
-  }
-  html += '<option value="__custom__">✏️ 別形式を入力...</option>';
-  selectEl.innerHTML = html;
-  // 候補ゼロのときは説明文を出す
-  if (emptyEl) emptyEl.style.display = (vehicles.length === 0) ? 'block' : 'none';
-  // v374: Map から新 chip の値を読んで dropdown 復元 (T.selectedCarModel に依存しない)
-  const customEl = document.getElementById('rec-sl-vehicle-custom');
-  const restored = T.selectedCarModelBySl[slId] || null;
-  const inDropdown = vehicles.some(v => v.vehicle === restored);
-  if (restored && inDropdown) {
-    selectEl.value = restored;
-    if (customEl) { customEl.style.display = 'none'; customEl.value = ''; }
-  } else if (restored) {
-    // 自由入力済の値が残っていれば custom モードに復元
-    selectEl.value = '__custom__';
-    if (customEl) { customEl.style.display = 'block'; customEl.value = restored; }
-  } else {
-    selectEl.value = '';
-    if (customEl) { customEl.style.display = 'none'; customEl.value = ''; }
-  }
-}
-
-function onSlVehicleChange() {
-  const selectEl = document.getElementById('rec-sl-vehicle-select');
-  const customEl = document.getElementById('rec-sl-vehicle-custom');
-  if (!selectEl) return;
-  const T = NORIRECO.trains;
-  T.selectedCarModelBySl = T.selectedCarModelBySl || {};
-  const v = selectEl.value;
-  // v374: SL chip dropdown は selectedCarModelBySl 専用。T.selectedCarModel (cascade 専用) は触らない。
-  let mapValue;
-  if (v === '__custom__') {
-    if (customEl) {
-      customEl.style.display = 'block';
-      customEl.value = '';
-      customEl.focus();
-    }
-    mapValue = null;
-  } else {
-    if (customEl) { customEl.style.display = 'none'; customEl.value = ''; }
-    mapValue = v || null;
-  }
-  if (T.activeChipSlId) T.selectedCarModelBySl[T.activeChipSlId] = mapValue;
-}
-window.onSlVehicleChange = onSlVehicleChange;
-
-function isInDropdown(value, selectEl) {
-  return Array.from(selectEl.options).some(o => o.value === value && o.value !== '__custom__' && o.value !== '');
-}
-
-// v351: 自由入力 input の oninput
-function onSlVehicleCustomInput() {
-  const customEl = document.getElementById('rec-sl-vehicle-custom');
-  if (!customEl) return;
-  const T = NORIRECO.trains;
-  T.selectedCarModelBySl = T.selectedCarModelBySl || {};
-  // v374: SL chip 自由入力は selectedCarModelBySl 専用。T.selectedCarModel は cascade 専用。
-  const mapValue = customEl.value.trim() || null;
-  if (T.activeChipSlId) T.selectedCarModelBySl[T.activeChipSlId] = mapValue;
-}
-window.onSlVehicleCustomInput = onSlVehicleCustomInput;
+// v399 (B-4-b): 旧 SL chip ロジック (applyRecTrainCategory / clearAllTrainSelections /
+//   populateSlVehiclePicker / selectSlChip / onSlVehicleChange / isInDropdown /
+//   onSlVehicleCustomInput) を撤去 — 297 行削除。
+//   v392 で確認モーダルの cascade UI を `createTripDetailEditor` (`per-seg-chip` mode) に
+//   置き換えた時点で全て dead code。HTML 側の `#rec-sl-chips`/`#rec-sl-vehicle-block`/
+//   `#rec-train-cascade` 等の element と onclick/onchange ハンドラも v392 で消滅済。

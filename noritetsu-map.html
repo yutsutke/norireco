@@ -1309,10 +1309,11 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
         <div id="rec-train-picker-container"></div>
       </div>
     </div>
-    <!-- 📝 メモ (任意) — factory mount。.tde-delay 内部にマニア toggle (⏱ 遅延も記録する) + h/m input、
-         .tde-notes 内部に「📝 自由メモ」見出し + textarea。📷 写真は別 instance (_recPhotoArea) で維持。 -->
+    <!-- 📝 メモ (任意) — v399 (B-4-b): 単一の _recEditor に統合。multi-container で
+         delay / notes 各々独立のコンテナに mount。📷 写真は別 instance (_recPhotoArea) で維持。 -->
     <div id="rec-memo-section" style="margin-top:14px;border-top:1px solid var(--track);padding-top:12px">
-      <div id="rec-meta-container"></div>
+      <div id="rec-delay-container"></div>
+      <div id="rec-notes-container"></div>
 
       <!-- v258: 📷 写真添付 (最大 5 枚 / R2 アップロード) -->
       <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--track)">
@@ -1382,9 +1383,11 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
       <div id="trip-edit-train-picker-container"></div>
     </div>
 
-    <!-- ⏱ 遅延 + 📝 自由メモ — factory mount。.tde-delay / .tde-notes 内部に各見出しを持つ。 -->
+    <!-- ⏱ 遅延 + 📝 自由メモ — v399 (B-4-b): _tripEditEditor (単一 instance) に統合。
+         multi-container で delay / notes 各々独立のコンテナに mount。 -->
     <div style="margin-bottom:10px;border-top:1px solid var(--track);padding-top:10px">
-      <div id="trip-edit-meta-container"></div>
+      <div id="trip-edit-delay-container"></div>
+      <div id="trip-edit-notes-container"></div>
     </div>
 
     <!-- 📷 写真 (v258) -->

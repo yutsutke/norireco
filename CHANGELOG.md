@@ -48,6 +48,90 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 249. v399 — trip 詳細エディタ B-4-b 完了 (グローバル Map 撤廃 + 旧 cascade handler / SL chip 撤去 + 3 instance を 1 instance に統合) (2026-05-28)
+
+### 背景
+
+§248 (v398, B-4-a) で 13b/07 の **visible** dead code (旧 14 関数 + HTML 19 element) を撤去。残り B-4-b は規模が大きい 3 セット:
+
+1. グローバル `NORIRECO.trains.selectedXxxBySl / activeChipSlId` Map 撤廃 + `selectedTrainId / Name / Category / CarModel` (非 BySl) 撤廃
+2. 02-data-loaders の旧 cascade handler (`onTrainCategoryChange / onTrainChange / onTrainCustomInput / onCarModelChange / onCarModelCustomInput`) + `resetTrainSelector` 撤去
+3. 07-record-mode の旧 SL chip ロジック (`applyRecTrainCategory / clearAllTrainSelections / populateSlVehiclePicker / selectSlChip / populateSlVehicleSelect / onSlVehicleChange / isInDropdown / onSlVehicleCustomInput`) 撤去
+4. 各 modal (07/13b) で **3 instance → 1 instance** 統合 (要 factory 拡張: multi-container API)
+
+### 設計判断 — multi-container API
+
+旧 3 instance (`_recTimeEditor / _recDetailEditor / _recMetaEditor`、`_tripEditTimeEditor / _tripEditDetailEditor / _tripEditMetaEditor`) は各々 1 つの container に mount していた。1 instance に統合するには、各 section (time / train / delay / notes / photos) を別々の DOM コンテナに配置する必要があるため、factory `createTripDetailEditor` に **`containers: { time, train, delay, notes, photos }`** opt を追加 (従来の `container` 単一 mount と排他)。
+
+実装方針:
+- `ext = containers && typeof containers === 'object' ? containers : null` で multi-container モードを判定
+- `_timeEl / _trainEl / _delayEl / _notesEl / _photosEl` は `ext.X` または内部 subdiv に分岐
+- 未提供セクション (`ext.X = undefined` だが feature ON) は detached dummy `<div>` を作って innerHTML 書き込みを no-op 化
+- destroy: multi-container モードでは各 section コンテナを個別 `innerHTML = ''`、単一 container モードでは `container.innerHTML = ''`
+
+### 撤去対象
+
+#### `js/02-data-loaders.js` (~190 行削除)
+- `NORIRECO.trains` の 9 fields (`selectedTrainId / Name / Category / CarModel`, `selectedTrainCategoryBySl / IdBySl / NameBySl / CarModelBySl`, `activeChipSlId`) 撤廃 → `{TRAINS, TRAIN_CATEGORIES}` のみ
+- `resetTrainSelector` 関数 (28 行) 撤去 — `<script type="module">` の export だったが 07 の `import { resetTrainSelector }` 1 箇所からも呼出無し (v392 で `_mountRecDetailEditor` に置換されたまま import 文だけ残置)
+- `onTrainCategoryChange` (33 行) / `onTrainChange` (52 行) / `onTrainCustomInput` (13 行) / `onCarModelChange` (18 行) / `onCarModelCustomInput` (8 行) + window bridges 撤去 — HTML 側の `#rec-train-category` 等 element は v392 で消滅済
+
+#### `js/07-record-mode.js` (~330 行削除)
+- 旧 SL chip ロジック (`applyRecTrainCategory / clearAllTrainSelections / populateSlVehiclePicker / selectSlChip / populateSlVehicleSelect / onSlVehicleChange / isInDropdown / onSlVehicleCustomInput`) — 297 行撤去
+- `_mountRecDetailEditor` helper (27 行) 撤去 — `openRecConfirm` に inline 統合
+- `import { resetTrainSelector }` 撤去
+- `tripFromForm` の visit-only fallback (`NORIRECO.trains.selectedXxxx` 参照) を `null` 直返しに簡素化 — 新 factory `per-seg-chip` mode は segments 空のとき train picker chip 0 個で UI が非表示、旧フォールバック値も dead
+
+#### 3 instance → 1 instance 統合
+- **07 confirm modal**: `_recTimeEditor + _recDetailEditor + _recMetaEditor` 3 変数 → 1 `_recEditor` に統合。
+  - `containers: { time: #rec-time-edit-container, train: #rec-train-picker-container, delay: #rec-delay-container, notes: #rec-notes-container }`
+  - `features: { timeRow: isGps ? false : {precisions: 5精度}, trainPicker: 'per-seg-chip', delay: {maniaToggle, prefKey}, notes: true, photos: false }`
+  - 列車マニアトグル (`#rec-train-toggle`) は HTML 外側 wrapper の visibility 制御のみ (editor は常時 mount)。save 時に `trainToggle.checked` が false なら editor の `editorSegMap` を空にして train fields を null override
+  - `saveMultiSegmentTrip` の 3 回 `getDraft()` → 1 回に集約 (14 行短縮)
+  - `closeRecConfirm / discardRecord / saveMultiSegmentTrip` の destroy も 3 → 1 に集約
+- **13b trip-edit modal**: `_tripEditDetailEditor + _tripEditTimeEditor + _tripEditMetaEditor` → 1 `_tripEditEditor` に統合。
+  - `containers: { time: #trip-edit-time-container, train: <segs >=1 ? #trip-edit-segments : #trip-edit-train-picker-container>, delay: #trip-edit-delay-container, notes: #trip-edit-notes-container }`
+  - `features: { timeRow: {precisions: ['minute','day']}, trainPicker: <per-seg-rows or trip-level>, delay: true, notes: true, photos: false }`
+  - `saveTripEdit` の 3 回 `getDraft()` → 1 回に集約
+
+#### HTML (`noritetsu-map.html`、4 element 追加 + 2 削除)
+- `#rec-meta-container` → `#rec-delay-container` + `#rec-notes-container` 分割 (delay と notes を独立 container に)
+- `#trip-edit-meta-container` → `#trip-edit-delay-container` + `#trip-edit-notes-container` 分割
+
+### 検証
+
+`js-syntax-guard` サブエージェントで構文 clean + 削除済み変数の宣言ゼロ + 旧 HTML id 参照ゼロ + 循環 import なし確認。
+
+preview server (`python -m http.server 8000`) で直接 factory 単体テスト + 各モーダル mount テスト + round-trip 検証:
+
+| Test | 期待 | 結果 |
+|---|---|---|
+| factory multi-container 直接 mount (time/train/delay/notes 4 container) | エラー無し + 全 section 内容描画 + getDraft 返却 | ✅ error=null, timeFilled=5314, trainFilled=3820, delayFilled=1184, notesFilled=430, draftSegs=1 |
+| 13b trip-edit modal open (segments 0、trip-level mode) | 単一 editor で 4 section mount | ✅ err=null, segContent=48 (read-only "from→to"), timeContent=1652, delayContent=957 (header 含む), notesContent=430 |
+| 13b saveTripEdit round-trip (delay 1h30m + notes 入力 → localStorage 反映) | 90 min + notes 文字列保存 | ✅ afterDelay=90, afterNotes="test note v399 B-4-b", afterDate 維持 |
+| 07 openRecConfirm (visit-only、manual) | 単一 editor で 4 section mount (5 精度 time + per-seg-chip train + maniaToggle delay + notes) | ✅ err=null, timeFilled=5314 (精度 select 含む), trainFilled=3282, delayFilled=1195 (mania toggle 含む), notesFilled=430 |
+| 07 onRecTrainToggle ON/OFF | wrapper の display 切替 + editor 残置 | ✅ checked/pickerDisplay 同期、editor 維持 |
+
+console error 0。
+
+### 落とし穴 (SW キャッシュ汚染)
+
+preview server で v398 → v399 sw.js bump 後、`SW unregister + caches.delete()` を試みても、ページが再 register した SW が v399 cache に **古い v398 内容を再キャッシュ** する事象に再遭遇 (v397 §247 末尾の落とし穴と同形)。原因仮説: networkFirst の `fetch(request)` が HTTP 304 を返した場合 `response.ok=false` で fallback → cached old content をそのまま return。本番 (Cloudflare Pages) では mtime が更新されて 304 が出ないため再現しない。検証は **直接 `import('/js/xxx.js?bust=...')` で fresh module を読み込んでから `window.xxx` 経由で modal 操作** する方法で完遂。
+
+### 削除行数合計
+
+- 02-data-loaders.js: ~190 行
+- 07-record-mode.js: ~330 行
+- 13b-trips.js: ~70 行 (3 instance destroy/getDraft の重複削除)
+- 20-trip-detail-editor.js: +50 行 (multi-container 分岐 + destroy 拡張)
+- **正味 ~540 行削除**、可読性大幅向上
+
+### 残課題
+
+trip 詳細エディタ抽出フェーズ (B カテゴリ) これにて完了 = 確認モーダル中身の 02/07/13b 3 箇所重複が完全に factory 経由に集約され、グローバル可変 state も撤廃。次は **A (一括記録パネル本体着手)** — Notion §1.3 設計確定済、factory が揃ったので一気に作れる。
+
+---
+
 ## 248. v398 — trip 詳細エディタ B-4-a 完了 (13b/07 の visible dead code 撤去) (2026-05-28)
 
 ### 背景

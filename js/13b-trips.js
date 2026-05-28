@@ -44,15 +44,10 @@ import { createTripDetailEditor } from './20-trip-detail-editor.js';
 
 // 旅程編集モーダル内の写真エリアコントローラ (createPhotoArea 戻り値、null = 未生成)
 let _tripEditPhotoArea = null;
-// v393 (B-2): 旅程編集モーダル内の trip 詳細エディタ — 列車種別 / 車両形式 担当 (per-seg-rows / trip-level)
-let _tripEditDetailEditor = null;
-// v394 (B-3a): 旅程編集モーダル内の trip 詳細エディタ — 遅延 + メモ 担当 (2nd instance、draft は独立)
-//   将来 B-4 で 1 instance に統合予定。
-let _tripEditMetaEditor = null;
-// v396 (B-3b): 旅程編集モーダル内の trip 詳細エディタ — 乗車時刻 担当 (3rd instance、draft 独立)
-//   precisions=['minute','day'] のみ。UI 配置上 time / train / delay+notes を section で挟むため別 instance。
-//   将来 B-4 で _tripEditDetailEditor / _tripEditMetaEditor と共に 1 instance に統合予定。
-let _tripEditTimeEditor = null;
+// v399 (B-4-b): 旅程編集モーダル内の time / 列車 / 遅延 / メモ を 1 つに統合した factory instance。
+//   旧 _tripEditDetailEditor / _tripEditMetaEditor / _tripEditTimeEditor の 3 instance は
+//   multi-container API で集約 (containers.time / train / delay / notes)。
+let _tripEditEditor = null;
 
 // v332 (Phase 3): getTripStationName は循環 import 回避のため 13-mypage-common.js に移動。
 //   import 経由で参照する (v331 で 13b に置いて 13-common から循環 import → 初期化事故、v332 解消)。
@@ -343,126 +338,73 @@ function openTripEditModal(tripId) {
     subTitle.textContent = `${label} を編集します。`;
   }
 
-  // v226: 📍 区間 表示。区間そのものは read-only。
-  // v373/v380/v383: per-segment cascade を 13b 自前実装。
-  // v393 (B-2): trip 詳細エディタ factory (createTripDetailEditor) に集約。
-  //   - segs.length >= 1: per-seg-rows mode で #trip-edit-segments を factory が乗っ取る (seg header + cascade 全部 factory render)。
-  //     🚆 列車種別 section 全体は hide (trip-level fallback は不要)。
-  //   - segs.length === 0: trip-level mode で #trip-edit-train-picker-container に factory mount。
-  //     #trip-edit-segments は従来通り "from → to" の read-only 1 行。
-  //   旧 4 input (#trip-edit-train-category 等) と旧 per-seg-* グローバル関数は dead code 化 (B-4 で撤去)。
-  if (_tripEditDetailEditor) {
-    try { _tripEditDetailEditor.destroy(); } catch (e) {}
-    _tripEditDetailEditor = null;
+  // v399 (B-4-b): time / 列車 / 遅延 / メモ を **1 つの** _tripEditEditor に統合。
+  //   旧 3 instance (_tripEditDetailEditor / _tripEditTimeEditor / _tripEditMetaEditor) は multi-container API で集約。
+  //   - segs.length >= 1: trainPicker='per-seg-rows', containers.train = #trip-edit-segments
+  //     (🚆 列車種別 section 全体は hide。trip-level fallback は不要)
+  //   - segs.length === 0: trainPicker='trip-level', containers.train = #trip-edit-train-picker-container
+  //     #trip-edit-segments は従来通り "from → to" の read-only 1 行 (factory 不使用、ここで innerHTML を書く)
+  //   旧 4 input (#trip-edit-train-category 等) と旧 per-seg-* グローバル関数は v398 (B-4-a) で撤去済。
+  if (_tripEditEditor) {
+    try { _tripEditEditor.destroy(); } catch (e) {}
+    _tripEditEditor = null;
   }
   const segEl = document.getElementById('trip-edit-segments');
   const trainSectionEl = document.getElementById('trip-edit-train-section');
   const trainPickerEl = document.getElementById('trip-edit-train-picker-container');
   const segs = Array.isArray(trip.segments) ? trip.segments : [];
   const _hasSegmentsForEdit = segs.length >= 1;
+  let trainContainerEl;
+  let trainPickerMode;
+  let initialTrainPart;
   if (_hasSegmentsForEdit) {
-    // per-seg-rows mode — factory が #trip-edit-segments を完全に乗っ取る (seg header 含む)。
-    // 🚆 列車種別 section 全体は hide。
     if (trainSectionEl) trainSectionEl.style.display = 'none';
-    if (segEl) {
-      _tripEditDetailEditor = createTripDetailEditor({
-        container: segEl,
-        initial: { segments: segs.map(s => ({ ...s })) },
-        features: {
-          trainPicker: 'per-seg-rows',
-          timeRow: false,
-          delay: false,
-          notes: false,
-          photos: false,
-        },
-      });
-    }
+    trainContainerEl = segEl;
+    trainPickerMode = 'per-seg-rows';
+    initialTrainPart = { segments: segs.map(s => ({ ...s })) };
   } else {
-    // trip-level mode — #trip-edit-segments は from → to 表示のまま、
-    // #trip-edit-train-picker-container に factory mount。
     if (segEl) {
       // v326: name 列 DROP 後は id → MERGED_STATIONS で逆引き
       segEl.innerHTML = `<span style="color:var(--silver)">${getTripStationName(trip, 'from') || '?'} → ${getTripStationName(trip, 'to') || '?'}</span>`;
     }
     if (trainSectionEl) trainSectionEl.style.display = '';
-    if (trainPickerEl) {
-      _tripEditDetailEditor = createTripDetailEditor({
-        container: trainPickerEl,
-        initial: {
-          train_category: trip.train_category || null,
-          train_id: trip.train_id || null,
-          train_name: trip.train_name || null,
-          car_model: trip.car_model || null,
-        },
-        features: {
-          trainPicker: 'trip-level',
-          timeRow: false,
-          delay: false,
-          notes: false,
-          photos: false,
-        },
-      });
-    }
+    trainContainerEl = trainPickerEl;
+    trainPickerMode = 'trip-level';
+    initialTrainPart = {
+      train_category: trip.train_category || null,
+      train_id: trip.train_id || null,
+      train_name: trip.train_name || null,
+      car_model: trip.car_model || null,
+    };
   }
 
-  // v396 (B-3b): 乗車時刻も factory (_tripEditTimeEditor) に集約。
-  //   - 旧 #trip-edit-date / depart / arrive の DOM 直書きは廃止 (HTML 側は display:none で dead code)
-  //   - precisions=['minute','day'] の 2 精度ロジック (date 空 → 元値温存 / dep+arr 両方 → minute 計算 /
-  //     片方のみ → minute だが total_minutes 不定 / dep+arr 空 → 'minute' 元精度から 'day' 降格) は factory 内蔵
-  //   - v345 の「verified ロック撤回」もここで完結 (lock 表示の出し分けは廃止済)
-  if (_tripEditTimeEditor) {
-    try { _tripEditTimeEditor.destroy(); } catch (e) {}
-    _tripEditTimeEditor = null;
-  }
-  const timeContainer = document.getElementById('trip-edit-time-container');
-  if (timeContainer) {
-    _tripEditTimeEditor = createTripDetailEditor({
-      container: timeContainer,
-      initial: {
-        date:           trip.date           || null,
-        depart_time:    trip.depart_time    || null,
-        arrive_time:    trip.arrive_time    || null,
-        date_precision: trip.date_precision || 'minute',
-        total_minutes:  (typeof trip.total_minutes === 'number') ? trip.total_minutes : null,
-      },
-      features: {
-        timeRow: { precisions: ['minute', 'day'] },
-        trainPicker: false,
-        delay: false,
-        notes: false,
-        photos: false,
-      },
-    });
-  }
-
-  // v393 (B-2): 🚆 列車種別 / 車両形式の DOM 操作は createTripDetailEditor (per-seg-rows / trip-level mode)
-  //   が完全に担当。13b 旧実装 (v226〜v384 の per-seg cascade 直書き + trip 単位 4 input の visibility 制御)
-  //   はファクトリ移行で不要化。旧 4 input は HTML 側で display:none 固定、旧 onTripEdit* 関数は dead code。
-
-  // v394 (B-3a): ⏱ 遅延 + 📝 自由メモ は 2nd factory instance (`_tripEditMetaEditor`) が担当。
-  //   1 modal に editor を 2 つ持つのは中間状態 — 将来 B-4 で time / train picker / delay / notes を
-  //   1 instance に統合予定。draft も分離されているため saveTripEdit で各 editor の getDraft() を merge する。
-  if (_tripEditMetaEditor) {
-    try { _tripEditMetaEditor.destroy(); } catch (e) {}
-    _tripEditMetaEditor = null;
-  }
-  const metaContainer = document.getElementById('trip-edit-meta-container');
-  if (metaContainer) {
-    _tripEditMetaEditor = createTripDetailEditor({
-      container: metaContainer,
-      initial: {
-        delay_minutes: trip.delay_minutes || null,
-        notes: trip.notes || null,
-      },
-      features: {
-        trainPicker: false,
-        timeRow: false,
-        delay: true,
-        notes: true,
-        photos: false,
-      },
-    });
-  }
+  // 乗車時刻: precisions=['minute','day'] の 2 精度ロジックは factory 内蔵
+  //   (旧 _tripEditTimeEditor と同じ — 5 精度版は 07 専用、13b は 2 精度のみ)。
+  _tripEditEditor = createTripDetailEditor({
+    containers: {
+      time:  document.getElementById('trip-edit-time-container'),
+      train: trainContainerEl,
+      delay: document.getElementById('trip-edit-delay-container'),
+      notes: document.getElementById('trip-edit-notes-container'),
+    },
+    initial: {
+      ...initialTrainPart,
+      date:           trip.date           || null,
+      depart_time:    trip.depart_time    || null,
+      arrive_time:    trip.arrive_time    || null,
+      date_precision: trip.date_precision || 'minute',
+      total_minutes:  (typeof trip.total_minutes === 'number') ? trip.total_minutes : null,
+      delay_minutes:  trip.delay_minutes  || null,
+      notes:          trip.notes          || null,
+    },
+    features: {
+      timeRow: { precisions: ['minute', 'day'] },
+      trainPicker: trainPickerMode,
+      delay: true,
+      notes: true,
+      photos: false,
+    },
+  });
 
   // v258: 📷 写真エリアを再生成 (createPhotoArea を使って最大 5 枚)
   if (_tripEditPhotoArea) {
@@ -500,19 +442,10 @@ function closeTripEditModal() {
     try { _tripEditPhotoArea.destroy(); } catch (e) {}
     _tripEditPhotoArea = null;
   }
-  // v393 (B-2): trip 詳細エディタ (列車種別 / 車両形式) も破棄
-  if (_tripEditDetailEditor) {
-    try { _tripEditDetailEditor.destroy(); } catch (e) {}
-    _tripEditDetailEditor = null;
-  }
-  // v394 (B-3a): メタエディタ (遅延 + メモ) も破棄
-  if (_tripEditMetaEditor) {
-    try { _tripEditMetaEditor.destroy(); } catch (e) {}
-    _tripEditMetaEditor = null;
-  }
-  if (_tripEditTimeEditor) {
-    try { _tripEditTimeEditor.destroy(); } catch (e) {}
-    _tripEditTimeEditor = null;
+  // v399 (B-4-b): 時刻 / 列車 / 遅延 / メモ を統合した単一 editor を破棄
+  if (_tripEditEditor) {
+    try { _tripEditEditor.destroy(); } catch (e) {}
+    _tripEditEditor = null;
   }
 }
 window.closeTripEditModal = closeTripEditModal;
@@ -524,47 +457,33 @@ async function saveTripEdit() {
   const trip = (NORIRECO.mypage.state._mypageCache || []).find(t => t.id === tripId);
   if (!trip) { alert('旅程が見つかりません'); closeTripEditModal(); return; }
 
-  // v394 (B-3a): delay_minutes / notes は _tripEditMetaEditor.getDraft() 経由で取得。
-  //   factory 内の collectDelay (h/m → 分集約、5999 クランプ) / collectNotes (trim、空→null) と同形の正規化。
-  let metaDraft = null;
-  if (_tripEditMetaEditor) {
-    try { metaDraft = _tripEditMetaEditor.getDraft(); }
-    catch (e) { console.warn('[saveTripEdit] metaEditor.getDraft() failed:', e); }
+  // v399 (B-4-b): time / 列車 / 遅延 / メモ を統合した _tripEditEditor.getDraft() から一括取得。
+  //   factory が各 collect (timeRow 2 精度 / delay h/m → 分集約 5999 クランプ / notes trim 空→null) を正規化。
+  let editorDraft = null;
+  if (_tripEditEditor) {
+    try { editorDraft = _tripEditEditor.getDraft(); }
+    catch (e) { console.warn('[saveTripEdit] editor.getDraft() failed:', e); }
   }
-  const newDelay = (metaDraft && typeof metaDraft.delay_minutes === 'number') ? metaDraft.delay_minutes : null;
-  const newNotes = metaDraft?.notes || null;
+  const newDelay = (editorDraft && typeof editorDraft.delay_minutes === 'number') ? editorDraft.delay_minutes : null;
+  const newNotes = editorDraft?.notes || null;
 
-  // v396 (B-3b): 乗車時刻も factory (_tripEditTimeEditor) 経由 — 2 精度ロジック (空入力 → 元値温存 /
-  //   dep+arr 入力 → minute + total_minutes / dep+arr 空 → 元 'minute' のみ 'day' 降格) は factory 内蔵。
-  //   v345 のロック撤回もここで完結 (lock 表示は廃止)。
-  let timeDraft = null;
-  if (_tripEditTimeEditor) {
-    try { timeDraft = _tripEditTimeEditor.getDraft(); }
-    catch (e) { console.warn('[saveTripEdit] timeEditor.getDraft() failed:', e); }
-  }
+  // 乗車時刻 — 2 精度ロジック (空入力 → 元値温存 / dep+arr 入力 → minute + total_minutes /
+  //   dep+arr 空 → 元 'minute' のみ 'day' 降格) は factory 内蔵。
   const tripPatch = {};
-  if (timeDraft && timeDraft.date) {
-    tripPatch.date = timeDraft.date;
-    if (timeDraft.date_precision) tripPatch.date_precision = timeDraft.date_precision;
-    // depart_time / arrive_time: factory は dep/arr 片方のみのとき total_minutes=null を返す。
-    // ここでは「key を patch に含める = 値を上書きする」原則を保つ (旧実装と同じ)。
-    if (timeDraft.depart_time != null) tripPatch.depart_time = timeDraft.depart_time;
-    if (timeDraft.arrive_time != null) tripPatch.arrive_time = timeDraft.arrive_time;
-    if (typeof timeDraft.total_minutes === 'number') tripPatch.total_minutes = timeDraft.total_minutes;
+  if (editorDraft && editorDraft.date) {
+    tripPatch.date = editorDraft.date;
+    if (editorDraft.date_precision) tripPatch.date_precision = editorDraft.date_precision;
+    if (editorDraft.depart_time != null) tripPatch.depart_time = editorDraft.depart_time;
+    if (editorDraft.arrive_time != null) tripPatch.arrive_time = editorDraft.arrive_time;
+    if (typeof editorDraft.total_minutes === 'number') tripPatch.total_minutes = editorDraft.total_minutes;
   }
 
-  // v226 → v356 → v380 → v383 → v393 (B-2): 🚆 列車種別 / 車両形式 —
-  //   createTripDetailEditor が per-seg-rows / trip-level の DOM 値を draft に同期。
+  // 🚆 列車種別 / 車両形式 —
   //   - per-seg-rows (segments あり): draft.segments[*].train_category/id/name/car_model を引き継ぎ、
   //     trip 直下は集約ルール (全 seg 一致なら値 / 不一致なら null) で再集約。
   //   - trip-level (segments なし): draft.train_category/id/name/car_model をそのまま採用。
   const existingSegs = Array.isArray(trip.segments) ? trip.segments : [];
   const hasPerSegEditor = existingSegs.length > 0;
-  let editorDraft = null;
-  if (_tripEditDetailEditor) {
-    try { editorDraft = _tripEditDetailEditor.getDraft(); }
-    catch (e) { console.warn('[saveTripEdit] editor.getDraft() failed:', e); }
-  }
 
   if (hasPerSegEditor) {
     const editorSegs = (editorDraft && Array.isArray(editorDraft.segments)) ? editorDraft.segments : [];

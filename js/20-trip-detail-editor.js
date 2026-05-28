@@ -12,7 +12,11 @@
 //
 // 公開 API:
 //   const editor = createTripDetailEditor({
-//     container,         // HTMLElement (中身は本 module が描画)
+//     container,         // HTMLElement — 単一コンテナモード (全 section を 1 つの DOM に
+//                        //   `.tde-section.tde-time/.tde-train/...` を縦並べで挿入)
+//     containers,        // { time, train, delay, notes, photos } — 各 section を別々の
+//                        //   コンテナに mount する場合に使う (v399 B-4-b で追加)。
+//                        //   container と containers は排他 (containers 優先)。
 //     initial,           // draft trip オブジェクト
 //     features,          // セクション可視・モード設定
 //     onChange,          // (optional) draft 変化通知
@@ -40,16 +44,20 @@
 // state 管理方針 (v383 落とし穴対策):
 //   - per-seg-chip mode: chip 切替で 1 seg だけ画面に出すため、コンポーネント内クロージャの
 //     _segState: Map<lineId, {train_category, train_id, train_name, car_model}> で保持。
-//     v371-v382 で使っていたグローバル NORIRECO.trains.selectedXxxBySl / activeChipSlId は撤廃 (B-4)。
+//     v371-v382 で使っていたグローバル NORIRECO.trains.selectedXxxBySl / activeChipSlId は撤廃済 (v399 B-4-b)。
 //   - per-seg-rows mode: 全 seg 行が同時表示なので各行の DOM 自体が state。
 //   - trip-level mode: draft.train_* 1 set のみ。
 //
-// 実装段階:
-//   B-1 (v392, 本コミット): factory 関数 + features 分岐 + section スケルトンを配置。
-//                            per-seg-chip 等の本格的なロジックは TODO で次セッションへ。
-//   B-2: 13b 編集モーダルを per-seg-rows / trip-level mode で本コンポーネントに移行。
-//   B-3: 時刻 / 遅延 / メモ も完全に本コンポーネントへ集約、HTML 側を圧縮。
-//   B-4: グローバル NORIRECO.trains.selectedXxxBySl / activeChipSlId 撤廃。
+// 実装段階 (リファクタ完結):
+//   B-1 (v392): factory 関数 + features 分岐 + section スケルトン + per-seg-chip mode 本実装 + 07 移行
+//   B-2 (v393): 13b 編集モーダルを per-seg-rows / trip-level mode で本コンポーネントに移行
+//   B-3a (v394): 13b の ⏱ 遅延 + 📝 自由メモ を 2nd instance に集約
+//   B-3b (v396): 13b の 🕒 乗車時刻 (2 精度) を 3rd instance に集約
+//   B-3c (v397): 07 確認モーダル側の time/delay/notes 移植 + delay maniaToggle 拡張
+//   B-4-a (v398): 13b/07 の visible dead code 撤去 (~350 行)
+//   B-4-b (v399): グローバル NORIRECO.trains.selectedXxxBySl / activeChipSlId 撤廃 +
+//                 02 旧 cascade handler + 07 旧 SL chip ロジック撤去 (~360 行) +
+//                 multi-container API (`containers`) で各 modal 3 instance を 1 instance に統合
 // ══════════════════════════════════════════════════════════════
 
 import { createPhotoArea } from './18-photo-area.js';
@@ -67,13 +75,17 @@ function _escHtml(s) {
 export function createTripDetailEditor(opts) {
   const {
     container,
+    containers,
     initial = {},
     features = {},
     onChange = null,
   } = opts || {};
 
-  if (!container || !(container instanceof HTMLElement)) {
-    throw new Error('createTripDetailEditor: container must be an HTMLElement');
+  // v399 (B-4-b): containers (per-section) を提供すれば container 省略可。
+  //   1 つも指定が無ければエラー。
+  const ext = (containers && typeof containers === 'object') ? containers : null;
+  if (!ext && (!container || !(container instanceof HTMLElement))) {
+    throw new Error('createTripDetailEditor: container or containers must be provided');
   }
 
   // ── features 正規化 ───────────────────────────────────────────
@@ -145,23 +157,40 @@ export function createTripDetailEditor(opts) {
   let _photoArea = null;
 
   // ── DOM 構築 ──────────────────────────────────────────────────
-  // セクション毎の枠を 1 度だけ描画。各セクションは features に応じて hide/show。
-  // section 内の中身 (input / select / chip) は init* 関数が後から流し込む。
-  container.innerHTML = `
-    <div class="tde-root">
-      <div class="tde-section tde-time"   data-section="time"   style="display:${featTime   ? '' : 'none'}"></div>
-      <div class="tde-section tde-train"  data-section="train"  style="display:${featTrain  ? '' : 'none'}"></div>
-      <div class="tde-section tde-delay"  data-section="delay"  style="display:${featDelay  ? '' : 'none'}"></div>
-      <div class="tde-section tde-notes"  data-section="notes"  style="display:${featNotes  ? '' : 'none'}"></div>
-      <div class="tde-section tde-photos" data-section="photos" style="display:${featPhotos ? '' : 'none'}"></div>
-    </div>
-  `;
-
-  const _timeEl   = container.querySelector('.tde-time');
-  const _trainEl  = container.querySelector('.tde-train');
-  const _delayEl  = container.querySelector('.tde-delay');
-  const _notesEl  = container.querySelector('.tde-notes');
-  const _photosEl = container.querySelector('.tde-photos');
+  // v399 (B-4-b): containers を指定した場合は各 section の DOM を提供された要素に直接 mount。
+  //   未指定 (container のみ) のときは従来通り 1 つのコンテナに 5 セクションの subdiv を描画。
+  //   `dummy()` は feature ON だが containers.<name> 未指定のときの no-op 用 detached div。
+  let _timeEl, _trainEl, _delayEl, _notesEl, _photosEl;
+  if (ext) {
+    const dummy = () => document.createElement('div');
+    _timeEl   = (ext.time   instanceof HTMLElement) ? ext.time   : dummy();
+    _trainEl  = (ext.train  instanceof HTMLElement) ? ext.train  : dummy();
+    _delayEl  = (ext.delay  instanceof HTMLElement) ? ext.delay  : dummy();
+    _notesEl  = (ext.notes  instanceof HTMLElement) ? ext.notes  : dummy();
+    _photosEl = (ext.photos instanceof HTMLElement) ? ext.photos : dummy();
+    // 提供されたコンテナは念のため空にしておく (前回の destroy 後の残骸対策)
+    if (ext.time   instanceof HTMLElement) ext.time.innerHTML   = '';
+    if (ext.train  instanceof HTMLElement) ext.train.innerHTML  = '';
+    if (ext.delay  instanceof HTMLElement) ext.delay.innerHTML  = '';
+    if (ext.notes  instanceof HTMLElement) ext.notes.innerHTML  = '';
+    if (ext.photos instanceof HTMLElement) ext.photos.innerHTML = '';
+  } else {
+    // 単一コンテナモード (旧 API、互換維持) — 1 つのコンテナに 5 section の subdiv を描画。
+    container.innerHTML = `
+      <div class="tde-root">
+        <div class="tde-section tde-time"   data-section="time"   style="display:${featTime   ? '' : 'none'}"></div>
+        <div class="tde-section tde-train"  data-section="train"  style="display:${featTrain  ? '' : 'none'}"></div>
+        <div class="tde-section tde-delay"  data-section="delay"  style="display:${featDelay  ? '' : 'none'}"></div>
+        <div class="tde-section tde-notes"  data-section="notes"  style="display:${featNotes  ? '' : 'none'}"></div>
+        <div class="tde-section tde-photos" data-section="photos" style="display:${featPhotos ? '' : 'none'}"></div>
+      </div>
+    `;
+    _timeEl   = container.querySelector('.tde-time');
+    _trainEl  = container.querySelector('.tde-train');
+    _delayEl  = container.querySelector('.tde-delay');
+    _notesEl  = container.querySelector('.tde-notes');
+    _photosEl = container.querySelector('.tde-photos');
+  }
 
   // 各 init は features が ON のときだけ呼ぶ。
   if (featTime)   initTimeRow();
@@ -1388,7 +1417,14 @@ export function createTripDetailEditor(opts) {
         try { _photoArea.destroy(); } catch (e) {}
         _photoArea = null;
       }
-      try { container.innerHTML = ''; } catch (e) {}
+      // v399 (B-4-b): containers モードでは各 section コンテナを個別クリア (container は無い)。
+      if (ext) {
+        for (const el of [_timeEl, _trainEl, _delayEl, _notesEl, _photosEl]) {
+          if (el && el.parentNode) { try { el.innerHTML = ''; } catch (e) {} }
+        }
+      } else {
+        try { container.innerHTML = ''; } catch (e) {}
+      }
     },
   };
 }
