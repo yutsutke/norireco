@@ -434,6 +434,18 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .bulk-line-name{font-size:13px;color:var(--white);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .bulk-line-meta{font-size:10px;color:var(--silver);opacity:.75;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
+/* A-5 (v404 〜): アコーディオン展開 (▼/▶ + フル入力フォーム) */
+.bulk-line-row{display:flex;flex-direction:column;gap:0;}
+.bulk-accordion-toggle{flex-shrink:0;width:28px;height:28px;padding:0;background:rgba(140,160,179,.08);color:var(--silver);border:1px solid var(--track);border-radius:6px;font-size:10px;font-family:inherit;cursor:pointer;transition:background .12s;}
+.bulk-accordion-toggle:hover{background:rgba(140,160,179,.2);color:var(--white);}
+.bulk-accordion-toggle[aria-expanded="true"]{background:rgba(242,169,0,.15);color:var(--gold);border-color:rgba(242,169,0,.55);}
+.bulk-accordion-body{padding:10px 8px 14px;margin:0 2px 4px;background:rgba(8,14,22,.6);border:1px solid rgba(242,169,0,.35);border-top:none;border-radius:0 0 8px 8px;display:flex;flex-direction:column;gap:8px;}
+.bulk-accordion-body[hidden]{display:none;}
+.bulk-accordion-body .tde-time,
+.bulk-accordion-body .tde-train,
+.bulk-accordion-body .tde-delay,
+.bulk-accordion-body .tde-notes{min-height:0;}
+
 /* フィルタバー */
 .mp-filter-bar{display:flex;gap:8px;flex-wrap:wrap;padding:10px 12px;background:rgba(14,24,36,.5);border-bottom:1px solid var(--track);align-items:center;position:sticky;top:84px;z-index:3;}
 .mp-filter-row{display:flex;align-items:center;gap:5px;flex:1;min-width:130px;}

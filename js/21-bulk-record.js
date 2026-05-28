@@ -33,6 +33,10 @@
 import { currentUserId } from './12-auth.js';
 import { redrawAllLinesAfterTripChange, showRecordToast } from './07-record-mode.js';
 import { updateOverlays } from './08-rendering.js';
+// A-5 (v404): アコーディオン展開で行内 mount する trip 詳細エディタ。
+//   B-4-b の multi-container API (containers: {time, train, delay, notes})
+//   を活用して 1 行に複数 section を縦並べ。photos は A-5 では skip。
+import { createTripDetailEditor } from './20-trip-detail-editor.js';
 
 window.NORIRECO = window.NORIRECO || {};
 window.NORIRECO.bulkRecord = window.NORIRECO.bulkRecord || {};
@@ -54,6 +58,13 @@ let _saving = false;
 //   - sort:  'near' (現在地/map center から近い順) | 'name' (50 音順)
 //   - group: 地域グループ ('all' | SL.group 値) - 13 値
 const _filter = { query: '', sort: 'near', group: 'all' };
+
+// A-5: アコーディオン同時 1 行制御。Notion §1.3「同時に開くのは1行だけ」確定。
+//   - _openLineId: 現在開いている SL.id (なければ null)
+//   - _openEditor: 開いている行の createTripDetailEditor インスタンス
+//   別の行を開く / saveBulkDrafts / closeBulkRecordSheet で _closeAccordion を呼ぶ。
+let _openLineId = null;
+let _openEditor = null;
 
 // ──────────────────────────────────────────────────────────────
 // draft 構築 (たたむモード = ゼロ摩擦)
@@ -228,6 +239,9 @@ function _renderChecklistOnly() {
   const list = document.getElementById('bulk-checklist');
   const meta = document.getElementById('bulk-checklist-meta');
   if (!list) return;
+  // A-5: チェックリスト全 innerHTML 書き換え前に、開いている accordion editor の draft を保存して destroy
+  //   (フィルタ変更でその行が消えたら editor 参照が宙ぶらりんになるため)
+  if (_openLineId) _closeAccordion();
   const SL = (window.NORIRECO?.data?.SERVICE_LINES) || [];
   const loc = _getCurrentLocation();
   const filtered = _applyFilter(SL, _filter, loc);
@@ -237,29 +251,208 @@ function _renderChecklistOnly() {
 }
 
 function _buildLineItem(sl) {
-  const row = document.createElement('label');
-  row.className = 'bulk-line-item';
-  row.dataset.lineId = sl.id;
+  // A-5: 1 行 = ヘッダ (label, クリックで checkbox toggle) + 非展開コンテナ (div, accordion body)。
+  //   ▶/▼ ボタンは event.stopPropagation で checkbox toggle を抑止。
+  const wrap = document.createElement('div');
+  wrap.className = 'bulk-line-row';
+  wrap.dataset.lineId = sl.id;
 
   const checked = _bulkDrafts.has(sl.id);
+  const isOpen = _openLineId === sl.id;
+  const isEdited = !!_bulkDrafts.get(sl.id)?._edited;
   const sts = Array.isArray(sl.stations) ? sl.stations : [];
   const opName = sl.operator || '';
   const stCount = sts.length;
   const circularMark = sl.circular ? ' 🔄' : '';
+  const editedMark = isEdited ? ' ✏️' : '';
   const color = sl.color || '#888';
 
-  row.innerHTML = `
-    <input type="checkbox" class="bulk-line-check" ${checked ? 'checked' : ''}>
-    <span class="bulk-line-swatch" style="background:${color}"></span>
-    <span class="bulk-line-main">
-      <span class="bulk-line-name">${_esc(sl.name || sl.id)}${circularMark}</span>
-      <span class="bulk-line-meta">${_esc(opName)} · ${stCount} 駅</span>
-    </span>
+  wrap.innerHTML = `
+    <label class="bulk-line-item" data-line-id="${_esc(sl.id)}">
+      <input type="checkbox" class="bulk-line-check" ${checked ? 'checked' : ''}>
+      <span class="bulk-line-swatch" style="background:${color}"></span>
+      <span class="bulk-line-main">
+        <span class="bulk-line-name">${_esc(sl.name || sl.id)}${circularMark}${editedMark}</span>
+        <span class="bulk-line-meta">${_esc(opName)} · ${stCount} 駅</span>
+      </span>
+      <button type="button" class="bulk-accordion-toggle" aria-expanded="${isOpen ? 'true' : 'false'}"
+              title="詳細フォームを開く (時刻 / 列車 / 遅延 / メモ)">
+        ${isOpen ? '▼' : '▶'}
+      </button>
+    </label>
+    <div class="bulk-accordion-body" data-line-id="${_esc(sl.id)}"${isOpen ? '' : ' hidden'}>
+      <div class="tde-time"></div>
+      <div class="tde-train"></div>
+      <div class="tde-delay"></div>
+      <div class="tde-notes"></div>
+    </div>
   `;
 
-  const cb = row.querySelector('input.bulk-line-check');
+  // checkbox: ゼロ摩擦 default のチェック
+  const cb = wrap.querySelector('input.bulk-line-check');
   cb.addEventListener('change', () => _onToggleLine(sl, cb.checked));
-  return row;
+
+  // accordion toggle: チェックボックスの toggle に巻き込まれない
+  const tgl = wrap.querySelector('.bulk-accordion-toggle');
+  tgl.addEventListener('click', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    _toggleAccordion(sl);
+  });
+
+  return wrap;
+}
+
+// ──────────────────────────────────────────────────────────────
+// A-5: アコーディオン展開 — 同時 1 行 / フル入力 (Notion §1.3)
+// ──────────────────────────────────────────────────────────────
+
+function _toggleAccordion(sl) {
+  const wasOpen = _openLineId === sl.id;
+  // 別の行を開く前 / 同じ行を閉じる前に: 現開行の draft を上書き保存 + editor destroy
+  if (_openLineId) _closeAccordion();
+  if (wasOpen) return;   // 同じ行 = 閉じるだけで終了
+  _openAccordion(sl);
+}
+
+function _openAccordion(sl) {
+  // 開く操作 = チェックも入る (Notion §1.3 仕様)
+  if (!_bulkDrafts.has(sl.id)) {
+    const d = _buildDefaultDraft(sl);
+    if (d) _bulkDrafts.set(sl.id, d);
+    const cb = document.querySelector(`.bulk-line-row[data-line-id="${CSS.escape(sl.id)}"] input.bulk-line-check`);
+    if (cb) cb.checked = true;
+  }
+  _openLineId = sl.id;
+  const body = document.querySelector(`.bulk-accordion-body[data-line-id="${CSS.escape(sl.id)}"]`);
+  if (!body) { _updateSummary(); return; }
+  body.hidden = false;
+
+  // factory mount (multi-container API)
+  const draft = _bulkDrafts.get(sl.id);
+  try {
+    _openEditor = createTripDetailEditor({
+      containers: {
+        time:  body.querySelector('.tde-time'),
+        train: body.querySelector('.tde-train'),
+        delay: body.querySelector('.tde-delay'),
+        notes: body.querySelector('.tde-notes'),
+      },
+      initial: _draftToEditorInitial(draft, sl),
+      features: {
+        timeRow:     { precisions: ['minute', 'day', 'month', 'year', 'unknown'] },
+        trainPicker: 'per-seg-rows',
+        delay:       true,
+        notes:       true,
+        photos:      false,    // A-5 では写真 skip (将来追加可)
+      },
+    });
+  } catch (e) {
+    console.warn('[bulk-record] createTripDetailEditor failed:', e);
+    body.innerHTML = `<div style="padding:12px;color:var(--red);font-size:11px">⚠️ 詳細フォーム生成失敗: ${_esc(e.message || String(e))}</div>`;
+  }
+
+  // toggle ボタン ▶ → ▼ + scrollIntoView (展開部分が画面外なら見せる)
+  const tgl = document.querySelector(`.bulk-line-row[data-line-id="${CSS.escape(sl.id)}"] .bulk-accordion-toggle`);
+  if (tgl) { tgl.textContent = '▼'; tgl.setAttribute('aria-expanded', 'true'); }
+  setTimeout(() => { try { body.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {} }, 30);
+  _updateSummary();
+}
+
+function _closeAccordion() {
+  if (!_openLineId) return;
+  const lineId = _openLineId;
+  // editor.getDraft() で _bulkDrafts に上書き
+  if (_openEditor) {
+    try {
+      const ed = _openEditor.getDraft();
+      const cur = _bulkDrafts.get(lineId);
+      if (cur) {
+        _bulkDrafts.set(lineId, {
+          ...cur,
+          date:           ed.date           || null,
+          depart_time:    ed.depart_time    || null,
+          arrive_time:    ed.arrive_time    || null,
+          date_precision: ed.date_precision || cur.date_precision || 'unknown',
+          segments: (Array.isArray(ed.segments) && ed.segments.length > 0)
+            ? ed.segments.map(s => ({
+                lineId: s.lineId,
+                from:   s.from,
+                to:     s.to,
+                // factory は from_id/to_id ではなく from_station_id/to_station_id を返さないため、
+                // 旧 draft の seg から駅 id を引き継ぐ (line/from/to 同じなら同じ id)
+                from_station_id: s.from_station_id || s.from_id || _findSegStationId(cur, s.lineId, s.from, 'from'),
+                to_station_id:   s.to_station_id   || s.to_id   || _findSegStationId(cur, s.lineId, s.to,   'to'),
+                train_category:  s.train_category || null,
+                train_id:        s.train_id       || null,
+                train_name:      s.train_name     || null,
+                car_model:       s.car_model      || null,
+              }))
+            : cur.segments,
+          delay_minutes: (typeof ed.delay_minutes === 'number') ? ed.delay_minutes : null,
+          notes:         ed.notes || null,
+          _edited:       true,
+        });
+      }
+    } catch (e) {
+      console.warn('[bulk-record] editor.getDraft failed:', e);
+    }
+    try { _openEditor.destroy(); } catch (e) {}
+    _openEditor = null;
+  }
+  // 行ヘッダ更新 (✏️ マーク追加 / ▼ → ▶)
+  const wrap = document.querySelector(`.bulk-line-row[data-line-id="${CSS.escape(lineId)}"]`);
+  if (wrap) {
+    const body = wrap.querySelector('.bulk-accordion-body');
+    if (body) body.hidden = true;
+    const tgl = wrap.querySelector('.bulk-accordion-toggle');
+    if (tgl) { tgl.textContent = '▶'; tgl.setAttribute('aria-expanded', 'false'); }
+    const nameEl = wrap.querySelector('.bulk-line-name');
+    const d = _bulkDrafts.get(lineId);
+    const SL = (window.NORIRECO?.data?.SERVICE_LINES) || [];
+    const sl = SL.find(x => x.id === lineId);
+    if (nameEl && sl) {
+      const circularMark = sl.circular ? ' 🔄' : '';
+      const editedMark   = d?._edited ? ' ✏️' : '';
+      nameEl.textContent = `${sl.name || sl.id}${circularMark}${editedMark}`;
+    }
+  }
+  _openLineId = null;
+  _updateSummary();
+}
+
+function _findSegStationId(prevDraft, lineId, stName, role /* 'from' | 'to' */) {
+  if (!prevDraft || !Array.isArray(prevDraft.segments)) return null;
+  for (const s of prevDraft.segments) {
+    if (s.lineId !== lineId) continue;
+    if (role === 'from' && s.from === stName) return s.from_station_id || s.from_id || null;
+    if (role === 'to'   && s.to   === stName) return s.to_station_id   || s.to_id   || null;
+  }
+  return null;
+}
+
+function _draftToEditorInitial(draft, sl) {
+  // factory の initial 構造に合わせる。segments には lineName が必要 (per-seg-rows mode の行ヘッダ表示)。
+  return {
+    date:           draft.date           || null,
+    depart_time:    draft.depart_time    || null,
+    arrive_time:    draft.arrive_time    || null,
+    date_precision: draft.date_precision || 'unknown',
+    segments: (draft.segments || []).map(s => ({
+      lineId:   s.lineId,
+      lineName: sl?.name || s.lineId,
+      from:     s.from,
+      to:       s.to,
+      from_station_id: s.from_station_id || s.from_id || null,
+      to_station_id:   s.to_station_id   || s.to_id   || null,
+      train_category:  s.train_category || null,
+      train_id:        s.train_id       || null,
+      train_name:      s.train_name     || null,
+      car_model:       s.car_model      || null,
+    })),
+    delay_minutes: (typeof draft.delay_minutes === 'number') ? draft.delay_minutes : null,
+    notes:         draft.notes || null,
+  };
 }
 
 function _onToggleLine(sl, checked) {
@@ -299,50 +492,64 @@ function _esc(s) {
 function _buildTripFromDraft(draft, idx, ctx) {
   const sl = (window.NORIRECO?.data?.SERVICE_LINES || []).find(x => x.id === draft.lineId);
   const stations = sl?.stations || [];
-  const seg = draft.segments[0];
-  // 全線完乗想定の自己申告。環状線は同名 from=to で resolve は 1 駅しか塗らないが、
-  // 表示上は「全駅」として記録 (実態とのズレは A-5 で半周分割して解消する既知 TODO)。
+  // A-5: 編集済み draft なら editor 値を採用。未編集 (たたむ default) は従来通り。
+  const edited = !!draft._edited;
+  // 全線完乗想定の自己申告。環状線は SERVICE_LINES と N02 line の駅順ズレで
+  // resolve が部分塗りになる既知問題あり (A-5 でも完全解決せず、別タスクへ持ち越し)。
   const totalStations = stations.length;
   const lineName = draft.lineName;
-  const tripName = `${lineName} 全線`;
+  // 編集済みなら segments に train/列車情報が乗っているかも → name に反映
+  const segs = (draft.segments || []).map(s => ({
+    lineId: s.lineId,
+    from:   s.from,
+    to:     s.to,
+    from_id: s.from_station_id || s.from_id || null,
+    to_id:   s.to_station_id   || s.to_id   || null,
+    train_category: s.train_category || null,
+    train_id:       s.train_id       || null,
+    train_name:     s.train_name     || null,
+    car_model:      s.car_model      || null,
+  }));
+  const fromStId = segs[0]?.from_id || null;
+  const toStId   = segs[segs.length - 1]?.to_id || null;
+
+  // trip 直下の train_* 集約 (saveMultiSegmentTrip v375 と同形)
+  const aggTrain = (key) => {
+    if (segs.length === 0) return null;
+    const set = new Set(segs.map(s => s[key] || ''));
+    return (set.size === 1 && [...set][0]) ? [...set][0] : null;
+  };
+
   return {
     id: `trip_${ctx.baseTime}_${idx}`,
-    date: ctx.today,                  // date_precision='unknown' でも Supabase NOT NULL 制約のため今日を入れる (v179 仕様)
-    name: tripName,
+    // 編集済みなら editor の date / precision を使う。未編集なら today (NOT NULL 制約のため、
+    // dp='unknown' のときも Supabase 側で除外フィルタが効く)
+    date: edited ? (draft.date || ctx.today) : ctx.today,
+    name: `${lineName} 全線`,
     photos: [],
-    from_station_id: seg.from_station_id || null,
-    to_station_id:   seg.to_station_id   || null,
+    from_station_id: fromStId,
+    to_station_id:   toStId,
     total_stations:  totalStations,
-    transfers:       0,               // 全線 1 系統 = 乗換 0
+    transfers:       Math.max(0, segs.length - 1),
     line_list:       lineName,
     total_minutes:   0,
-    depart_time:     '',
-    arrive_time:     '',
-    segments: [{
-      lineId: seg.lineId,
-      from:   seg.from,
-      to:     seg.to,
-      from_id: seg.from_station_id || null,
-      to_id:   seg.to_station_id   || null,
-      train_category: null,
-      train_id:       null,
-      train_name:     null,
-      car_model:      null,
-    }],
-    source:        'manual',
-    verified:      false,
-    gps_lat:       null,
-    gps_lon:       null,
-    gps_accuracy:  null,
-    recorded_at:   ctx.recordedAt,
-    date_precision: 'unknown',
-    train_id:       null,
-    train_name:     null,
-    train_category: null,
-    car_model:      null,
-    notes:          null,
-    delay_minutes:  null,
-    user_id:        ctx.userId,
+    depart_time:     edited ? (draft.depart_time || '') : '',
+    arrive_time:     edited ? (draft.arrive_time || '') : '',
+    segments:        segs,
+    source:          'manual',
+    verified:        false,
+    gps_lat:         null,
+    gps_lon:         null,
+    gps_accuracy:    null,
+    recorded_at:     ctx.recordedAt,
+    date_precision:  edited ? (draft.date_precision || 'unknown') : 'unknown',
+    train_id:        aggTrain('train_id'),
+    train_name:      aggTrain('train_name'),
+    train_category:  aggTrain('train_category'),
+    car_model:       aggTrain('car_model'),
+    notes:           edited ? (draft.notes || null) : null,
+    delay_minutes:   edited ? ((typeof draft.delay_minutes === 'number') ? draft.delay_minutes : null) : null,
+    user_id:         ctx.userId,
   };
 }
 
@@ -367,6 +574,8 @@ async function _postTripToSupabase(trip) {
 async function saveBulkDrafts() {
   if (_saving) return;
   if (_bulkDrafts.size === 0) return;
+  // A-5: 開いているアコーディオンがあれば draft 上書き保存してから save 開始
+  if (_openLineId) _closeAccordion();
   _saving = true;
 
   const saveBtn = document.getElementById('bulk-save-btn');
@@ -468,6 +677,9 @@ export function closeBulkRecordSheet() {
   const sheet = document.getElementById(SHEET_ID);
   if (!sheet) return;
   sheet.classList.remove('open');
+  // A-5: 開いている editor があれば destroy (draft 上書きは clear で破棄するので不要)
+  if (_openEditor) { try { _openEditor.destroy(); } catch (e) {} _openEditor = null; }
+  _openLineId = null;
   _bulkDrafts.clear();
   const body = document.getElementById(BODY_ID);
   if (body) body.innerHTML = '';

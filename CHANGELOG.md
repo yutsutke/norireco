@@ -48,6 +48,174 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 254. v404 — 一括記録 A-5 完了: アコーディオン展開 (createTripDetailEditor 行内 mount) (2026-05-28)
+
+### 背景
+
+§253 (v403, A-4) までで「638 系統 → 検索/地域/近くで絞り → チェック → 一括保存」の実用版が完成。A-5 で **「開く」フル入力モード** = Notion §1.3「2 段階入力 (たたむ / 開く)」の後半を実装。
+
+A-5 着手前の事前検証で **環状線 (山手線) の bulk 保存で全駅塗れない問題** が再確認された (山手線 17/30 駅、別途 N02 山手線 line に東京〜上野間の駅が含まれていない構造起因)。半周分割を試みても結果同じ (17 駅) のため、A-5 のスコープから外して別タスクへ持ち越し、アコーディオン UI に集中。
+
+### 実装
+
+#### `js/21-bulk-record.js` (~450 行 → ~600 行)
+
+##### 新規 import
+
+```js
+import { createTripDetailEditor } from './20-trip-detail-editor.js';
+```
+
+##### 新規 module-local state
+
+```js
+let _openLineId = null;     // 現在開いている SL.id (null = どれも開いていない)
+let _openEditor = null;     // createTripDetailEditor instance
+```
+
+##### 新規関数
+
+| 関数 | 役割 |
+|---|---|
+| `_toggleAccordion(sl)` | 同時 1 行制御の入口。別行を開く前に現開行 close、同じ行なら閉じるだけ |
+| `_openAccordion(sl)` | チェック自動 ON + body 表示 + factory mount (multi-container)。`scrollIntoView` で見せる |
+| `_closeAccordion()` | `editor.getDraft()` で `_bulkDrafts` 上書き (`_edited: true`) + destroy + body hide + ✏️ マーク追加 |
+| `_findSegStationId(prevDraft, lineId, stName, role)` | 旧 draft の segments から駅 id 引き継ぎ (editor は from_id/to_id を持たないため) |
+| `_draftToEditorInitial(draft, sl)` | bulk-record draft → factory initial 形式変換 (lineName 付与、train_* null fill) |
+
+##### `_buildLineItem` 全面書換
+
+旧 `<label>` 単独 → `<div class="bulk-line-row">` で包む新構造:
+
+```html
+<div class="bulk-line-row" data-line-id="...">
+  <label class="bulk-line-item">                          ← 行クリックで checkbox toggle
+    <input type="checkbox" class="bulk-line-check">
+    <span class="bulk-line-swatch">                       ← 系統色
+    <span class="bulk-line-main">                         ← 名前 + メタ
+    <button class="bulk-accordion-toggle">▶</button>     ← stopPropagation で checkbox 守る
+  </label>
+  <div class="bulk-accordion-body" hidden>                ← 展開時のみ表示
+    <div class="tde-time"></div>
+    <div class="tde-train"></div>
+    <div class="tde-delay"></div>
+    <div class="tde-notes"></div>
+  </div>
+</div>
+```
+
+`▶/▼` ボタンは `e.preventDefault()` + `e.stopPropagation()` で `<label>` 内クリック伝播を止め、checkbox 誤 toggle を防ぐ。
+
+##### `createTripDetailEditor` mount (B-4-b multi-container API)
+
+```js
+_openEditor = createTripDetailEditor({
+  containers: {
+    time:  body.querySelector('.tde-time'),
+    train: body.querySelector('.tde-train'),
+    delay: body.querySelector('.tde-delay'),
+    notes: body.querySelector('.tde-notes'),
+  },
+  initial: _draftToEditorInitial(draft, sl),
+  features: {
+    timeRow:     { precisions: ['minute', 'day', 'month', 'year', 'unknown'] },
+    trainPicker: 'per-seg-rows',     // segments の各行を独立カスケード
+    delay:       true,
+    notes:       true,
+    photos:      false,              // A-5 では skip (将来追加可)
+  },
+});
+```
+
+##### `_buildTripFromDraft` の `_edited` 分岐
+
+| field | 未編集 (たたむ default) | 編集済み (`_edited: true`) |
+|---|---|---|
+| date | ctx.today | draft.date \|\| ctx.today |
+| date_precision | 'unknown' | draft.date_precision \|\| 'unknown' |
+| depart_time | '' | draft.depart_time \|\| '' |
+| arrive_time | '' | draft.arrive_time \|\| '' |
+| segments | draft 由来 1 件、train_* null | editor の segments (per-seg train_* 含む) |
+| transfers | 0 | `Math.max(0, segs.length - 1)` |
+| train_id/name/category/car_model | null | 集約ルール (全 seg 一致なら値 / 不一致 null) |
+| notes | null | draft.notes \|\| null |
+| delay_minutes | null | draft.delay_minutes (number) \|\| null |
+
+##### accordion close を 3 箇所に追加
+
+- `saveBulkDrafts` 開始時: 開いている行があれば draft 上書きしてから save
+- `closeBulkRecordSheet` で editor destroy + state reset
+- `_renderChecklistOnly` 内: フィルタ変更で対象行が消える前に上書き
+
+#### `noritetsu-map.html` CSS (~10 ルール)
+
+- `.bulk-line-row` — flex column wrap
+- `.bulk-accordion-toggle` — 28×28、aria-expanded=true で gold
+- `.bulk-accordion-body` — gold border 上端なし (label と連続)、各 .tde-* セクション間 gap 8px
+
+#### `sw.js` v403 → v404
+
+### 検証 (preview eval)
+
+| シナリオ | 期待 | 実測 |
+|---|---|---|
+| 行 ▶ クリック | チェック自動 ON + body 表示 + 4 section mount | cbBefore=false → cbAfter=true / hidden=false / tde-* 全 firstChild あり ✅ |
+| toggle 状態 | ▶ → ▼ + aria-expanded=true | "▼" + "true" ✅ |
+| delay 入力 (1h 30m) | draft.delay_minutes = 90 | 90 ✅ |
+| notes 入力 | draft.notes 反映 | "一括記録テスト" ✅ |
+| 別行を開く | 前行 close + draft._edited=true + ✏️ マーク + 別行展開 | "中央本線快速 ✏️" / chuoOpen=false / uenoTokyoOpen=true ✅ |
+| 編集済み draft を保存 | trip.notes / delay_minutes に反映 | 保存された ✅ |
+| 未編集 draft を保存 | trip.notes=null / delay=null (たたむ default 維持) | 期待通り ✅ |
+| sheet close で editor destroy | _openLineId=null / drafts cleared | OK ✅ |
+| console error | 0 | 0 ✅ |
+| js-syntax-guard | ESM clean + 衝突なし | OK ✅ |
+
+### 設計判断ログ
+
+#### 環状線対応を A-5 で完結させなかった理由
+
+| 案 | 結果 |
+|---|---|
+| (1) `_buildDefaultDraft` で半周 2 segments (`stations[0..mid]` + `stations[mid..-1]`) | 検証で 17/30 駅 (変化なし) |
+| (2) 全 駅対 segments (`stations[i] → stations[i+1]` × N-1) | 未試行。trip.segments が 30 件になり Supabase 行サイズ膨張 |
+| (3) bulk-record 側で riddenSt に直接駅追加 | rebuild() が破壊するので無意味 |
+| (4) N02 山手線 line に東京〜上野間の駅を追加 | Phase 3 駅 ID 体系の延長作業。bulk-record スコープ外 |
+
+→ A-5 では既知制約として明示 (`bulk-note` に「環状線は 1 駅のみ ridden になります」記載維持) + 行頭の 🔄 マークで視覚区別。**根本解決は (4) を別タスクで** — N02 山手線 line データに東京〜上野間を補完するか、SERVICE_LINES.candidateN02Ids を環状線専用ロジックにする。
+
+#### per-seg-rows mode を選んだ理由
+
+| mode | 採用判断 |
+|---|---|
+| `'per-seg-chip'` | ❌ — chip UI は記録モード (07 確認モーダル) 専用、bulk では segments 1 件しかないため chip 不要 |
+| `'per-seg-rows'` | ✅ — segments を縦並びの row として表示、各行に種別/列車/車両カスケード。bulk 1 系統 = 1 segment なので 1 row だが、A-5 で半周分割を入れたとき自然に複数 row になる |
+| `'trip-level'` | ❌ — segments 共通の trip 単位 train_*。bulk は segments で持つ方が将来の半周分割と一貫性ある |
+
+#### `_edited` フラグの存在意義
+
+未編集 draft は「たたむ default = ゼロ摩擦」で input cost 0 のまま記録できる Notion §1.3 仕様の核心。`_edited` フラグなしで editor から取った値を常に上書きすると、たたむ default も「日時を入力した記録」として保存されてしまい (editor の date 初期値 = today)、後から「日付不明だったのに今日と記録された」というデータ汚染になる。
+
+`_edited` で「ユーザーが意図的に編集したか」を判定 → 未編集なら明示的に `dp='unknown' / depart=''` 等を保ち、editor の初期値を保存に持ち込まない。
+
+#### 編集済み draft で行を再展開したらどうなる?
+
+`_draftToEditorInitial` で `draft.date / depart_time / arrive_time / segments` (= 前回編集値) を editor initial に渡す → editor が値復元 → ユーザー継続編集可能。`_edited` フラグも維持。
+
+### 残課題 / 次のステップ
+
+- **A-6**: 空マップ時オンボーディングバナー (入口 (b)) — 新規ユーザーの初回画面で「乗ったことある路線を選んでマップを塗りましょう」誘導
+- **A-7**: unknown 完乗率/塗り集計検証 (Notion §1.3 落とし穴 (a)) — 期間フィルタからは除外維持 + 地図塗り/完乗率には含める の整合確認
+- **環状線対応 (別タスク)**: N02 山手線 line データ補完 or SERVICE_LINES.candidateN02Ids の環状線専用ロジック。TODO の 🔧 パフォーマンス・UI セクションに追記推奨
+- **写真添付**: A-5 では `photos: false` で skip。後追いで「アコーディオン展開時のみ写真 mount」を追加可能 (factory が既に photos セクション対応済)
+
+### 関連
+
+- §250〜§253 (v400〜v403) — A-1〜A-4 の前提
+- §242〜§249 (v392〜v399 trip 詳細エディタ抽出 B カテゴリ) — factory 本体
+- Notion §1.3 「2 段階入力 (たたむ / 開く)」+「状態管理: アコーディオン (同時 1 行)」
+
+---
+
 ## 253. v403 — 一括記録 A-4 完了: 検索 + 並び替え + 地域フィルタ (2026-05-28)
 
 ### 背景
