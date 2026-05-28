@@ -652,6 +652,7 @@ export function tripCardHtml(trip) {
       ${recordedAtLine}
       <div class="mp-tcard-actions">
         ${editBtn}
+        <button class="mp-act-btn share" onclick="shareTripFromMypage('${trip.id}')">📤 シェア</button>
         <button class="mp-act-btn delete" onclick="deleteTripFromMypage('${trip.id}')">🗑 削除</button>
       </div>
     </div>`;

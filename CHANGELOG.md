@@ -52,6 +52,48 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 260. v410 — シェア機能 S-1: 個別 trip シェア画像
+
+**バージョン**: v410 (CACHE_VERSION)
+**日付**: 2026-05-29
+**カテゴリ**: A（実装 / 🔥 シェア機能）
+
+### 背景
+
+🔥 シェア機能の残りは ①個別 trip シェア / ②`/share/<id>` ページ / ③R2 保存 の 3 つ。`/share/<id>` のリッチプレビューには OGP メタの `og:image` が**実在する静的画像 URL**を指す必要があり (クローラは JS 非実行)、現状のクライアント Canvas 生成では足りない。よって 3 パートは独立でなく依存関係があり、**S-1 (純クライアント) → S-2 (R2 永続画像) → S-3 (/share ページ)** の順に分割。本セッションは S-1。
+
+「verified 限定ガード」は v345 で撤回済 (GPS = 手間省略であって証明ではない)。手動記録も対等にシェア可なので S-1 では全 trip にシェアボタンを出す。
+
+### 変更
+
+- `js/14-share-ogp.js`:
+  - `buildSegmentPolylines(segs)` を引数対応化 (省略時 `RIDDEN_SEGS` = 累計版、指定時 trip.segments)
+  - `computeTripBbox(polylines, w, h, pad)` 追加 — trip 区間を覆う bbox を計算。投影が lon→x/lat→y 独立線形なので緯度補正 (cos) で歪み防止 + **最小スパン 0.9°** で短距離 trip の過度ズーム (粗い県境ポリゴンのギザギザ) を回避
+  - `drawJapanMap` を `(…, bbox, opts)` 対応化 — bbox 省略時 JP_BBOX (profile 版は変更不要)。グリッドを bbox から動的計算、パネルへ clip、`opts.lineWidth`/`glow`/`endpoints` (始点○/終点●) 対応
+  - `deriveTripDisplay(trip)` + `drawTripStatsPanel` 追加 — 路線名 (複数路線は「○○線 ほか N 路線」)/区間 (from→to)/駅数/乗換/乗車日 (precision 別)/列車・車両。長文は font 自動縮小
+  - `generateTripOgpCanvas(trip)` + `openTripShareModal(trip)` 追加
+  - モーダルを動的化: `_downloadName`/`_shareText` モジュール変数 + `paintCanvas` helper。タイトル/サブを profile/trip で出し分け (`#share-ogp-title`/`#share-ogp-sub`)
+  - `window.NORIRECO.share` に `openTripShareModal` 追加
+- `js/13b-trips.js`: `shareTripFromMypage(tripId)` 追加 (_mypageCache から trip 引き当て → window 経由で share モジュール呼出) + window 公開
+- `js/13-mypage-common.js`: `tripCardHtml` のアクション行に「📤 シェア」ボタン追加 (編集とゴミ箱の間)
+- `noritetsu-map.html`: `.mp-act-btn.share` CSS (緑系アクセント #2ec486)
+- CACHE_VERSION v409 → v410
+
+### 検証 (preview)
+
+外房線 千葉→鎌取 (4 駅) の test trip を注入して `openTripShareModal` を実行。1200×630 Canvas を PNG 抽出して目視確認:
+- 右パネル: 「🚃 この旅程 / 外房線 / 千葉 → 鎌取 / 駅数 4 駅 / 乗換 0 回 / 乗車日 2025-08-15 / 列車・車両 [209系]」正常
+- 地図: 当初ズームが寄りすぎて県境ポリゴンが三角形に割れた → 最小スパン 0.9° 導入で東京湾・房総半島の海岸線が認識できる地域ビューに改善、trip 経路 (シアン線 + 白 glow + ○始点/●終点) が描画
+- syntax-guard clean (3 ファイル)、console error 0
+
+### 残課題
+
+- S-2: Worker `/upload/share-image` (presigned PUT) で生成 PNG を R2 へ → 永続 CDN URL
+- S-3: Supabase `norireco_shares` + Cloudflare Pages Function `/share/[id]` で OGP メタ込み HTML + CTA
+- ブラウザのモジュール HTTP キャッシュにより、同一ページ内ホットリロードでは旧 `window.NORIRECO.share` が残ることがある (本番は CACHE_VERSION 更新で SW が新ファイル配信するため問題なし)
+
+---
+
 ## 259. v409 — 期間フィルタに「年横断 (季節/月)」モード追加
 
 **バージョン**: v409 (CACHE_VERSION)

@@ -736,6 +736,19 @@ async function deleteTripFromMypage(tripId) {
 window.deleteTripFromMypage = deleteTripFromMypage;
 NORIRECO.mypage.deleteTripFromMypage = deleteTripFromMypage;
 
+// v410: 旅程カードの「📤 シェア」— 1 旅程分の OGP 画像を生成 (14-share-ogp.js)。
+//   share モジュールは module script で別途ロードされるので window 経由で遅延参照。
+function shareTripFromMypage(tripId) {
+  const trip = (NORIRECO.mypage.state._mypageCache || []).find(t => t.id === tripId);
+  if (!trip) { alert('旅程が見つかりません'); return; }
+  if (!(window.NORIRECO && NORIRECO.share && NORIRECO.share.openTripShareModal)) {
+    alert('シェア機能を読み込めませんでした'); return;
+  }
+  NORIRECO.share.openTripShareModal(trip);
+}
+window.shareTripFromMypage = shareTripFromMypage;
+NORIRECO.mypage.shareTripFromMypage = shareTripFromMypage;
+
 // v333 (Phase 3): norirecoBackfillTripStationIds は撤去。
 //   v311 で 125 件 backfill 完遂、v326 SQL Applied 2026-05-25 で from_station/to_station 列 DROP 済。
 //   過去のヘルパー全文は git log 13b-trips.js (v326..v332) を参照。
