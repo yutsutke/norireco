@@ -52,3 +52,39 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 257. v407 — 旧 `noritetsu-log.html` 削除（一括記録による完全置換）
+
+**バージョン**: v407 (CACHE_VERSION)
+**日付**: 2026-05-29
+**カテゴリ**: A（実装 / クリーンアップ）
+
+### 背景
+
+`noritetsu-log.html` (1879 行) は v60 期以前から続いた「フォーム式 1 件入力」のログ画面。Phase 3.7 以降は地図画面 (`noritetsu-map.html`) の FAB 記録モード + マイページ旅程編集 + 一括記録 (v400〜v406) が機能を完全に引き継いだため、もはや起点として開く意味がなくなっていた。残置すると sw.js のプリキャッシュ対象として無駄に転送される + PWA `start_url` が旧 log を指したままで install 済ユーザーが意図しない画面に着地する問題があった。
+
+TODO 🟡「ノリレコログを地図画面のタブとして統合」は Notion §1.3 一括記録の本体実装 (v400〜v406) により受け皿が揃ったので、log 画面そのものを統合せず削除する判断。
+
+### 変更
+
+- `noritetsu-log.html` を `git rm` で削除（1879 行）
+- `manifest.json`:
+  - `start_url` を `./noritetsu-log.html` → `./noritetsu-map.html` に変更
+  - shortcut「新しい乗車を記録」(`url: ./noritetsu-log.html`) を削除。残るは「乗りつぶしマップ」shortcut 1 個
+- `sw.js`: STATIC_ASSETS から `./noritetsu-log.html` を除去、CACHE_VERSION v406 → v407
+- `STATUS.md`: コードベース説明から log 行削除、本数を `js/01-..〜21-..` に更新（21-bulk-record まで反映）、CACHE_VERSION 更新
+- `TODO.md`:
+  - 🔥 シェア機能の「noritetsu-log.html のテキストシェアを地図画面に移植」を削除（log 廃止により消滅）
+  - 🟡「ノリレコログを地図画面のタブとして統合」項目を削除（一括記録で代替済）
+  - 🟡「一括記録」項目のサブタイトル「— noritetsu-log.html 廃止の受け皿」を「v407 で旧 log 削除完了 = 受け皿として完全置換」に書き換え
+
+### 残作業
+
+過去フェーズの CHANGELOG_*.md と `supabase/migrations/v250_norireco_memos.sql` のコメント内には `noritetsu-log.html` への言及が残っているが、いずれも履歴・コメントとしての文脈であり修正不要（過去アーカイブは read-only 方針 + migration コメントは「当時の状況説明」として有意味）。
+
+### 教訓
+
+- **PWA `start_url` 変更は install 済ユーザーへ波及する** — 削除前に start_url を必ず生存しているページに付け替える。今回は manifest 変更を 1 commit に含めたので新 install / 再起動で自動的に map.html へ遷移する
+- **ファイル削除タスクの参照棚卸し**は `git grep` 一発で済む。今回 10 ファイルヒットの内訳: アクティブ参照 4 (manifest / sw / STATUS / TODO) + CHANGELOG 5 + migration コメント 1。アクティブだけ直し履歴は触らない
+
+---
+

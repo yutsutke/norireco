@@ -28,7 +28,7 @@
 
 ## Service Worker
 
-**`CACHE_VERSION = 'v406'`** · デプロイ回数 = バージョン番号の不変式
+**`CACHE_VERSION = 'v407'`** · デプロイ回数 = バージョン番号の不変式
 
 ---
 
@@ -47,9 +47,8 @@
 
 ## コードベース
 
-- `noritetsu-map.html`（910 行、地図画面）
-- `noritetsu-log.html`（ログ画面）
-- `js/01-..〜18-..`（機能別 ES Modules、v131〜v138 で 13 ファイル化、v190 で 13-mypage を 4 分割、v192 で 02b-service-lines-builder を分離、v194 で 04b-ride-record を分離、v258 で 18-photo-area を分離）
+- `noritetsu-map.html`（910 行、地図画面 — 唯一の HTML 画面、v407 で `noritetsu-log.html` 削除）
+- `js/01-..〜21-..`（機能別 ES Modules、v131〜v138 で 13 ファイル化、v190 で 13-mypage を 4 分割、v192 で 02b-service-lines-builder を分離、v194 で 04b-ride-record を分離、v258 で 18-photo-area を分離、v392 で 20-trip-detail-editor を新設、v400 で 21-bulk-record を新設）
 - `worker/`（Cloudflare Workers + R2 ゲートウェイ、v256〜）
 - `sw.js` / `manifest.json`（PWA）
 - `window.NORIRECO.mypage.xxx` 名前空間（v190〜、既存 `window.xxx` 公開は HTML onclick 互換で維持）

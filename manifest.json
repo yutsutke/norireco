@@ -2,7 +2,7 @@
   "name": "乗レコ - 乗りつぶしログ",
   "short_name": "乗レコ",
   "description": "乗り鉄のためのYAMAP。乗車記録・地図・乗りつぶしを一括管理。",
-  "start_url": "./noritetsu-log.html",
+  "start_url": "./noritetsu-map.html",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0D1B2A",
@@ -23,13 +23,6 @@
     }
   ],
   "shortcuts": [
-    {
-      "name": "新しい乗車を記録",
-      "short_name": "記録開始",
-      "description": "乗車記録を開始する",
-      "url": "./noritetsu-log.html",
-      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
-    },
     {
       "name": "乗りつぶしマップ",
       "short_name": "マップ",
