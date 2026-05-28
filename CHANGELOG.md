@@ -48,6 +48,144 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 251. v401 — 一括記録 A-2 完了: 営業系統チェックリスト本体 + たたむモード (2026-05-28)
+
+### 背景
+
+§250 (v400, A-1) で skeleton (open/close + 空ボトムシート + 入口ボタン) を deploy。A-2 はその body 中身として **営業系統チェックリスト本体 + たたむモード (タップ = ゼロ摩擦 draft 1 件)** を実装。
+
+Notion §1.3 設計確定の「2 段階入力 (たたむ / 開く)」の前半 = たたむ default を実装。チェック = 全線の draft trip 1 件 (`source=manual, verified=false, date_precision='unknown'`) を内部 Map に push、アンチェックで pop。
+
+### 実装
+
+#### `js/21-bulk-record.js` 全面書き換え (~70 行 → ~165 行)
+
+A-1 skeleton の placeholder body を捨て、`_renderBody()` + `_buildLineItem(sl)` + `_onToggleLine(sl, checked)` の本体実装に置換。
+
+##### 内部 state
+
+```js
+const _bulkDrafts = new Map();   // key = sl.id, value = draft trip
+```
+
+`open` で `clear()`、`close` でも `clear()`。中断状態の永続化はしない方針 (一括記録は「短時間に一気に塗る」ユースケース想定、ブラウザ離脱で消えても害は小さい)。
+
+##### draft 構造 (Notion §1.3 仕様準拠)
+
+```js
+{
+  lineId, lineName,
+  segments: [{
+    lineId,
+    from: stations[0].name,
+    to:   stations[stations.length - 1].name,
+    from_station_id, to_station_id,    // v293+ 駅 id (A-3 resolveByServiceLine 用)
+  }],
+  source:         'manual',
+  verified:       false,
+  date_precision: 'unknown',
+  _circular:      sl.circular,         // 環状線フラグ (UI 表示 + A-5 半周分割判断用)
+}
+```
+
+`stations[0] → stations[-1]` の 1 segment で全線をカバー (記録モードの `resolveByServiceLine` が間の駅を全部 ridden に展開する設計に依存)。環状線は `from == to` で visit-only 相当になる落とし穴あり (A-5 で半周 2 segment 分割を検討)。
+
+##### UI 構造
+
+```
+┌─ #bulk-summary-bar (position:sticky top:0)
+│   "N 件選択中"           [💾 まとめて保存 (A-3 で実装)]
+├─ .bulk-note (A-2 説明文)
+└─ #bulk-checklist
+    ├─ .bulk-line-item × 638
+    │   [☐] [系統色 swatch] 系統名 🔄
+    │                       運営会社 · N 駅
+    └─ ...
+```
+
+各行は `<label class="bulk-line-item">` で囲み、行全体クリックで checkbox toggle (HTML 標準動作)。`:has(input:checked)` で gold tint。
+
+#### `noritetsu-map.html` CSS 追加 (~15 ルール)
+
+- `.bulk-summary-bar`: sticky top:0、`bulk-record-body` の上端固定
+- `.bulk-checklist` / `.bulk-line-item`: 1 行 ~50px、hover で背景濃く、checked で gold tint
+- `.bulk-line-swatch`: 系統色 14px 円
+- `.bulk-save-btn`: disabled 時 opacity:.4 + cursor:not-allowed
+
+#### `sw.js` v400 → v401
+
+### 検証 (preview eval)
+
+| シナリオ | 期待 | 実測 |
+|---|---|---|
+| `SERVICE_LINES.length` | ~638 | 638 ✅ |
+| open → 描画件数 | 638 アイテム | 638 ✅ |
+| 先頭アイテム (山手線) | name + 🔄 + "JR東日本 · 30 駅" | "山手線 🔄" / "JR東日本 · 30 駅" ✅ |
+| 2 件チェック | summary "2 件選択中" + draft.length 2 | OK ✅ |
+| アンチェック 1 件 | summary "1 件選択中" + 残 1 件 | OK ✅ |
+| draft 内容 (山手線) | from=東京 to=有楽町 circular=true dp=unknown | 一致 ✅ |
+| draft 内容 (中央線快速) | from=東京 to=高尾 circular=false | 一致 ✅ |
+| close → cleanup | sheet hide + draft.size=0 + body 空 | 全 OK ✅ |
+| console error | 0 | 0 ✅ |
+| js-syntax-guard サブエージェント | ESM clean + 衝突なし | OK ✅ |
+
+### 設計判断ログ
+
+#### draft state を Map にした理由
+
+`Array` だと「チェック済みかどうか」を毎回 find する必要があり、O(N×N) になる (チェック反転で頻繁に発生)。`Map<lineId, draft>` なら `has/set/delete` 全て O(1)。
+
+#### 全 638 件を一度に描画 (A-2 段階)
+
+検索/フィルタは A-4 で実装する設計だが、A-2 段階で virtualization (windowing) を入れるか迷った。
+
+| 方式 | 採用 |
+|---|---|
+| 全件 DOM 一度描画 | ✅ 638 行 × 5 子要素 = ~3000 要素、現代ブラウザでは問題なし。実装単純 |
+| virtual scroll | ❌ A-4 で「近く絞り込み」が入ると常時 100 件未満になる想定。前倒し最適化は不要 |
+
+#### 環状線 (`circular: true`) の扱い
+
+- A-2 段階: 🔄 マークで視覚的に区別、segment は `stations[0]→stations[-1]` で同名駅同士 (visit-only 相当)
+- A-5 で展開: ユーザーが accordion 開けば編集できる
+- A-3 保存: visit-only として扱われ、地図には 1 駅分しか塗られない問題あり
+  - 対応案 1: 環状線専用ロジック (mid 駅で半周 2 segments に自動分割)
+  - 対応案 2: A-5 でユーザーに気付かせる UI (「環状線は経路指定が必要」warning)
+  - → A-3 で意識した上で、A-5 設計に持ち越し
+
+#### `_bulkDrafts.clear()` を open でも実施
+
+「一旦閉じて開き直したらチェック状態を戻したい」というニーズはありえるが:
+
+- 一括記録は「短時間で一気にやる」想定 (ライト層 onboarding / マニア層 遡及入力)
+- 中断・再開ニーズは A-3 一括保存後の「次のセット」が来るまでで、保存後は自然にクリアされる
+- ブラウザ離脱と open/close 差を作ると state 整合性のテストが増える
+
+→ open 毎にクリーン状態で開始。中断中の永続化 (sessionStorage 等) は将来要望が出たら検討。
+
+#### サマリバー位置: 上部 sticky
+
+ボタンの位置に迷ったが、
+
+- 上部 sticky: スクロール中も「N 件選択中 + 保存」が常に見える → ✅ 採用
+- 下部 fixed bar: モバイルでフッタ UI を増やすと記録モード FAB と干渉
+- 末尾: スクロールが必要、フィードバック性が悪い
+
+### 残課題 / 次のステップ
+
+- **A-3 (次)**: 一括保存 — `_bulkDrafts` の値をループで trip 構築 → `tripForSupabase` → `upsert`。Notion §1.3 末尾の「データの流れ」記載通り、`resolveByServiceLine` + `redrawAllLinesAfterTripChange` まで一気通貫
+- 一括保存途中失敗の扱い: 部分コミット許容 (現行 saveMultiSegmentTrip と整合) vs 全ロールバック (一貫性重視)。実装時に決定
+- 環状線の半周分割は A-5 まで持ち越し
+- 638 件素の一覧は確かに探しづらい → A-4 検索/フィルタの優先度高い
+
+### 関連
+
+- §250 (v400 A-1 skeleton) — open/close 制御の基盤
+- Notion §1.3「一括記録」設計確定セクション
+- Notion §1.3 落とし穴「date_precision='unknown' の集計経路」 = A-7 で検証
+
+---
+
 ## 250. v400 — 一括記録 (まとめて記録) A-1 着手: skeleton + マイページ旅程タブ上部にエントリボタン (2026-05-28)
 
 ### 背景

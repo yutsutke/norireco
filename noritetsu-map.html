@@ -405,6 +405,23 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mp-bulk-entry:hover{background:linear-gradient(135deg,rgba(242,169,0,.2),rgba(242,169,0,.08));}
 .mp-bulk-entry:active{transform:scale(.98);}
 
+/* A-2 (v401 〜): 一括記録ボトムシート内のチェックリスト・サマリ・行スタイル */
+.bulk-summary-bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;margin:0 -16px 8px;background:rgba(17,24,39,.95);backdrop-filter:blur(4px);border-bottom:1px solid var(--track);}
+.bulk-summary-count{font-size:12px;color:var(--gold);font-weight:600;flex-shrink:0;}
+.bulk-save-btn{padding:8px 14px;background:rgba(242,169,0,.15);color:var(--gold);border:1px solid rgba(242,169,0,.55);border-radius:8px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .15s;}
+.bulk-save-btn:hover:not(:disabled){background:rgba(242,169,0,.28);}
+.bulk-save-btn:disabled{opacity:.4;cursor:not-allowed;}
+.bulk-note{font-size:11px;color:var(--silver);padding:8px 4px 12px;line-height:1.5;opacity:.8;}
+.bulk-checklist{display:flex;flex-direction:column;gap:2px;padding-bottom:8px;}
+.bulk-line-item{display:flex;align-items:center;gap:10px;padding:10px 8px;background:rgba(14,24,36,.4);border:1px solid var(--track);border-radius:8px;cursor:pointer;transition:background .12s;}
+.bulk-line-item:hover{background:rgba(14,24,36,.7);}
+.bulk-line-item:has(input:checked){background:rgba(242,169,0,.08);border-color:rgba(242,169,0,.5);}
+.bulk-line-check{width:18px;height:18px;flex-shrink:0;cursor:pointer;accent-color:var(--gold);}
+.bulk-line-swatch{width:14px;height:14px;border-radius:50%;flex-shrink:0;border:1px solid rgba(255,255,255,.15);}
+.bulk-line-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.bulk-line-name{font-size:13px;color:var(--white);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bulk-line-meta{font-size:10px;color:var(--silver);opacity:.75;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
 /* フィルタバー */
 .mp-filter-bar{display:flex;gap:8px;flex-wrap:wrap;padding:10px 12px;background:rgba(14,24,36,.5);border-bottom:1px solid var(--track);align-items:center;position:sticky;top:84px;z-index:3;}
 .mp-filter-row{display:flex;align-items:center;gap:5px;flex:1;min-width:130px;}

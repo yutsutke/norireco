@@ -84,7 +84,7 @@ git log --oneline -20
   - 地図 / 📋 ログ / 👤 マイページ の 3 タブナビに統合
   - **注 (2026-05-26)**: Notion §1.3 で「一括記録 (まとめて記録)」として再設計済。旧ログ画面の「1 件ずつフォーム」を復活させるのではなく、営業系統チェックリスト形式で "一気に塗る" 手段を新設する方向。下記の「一括記録」項目とセット
 
-- [ ] **一括記録 (まとめて記録) — noritetsu-log.html 廃止の受け皿** (Notion §1.3 設計確定 / B カテゴリ完結 v392-v399 / **A-1 着手 v400**)
+- [ ] **一括記録 (まとめて記録) — noritetsu-log.html 廃止の受け皿** (Notion §1.3 設計確定 / B カテゴリ完結 v392-v399 / **A-1〜A-2 完了 v400-v401**、次は A-3 保存)
   - **動機 2 層**:
     - マニア層 (Lv3): 過去何十年ぶんの乗車を遡って一括入力。路線・区間まで正確に
     - 新規〜ライト層 (Lv0/1): 登録直後の空マップを「乗ったことある路線」で塗って初期状態作り (虚無対策 / シェア・OGP に効く)
@@ -102,7 +102,7 @@ git log --oneline -20
     - ✅ B-4-a (v398): 13b/07 の visible dead code 撤去 (~350 行)。13b: 旧 10 関数 (264 行) + HTML 12 element + onchange 参照削除。07: 旧 4 関数 (70 行) + HTML 12 element 削除。CHANGELOG §248
     - ✅ B-4-b (v399): グローバル `NORIRECO.trains.selectedXxxBySl / activeChipSlId / selectedTrainId-Name-Category-CarModel` 9 fields 撤廃 + 02 旧 cascade handler (~190 行) + 07 旧 SL chip ロジック (~330 行) 撤去 + factory に `containers` multi-container API 追加 + 各 modal 3 instance を 1 instance に統合 (07 `_recEditor` / 13b `_tripEditEditor`)、HTML の `#xxx-meta-container` を delay/notes 独立コンテナに分割。正味 ~540 行削除。CHANGELOG §249
     - ✅ A-1 (v400): skeleton — `js/21-bulk-record.js` 新設 (open/close + window 公開) + `#bulk-record-sheet` モーダル枠 (`.memo-modal` 流用) + マイページ旅程サブタブ上部に `.mp-bulk-entry` 常設エントリボタン (13b-trips.js renderMpTripsSection 先頭挿入 + import で間接ロード)。preview で eval 検証 OK。CHANGELOG §250
-    - 未 A-2: 営業系統チェックリスト本体 (642 系統表示 + たたむモード = タップで `source=manual, verified=false, date_precision='unknown'` の draft 配列 push)
+    - ✅ A-2 (v401): 営業系統チェックリスト本体 + たたむモード — `_bulkDrafts: Map<lineId, draft>` で管理、638 系統 (A-4 までフィルタなし) 全件描画、チェック = 全線 1 segment の draft push (`source=manual, verified=false, date_precision='unknown'`)、アンチェック = Map.delete、サマリ「N 件選択中」リアクティブ更新、保存ボタンは A-3 まで disabled 骨だけ、環状線は 🔄 マーク。CHANGELOG §251
     - 未 A-3: 一括保存 (draft 配列ループ → trip 構築 → Supabase upsert → resolveByServiceLine → redrawAll) = MVP 完成
     - 未 A-4: 検索 + フィルタ (近く / 会社 / 都道府県) + 既定「近く」並べ替え
     - 未 A-5: アコーディオン展開 = factory `createTripDetailEditor` (`trainPicker='per-seg-rows'`) を行内 mount (同時 1 行)
