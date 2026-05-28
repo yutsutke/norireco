@@ -48,6 +48,160 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 252. v402 — 一括記録 A-3 完了 (MVP): 一括保存 (saveBulkDrafts) (2026-05-28)
+
+### 背景
+
+§251 (v401, A-2) でチェックリスト + たたむモードまで完成。本セッション A-3 は **A カテゴリの MVP** となる保存処理。Notion §1.3「データの流れ」の `[記録する] → draft 配列をループ → trip 構築 → 写真ありは tripId 確定 → upload → trip.photos → POST → tripForSupabase → upsert → resolveByServiceLine → redrawAll` を実装。
+
+A-3 段階では:
+- 写真添付なし (`photos: []` 固定 / A-5 アコーディオン展開で対応予定)
+- 詳細編集なし (`train_id/category/car_model = null` / 全て「たたむ default」のまま)
+- 検索/フィルタなし (A-4)
+
+これで素の MVP として「マイページから 1 タップで 1 路線完乗を一括追記」が完結する。
+
+### 実装
+
+#### 新規 import (上部に追加)
+
+```js
+import { currentUserId } from './12-auth.js';
+import { redrawAllLinesAfterTripChange, showRecordToast } from './07-record-mode.js';
+import { updateOverlays } from './08-rendering.js';
+```
+
+`window.SUPABASE_URL / SUPABASE_KEY / RIDDEN_SEGS / tripForSupabase / localDateStr` は他 module の window 公開を流用。
+
+#### 新規 state
+
+```js
+let _saving = false;   // 多重クリック防止
+```
+
+#### 新規関数
+
+| 関数 | 役割 |
+|---|---|
+| `_buildTripFromDraft(draft, idx, ctx)` | draft → trip object (id, name, segments, dp='unknown', total_stations=stations.length, transfers=0 等) |
+| `async _postTripToSupabase(trip)` | Supabase REST POST。失敗時は throw して呼び出し側 try/catch に任せる |
+| `async saveBulkDrafts()` | メインフロー (下記) |
+
+#### `saveBulkDrafts` フロー
+
+1. `_saving` フラグで多重実行ガード、保存ボタン disabled + `'💾 保存中...'`
+2. ctx 準備 (`baseTime`, `userId`, `today`, `recordedAt` を 1 回だけ評価)
+3. drafts ループ:
+   a. `_buildTripFromDraft` で trip 構築
+   b. 進捗表示 (10 件以上で 5 件毎に `'💾 保存中... (i+1 / N)'`)
+   c. `await _postTripToSupabase` (失敗は count + log、流れは止めない)
+   d. localStorage push (失敗時も継続 = 部分コミット許容)
+4. 全件ループ後に**一括で**:
+   - RIDDEN_SEGS bulk push (各 trip.segments を順次)
+   - `_mypageCache.push`
+   - `NORIRECO.rideRecord.rebuild()` 1 回
+   - `redrawAllLinesAfterTripChange()` 1 回 (saveMultiSegmentTrip は 1 trip 毎に redraw、一括では 1 回にまとめて FPS 低下を避ける)
+   - `updateOverlays()`
+   - `NORIRECO.stationActions.refreshTripListIfOpen()`
+   - `NORIRECO.mypage.renderMpTripsResultOnly()`
+5. トースト (全成功 / 部分失敗 / 全失敗) + `closeBulkRecordSheet()`
+
+#### trip 構造
+
+```js
+{
+  id: `trip_${baseTime}_${idx}`,    // 連続生成衝突回避
+  date: today,                      // dp='unknown' でも Supabase NOT NULL 制約のため (v179 仕様)
+  name: `${lineName} 全線`,
+  photos: [],
+  from_station_id, to_station_id,   // _buildDefaultDraft 段階で seg に付与済
+  total_stations: stations.length,  // 自己申告 = 全駅
+  transfers: 0,
+  line_list: lineName,
+  total_minutes: 0, depart_time: '', arrive_time: '',
+  segments: [{ lineId, from, to, from_id, to_id, train_* = null, car_model = null }],
+  source: 'manual', verified: false,
+  gps_*: null,
+  recorded_at: ctx.recordedAt,
+  date_precision: 'unknown',
+  train_*: null, car_model: null,
+  notes: null, delay_minutes: null,
+  user_id: ctx.userId,
+}
+```
+
+### 検証 (preview eval)
+
+未ログイン状態で localStorage 8 trips の上から bulk 3 件 (非環状) 追加:
+
+| 項目 | 期待 | 実測 |
+|---|---|---|
+| `_bulkDrafts.size` 開始 | 3 | 3 ✅ |
+| save 後 `_bulkDrafts.size` | 0 (clear) | 0 ✅ |
+| localStorage delta | +3 | +3 ✅ |
+| RIDDEN_SEGS delta | +3 | +3 ✅ |
+| sheet 自動 close | true | true ✅ |
+| 新 trip name | `中央本線快速 全線` 等 | 期待通り ✅ |
+| 新 trip total_stations | 24 / 44 / 39 (stations.length) | 完全一致 ✅ |
+| `riddenSt['中央線_東日本旅客鉄道'].size` | ~24 (中央線快速分) | 31 駅 (既存 trips との overlap 込) ✅ |
+| `riddenSt['東海道線_東日本旅客鉄道'].size` | ~30+ (上野東京 + 湘南新宿) | 35 駅 ✅ |
+| `riddenSt['山手線_東日本旅客鉄道'].size` | 増加 (両ラインが山手線区間走行) | 12 駅 ✅ |
+| ヘッダ完駅率/系統数 | 増加 | 更新確認 ✅ |
+| console error | 0 | 0 ✅ |
+| js-syntax-guard サブエージェント | ESM clean + 循環 import なし | OK ✅ |
+
+### 設計判断ログ
+
+#### 部分コミット許容 vs 全ロールバック
+
+| 戦略 | 採用 |
+|---|---|
+| 部分コミット許容 (saveMultiSegmentTrip と整合) | ✅ — オフライン耐性、Supabase 部分障害でも localStorage 復旧可能 |
+| 全ロールバック (1 件失敗で全部巻き戻し) | ❌ — UX 悪化、再試行のコスト大。RLS 設定ミス等のシステミック失敗時もユーザーが繰り返し試行する羽目になる |
+
+§251 の設計判断ログに「実装時に決定」と書いていた件を確定。
+
+#### バッチ API vs 逐次 POST
+
+`POST /rest/v1/norireco_trips` に配列を渡すと 1 リクエストで複数 trip 挿入できるが、
+
+- 1 件失敗で全件 rollback されるため、「部分コミット許容」と相反
+- 進捗表示が「保存中...」だけになり、N 件のうち K 件目という細かさが失われる
+- 逐次 POST でも 638 系統チェックは現実的にはありえない (近く絞り込みで 100 件未満想定)
+
+→ 逐次 POST 採用。
+
+#### redraw を最後に 1 回だけ
+
+saveMultiSegmentTrip は 1 trip 保存毎に `redrawAllLinesAfterTripChange` を呼ぶが、一括で同じことをすると N 回の全 polyline 再描画が走る (重い)。`rebuild → redraw → updateOverlays` を全 trip 処理後に 1 回だけ呼ぶことで FPS 低下を回避。
+
+#### 環状線の扱い
+
+`_buildDefaultDraft` で `from=stations[0].name to=stations[-1].name` → 環状線は同名 → `resolveByServiceLine` の `findIndex` が両方 0 にヒット → 1 駅のみ ridden になる。
+
+UI 上の `total_stations: stations.length` (山手線なら 30) と実態 (1 駅 ridden) の乖離。**既知の不整合**として A-5 で半周 2 segment 分割で解消予定 (`stations[0..mid]` + `stations[mid..last]`)。
+
+A-3 段階では bulk-note 末尾に明記 (`環状線は 1 駅のみ ridden になります (A-5 で半周分割予定)`)。
+
+#### 「📋 列車・車両形式も記録する」マニアトグル相当の機能
+
+A-3 段階では完全に省略 (`train_* = null`)。A-5 アコーディオン展開で `createTripDetailEditor` (`trainPicker='per-seg-rows'`) を mount するため、その段階で per-seg 車両形式が選べる。
+
+### 残課題 / 次のステップ
+
+- **A-4 (次)**: 検索 + フィルタ (近く / 会社 / 都道府県) + 既定「近く」並べ替え。638 系統素一覧を実用的に絞る
+- A-5: アコーディオン展開で `createTripDetailEditor` を行内 mount + 環状線半周分割
+- A-6: 空マップ時オンボーディングバナー (入り口 (b))
+- A-7: unknown 完乗率/塗り集計の検証 (Notion §1.3 落とし穴 (a))
+
+### 関連
+
+- §250 (v400 A-1), §251 (v401 A-2) — A-3 の前提
+- saveMultiSegmentTrip (07-record-mode.js:1147) — 単発 trip 保存の参考実装
+- Notion §1.3「データの流れ」セクション
+
+---
+
 ## 251. v401 — 一括記録 A-2 完了: 営業系統チェックリスト本体 + たたむモード (2026-05-28)
 
 ### 背景
