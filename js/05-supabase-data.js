@@ -182,9 +182,41 @@ function _lastDayOfMonth(yyyymm) {
   return `${m[1]}-${m[2]}-${String(last).padStart(2,'0')}`;
 }
 
+// 年横断 (季節/月) フィルタ用の季節プリセット。区切りは行楽期重視 (春4-5 / 夏7-8 / 秋10-11 / 冬12-1)。
+const SEASON_PRESETS = {
+  spring: { label: '春', months: ['04','05'] },
+  summer: { label: '夏', months: ['07','08'] },
+  autumn: { label: '秋', months: ['10','11'] },
+  winter: { label: '冬', months: ['12','01'] },
+};
+
+// 選択月の集合からチップ/バナー用ラベルを作る。プリセット一致なら「夏 (7・8月)」、それ以外は「7・9月」。
+export function seasonFilterLabel(months) {
+  if (!Array.isArray(months) || !months.length) return '';
+  const nums = months.map(m => +m).sort((a,b) => a-b);
+  const sorted = nums.map(n => String(n).padStart(2,'0')).join(',');
+  for (const k in SEASON_PRESETS) {
+    if (SEASON_PRESETS[k].months.slice().sort().join(',') === sorted) {
+      return `${SEASON_PRESETS[k].label} (${nums.join('・')}月)`;
+    }
+  }
+  return nums.join('・') + '月';
+}
+
 export function filterTripsByDate(trips) {
   const f = window._tripDateFilter || { mode: 'all' };
   if (!f || f.mode === 'all') return trips;
+  // 年横断 (季節/月) モード: 連続レンジでなく「月メンバーシップ」で絞る
+  if (f.mode === 'season') {
+    const months = Array.isArray(f.months) ? f.months : [];
+    if (!months.length) return trips;
+    return trips.filter(t => {
+      // 'unknown' は除外。'year' 精度は date=YYYY-01-01 で月が不確実なので除外。
+      if (t.date_precision === 'unknown' || t.date_precision === 'year') return false;
+      const mm = (t.date || '').slice(5, 7);
+      return mm && months.includes(mm);
+    });
+  }
   const y = new Date().getFullYear();
   let fromStr, toStr;
   if (f.mode === 'thisYear') { fromStr = `${y}-01-01`; toStr = `${y}-12-31`; }
@@ -225,6 +257,14 @@ export function updateDateFilterUI() {
       umLabel.textContent = `〜${f.month.replace('-','/')}`;
     } else {
       umLabel.textContent = '〜月指定';
+    }
+  }
+  const seasonLabel = document.getElementById('dfilter-season-label');
+  if (seasonLabel) {
+    if (f.mode === 'season' && Array.isArray(f.months) && f.months.length) {
+      seasonLabel.textContent = seasonFilterLabel(f.months);
+    } else {
+      seasonLabel.textContent = '季節/月';
     }
   }
 }
@@ -377,6 +417,62 @@ function applyUntilMonthFilter() {
   if (!y || !m) { alert('年月を選択してください'); return; }
   setDateFilter('untilMonth', { month: `${y}-${m}` });
   closeUntilMonthFilter();
+}
+
+// 年横断 (季節/月) モード: 年をまたいで「夏だけ」「12月だけ」などで絞る
+function toggleSeasonFilter() {
+  const pop = document.getElementById('dfilter-season-pop');
+  if (!pop) return;
+  if (pop.classList.contains('open')) { closeSeasonFilter(); return; }
+  // 月トグル (1〜12) を初回のみ生成
+  const grid = document.getElementById('dfilter-season-months');
+  if (grid && !grid.children.length) {
+    for (let m = 1; m <= 12; m++) {
+      const mm = String(m).padStart(2,'0');
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'dfilter-month-tog';
+      b.dataset.m = mm;
+      b.textContent = String(m);
+      b.onclick = () => b.classList.toggle('on');
+      grid.appendChild(b);
+    }
+  }
+  // 現在の選択を反映
+  const f = window._tripDateFilter || {};
+  const cur = (f.mode === 'season' && Array.isArray(f.months)) ? f.months : [];
+  grid?.querySelectorAll('.dfilter-month-tog').forEach(b => {
+    b.classList.toggle('on', cur.includes(b.dataset.m));
+  });
+  pop.classList.add('open');
+  setTimeout(() => document.addEventListener('mousedown', _seasonOutsideClick), 0);
+}
+function _seasonOutsideClick(e) {
+  const wrap = document.getElementById('date-filter-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    closeSeasonFilter();
+  }
+}
+function closeSeasonFilter() {
+  document.getElementById('dfilter-season-pop')?.classList.remove('open');
+  document.removeEventListener('mousedown', _seasonOutsideClick);
+}
+// 季節プリセットボタン: 該当月トグルだけ on にする (押下のたび置き換え)
+function applySeasonPreset(key) {
+  const preset = SEASON_PRESETS[key];
+  if (!preset) return;
+  const grid = document.getElementById('dfilter-season-months');
+  grid?.querySelectorAll('.dfilter-month-tog').forEach(b => {
+    b.classList.toggle('on', preset.months.includes(b.dataset.m));
+  });
+}
+function applySeasonFilter() {
+  const grid = document.getElementById('dfilter-season-months');
+  const months = Array.from(grid?.querySelectorAll('.dfilter-month-tog.on') || [])
+    .map(b => b.dataset.m);
+  if (!months.length) { alert('1 つ以上の月を選んでください'); return; }
+  setDateFilter('season', { months });
+  closeSeasonFilter();
 }
 
 // Supabaseから旅程を取得して地図を更新。
@@ -612,6 +708,10 @@ window.applyCustomDateFilter = applyCustomDateFilter;
 window.toggleUntilMonthFilter = toggleUntilMonthFilter;
 window.closeUntilMonthFilter = closeUntilMonthFilter;
 window.applyUntilMonthFilter = applyUntilMonthFilter;
+window.toggleSeasonFilter = toggleSeasonFilter;
+window.closeSeasonFilter = closeSeasonFilter;
+window.applySeasonPreset = applySeasonPreset;
+window.applySeasonFilter = applySeasonFilter;
 
 // v248: noritetsu-map.html の復元モーダル onclick="closeRestoreModal()" / "restoreFromJson(...)"
 //   が v225 以降 ReferenceError で無反応になっていた問題を修正 (HTML onclick はグローバル参照のため window 公開が必須)

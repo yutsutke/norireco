@@ -745,6 +745,21 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
   background:transparent;border:1px solid var(--track);color:var(--silver);
   padding:6px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit;
 }
+.dfilter-season-presets{display:flex;gap:5px;}
+.dfilter-season-preset{
+  flex:1;background:rgba(140,160,179,.12);border:1px solid var(--track);
+  color:var(--white);padding:6px 2px;border-radius:6px;font-size:11px;cursor:pointer;
+  font-family:inherit;white-space:nowrap;
+}
+.dfilter-season-preset:hover{background:rgba(140,160,179,.25);}
+.dfilter-season-months{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;}
+.dfilter-month-tog{
+  background:#060f1a;border:1px solid var(--track);color:var(--silver);
+  padding:6px 0;border-radius:6px;font-size:11px;cursor:pointer;
+  font-family:'DM Mono',monospace;
+}
+.dfilter-month-tog:hover{background:rgba(140,160,179,.15);color:var(--white);}
+.dfilter-month-tog.on{background:var(--gold);color:var(--navy);font-weight:700;border-color:var(--gold);}
 @keyframes fadeInDown{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
 .dfilter-icon{font-size:11px;margin:0 3px 0 2px;color:var(--silver);}
 .dfilter-chip{
@@ -1276,6 +1291,7 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
         <button class="dfilter-chip"        data-mode="thisYear"   onclick="setDateFilter('thisYear')">今年</button>
         <button class="dfilter-chip"        data-mode="lastYear"   onclick="setDateFilter('lastYear')">去年</button>
         <button class="dfilter-chip"        data-mode="untilMonth" onclick="toggleUntilMonthFilter()" title="最初から指定月までを表示 (タイムマシン)"><span id="dfilter-um-label">〜月指定</span></button>
+        <button class="dfilter-chip"        data-mode="season"     onclick="toggleSeasonFilter()" title="年をまたいで季節・月で絞る (夏だけ / 12月だけ など)"><span id="dfilter-season-label">季節/月</span></button>
         <button class="dfilter-chip"        data-mode="custom"     onclick="toggleCustomDateFilter()"><span id="dfilter-custom-label">カスタム</span></button>
       </div>
       <div class="dfilter-pop" id="dfilter-pop">
@@ -1302,6 +1318,19 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
         <div class="dfilter-pop-actions">
           <button class="dfilter-pop-apply" onclick="applyUntilMonthFilter()">適用</button>
           <button class="dfilter-pop-cancel" onclick="closeUntilMonthFilter()">×</button>
+        </div>
+      </div>
+      <div class="dfilter-pop" id="dfilter-season-pop">
+        <div class="dfilter-season-presets">
+          <button type="button" class="dfilter-season-preset" onclick="applySeasonPreset('spring')">🌸 春</button>
+          <button type="button" class="dfilter-season-preset" onclick="applySeasonPreset('summer')">☀️ 夏</button>
+          <button type="button" class="dfilter-season-preset" onclick="applySeasonPreset('autumn')">🍁 秋</button>
+          <button type="button" class="dfilter-season-preset" onclick="applySeasonPreset('winter')">⛄ 冬</button>
+        </div>
+        <div class="dfilter-season-months" id="dfilter-season-months"></div>
+        <div class="dfilter-pop-actions">
+          <button class="dfilter-pop-apply" onclick="applySeasonFilter()">適用</button>
+          <button class="dfilter-pop-cancel" onclick="closeSeasonFilter()">×</button>
         </div>
       </div>
       <!-- v186/v187: 駅フィルタ (降車 / 乗車 / 通過 / 未訪問 の表示・非表示) -->

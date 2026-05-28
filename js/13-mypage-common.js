@@ -20,7 +20,7 @@
 // ══════════════════════════════════════════════════════════════
 import { currentUserId, authBearerToken } from './12-auth.js';
 import { renderList } from './09-tabs-stats.js';
-import { filterTripsByDate } from './05-supabase-data.js';
+import { filterTripsByDate, seasonFilterLabel } from './05-supabase-data.js';
 
 // v332 (Phase 3): trip.from_station / to_station 列 DROP 後の name 解決ヘルパー。
 //   元 13b-trips.js に置いていたが、13-mypage-common ↔ 13b-trips の循環 import で
@@ -442,6 +442,9 @@ function renderMpTimeMachineBanner() {
   else if (f.mode === 'lastYear') label = '🗓 去年のみ表示中';
   else if (f.mode === 'untilMonth') {
     label = `🕰 <strong>〜${(f.month||'').replace('-','/')}</strong> までの記録で表示中`;
+  }
+  else if (f.mode === 'season') {
+    label = `🗓 <strong>${seasonFilterLabel(f.months)}</strong> の記録で表示中 (年横断)`;
   }
   else if (f.mode === 'custom') {
     if (isTimeMachineActive()) {

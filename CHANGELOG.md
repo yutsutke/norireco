@@ -52,6 +52,46 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 259. v409 — 期間フィルタに「年横断 (季節/月)」モード追加
+
+**バージョン**: v409 (CACHE_VERSION)
+**日付**: 2026-05-29
+**カテゴリ**: A（実装 / 体験向上）
+
+### 背景
+
+期間フィルタ (`js/05-supabase-data.js`) の既存モードは `all / thisYear / lastYear / untilMonth / custom` の 5 つで、いずれも**連続した日付レンジ** (`fromStr 〜 toStr`) で表現されていた。ユスケ要望「年をまたいで『夏だけ』『12月だけ』を見たい」はレンジでは表現できず、**月メンバーシップ**で絞る新モードが必要だった (例: 2023 年の夏と 2024 年の夏を同時に塗る)。
+
+### 設計判断
+
+- **ピッカー形式**: 季節プリセット (春夏秋冬) + 1〜12 月の複数トグル。ユスケ選択。「夏 (複数月)」も「12 月だけ」も「12 月と 1 月」も表現できる最も柔軟な形
+- **季節区切り**: 行楽期重視 = 春 4-5 / 夏 7-8 / 秋 10-11 / 冬 12-1 月。ユスケ選択。気象庁式 (各 3 ヶ月) でなく、旅行・乗り鉄のハイシーズン寄りに各 2 ヶ月へ絞り、中間の端境期月を外した
+- **精度の扱い**: `date_precision='unknown'` は従来通り除外。加えて **`year` 精度も除外** — `year` 精度の trip は `date=YYYY-01-01` で月が常に 01 になり「夏」フィルタに 1 月の記録が紛れ込むため。`month`/`day`/`minute` のみ月が信頼できる
+
+### 変更
+
+- `js/05-supabase-data.js`:
+  - `SEASON_PRESETS` const (行楽期区切り) 追加
+  - `seasonFilterLabel(months)` export 追加 — プリセット一致なら「夏 (7・8月)」、それ以外は「7・9月」を返す。チップ/バナー共用
+  - `filterTripsByDate` に `season` 分岐追加 (レンジ計算の手前で早期 return)
+  - `toggleSeasonFilter` / `closeSeasonFilter` / `applySeasonPreset` / `applySeasonFilter` 追加 + window 公開 (HTML onclick 用)。月トグルは初回 open 時に 12 個を JS 生成、現在の選択を反映
+  - `updateDateFilterUI` に season チップラベル更新を追加
+- `js/13-mypage-common.js`: `seasonFilterLabel` を import、`renderMpTimeMachineBanner` に season 分岐追加 (「🗓 夏 (7・8月) の記録で表示中 (年横断)」)
+- `noritetsu-map.html`: 〜月指定とカスタムの間に `data-mode="season"` チップ追加、`#dfilter-season-pop` ポップアップ (季節プリセット 4 + 月グリッド + 適用/×) 追加、`.dfilter-season-preset` / `.dfilter-season-months` / `.dfilter-month-tog` CSS 追加
+- CACHE_VERSION v408 → v409
+
+### 検証 (preview)
+
+- `filterTripsByDate` 直接テスト: 夏 (07,08) → 2024 年 + 2023 年の両 trip がヒット (年横断 OK)、12 月だけ → 12 月 trip のみ、冬 (12,01) → Dec 2024 + Jan 2022 (年またぎ季節 OK)、`year` 精度 + `unknown` は正しく除外
+- ラベル: 夏 (7・8月) / 12月 / 7・9月
+- UI フロー: 季節チップ → ポップアップ open → 夏プリセットで 7,8 ハイライト → 12 月手動追加 → 適用 → チップ「7・8・12月」+ active + localStorage 永続化 + 再 open で選択復元。console error 0
+
+### 残課題
+
+- Notion §1.1 (共通 UI 期間フィルタ) の仕様更新はセッション末にまとめて反映
+
+---
+
 ## 258. v408 — 時刻セクションのラベルから「（後追い記録向け）」を削除
 
 **バージョン**: v408 (CACHE_VERSION)
