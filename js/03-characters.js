@@ -12,7 +12,7 @@
 // v225: 07-record-mode.redrawAllLinesAfterTripChange を import 化。
 //   03 ←→ 07 の循環 import になるが、両側とも function export なので ES Modules の hoisting で解決される。
 // ══════════════════════════════════════════════
-import { currentUserId } from './12-auth.js';
+import { currentUserId, authBearerToken } from './12-auth.js';
 import { redrawAllLinesAfterTripChange } from './07-record-mode.js';
 import { closeCharModal } from './08-rendering.js';
 const OWNED_CHARACTERS_KEY = 'norireco_owned_characters';
@@ -65,7 +65,7 @@ async function saveCharacterGrantToSupabase(charId, stationName, source, gpsData
       method: 'POST',
       headers: {
         'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Authorization': `Bearer ${authBearerToken()}`,
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal',
       },
@@ -95,7 +95,7 @@ export async function syncCharacterGrantsFromSupabase() {
   }
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_character_grants?user_id=eq.${uid}&select=character_id`, {
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${authBearerToken()}` }
     });
     if (!res.ok) {
       console.warn('[乗レコ] キャラ獲得同期失敗 HTTP', res.status);

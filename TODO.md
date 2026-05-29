@@ -40,12 +40,6 @@ git log --oneline -20
   - `users.share_status` を Supabase に追加。マイページにバッジ表示
   - 発動条件 (v345 改): 不正検知連動は撤回。代わりにスパム的シェア量・他ユーザー通報・規約違反コンテンツ等を別軸で検討
 
-- [ ] **Supabase RLS 強化 (v233 の残課題)**
-  - 現状: anon key で REST API 直叩きで他人の生 trip / character_grants を取得可能
-  - v233 で UI 側では他人データを表示しないよう防御済だが、本格対策は RLS policy で `user_id = auth.uid()` 必須にする
-  - 影響テーブル: `norireco_trips` / `norireco_character_grants` / `norireco_memos`
-  - 注意: backfill (user_id=NULL → 自分の uid に PATCH) は access_token ベースなので RLS 強化後も動作する
-
 - [ ] **駅 ID 体系 Phase 2: trip データ自体に `*_station_id` 列追加 + Supabase 移行**
   - Phase 1 完成 (v293〜v300): 駅マスター (merged_stations 9,017 駅) に `s_NNNNN` id 付与、SERVICE_LINES に伝播、集計・描画判定すべて id ベース化
   - **Phase 2-a 完成 (v310)**: `from_station_id` / `to_station_id` 列追加 + 並行書き込み

@@ -39,7 +39,7 @@ window.NORIRECO.auth = window.NORIRECO.auth || {
   supabaseAuthClient: null,    // Supabase JS SDK client (auth 専用)
   currentUser: null,           // { id, email, ... } or null
   currentSession: null,
-  authBackfillRan: false,      // 初回ログインの backfill 重複防止
+  initialSyncRan: false,       // 初回ログインの同期 (trip/grant/color/memo) 重複防止
 };
 const auth = window.NORIRECO.auth;
 
@@ -118,12 +118,14 @@ function handleAuthChange(event, session) {
   console.log(`[Auth] ${event}`, auth.currentUser ? `uid=${auth.currentUser.id.slice(0,8)}` : '(logout)');
   updateAuthHeaderUI();
   closeAuthModal();
-  // 初回ログイン (SIGNED_IN) は backfill + Supabase 同期 (trip + キャラ獲得)。
+  // 初回ログイン (SIGNED_IN / INITIAL_SESSION) で Supabase からデータを同期。
   // v233: 未ログイン状態の sync は user_id 取得不可で skip するように変更したため、
   // 認証確定時に明示的に再同期して自分の trip / キャラを地図とローカルに反映する。
-  if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && auth.currentUser && !auth.authBackfillRan) {
-    auth.authBackfillRan = true;
-    backfillUserIdForLegacyData(auth.currentUser.id);
+  // v421: backfill (user_id IS NULL → 自 uid に PATCH) は廃止
+  //   理由: v418 で未ログイン Supabase POST を skip 化、v421 で残骸を物理 DELETE + NOT NULL 化済。
+  //   `user_id IS NULL` レコードは存在しなくなったため backfill が不要になった。
+  if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && auth.currentUser && !auth.initialSyncRan) {
+    auth.initialSyncRan = true;
     syncFromSupabase();
     syncCharacterGrantsFromSupabase();
     // v247: 系統色のユーザーカスタマイズをデバイス間同期 (window 経由で循環 import 回避)
@@ -201,7 +203,7 @@ async function signInWithGoogle() {
 async function signOutUser() {
   if (!auth.supabaseAuthClient) return;
   await auth.supabaseAuthClient.auth.signOut();
-  auth.authBackfillRan = false;
+  auth.initialSyncRan = false;
 }
 
 // 認証ヘッダ (Authorization Bearer) を access_token があれば返す
@@ -213,38 +215,6 @@ export function authBearerToken() {
 // 現在ログインしている user_id を返す (未ログイン時は null)
 export function currentUserId() {
   return auth.currentUser?.id || null;
-}
-
-// ── 既存データの user_id バックフィル ──────────────────────────
-// 初回ログイン時 1 回だけ実行: user_id=NULL のレコードを自分の uid に PATCH
-async function backfillUserIdForLegacyData(uid) {
-  const tables = ['norireco_trips', 'norireco_character_grants', 'norireco_memos'];
-  for (const tbl of tables) {
-    try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/${tbl}?user_id=is.null`, {
-        method: 'PATCH',
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${authBearerToken()}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation',
-        },
-        body: JSON.stringify({ user_id: uid }),
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        if (updated.length > 0) {
-          console.log(`[Auth] backfill ${tbl}: ${updated.length}件 → uid=${uid.slice(0,8)}`);
-        }
-      } else {
-        // user_id 列が無い等のスキーマエラー時はサイレント (migration 未実行)
-        const errBody = await res.text();
-        console.warn(`[Auth] backfill ${tbl} 失敗:`, errBody.slice(0, 200));
-      }
-    } catch (e) {
-      console.warn(`[Auth] backfill ${tbl} 接続エラー:`, e.message);
-    }
-  }
 }
 
 // ── ヘッダ UI ──────────────────────────────────────────────────

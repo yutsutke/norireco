@@ -30,7 +30,7 @@
 
 // A-3 (v402): 一括保存に必要な依存。saveMultiSegmentTrip 同様の経路で
 //   trip 1 件ずつを Supabase に POST + ローカル状態更新を行う。
-import { currentUserId } from './12-auth.js';
+import { currentUserId, authBearerToken } from './12-auth.js';
 import { redrawAllLinesAfterTripChange, showRecordToast } from './07-record-mode.js';
 import { updateOverlays } from './08-rendering.js';
 // A-5 (v404): アコーディオン展開で行内 mount する trip 詳細エディタ。
@@ -744,12 +744,13 @@ function _buildTripFromDraft(draft, idx, ctx) {
 }
 
 async function _postTripToSupabase(trip) {
-  // saveMultiSegmentTrip と同じパターン (anon Bearer)。RLS 緩和済のため anon でも書ける。
+  // saveMultiSegmentTrip と同じパターン。v421 RLS 強化以降は access_token Bearer 必須
+  // (anon Bearer だと auth.uid() = user_id が満たせず 403)。
   const res = await fetch(`${window.SUPABASE_URL}/rest/v1/norireco_trips`, {
     method: 'POST',
     headers: {
       'apikey':        window.SUPABASE_KEY,
-      'Authorization': `Bearer ${window.SUPABASE_KEY}`,
+      'Authorization': `Bearer ${authBearerToken()}`,
       'Content-Type':  'application/json',
       'Prefer':        'return=minimal',
     },

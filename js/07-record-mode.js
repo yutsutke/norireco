@@ -14,7 +14,7 @@
 // v225: 04-gps-location の 6 関数を import 化。
 // v345: 不正検知を撤回 (GPS 記録 = 手間省略の位置づけに変更、世間への証明不要)
 import { runCharacterGrantCheck } from './03-characters.js';
-import { currentUserId } from './12-auth.js';
+import { currentUserId, authBearerToken } from './12-auth.js';
 // v258: 記録モード保存時の写真添付 (memo / trip 共通の PhotoArea)
 import { createPhotoArea } from './18-photo-area.js';
 // v392 (B-1 続き): trip 詳細エディタ共通コンポーネント (per-seg-chip mode)
@@ -1350,7 +1350,7 @@ async function saveMultiSegmentTrip() {
         method: 'POST',
         headers: {
           'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Authorization': `Bearer ${authBearerToken()}`,
           'Content-Type': 'application/json',
           'Prefer': 'return=minimal',
         },

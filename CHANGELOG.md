@@ -52,6 +52,78 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 271. v421 — Supabase RLS 強化 (v233 残課題本丸を閉じる)
+
+**バージョン**: v421 (CACHE_VERSION)
+**日付**: 2026-05-29
+**カテゴリ**: A (セキュリティ / アーキテクチャ補強)
+**migration**: [`supabase/migrations/v421_trips_grants_rls.sql`](supabase/migrations/v421_trips_grants_rls.sql) (Run 後 Applied 行追記)
+
+### 背景
+
+v420 (§270) で `renderMpStatsSection` の anon select バグを応急対処したが、**根本原因は v233 (2026-05-19) から残置されていた「`norireco_trips` / `norireco_character_grants` の RLS が anon SELECT を許可している」状態そのもの**。SUPABASE_KEY は frontend 公開 anon key なので、UI 防御だけ重ねても curl からは `?select=*` で全件取れる。v420 の症状はその穴がたまたま JS バグ経由で表面化しただけで、curl 経路は依然として開いていた。
+
+v418 で未ログイン (ゲストモード) を `saveMultiSegmentTrip` / `saveBulkDrafts` の `isGuest` 分岐で「Supabase POST skip / localStorage 行き」と確定したことで、「`user_id IS NULL` の新規 row は二度と作られない」契約が成立。**RLS を `auth.uid() = user_id` で締めるための前提条件が今ちょうど整った**ので、本セッションで本丸を閉じる。
+
+### 設計判断
+
+#### 1. 既存 `user_id IS NULL` レコードは物理 DELETE
+- 選択肢:
+  - (A) 物理 DELETE — RLS 厳格化、NOT NULL 化、FK CASCADE 化が綺麗に通る
+  - (B) backfill 用に「NULL は authenticated に SELECT/UPDATE 許可」policy を残す — 「未ログインで作った row を誰でも横取りできる」抜け穴になる
+  - (C) 何もしない (NULL は永遠に取り出せない死蔵データ化)
+- **(A) を採用 (ユスケ承認 2026-05-29)**。v418 以降は NULL が新規発生せず、現存 NULL は v135 (2026-...) 以前の残骸で本人含め誰も取り出せない死蔵データ。残しても容量浪費 + NOT NULL 化を阻むだけ。
+
+#### 2. `user_id` を NOT NULL + `auth.users(id) ON DELETE CASCADE` 化
+- v250 (`norireco_memos`) / v413 (`norireco_shares`) と同形に揃える。将来の穴防止 (nullable のままだと「次の v418 みたいな経路で誰かが NULL を入れた瞬間 RLS が無効になる」リスク)。
+- CASCADE: アカウント削除時に trip / grant も自動掃除される。GDPR 的にもこの方が綺麗。
+
+#### 3. RLS policy 4 件 (本人のみ全 CRUD) + REVOKE anon
+- policy 4 件: SELECT/INSERT/UPDATE/DELETE 各 `auth.uid() = user_id` (v250 と同テンプレ、日本語 policy 名も統一)。
+- **二重防御**: `REVOKE ALL ON ... FROM anon` でロール権限でも anon の SELECT を潰す。RLS policy だけだと future-proofing が弱い (将来「SELECT は公開」policy を誤って足したら穴が空く)。`norireco_shares` のように意図的に anon SELECT したいテーブルだけ `GRANT SELECT TO anon` する方針 (本件は両テーブルとも公開不要)。
+
+#### 4. JS 側: anon Bearer → `authBearerToken()` (3 ファイル / 4 箇所)
+| ファイル | 用途 | 修正前 | 修正後 |
+|---|---|---|---|
+| `js/03-characters.js` (2 箇所) | キャラ獲得 POST / SELECT | `Bearer ${SUPABASE_KEY}` | `Bearer ${authBearerToken()}` |
+| `js/07-record-mode.js:1349-1358` | `saveMultiSegmentTrip` の trip POST | 同上 | 同上 |
+| `js/21-bulk-record.js:_postTripToSupabase` | 一括記録の trip POST | `Bearer ${window.SUPABASE_KEY}` | `Bearer ${authBearerToken()}` |
+
+`authBearerToken()` は 12-auth.js 既存のヘルパ (`auth.currentSession?.access_token || SUPABASE_KEY` — `||` 右辺の anon フォールバックは未ログイン時のみ作用するが、RLS が `auth.uid() = user_id` を要求するので結果として 403)。`isGuest` 分岐で未ログイン POST 自体を skip 済なので実害なし。
+
+05/09/12/13/13b/14/15/16/18 は v418 以前から `authBearerToken()` 経由だったので無変更。
+
+#### 5. backfill ロジック (`backfillUserIdForLegacyData`) を廃止
+- v135 で導入された「初回ログイン時に `user_id=NULL` を自 uid に PATCH」処理。v418 以降 NULL 新規発生が止まり、v421 で残骸物理 DELETE + NOT NULL 化したことで完全な死にコードになった。
+- `auth.authBackfillRan` state は「初回同期 (trip/grant/color/memo) の重複防止」用途で `auth.initialSyncRan` にリネームして残置 (後段の `syncFromSupabase` / `syncCharacterGrantsFromSupabase` / `colorOverrides.syncFromSupabase` / `memos.sync` が二重に走らないようにするため)。
+
+#### 6. デプロイ順序: JS 先 deploy → SQL 後 Run
+- 逆順だと「SQL 実行直後・JS deploy 前」の隙間で旧 anon Bearer 経路 (03/07/21) が 401/403 を返してユーザーの保存・同期が失敗する。
+- JS 先 deploy なら「JS deploy 済・SQL 未 Run」の隙間は RLS 緩和の旧状態のままなので、誰の操作も失敗しない (代わりに anon 穴がほんの少しだけ続くが、これは v233 から続いている既存状態の継続なので新規リスクはない)。
+
+### 失敗教訓
+
+- **v233 で「UI 防御だけ入れて RLS 据え置き」とドキュメント化したのが甘かった**。anon key 公開前提なら UI 防御は frontend の挙動を整えるだけで、curl から の生 REST は防げない。半年以上「Supabase RLS 強化 (v233 残課題)」が TODO 🔥 に残り、最終的に v420 で実害バグとして顕在化した。
+- **次回以降の教訓**: 「frontend に anon key を渡すアプリケーションでテーブルを新規作成するときは、最初から RLS policy + GRANT/REVOKE をテンプレ migration に書く」を v250 以降は徹底できているが、v135 (まだ未ログイン主体だった頃のスキーマ) はこの規律の前に作られていた。今回それを後追いで揃えた。
+
+### 変更ファイル
+
+- 新規: `supabase/migrations/v421_trips_grants_rls.sql`
+- 変更: `js/03-characters.js` / `js/07-record-mode.js` / `js/21-bulk-record.js` / `js/12-auth.js` / `sw.js` / `STATUS.md` / `TODO.md`
+- 詳細は `git diff --name-only` 参照 (v270 ルール)
+
+### 残課題
+
+- なし。本タスクで完結。
+- 関連の TODO 🔥「Supabase RLS 強化 (v233 の残課題)」を削除。
+
+### Notion 反映 (セッション末まとめで対応)
+
+- §2.2 Supabase: テーブル一覧の `norireco_trips` / `norireco_character_grants` 行に RLS 4 policy を追記、Applied 規約準拠
+- §2.7.2 意思決定ログ: 「v233 → v421 の経緯」「物理 DELETE 採用理由」「JS 先 deploy → SQL 後 Run の順序判断」
+
+---
+
 ## 270. v420 — ゲスト📊統計タブが anon key で全ユーザーの trip を取得してたバグ修正
 
 **バージョン**: v420 (CACHE_VERSION)
