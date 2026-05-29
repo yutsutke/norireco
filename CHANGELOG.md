@@ -52,6 +52,47 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 267. v417 — シェアモーダルを「📤 画像」「🔗 リンク」2 ボタンに再分離
+
+**バージョン**: v417 (CACHE_VERSION)
+**日付**: 2026-05-29
+**カテゴリ**: A（実装 / 🔥 シェア機能 磨き込み — v415 の方針見直し）
+
+### 背景
+
+ユスケが Windows 実機で 📤 シェアを検証 → OS (Windows) の共有シートが立ち上がるが、**ファイルを共有する際に `text` (= /share URL) を落とす**ことが判明。v415 で「📤 1 本に統合 (画像 + リンクを caption に載せる)」とした設計が、PC では URL を渡せず機能しない。さらに OS 共有シートはアプリ管轄外なので、そこに「URL ボタン」を足すことは不可能。→ **URL は専用ボタンとしてモーダル (自前 UI) 側に置くべき**という結論。
+
+### 設計判断
+
+- v415 の 1 本統合を見直し、役割で **2 ボタンに再分離** (v413 の 2 系統に近い形に回帰。ただし挙動は改良):
+  - **📤 画像をシェア**: 画像ファイルのみを共有 (ログイン不要)。Web Share 対応端末は OS シートに file、非対応は X intent。R2 アップロードは行わない (高速・ログイン不要に戻した)。
+  - **🔗 リンクをシェア**: /share/<id> を作成して共有 (ログイン必須)。**モバイル (pointer: coarse) = Web Share で URL 共有 (X アプリ等で unfurl)** / **PC = クリップボードにコピー** (OS シートに飛ばすと URL が埋もれるため、コピーが確実)。
+- v415→v416 で「📤 のフォールバックにコピーを仕込む」延命策を入れていたが、PC で OS シートが先に出てフォールバックに到達しないため無効。専用ボタン化が正解だった。
+
+### 変更
+
+- **`js/14-share-ogp.js`**:
+  - モーダルに `#share-ogp-link-btn` (🔗 リンクをシェア) を復活 (3 ボタン: 📥 ダウンロード / 📤 画像をシェア(青) / 🔗 リンクをシェア(緑))。
+  - `shareCurrentCanvas` を純画像共有に戻す (`shareImageOnly` を呼ぶだけ。R2 upload / insert を除去)。
+  - `shareImageWithLink` (v415 で追加した「画像+リンク」共有) を撤去し、`shareCurrentLink` (リンク専用) を新設。touch 判定 (`matchMedia('(pointer: coarse)')`) で Web Share / clipboard を分岐。`uploadShareImage` / `insertShareRecord` / `shareTextWithoutUrl` は流用。
+- **`sw.js`**: CACHE_VERSION v416 → v417
+
+### 検証 (preview, 擬似ログイン + fetch/clipboard スタブ)
+
+- 3 ボタン描画 + ラベル確認。
+- 🔗 未ログイン → alert「リンクをシェアするにはログインが必要です。」。
+- 📤 画像をシェア → `/upload/share-image` を叩かない (純画像) + Web Share 無し時 X intent。
+- 🔗 ログイン (PC, pointer fine) → `POST /upload/share-image` → `PUT r2` → `POST norireco_shares` → clipboard = `https://norireco.app/share/abc123` + ボタン「✅ リンクをコピーしました」。エラー 0。
+- 副次確認: 偽 JWT で実 `api.norireco.app` を叩いたテスト残りが 401「Invalid Compact JWS」を返し、worker の JWT 検証 + shareCurrentLink の error handling が正しく動くことも確認。
+- 備考: 当環境では 1200×630 canvas の `toBlob` が ~1s かかるため、Web Share/コピーまで体感 1 秒強。実機 PC では問題ない想定。
+
+### 残課題
+
+- 🔗 のモバイル (touch) 経路 = Web Share URL は headless で pointer:coarse を再現できず未実機検証 (コードパスは単純)。
+- 垢BAN (share_banned) 連携は別タスク。
+
+---
+
 ## 266. v416 — シェア取り消し UI (マイページ「🔗 シェア」タブ) + URL コピー導線の復活
 
 **バージョン**: v416 (CACHE_VERSION)

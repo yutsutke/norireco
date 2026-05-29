@@ -581,8 +581,9 @@ function ensureModal() {
         <canvas id="share-ogp-canvas" style="width:100%;height:auto;max-width:480px;border-radius:4px;display:block;margin:0 auto"></canvas>
       </div>
       <div id="share-ogp-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-        <button class="btn-gen" id="share-ogp-download-btn" style="flex:1;min-width:130px">📥 ダウンロード</button>
-        <button class="btn-gen" id="share-ogp-share-btn" style="flex:1;min-width:130px;background:rgba(46,196,134,.15);color:#2ec486;border:1.5px solid rgba(46,196,134,.4)">📤 シェア</button>
+        <button class="btn-gen" id="share-ogp-download-btn" style="flex:1;min-width:110px">📥 ダウンロード</button>
+        <button class="btn-gen" id="share-ogp-share-btn" style="flex:1;min-width:110px;background:rgba(95,181,255,.15);color:#5fb5ff;border:1.5px solid rgba(95,181,255,.4)">📤 画像をシェア</button>
+        <button class="btn-gen" id="share-ogp-link-btn" style="flex:1;min-width:110px;background:rgba(46,196,134,.15);color:#2ec486;border:1.5px solid rgba(46,196,134,.4)">🔗 リンクをシェア</button>
       </div>
       <button class="btn-cls" id="share-ogp-close-btn">閉じる</button>
     </div>
@@ -591,6 +592,7 @@ function ensureModal() {
   m.querySelector('#share-ogp-close-btn').addEventListener('click', closeShareModal);
   m.querySelector('#share-ogp-download-btn').addEventListener('click', downloadCurrentCanvas);
   m.querySelector('#share-ogp-share-btn').addEventListener('click', shareCurrentCanvas);
+  m.querySelector('#share-ogp-link-btn').addEventListener('click', shareCurrentLink);
   return m;
 }
 
@@ -683,72 +685,74 @@ function shareTextWithoutUrl() {
   return String(_shareText).replace(/\s*https?:\/\/\S+\s*$/i, '').trim();
 }
 
-// 「📤 シェア」(v415 で /share リンクに統一)。
-// - ログイン時: 画像を R2 に保存 → norireco_shares 登録 → /share/<id> を「画像 + リンク」で共有。
-//   リンクは未ログイン視聴者にも開け、X 等では og:image でリッチに unfurl される (トラフィックが戻る)。
-// - 未ログイン / R2・insert 失敗時: 従来通り画像ファイル + ルート URL でフォールバック。
+// 「📤 画像をシェア」: 画像ファイルそのものを共有する (ログイン不要)。
+// Web Share 対応端末 (モバイル / Windows 等) は OS 共有シートに画像を渡し、
+// 非対応なら X intent。/share リンクが欲しいときは別の「🔗 リンクをシェア」を使う
+// (v417: Windows の OS 共有シートは file 共有時に text=URL を落とすため、URL は専用
+//  ボタンに分離した。画像共有と URL 共有を別ボタンにして役割を明確化)。
 async function shareCurrentCanvas() {
   const canvas = document.getElementById('share-ogp-canvas');
   if (!canvas) return;
   const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
   if (!blob) { alert('画像の生成に失敗しました'); return; }
   const file = new File([blob], `${_downloadName}.png`, { type: 'image/png' });
-  const btn = document.getElementById('share-ogp-share-btn');
-  const orig = btn ? btn.textContent : '';
-
-  if (typeof currentUserId === 'function' && currentUserId()) {
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ 準備中…'; }
-    try {
-      const { public_url, share_id } = await uploadShareImage(blob);
-      await insertShareRecord(share_id, public_url);
-      const shareUrl = `https://norireco.app/share/${share_id}`;
-      if (btn) { btn.disabled = false; btn.textContent = orig; }
-      await shareImageWithLink(file, shareUrl, btn, orig);
-      return;
-    } catch (e) {
-      console.error('[シェア] /share リンク作成に失敗、画像のみで共有します:', e);
-      if (btn) { btn.disabled = false; btn.textContent = orig; }
-      // ↓ 画像のみフォールバックへ続行
-    }
-  }
   await shareImageOnly(file);
 }
 
-// 画像ファイル + /share リンクを共有。files と url を同時に渡せない端末が多いため、
-// リンクは text 末尾に載せる (画像添付不可な環境ではリンクのみ Web Share → X intent)。
-async function shareImageWithLink(file, shareUrl, btn, orig) {
+// 「🔗 リンクをシェア」(v417): /share/<id> リンクを作成して共有する。ログイン必須
+// (R2 アップロードと RLS insert が JWT を要求)。
+//   - モバイル (タッチ端末) で Web Share 可: navigator.share({url}) で共有シートへ
+//     (X アプリ等に渡すと og:image でリッチに unfurl される)。
+//   - PC: クリップボードにコピー (PC の OS 共有シートに飛ばすと URL が埋もれるため、
+//     コピーの方が確実。X・Discord・ブログ等どこへでも貼れる)。
+async function shareCurrentLink() {
+  if (typeof currentUserId !== 'function' || !currentUserId()) {
+    alert('リンクをシェアするにはログインが必要です。');
+    return;
+  }
+  const canvas = document.getElementById('share-ogp-canvas');
+  if (!canvas) return;
+  const btn = document.getElementById('share-ogp-link-btn');
+  const orig = btn ? btn.textContent : '';
   const flash = (msg) => {
     if (!btn) return;
     btn.textContent = msg;
-    setTimeout(() => { if (btn) btn.textContent = orig || '📤 シェア'; }, 2400);
+    setTimeout(() => { if (btn) btn.textContent = orig || '🔗 リンクをシェア'; }, 2400);
   };
-  const textWithLink = `${shareTextWithoutUrl()}\n${shareUrl}`;
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], text: textWithLink });
-      flash('✅ 共有しました');
-      return;
-    } catch (e) { if (e && e.name === 'AbortError') return; }
-  }
-  if (navigator.share) {
-    try {
-      await navigator.share({ title: _shareMeta.title || '乗レコ', text: shareTextWithoutUrl(), url: shareUrl });
-      flash('✅ 共有しました');
-      return;
-    } catch (e) { if (e && e.name === 'AbortError') return; }
-  }
-  // Web Share 不可 (PC ブラウザ等): リンクをクリップボードにコピー (旧「🔗 シェアリンクを作成」と同じ)。
-  // ここで /share URL を手元に取れるので、X に限らず Discord・ブログ等どこへでも貼れる。
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 作成中…'; }
   try {
-    await navigator.clipboard.writeText(shareUrl);
-    flash('✅ リンクをコピーしました');
-  } catch (clipErr) {
-    window.prompt('シェアリンク (コピーしてください)', shareUrl);
-    if (btn) btn.textContent = orig || '📤 シェア';
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+    if (!blob) throw new Error('画像の生成に失敗しました');
+    const { public_url, share_id } = await uploadShareImage(blob);
+    await insertShareRecord(share_id, public_url);
+    const shareUrl = `https://norireco.app/share/${share_id}`;
+    if (btn) btn.disabled = false;
+    const isTouch = (typeof matchMedia === 'function') && matchMedia('(pointer: coarse)').matches;
+    if (isTouch && navigator.share) {
+      try {
+        await navigator.share({ title: _shareMeta.title || '乗レコ', text: shareTextWithoutUrl(), url: shareUrl });
+        flash('✅ 共有しました');
+        return;
+      } catch (e) {
+        if (e && e.name === 'AbortError') { if (btn) btn.textContent = orig; return; }
+        // Web Share 失敗 → コピーへフォールバック
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      flash('✅ リンクをコピーしました');
+    } catch (clipErr) {
+      window.prompt('シェアリンク (コピーしてください)', shareUrl);
+      if (btn) btn.textContent = orig || '🔗 リンクをシェア';
+    }
+  } catch (e) {
+    console.error('[シェア] リンク作成失敗:', e);
+    alert('リンクの作成に失敗しました。時間をおいて再度お試しください。');
+    if (btn) { btn.disabled = false; btn.textContent = orig || '🔗 リンクをシェア'; }
   }
 }
 
-// 未ログイン / フォールバック: 画像ファイル + ルート URL (従来挙動)。
+// 「📤 画像をシェア」の実体: 画像ファイル + ルート URL (従来挙動)。
 async function shareImageOnly(file) {
   const shareText = _shareText;
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
