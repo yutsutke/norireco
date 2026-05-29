@@ -88,7 +88,7 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ### 残課題
 
-- 🔗 のモバイル (touch) 経路 = Web Share URL は headless で pointer:coarse を再現できず未実機検証 (コードパスは単純)。
+- ✅ 🔗 のモバイル (touch) 経路 = Web Share URL を iPhone 実機で確認済 (2026-05-29、ユスケ報告)。preview headless では pointer:coarse を再現できなかった分の裏取り完了。
 - 垢BAN (share_banned) 連携は別タスク。
 
 ---
