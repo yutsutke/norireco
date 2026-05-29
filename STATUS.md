@@ -28,7 +28,7 @@
 
 ## Service Worker
 
-**`CACHE_VERSION = 'v413'`** · デプロイ回数 = バージョン番号の不変式
+**`CACHE_VERSION = 'v414'`** · デプロイ回数 = バージョン番号の不変式
 
 ---
 
@@ -91,7 +91,7 @@
 ## 直近のフェーズ
 
 - **Phase 2〜3.7** (v60〜v157): 営業系統ベース地図 → 駅キャラ → 認証グラデーション + GPS 獲得 → 現在地・最寄駅 → 列車種別・コード分割 → 不正検知・ログイン・マイページ
-- **Phase 3.8** (v158〜): データ補修 + 期間フィルタ拡充 + 記録 UX (v158〜v188, [-early](CHANGELOG_PHASE3.8-early.md)) → ES Modules 全面化 (v189〜v225, [-modules](CHANGELOG_PHASE3.8-modules.md)) → シェア MVP + Cloudflare 移行 (v226〜v249, [-share](CHANGELOG_PHASE3.8-share.md)) → 駅メモ + R2/Workers + 写真添付 + Notion 整理 (v250〜v278, [-photo](CHANGELOG_PHASE3.8-photo.md)) → マイページ即時反映 + 駅/路線アクションシート + 駅名検索 (v279〜v289, [-mypage](CHANGELOG_PHASE3.8-mypage.md)) → 駅 ID 体系 Phase 1〜3 完結 (v290〜v333, [-station-id](CHANGELOG_PHASE3.8-station-id.md)) → through_lines + GPS 位置づけ + 車両形式 DB + 記録モーダル整理 (v334〜v363, [-vehicles](CHANGELOG_PHASE3.8-vehicles.md)) → 乗換候補・徒歩乗換・系統別車両形式・per-seg cascade・サブエージェント (v364〜v391, [-transfer](CHANGELOG_PHASE3.8-transfer.md)) → trip 詳細エディタ抽出 B-1〜B-4-b 完結 (v392〜v399) → 一括記録 A-1〜A-8 完結 (skeleton + チェックリスト + 保存 MVP + 検索/フィルタ + アコーディオン展開 + オンボーディング + unknown 検証 + 区間ピッカー) (v400〜v406) → ログ画面廃止 + 年横断 (季節/月) フィルタ + シェア機能 MVP (S-1 個別 trip 画像 / S-2 R2 永続 / S-3 `/share/<id>` ページ) (v407〜v413) ← **今ここ** (シェア機能 MVP 完結・X unfurl 実機確認済)
+- **Phase 3.8** (v158〜): データ補修 + 期間フィルタ拡充 + 記録 UX (v158〜v188, [-early](CHANGELOG_PHASE3.8-early.md)) → ES Modules 全面化 (v189〜v225, [-modules](CHANGELOG_PHASE3.8-modules.md)) → シェア MVP + Cloudflare 移行 (v226〜v249, [-share](CHANGELOG_PHASE3.8-share.md)) → 駅メモ + R2/Workers + 写真添付 + Notion 整理 (v250〜v278, [-photo](CHANGELOG_PHASE3.8-photo.md)) → マイページ即時反映 + 駅/路線アクションシート + 駅名検索 (v279〜v289, [-mypage](CHANGELOG_PHASE3.8-mypage.md)) → 駅 ID 体系 Phase 1〜3 完結 (v290〜v333, [-station-id](CHANGELOG_PHASE3.8-station-id.md)) → through_lines + GPS 位置づけ + 車両形式 DB + 記録モーダル整理 (v334〜v363, [-vehicles](CHANGELOG_PHASE3.8-vehicles.md)) → 乗換候補・徒歩乗換・系統別車両形式・per-seg cascade・サブエージェント (v364〜v391, [-transfer](CHANGELOG_PHASE3.8-transfer.md)) → trip 詳細エディタ抽出 B-1〜B-4-b 完結 (v392〜v399) → 一括記録 A-1〜A-8 完結 (skeleton + チェックリスト + 保存 MVP + 検索/フィルタ + アコーディオン展開 + オンボーディング + unknown 検証 + 区間ピッカー) (v400〜v406) → ログ画面廃止 + 年横断 (季節/月) フィルタ + シェア機能 MVP (S-1 個別 trip 画像 / S-2 R2 永続 / S-3 `/share/<id>` ページ) (v407〜v413) → Notion §2.7 命名辞書を 3 ページ構成にリストラクチャ (v414 no code) ← **今ここ**
 - **ドキュメント整理**
   - (2026-05-20): CHANGELOG.md 4 ファイル分割
   - (2026-05-23): §0.1 を `STATUS.md` に分離・git 管轄化（Stop フック対象に）
@@ -102,3 +102,4 @@
   - (2026-05-27〜28): trip 詳細エディタ抽出 + 一括記録 (B + A カテゴリ全 16 段階) 完結 — B-1〜B-4-b (v392〜v399) で `createTripDetailEditor` factory に 02/07/13b 3 箇所重複を集約 (~540 行削除)、A-1〜A-8 (v400〜v406) で Notion §1.3「一括記録 (まとめて記録)」本体実装 (チェックリスト + たたむ/開くアコーディオン + 検索/フィルタ + 一括保存 + 同時 1 行 factory 行内 mount + オンボーディングバナー + unknown 集計検証 (現状 (b) 確定) + 区間ピッカー)。詳細 → [`CHANGELOG_PHASE3.8-bulk-record.md`](CHANGELOG_PHASE3.8-bulk-record.md) §242〜§256
   - (2026-05-28): CHANGELOG.md 6 回目分割 — 1682 行に膨らんだため §242〜§256 (v392〜v406) を [`CHANGELOG_PHASE3.8-bulk-record.md`](CHANGELOG_PHASE3.8-bulk-record.md) に退避。命名: B (trip 詳細エディタ抽出) は A (一括記録) のための前提作業なので両者を 1 アーカイブに統合、主軸の `bulk-record` で命名。STATUS.md 領域別ステータス表も同時にマージ (B + A → 1 行)
   - (2026-05-29): ログ画面廃止 (v407) + 乗車日時ラベル整理 (v408) + 年横断 (季節/月) フィルタ (v409) + シェア機能 MVP S-1〜S-3 (v410〜v413) を実装。シェアは「個別 trip 画像 → R2 永続 → /share/<id> ページ (OGP + CTA)」で完結し X unfurl を実機確認。新インフラ: Cloudflare Pages Function (`functions/share/[id].js`、norireco.app と同一ドメインで OGP SSR) + Supabase `norireco_shares` テーブル (公開 SELECT RLS、migration v413 Applied)。CHANGELOG §257〜§263。Notion §1.1 / §2.2 / §2.7 を整合済
+  - (2026-05-29): Notion §2.7 命名辞書を 3 ページ構成にリストラクチャ (v414, no functional code change) — §2.7 本体を索引・基本軸・新語チェックリスト・未統一のみに圧縮 (83KB → ~5KB)、新規 §2.7.1 用語集 (7 カテゴリの統合表 + 廃止語全期統合 + 変数名対応) と §2.7.2 意思決定ログ (テンプレ + 記入例 + 時系列 DESC ログ一覧 v249〜v413) を子ページとして作成。CLAUDE.md「§2.7 に追記」→「§2.7.1 (新語) / §2.7.2 (設計判断) に追記」に修正。CHANGELOG §264
