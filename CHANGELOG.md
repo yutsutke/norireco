@@ -52,6 +52,55 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 269. v419 — ゲストモード統計が過去ログイン中の trip まで集計してたバグ修正
+
+**バージョン**: v419 (CACHE_VERSION)
+**日付**: 2026-05-29
+**カテゴリ**: A (バグ修正 / v418 のフォロー)
+
+### 症状
+
+ユスケが v418 をシークレットウィンドウではなく通常ブラウザでテスト。マイページが「ゲスト / 未ログイン」と認識されているのに統計タブで:
+
+- 総旅程数: **168 回** (実際は今回ゲストで作った 1 件のはず)
+- 延べ乗車駅数: 1321 駅 / 総乗換 25 回 / 総乗車時間 2 時間 33 分
+- 月別グラフに 2025-01 や 2025-05 の旅程が表示
+
+ユスケ「ゲストモードで統計がおかしいね / 1 旅程しかしてないのに、、、」。
+
+### 原因
+
+v418 の `renderMypage` 未ログイン分岐は `localStorage.norireco_trips` を **無条件で全件** `_mypageCache` に詰めていた。
+
+ユスケの localStorage には過去ログイン中に Supabase 同期で書き込まれた `user_id` 付の trip が 167 件残っていた状態で:
+1. 何らかの理由 (session expire / 別タブで logout 等) でログイン状態が解けた
+2. でも `clearLocalUserDataAfterSignOut` が走らなかった → localStorage は keep
+3. ゲストモードでマイページを開く → 過去 167 件 + ゲストで作った 1 件 = 168 件が集計に出た
+
+### 修正
+
+[`js/13-mypage-common.js`](js/13-mypage-common.js) のゲスト分岐で localStorage を **`user_id` が空のもの (= ゲストモードで作った分) だけ** に絞る。
+
+```js
+const raw = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
+guestTrips = Array.isArray(raw) ? raw.filter(t => !t.user_id) : [];
+```
+
+[`js/05-supabase-data.js`](js/05-supabase-data.js) の `loadRiddenSegsFromStorage` が「user_id 付のみ」通す既存挙動 (v238) と **対称** になり、地図側とマイページ側で「ゲストモードに見えるデータ」が一致する:
+
+- 地図 (起動時 RIDDEN_SEGS): `user_id` 付のみ → 過去ログインの trip は地図に塗られる
+- マイページ ゲストモード統計: `user_id` 空のみ → 過去ログインの trip は除外
+
+注意: 過去ログインのデータが地図に塗られたまま見えるのは「ログインを促す」UI 上は許容範囲 (ログインすれば自分のデータとして扱える、ゲストモードでは「他人の/古いセッションの」扱い)。
+
+### 検証 ToDo
+
+- ゲストモードでマイページ → 統計タブ → 「総旅程 0 回」になっているか (まだ何も保存してない時)
+- 📋 で 1 件保存 → 統計タブ → 「総旅程 1 回」になるか
+- リロード → 0 回に戻るか (loadRiddenSegsFromStorage が user_id 空を弾くので RIDDEN_SEGS にも入らない、localStorage には残るが renderMypage は user_id 空フィルタで通す → 1 件残るはず → ここの意味論を v419 中の挙動として確認)
+
+---
+
 ## 268. v418 — 未ログイン (ゲストモード) で記録機能とマイページ概要を開放 + オンボーディングバナー「一瞬しか出ない」修正
 
 **バージョン**: v418 (CACHE_VERSION)

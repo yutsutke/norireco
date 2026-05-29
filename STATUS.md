@@ -28,7 +28,7 @@
 
 ## Service Worker
 
-**`CACHE_VERSION = 'v418'`** · デプロイ回数 = バージョン番号の不変式
+**`CACHE_VERSION = 'v419'`** · デプロイ回数 = バージョン番号の不変式
 
 ---
 
@@ -91,7 +91,7 @@
 ## 直近のフェーズ
 
 - **Phase 2〜3.7** (v60〜v157): 営業系統ベース地図 → 駅キャラ → 認証グラデーション + GPS 獲得 → 現在地・最寄駅 → 列車種別・コード分割 → 不正検知・ログイン・マイページ
-- **Phase 3.8** (v158〜): データ補修 + 期間フィルタ拡充 + 記録 UX (v158〜v188, [-early](CHANGELOG_PHASE3.8-early.md)) → ES Modules 全面化 (v189〜v225, [-modules](CHANGELOG_PHASE3.8-modules.md)) → シェア MVP + Cloudflare 移行 (v226〜v249, [-share](CHANGELOG_PHASE3.8-share.md)) → 駅メモ + R2/Workers + 写真添付 + Notion 整理 (v250〜v278, [-photo](CHANGELOG_PHASE3.8-photo.md)) → マイページ即時反映 + 駅/路線アクションシート + 駅名検索 (v279〜v289, [-mypage](CHANGELOG_PHASE3.8-mypage.md)) → 駅 ID 体系 Phase 1〜3 完結 (v290〜v333, [-station-id](CHANGELOG_PHASE3.8-station-id.md)) → through_lines + GPS 位置づけ + 車両形式 DB + 記録モーダル整理 (v334〜v363, [-vehicles](CHANGELOG_PHASE3.8-vehicles.md)) → 乗換候補・徒歩乗換・系統別車両形式・per-seg cascade・サブエージェント (v364〜v391, [-transfer](CHANGELOG_PHASE3.8-transfer.md)) → trip 詳細エディタ抽出 B-1〜B-4-b 完結 (v392〜v399) → 一括記録 A-1〜A-8 完結 (skeleton + チェックリスト + 保存 MVP + 検索/フィルタ + アコーディオン展開 + オンボーディング + unknown 検証 + 区間ピッカー) (v400〜v406) → ログ画面廃止 + 年横断 (季節/月) フィルタ + シェア機能 MVP (S-1 個別 trip 画像 / S-2 R2 永続 / S-3 `/share/<id>` ページ) (v407〜v413) → Notion §2.7 命名辞書を 3 ページ構成にリストラクチャ (v414 no code) → シェア磨き込み: 📤 を /share リンクに統一 + delete regex に shares 分岐 (v415) → シェア取り消し UI: マイページ「🔗 シェア」タブ (一覧 + コピー + 取り消し) + URL コピー導線復活 (v416) → シェアモーダルを「📤 画像」「🔗 リンク」2 ボタンに再分離 (Windows OS 共有シートが file 共有時 URL を落とすため、v417) → 未ログイン (ゲストモード) で記録 (📝/📍/📋) とマイページ概要を開放 + オンボーディングバナー「一瞬しか出ない」修正 (`_syncSettled` ゲートで Supabase 同期完了まで判定遅延) (v418) ← **今ここ**
+- **Phase 3.8** (v158〜): データ補修 + 期間フィルタ拡充 + 記録 UX (v158〜v188, [-early](CHANGELOG_PHASE3.8-early.md)) → ES Modules 全面化 (v189〜v225, [-modules](CHANGELOG_PHASE3.8-modules.md)) → シェア MVP + Cloudflare 移行 (v226〜v249, [-share](CHANGELOG_PHASE3.8-share.md)) → 駅メモ + R2/Workers + 写真添付 + Notion 整理 (v250〜v278, [-photo](CHANGELOG_PHASE3.8-photo.md)) → マイページ即時反映 + 駅/路線アクションシート + 駅名検索 (v279〜v289, [-mypage](CHANGELOG_PHASE3.8-mypage.md)) → 駅 ID 体系 Phase 1〜3 完結 (v290〜v333, [-station-id](CHANGELOG_PHASE3.8-station-id.md)) → through_lines + GPS 位置づけ + 車両形式 DB + 記録モーダル整理 (v334〜v363, [-vehicles](CHANGELOG_PHASE3.8-vehicles.md)) → 乗換候補・徒歩乗換・系統別車両形式・per-seg cascade・サブエージェント (v364〜v391, [-transfer](CHANGELOG_PHASE3.8-transfer.md)) → trip 詳細エディタ抽出 B-1〜B-4-b 完結 (v392〜v399) → 一括記録 A-1〜A-8 完結 (skeleton + チェックリスト + 保存 MVP + 検索/フィルタ + アコーディオン展開 + オンボーディング + unknown 検証 + 区間ピッカー) (v400〜v406) → ログ画面廃止 + 年横断 (季節/月) フィルタ + シェア機能 MVP (S-1 個別 trip 画像 / S-2 R2 永続 / S-3 `/share/<id>` ページ) (v407〜v413) → Notion §2.7 命名辞書を 3 ページ構成にリストラクチャ (v414 no code) → シェア磨き込み: 📤 を /share リンクに統一 + delete regex に shares 分岐 (v415) → シェア取り消し UI: マイページ「🔗 シェア」タブ (一覧 + コピー + 取り消し) + URL コピー導線復活 (v416) → シェアモーダルを「📤 画像」「🔗 リンク」2 ボタンに再分離 (Windows OS 共有シートが file 共有時 URL を落とすため、v417) → 未ログイン (ゲストモード) で記録 (📝/📍/📋) とマイページ概要を開放 + オンボーディングバナー「一瞬しか出ない」修正 (`_syncSettled` ゲートで Supabase 同期完了まで判定遅延) (v418) → ゲストモード統計が過去ログイン中の trip まで集計してたバグ修正 (`user_id` 空のものだけ通すフィルタ追加、`loadRiddenSegsFromStorage` の対称) (v419) ← **今ここ**
 - **ドキュメント整理**
   - (2026-05-20): CHANGELOG.md 4 ファイル分割
   - (2026-05-23): §0.1 を `STATUS.md` に分離・git 管轄化（Stop フック対象に）

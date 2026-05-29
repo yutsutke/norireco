@@ -322,11 +322,16 @@ export async function renderMypage() {
     const pinnedG = document.getElementById('mp-completion-pinned');
     if (pinnedG) pinnedG.innerHTML = `<div class="mp-loading" style="padding:14px">📊 完駅率を計算中…</div>`;
 
-    // localStorage trips を取得 (Supabase fetch しない方針)
+    // v419: localStorage trips を取得するが、user_id が空 (ゲストモードで作った) ものだけに絞る。
+    //   過去ログイン中に保存された user_id 付 trip は他人/古いセッションのデータ扱いで除外する。
+    //   05-supabase-data.js loadRiddenSegsFromStorage が「user_id 付のみ」通す挙動と対称
+    //   (ゲストモードでは逆に user_id 無しだけを通す) になり、地図とマイページが整合する。
+    //   実機: 過去 168 旅程ぶんが残っていたユスケの localStorage で「ゲストなのに 168 旅程」と
+    //   出てしまったため (v418 で発覚)。
     let guestTrips = [];
     try {
       const raw = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
-      if (Array.isArray(raw)) guestTrips = raw;
+      if (Array.isArray(raw)) guestTrips = raw.filter(t => !t.user_id);
     } catch (e) {}
 
     // SERVICE_LINES build を待つ (完乗率カード描画に必要)
