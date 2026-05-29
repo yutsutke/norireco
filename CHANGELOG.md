@@ -52,6 +52,55 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 263. v413 — シェア機能 S-3: /share/<id> ページ (OGP メタ + CTA)
+
+**バージョン**: v413 (CACHE_VERSION)
+**日付**: 2026-05-29
+**カテゴリ**: A（実装 / 🔥 シェア機能 S-3 = MVP 完結）
+
+### 背景
+
+SNS クローラは JS 非実行なので、シェアリンクをリッチプレビュー表示させるには OGP メタ (`og:image` = 実在の静的画像 URL) を埋めた HTML を返す必要がある。S-1 (画像生成) + S-2 (R2 永続 URL) の上に、受け側 `/share/<id>` ページを Cloudflare Pages Function で SSR する。これでシェア機能 MVP (S-1〜S-3) が完結。
+
+### 設計判断 (ユスケ確認)
+
+- **share レコード = Supabase テーブル `norireco_shares`** (vs R2 JSON): 既存スタックに沿う / id で構造化引き / 将来の垢BAN 連携可。**SELECT は公開 RLS** (未ログイン訪問者にも /share を見せる)、INSERT/UPDATE/DELETE は本人のみ
+- **配信 = Cloudflare Pages Function** `functions/share/[id].js`: norireco.app は Git 連携 Pages (ビルドなし、ルート = 出力) なので `/functions` は main push で自動デプロイ。同一ドメインでクローラ向け SSR
+- **share_id = S-2 の R2 画像 id を流用**: 画像 object と share レコードを 1 つの id で結ぶ
+- **導線 = 「🔗 画像URLをコピー」→「🔗 シェアリンクを作成」に置換**: /share リンクは X で画像+タイトル+CTA が unfurl され生画像 URL より拡散に強い
+
+### 変更
+
+- `supabase/migrations/v413_norireco_shares.sql` 新規: `norireco_shares` (id text PK = R2 share_id / user_id / kind / title / description / image_url / payload / created_at)。RLS 4 policy (公開 SELECT + 本人 INSERT/UPDATE/DELETE) + anon/authenticated GRANT + NOTIFY pgrst。**未 Applied (ユスケが Run)**
+- `functions/share/[id].js` 新規 (Pages Function): `onRequestGet` で params.id → Supabase REST (anon key + 公開 SELECT) で norireco_shares 引き → OGP メタ込み HTML を SSR。可視ページに画像 + タイトル + 説明 + 「🚃 自分も乗レコで記録してみる」CTA (→ norireco.app)。**セキュリティ**: title/desc/image を HTML エスケープ (XSS 防止)、og:image は `cdn.norireco.app/` 限定で他所誘導を弾く、未検出/不正 id は 404 + 汎用 fallback
+- `js/14-share-ogp.js`:
+  - `uploadShareImage` 戻り値を `{public_url, share_id}` に変更 (Worker の share_id を受ける)
+  - `insertShareRecord(shareId, imageUrl)` 追加 (access_token Bearer で norireco_shares POST。RLS が auth.uid()=user_id を要求するので anon key でなく access_token)
+  - `copyShareLink` → `createShareLink` に置換 (canvas→blob→R2→shares insert→`https://norireco.app/share/<id>`→Web Share or clipboard)
+  - `_shareMeta {kind,title,description}` をモジュール変数化し open 関数 2 つでセット (profile: 完駅率% / trip: 路線名 + 区間・駅数・乗車日)
+  - モーダルボタン「🔗 シェアリンクを作成」+ listener を createShareLink に
+- CACHE_VERSION v412 → v413
+
+### 検証
+
+- **Pages Function (node テスト)**: FOUND → 200 + og:title/image/url 正常、`<script>` 文字は `&lt;script&gt;` にエスケープ。NOTFOUND → 404 + fallback 画像 + 「見つかりません」。不正 id → 404。**外部 image_url → icon-512.png に差し替え** (og:image 誘導防止)
+- **クライアント (preview スタブ)**: 擬似ログイン + fetch/clipboard スタブで `createShareLink` 実フロー検証: `POST /upload/share-image` → `PUT <r2>` → `POST /rest/v1/norireco_shares` → clipboard に `https://norireco.app/share/hex9` → 「✅ リンクをコピーしました」。errors 0
+- syntax-guard clean、Pages Function `node --check` clean
+- **未検証 (要: migration Applied + 実ログイン + Pages デプロイ後)**: 実 Supabase insert (RLS) / 実 /share/<id> レンダリング / SNS unfurl。※ テスト中の console 401「Unsupported alg」は偽 JWT が実 Worker に届いた痕跡 = Worker 稼働の裏付け、コードは正しくエラーハンドリング
+
+### デプロイ手順 (ユスケ)
+
+1. main push → frontend + Pages Function `/share/[id]` 自動デプロイ
+2. Supabase SQL Editor で `v413_norireco_shares.sql` を Run → 末尾に `-- Applied: 2026-05-29 by yutsutke` 追記して commit
+3. 動作確認: ログイン → 旅程シェア → 「🔗 シェアリンクを作成」→ `/share/<id>` を開く → X 等でリンクプレビュー確認
+
+### 残課題
+
+- delete/photo object_key 正規表現に shares (3 segment) 分岐 + シェア取り消し UI
+- 既存「📤 シェア」(Web Share/X) も /share リンク使用に統一
+
+---
+
 ## 262. v412 — シェア機能 S-2: R2 永続画像保存
 
 **バージョン**: v412 (CACHE_VERSION)

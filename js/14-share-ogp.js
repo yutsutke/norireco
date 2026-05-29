@@ -579,7 +579,7 @@ function ensureModal() {
       <div id="share-ogp-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
         <button class="btn-gen" id="share-ogp-download-btn" style="flex:1;min-width:110px">📥 ダウンロード</button>
         <button class="btn-gen" id="share-ogp-share-btn" style="flex:1;min-width:110px;background:rgba(95,181,255,.15);color:#5fb5ff;border:1.5px solid rgba(95,181,255,.4)">📤 シェア</button>
-        <button class="btn-gen" id="share-ogp-link-btn" style="flex:1;min-width:110px;background:rgba(46,196,134,.15);color:#2ec486;border:1.5px solid rgba(46,196,134,.4)">🔗 画像URLをコピー</button>
+        <button class="btn-gen" id="share-ogp-link-btn" style="flex:1;min-width:110px;background:rgba(46,196,134,.15);color:#2ec486;border:1.5px solid rgba(46,196,134,.4)">🔗 シェアリンクを作成</button>
       </div>
       <button class="btn-cls" id="share-ogp-close-btn">閉じる</button>
     </div>
@@ -588,7 +588,7 @@ function ensureModal() {
   m.querySelector('#share-ogp-close-btn').addEventListener('click', closeShareModal);
   m.querySelector('#share-ogp-download-btn').addEventListener('click', downloadCurrentCanvas);
   m.querySelector('#share-ogp-share-btn').addEventListener('click', shareCurrentCanvas);
-  m.querySelector('#share-ogp-link-btn').addEventListener('click', copyShareLink);
+  m.querySelector('#share-ogp-link-btn').addEventListener('click', createShareLink);
   return m;
 }
 
@@ -598,7 +598,8 @@ function closeShareModal() {
 }
 
 // ── R2 アップロード (S-2) ──────────────────────────────────────
-// 生成済み PNG blob を Worker 経由で R2 に保存し、恒久 CDN URL を返す。
+// 生成済み PNG blob を Worker 経由で R2 に保存し、{public_url, share_id} を返す。
+// share_id は Worker が採番した R2 object id。S-3 で norireco_shares の PK に流用する。
 // 写真アップロード (18-photo-area.js uploadPhoto) と同じ presign → PUT の 2 段。
 async function uploadShareImage(blob) {
   const presignRes = await fetch(`${NORIRECO_API_BASE}/upload/share-image`, {
@@ -613,7 +614,7 @@ async function uploadShareImage(blob) {
     const err = await presignRes.text();
     throw new Error(`presign 失敗 (${presignRes.status}): ${err.slice(0, 200)}`);
   }
-  const { upload_url, public_url } = await presignRes.json();
+  const { upload_url, public_url, share_id } = await presignRes.json();
   const putRes = await fetch(upload_url, {
     method: 'PUT',
     headers: { 'Content-Type': 'image/png' },
@@ -623,48 +624,88 @@ async function uploadShareImage(blob) {
     const err = await putRes.text();
     throw new Error(`R2 アップロード失敗 (${putRes.status}): ${err.slice(0, 200)}`);
   }
-  return public_url;
+  return { public_url, share_id };
 }
 
-// 「🔗 画像URLをコピー」: 現在のキャンバスを R2 にアップロードし恒久 URL をクリップボードへ。
-// ログイン必須 (Worker が JWT の sub を要求)。未ログイン時は案内のみ。
-async function copyShareLink() {
+// norireco_shares に 1 行 insert (S-3)。RLS が auth.uid()=user_id を要求するので
+// Authorization は anon key ではなく access_token を使う (createShareLink はログイン必須)。
+async function insertShareRecord(shareId, imageUrl) {
+  const row = {
+    id: shareId,
+    user_id: currentUserId(),
+    kind: _shareMeta.kind || 'trip',
+    title: _shareMeta.title || '乗レコの記録',
+    description: _shareMeta.description || '',
+    image_url: imageUrl,
+  };
+  const res = await fetch(`${window.SUPABASE_URL}/rest/v1/norireco_shares`, {
+    method: 'POST',
+    headers: {
+      'apikey': window.SUPABASE_KEY,
+      'Authorization': `Bearer ${authBearerToken()}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal',
+    },
+    body: JSON.stringify(row),
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => '');
+    throw new Error(`share レコード作成失敗 (${res.status}): ${err.slice(0, 200)}`);
+  }
+}
+
+// 「🔗 シェアリンクを作成」: 画像を R2 に上げ → norireco_shares 登録 → /share/<id> を生成しコピー。
+// ログイン必須 (R2 アップロードと RLS insert が JWT を要求)。
+async function createShareLink() {
   if (typeof currentUserId !== 'function' || !currentUserId()) {
-    alert('シェア用の画像リンクを作るにはログインが必要です。');
+    alert('シェアリンクを作るにはログインが必要です。');
     return;
   }
   const canvas = document.getElementById('share-ogp-canvas');
   if (!canvas) return;
   const btn = document.getElementById('share-ogp-link-btn');
   const orig = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ アップロード中…'; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 作成中…'; }
   try {
     const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
     if (!blob) throw new Error('画像の生成に失敗しました');
-    const url = await uploadShareImage(blob);
+    const { public_url, share_id } = await uploadShareImage(blob);
+    await insertShareRecord(share_id, public_url);
+    const shareUrl = `https://norireco.app/share/${share_id}`;
+    // Web Share が使えればリンク共有、無ければクリップボード、最後は prompt
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: _shareMeta.title || '乗レコ', text: _shareText, url: shareUrl });
+        if (btn) btn.textContent = '✅ 共有しました';
+        return;
+      } catch (e) {
+        if (e && e.name === 'AbortError') { if (btn) btn.textContent = orig; return; }
+        // share 失敗時はクリップボードへフォールバック
+      }
+    }
     try {
-      await navigator.clipboard.writeText(url);
-      if (btn) btn.textContent = '✅ コピーしました';
+      await navigator.clipboard.writeText(shareUrl);
+      if (btn) btn.textContent = '✅ リンクをコピーしました';
     } catch (clipErr) {
-      // clipboard API が使えない環境では URL を直接見せる
-      window.prompt('画像URL (コピーしてください)', url);
-      if (btn) btn.textContent = '🔗 画像URLをコピー';
+      window.prompt('シェアリンク (コピーしてください)', shareUrl);
+      if (btn) btn.textContent = '🔗 シェアリンクを作成';
     }
   } catch (e) {
-    console.error('[シェア] 画像リンク作成失敗:', e);
-    alert('画像リンクの作成に失敗しました。時間をおいて再度お試しください。');
+    console.error('[シェア] シェアリンク作成失敗:', e);
+    alert('シェアリンクの作成に失敗しました。時間をおいて再度お試しください。');
   } finally {
     if (btn) {
       btn.disabled = false;
-      setTimeout(() => { if (btn) btn.textContent = orig || '🔗 画像URLをコピー'; }, 2200);
+      setTimeout(() => { if (btn) btn.textContent = orig || '🔗 シェアリンクを作成'; }, 2400);
     }
   }
 }
 
-// profile / trip でダウンロードファイル名・シェア文言が変わるのでモジュール変数で保持。
-// openShareModal / openTripShareModal が開く直前にセットする。
+// profile / trip でダウンロードファイル名・シェア文言・share レコードのメタが変わるので
+// モジュール変数で保持。openShareModal / openTripShareModal が開く直前にセットする。
 let _downloadName = 'norireco';
 let _shareText = '全国鉄道の完乗マップ📍 #乗レコ #乗り鉄\nhttps://norireco.app/';
+let _shareMeta = { kind: 'profile', title: '乗レコの記録', description: '' };
 
 async function downloadCurrentCanvas() {
   const canvas = document.getElementById('share-ogp-canvas');
@@ -723,6 +764,11 @@ export async function openShareModal(stats) {
   if (sub) sub.textContent = '全国鉄道の完乗状況を 1200×630 の OGP 画像として書き出します。長押し or ダウンロードで保存できます。';
   _downloadName = `norireco-${new Date().toISOString().slice(0, 10)}`;
   _shareText = '全国鉄道の完乗マップ📍 #乗レコ #乗り鉄\nhttps://norireco.app/';
+  _shareMeta = {
+    kind: 'profile',
+    title: `全国鉄道 完駅率 ${stats.pct}%`,
+    description: `制覇 ${(stats.ridden || 0).toLocaleString()} / ${(stats.totalUnique || 0).toLocaleString()} 駅 ・ 系統 ${stats.lines || 0} ・ 総距離 ${(stats.distanceKm || 0).toLocaleString()} km`,
+  };
   m.classList.add('open');
   paintCanvas(await generateOgpCanvas(stats));
 }
@@ -742,6 +788,12 @@ export async function openTripShareModal(trip) {
   _downloadName = `norireco-trip-${datePart}`;
   const fromToText = d.fromTo ? ` ${d.fromTo}` : '';
   _shareText = `${lineLabel}${fromToText} に乗りました🚃 #乗レコ #乗り鉄 #電車旅\nhttps://norireco.app/`;
+  const metaBits = [d.fromTo, `${d.stations}駅`, d.dateStr].filter(Boolean);
+  _shareMeta = {
+    kind: 'trip',
+    title: lineLabel,
+    description: metaBits.join(' ・ '),
+  };
   m.classList.add('open');
   paintCanvas(await generateTripOgpCanvas(trip));
 }
