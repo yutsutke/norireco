@@ -122,4 +122,4 @@ ORDER BY tablename, cmd;
 -- ║   解除: SELECT unban_user_share('<uuid>'); -- profiles → 'ok' に戻す            ║
 -- ╚══════════════════════════════════════════════════════════════╝
 
--- Applied:
+-- Applied: 2026-05-29 by yutsutke (確認 5-A: 3 行 has_full_banned_guard = t / 5-B: 13 行 = norireco_trips に旧 FOR ALL policy 残留と判明 → v425 で別途 DROP)

@@ -70,4 +70,4 @@ FROM pg_policies
 WHERE schemaname = 'public' AND tablename = 'norireco_trips' AND cmd = 'INSERT';
 -- 期待: 1 行 (has_full_banned_guard = t)
 
--- Applied:
+-- Applied: 2026-05-29 by yutsutke (確認 3-B: has_full_banned_guard = true。3-A は別タブ追加 SELECT で 4 行 cmd='ALL' 0 件を確認予定)
