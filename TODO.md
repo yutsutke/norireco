@@ -28,8 +28,8 @@ git log --oneline -20
   - 🟡 S-2 (v412): R2 永続画像保存 — Worker `/upload/share-image` (presigned PUT, key `shares/<uid>/<id>.png`) + クライアント `uploadShareImage` + シェアモーダル「🔗 画像URLをコピー」(ログイン必須)。**⚠️ Worker は `cd worker && npx wrangler deploy` で別途デプロイが必要** (frontend は main push で反映済 v412 だが endpoint はデプロイ後に有効)
   - ✅ S-3 (v413): `/share/<id>` 受け側ページ完成・本番稼働確認済 — Supabase `norireco_shares` (公開 SELECT RLS、migration Applied 2026-05-29) + Pages Function `functions/share/[id].js` (OGP メタ SSR + 「自分も記録」CTA)。シェアモーダルは「🔗 シェアリンクを作成」に置換 (画像→R2→shares insert→/share/<id> 生成→Web Share/clipboard)
   - **シェア機能 残り** (S-1〜S-3 で MVP 完結。以降は磨き込み):
-    - ✅ v415: 「📤 シェア」を /share リンクに統一 (🔗「シェアリンクを作成」ボタン撤去・1 本化。ログイン時=画像+/share リンクを共有 / 未ログイン or 失敗時=画像 file+ルート URL fallback) + Worker `/delete/photo` の object_key 正規表現に `shares` (3 segment) 分岐追加 (取り消し UI の下地)。CHANGELOG §265。**⚠️ Worker は `cd worker && npx wrangler deploy` 要再デプロイ** (regex 変更の反映)
-    - シェア取り消し UI (本体・次回): マイページに「作成したシェア」一覧 (`norireco_shares` を user_id で SELECT) + 取り消し (R2 `/delete/photo` に `shares/<uid>/<id>.png` + `norireco_shares` DELETE)。delete regex 分岐 (v415) はこの下地。**worker 再デプロイが前提**
+    - ✅ v415: 「📤 シェア」を /share リンクに統一 (🔗「シェアリンクを作成」ボタン撤去・1 本化。ログイン時=画像+/share リンクを共有 / 未ログイン or 失敗時=画像 file+ルート URL fallback) + Worker `/delete/photo` の object_key 正規表現に `shares` (3 segment) 分岐追加 (取り消し UI の下地)。CHANGELOG §265。✅ Worker deploy 済 (Version d854330d, 2026-05-29)
+    - シェア取り消し UI (本体・次回): マイページに「作成したシェア」一覧 (`norireco_shares` を user_id で SELECT) + 取り消し (R2 `/delete/photo` に `shares/<uid>/<id>.png` + `norireco_shares` DELETE)。delete regex 分岐 (v415) は本番反映済なので endpoint 側は準備完了
   - 注: v345 で「verified 限定ガード」は撤回 (GPS = 手動の手間省略、世間への証明不要)。手動記録も対等にシェア可
 
 - [ ] **垢BAN（不正利用ペナルティ）対応**

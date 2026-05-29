@@ -77,7 +77,7 @@ S-1〜S-3 (v410〜v413) で MVP 完結後、シェアモーダル (`js/14-share-
   - 🔗 ボタン (`#share-ogp-link-btn`) + listener + `createShareLink` 関数を撤去。📤 シェアを主ボタン (緑アクセント) に格上げ、2 ボタン構成 (ダウンロード / シェア) に。
   - `shareCurrentCanvas` を統一: **ログイン時** = `uploadShareImage` → `insertShareRecord` → `/share/<id>` を「画像 + リンク」で共有 (`shareImageWithLink`)。**未ログイン / R2・insert 失敗時** = 従来通り画像ファイル + ルート URL (`shareImageOnly`) にフォールバック。
   - `shareTextWithoutUrl()` で `_shareText` 末尾のルート URL を剥がし、`/share/<id>` リンクに差し替え。`shareImageWithLink` は files 対応端末 = 画像添付 + リンクを caption 末尾 / 非対応 = リンクのみ Web Share → X intent (url 付きで card unfurl)。
-- **`worker/src/index.js`**: `/delete/photo` の object_key 検証を 2 正規表現に分岐 — `memos|trips/<uid>/<owner>/<file>` (4 seg) と `shares/<uid>/<file>` (3 seg, v415〜)。どちらも prefix 直後 (2 つ目) のセグメントを uid として JWT と一致確認。**⚠️ 反映には `cd worker && npx wrangler deploy` が別途必要** (frontend は main push)。
+- **`worker/src/index.js`**: `/delete/photo` の object_key 検証を 2 正規表現に分岐 — `memos|trips/<uid>/<owner>/<file>` (4 seg) と `shares/<uid>/<file>` (3 seg, v415〜)。どちらも prefix 直後 (2 つ目) のセグメントを uid として JWT と一致確認。**`npx wrangler deploy` で本番反映済** (Version `d854330d`, 2026-05-29、`api.norireco.app`)。secrets/bindings は既存保持。
 - **`sw.js`**: CACHE_VERSION v414 → v415
 
 ### 検証 (preview)
@@ -89,8 +89,7 @@ S-1〜S-3 (v410〜v413) で MVP 完結後、シェアモーダル (`js/14-share-
 
 ### 残課題
 
-- **シェア取り消し UI 本体** (次回): マイページに「作成したシェア」一覧 + 取り消し (R2 `/delete/photo` に `shares/<uid>/<id>.png` を投げる + `norireco_shares` DELETE)。今回の delete regex 分岐はその下地として先行投入 (UI ができるまでは未使用 = dead path)。
-- **Worker 再デプロイ前**は `shares` の delete は旧 regex で弾かれる (400)。取り消し UI を作る前に `wrangler deploy` 必須。
+- **シェア取り消し UI 本体** (次回): マイページに「作成したシェア」一覧 + 取り消し (R2 `/delete/photo` に `shares/<uid>/<id>.png` を投げる + `norireco_shares` DELETE)。今回の delete regex 分岐 (本番反映済) はその下地として先行投入 (UI ができるまでは未使用 = dead path だが endpoint 側は準備完了)。
 
 ---
 
