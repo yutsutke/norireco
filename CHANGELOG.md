@@ -52,6 +52,77 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 270. v420 — ゲスト📊統計タブが anon key で全ユーザーの trip を取得してたバグ修正
+
+**バージョン**: v420 (CACHE_VERSION)
+**日付**: 2026-05-29
+**カテゴリ**: A (バグ修正 / v419 のフォロー — 同一症状の別ルート)
+
+### 症状
+
+v419 push 後、ユスケがハードリロード再確認 — **依然として** ゲストモードで「総旅程 168 回」と表示。v419 で `_mypageCache` を `user_id` 空フィルタに直したのに改善しない。
+
+### 原因
+
+📊 統計タブの実体である [`js/09-tabs-stats.js`](js/09-tabs-stats.js#L317) `renderStats()` は `_mypageCache` を使わず、**直接 Supabase に fetch** していた:
+
+```js
+const _uid = currentUserId();
+const _statsUrl = _uid
+  ? `${SUPABASE_URL}/rest/v1/norireco_trips?select=*&user_id=eq.${_uid}`
+  : `${SUPABASE_URL}/rest/v1/norireco_trips?select=*`;   // ← uid 無しで全 trip 取得
+fetch(_statsUrl, { headers: { 'apikey': SUPABASE_KEY, ... } })
+```
+
+ゲストモードでは `_uid=null` で 3 項演算の else 枝に入り、`user_id` フィルタなしの全件 SELECT を anon key で投げる。RLS が anon select を許可しているため (v233 残課題)、**他人を含む全ユーザーの trip が取れて 168 件出ていた**。
+
+データ取得経路の整理:
+- 完乗率カード (`buildCompletionCards(trips)`): 引数の `guestTrips` (v419 で user_id 空のみ) → 正しい ✅
+- 🚃 旅程 (`renderMpTripsSection`): `_mypageCache` 読込 → 正しい ✅
+- 📋 路線 (`aggregateTripsByLineId` 等): `_mypageCache` 読込 → 正しい ✅
+- 📊 統計 (`renderStats`): **直接 Supabase fetch** → 壊れていた ❌
+- 📸 メモ / 🔗 シェア: 既存 uid ガード → 正しい ✅
+
+`renderStats` だけが他と異なる読込経路を持っていた (v60〜 初期実装の名残)。
+
+### 修正
+
+[`js/13a-stats.js`](js/13a-stats.js#L29) `renderMpStatsSection` に未ログインガードを追加。`renderStats` 自体には触らず、呼び出し手前で分岐する形にして v233 RLS 残課題の真の解決は将来に持ち越し。
+
+```js
+import { currentUserId } from './12-auth.js';
+function renderMpStatsSection() {
+  const statsDiv = document.getElementById('stats-content');
+  if (!statsDiv) return;
+  statsDiv.innerHTML = '';
+  if (!currentUserId()) {
+    statsDiv.innerHTML = `<div class="mp-empty">...
+      <div class="mp-empty-t">統計はログイン後に表示されます</div>
+      <button onclick="openAuthModal()">🔑 ログイン / 会員登録</button>
+    </div>`;
+    return;
+  }
+  try { renderStats(); } catch(e) { ... }
+}
+```
+
+ユスケの要件「データは反映されなくていい」(= Supabase fetch 不要) と整合する。ゲストモードで「今作った分」を見たい場合は 🚃 旅程 / 📋 路線サブタブで確認可能 (こちらは localStorage user_id 空フィルタが効いている)。
+
+### v420 で完成したゲストモード挙動
+
+- 上部完乗率カード: 0% (ゲストで作った分 = user_id 空、をベースに計算。今は何も作ってなければ 0)
+- 📊 統計: 「統計はログイン後に表示されます」エンプティ + 🔑 ログイン CTA
+- 🚃 旅程: 「過去の乗車をまとめて記録」ボタン + ゲストで作った trip のリスト (なければ空状態)
+- 📋 路線: SERVICE_LINES + ゲスト trip ベースの集計
+- 📸 メモ: 「ログインしてください」(既存)
+- 🔗 シェア: 「ログインが必要です」(既存)
+
+### v233 RLS 残課題 (持ち越し)
+
+`renderStats` が anon key で全 trip を取れる根本問題は今回触っていない。すべての mypage 統計表示が **クライアント側で** uid フィルタを徹底しているのと、anon select を許可している RLS ポリシーがあるため、悪意ある攻撃者は REST 直叩きで他人の旅程データを取得可能。垢 BAN 対応と並んで TODO 🔥 最優先に残置。
+
+---
+
 ## 269. v419 — ゲストモード統計が過去ログイン中の trip まで集計してたバグ修正
 
 **バージョン**: v419 (CACHE_VERSION)

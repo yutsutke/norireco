@@ -20,6 +20,7 @@
 // ══════════════════════════════════════════════════════════════
 import { distMeters } from './03-characters.js';
 import { renderStats } from './09-tabs-stats.js';
+import { currentUserId } from './12-auth.js';
 // v318: PREFECTURES / prefOfStation を 13-mypage-common から import
 //   (元は本ファイル内に定義していたが、駅名+都道府県検索でも共有するため移動)
 import { tripCardHtml, PREFECTURES, prefOfStation } from './13-mypage-common.js';
@@ -31,6 +32,22 @@ function renderMpStatsSection() {
   const statsDiv = document.getElementById('stats-content');
   if (!statsDiv) return;
   statsDiv.innerHTML = '';
+  // v420: ゲストモードでは renderStats を呼ばない。renderStats は内部で Supabase に
+  //   `user_id=eq.<uid>` 付きでないと全ユーザーの trip を anon key で取得してしまう
+  //   (v233 RLS 残課題)。ゲストモードの統計はログイン後の表示として割り切り、ここでは
+  //   「ログインして使ってください」エンプティ + CTA だけ出す。完乗率カード (上部) と
+  //   旅程/路線サブタブは localStorage (user_id 空のみ) ベースで動くため、ゲストでも
+  //   「今作った分は見える」状態は維持される。
+  if (!currentUserId()) {
+    statsDiv.innerHTML = `
+      <div class="mp-empty" style="padding:24px 14px">
+        <div class="mp-empty-ic">📊</div>
+        <div class="mp-empty-t">統計はログイン後に表示されます</div>
+        <div class="mp-empty-s">月別グラフ・列車制覇・都道府県別など 16 種の詳細統計はログインユーザー限定です。ゲストモードでは🚃 旅程 / 📋 路線サブタブで今回作った分を確認できます。</div>
+        <button class="mp-empty-btn" onclick="openAuthModal()">🔑 ログイン / 会員登録</button>
+      </div>`;
+    return;
+  }
   try { renderStats(); } catch(e) { console.warn('[マイページ] renderStats:', e); }
 }
 NORIRECO.mypage.renderMpStatsSection = renderMpStatsSection;
