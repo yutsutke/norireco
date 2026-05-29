@@ -1338,30 +1338,38 @@ async function saveMultiSegmentTrip() {
     user_id: currentUserId(),
   };
 
+  // v418: 未ログイン時は Supabase POST をスキップし localStorage のみ。
+  //   ユスケ要件: 「未ログインでも記録できる / データは Supabase に反映されなくていい /
+  //   更新すると記録は残らない」。トーストで端末内保存の旨と再ログイン推奨を案内する。
+  const isGuest = !currentUserId();
   let saved = false;
   let errInfo = '';
-  try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_trips`, {
-      method: 'POST',
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal',
-      },
-      body: JSON.stringify(tripForSupabase(trip)),
-    });
-    if (res.ok) {
-      saved = true;
-    } else {
-      let errBody = '';
-      try { errBody = await res.text(); } catch(e) {}
-      errInfo = `HTTP ${res.status} ${res.statusText}: ${errBody.slice(0, 200)}`;
-      console.warn('[乗レコ] Supabase 保存失敗', errInfo);
+  if (!isGuest) {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_trips`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify(tripForSupabase(trip)),
+      });
+      if (res.ok) {
+        saved = true;
+      } else {
+        let errBody = '';
+        try { errBody = await res.text(); } catch(e) {}
+        errInfo = `HTTP ${res.status} ${res.statusText}: ${errBody.slice(0, 200)}`;
+        console.warn('[乗レコ] Supabase 保存失敗', errInfo);
+      }
+    } catch (e) {
+      errInfo = `接続エラー: ${e.name}: ${e.message}`;
+      console.warn('[乗レコ] Supabase 接続エラー:', e);
     }
-  } catch (e) {
-    errInfo = `接続エラー: ${e.name}: ${e.message}`;
-    console.warn('[乗レコ] Supabase 接続エラー:', e);
+  } else {
+    console.log('[乗レコ] 未ログイン: Supabase 保存スキップ (端末内のみ)');
   }
 
   try {
@@ -1390,12 +1398,15 @@ async function saveMultiSegmentTrip() {
   //   (v388 で delete 側に入れた refreshTripListIfOpen を save 側にも対称適用)
   try { NORIRECO.stationActions?.refreshTripListIfOpen?.(); } catch (e) {}
 
-  if (saved) {
-    // 記録バッジ: GPS=📍 / 手動=📝
-    const recTag = trip.verified ? ' 📍' : ' 📝';
-    const summary = isVisitOnly
-      ? `${fromStation} に立ち寄り`
-      : `${tripSegments.length}区間 ${totalStations}駅`;
+  // 記録バッジ: GPS=📍 / 手動=📝
+  const recTag = trip.verified ? ' 📍' : ' 📝';
+  const summary = isVisitOnly
+    ? `${fromStation} に立ち寄り`
+    : `${tripSegments.length}区間 ${totalStations}駅`;
+  if (isGuest) {
+    // v418: 未ログイン保存。端末内のみ + 更新で消える旨を強めに案内。
+    showRecordToast(`✅ 記録${recTag}: ${summary}\n⚠️ 端末内のみ・ブラウザ更新で消えます / 🔑 ログインで保存`, 'warn', 9000);
+  } else if (saved) {
     showRecordToast(`✅ 記録${recTag}: ${summary}`);
   } else {
     showRecordToast(`⚠️ ローカル保存のみ (Supabase 失敗)\n${errInfo}`, 'warn', 9000);

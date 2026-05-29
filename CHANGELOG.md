@@ -52,6 +52,89 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 268. v418 — 未ログイン (ゲストモード) で記録機能とマイページ概要を開放 + オンボーディングバナー「一瞬しか出ない」修正
+
+**バージョン**: v418 (CACHE_VERSION)
+**日付**: 2026-05-29
+**カテゴリ**: A (実装 / 🔥 新規ユーザー導線の改善)
+
+### 背景
+
+ユスケが新規 (未ログイン) ユーザー目線でアクセスした際の問題が 2 つ重なって報告された:
+
+1. **空マップ時の📋オンボーディングバナーが「一瞬しか表示されない」** — 既ログインで Supabase 旅程あり / localStorage 空 (初回起動 or 別端末からの初アクセス) のシナリオで、DOMContentLoaded 時点でバナー表示 → 数秒後 syncFromSupabase 完了 → 3 秒後 setTimeout で hide、という挙動。ユスケから見ると「ちらっと出てすぐ消える」状態。
+2. **未ログインだと触れない機能が多すぎる** — マイページは「🔑 ログインしてください」エンプティで完全に閉ざされ、🔑 📝 📍 記録 FAB も `fab-login-only` クラスで CSS 非表示。新規訪問者が「何ができるか」を試せず、ログインの判断材料が得られない。
+
+### ユーザー要望
+
+ユスケ:
+- 「タップしてまとめて記録が一瞬しか表示されない」 → バナー直し
+- 「未ログインでも、記録できるようにする」
+- 「マイページの画面の概要をみれるようにする」
+- 「データは反映されなくていい」 (= Supabase 反映不要、localStorage で OK)
+- 「更新すると記録はのこらないので、ログインして使うように説明を表示」
+
+範囲確認 (AskUserQuestion): 一括記録 (📋) / 手動記録 (📝) / GPS 記録 (📍) / マイページ概要 すべて開放方針で確定。
+
+### 実装
+
+#### 1. オンボーディングバナーの settle ゲート ([`js/21-bulk-record.js`](js/21-bulk-record.js))
+
+`_syncSettled` フラグを追加。Supabase 同期 (または未ログイン確認) が settle するまで `updateOnboardingBanner` は `hidden=true` を強制 → フラッシュ表示を防ぐ。
+
+- `markSyncSettled()` を新規 export。一度 true になったら戻らない (ログアウト時に lifecycle 全体が purge されるため戻り経路は不要)。
+- DOMContentLoaded 直後の `setTimeout(updateOnboardingBanner, 3000)` を撤去し、代わりに 8 秒の fallback `setTimeout(() => markSyncSettled(), 8000)` を置く (ネットワーク不調・SDK 初期化失敗時の保険)。
+
+#### 2. settle hook を呼ぶ 3 経路 ([`js/05-supabase-data.js`](js/05-supabase-data.js) / [`js/12-auth.js`](js/12-auth.js))
+
+循環 import 回避のため `window.NORIRECO?.bulkRecord?.markSyncSettled?.()` 経由で呼ぶ。
+
+- 05 `syncFromSupabase`: 未ログイン return / trips 0 件 return / 正常完了 / catch 例外 の 4 経路すべてで markSyncSettled。
+- 12 `initializeAuth`: getSession 初期セッションなし / getSession 例外 の 2 経路で markSyncSettled (handleAuthChange → syncFromSupabase 経路は 05 側でカバー)。
+
+#### 3. 記録 FAB を未ログインに開放 ([`noritetsu-map.html`](noritetsu-map.html))
+
+`.record-fab`(📝) と `.location-fab`(📍) から `fab-login-only` クラスを撤去。CSS ルール (`body:not(.user-authed) .fab-login-only{display:none}`) 自体は残置 (将来用)。📋 一括記録は元から制限なし。
+
+#### 4. 保存系の uid=null 許容 ([`js/07-record-mode.js`](js/07-record-mode.js) / [`js/21-bulk-record.js`](js/21-bulk-record.js))
+
+「Supabase 反映なし」要件に従い、未ログイン時は `_postTripToSupabase` をスキップして localStorage のみに保存。
+
+- saveMultiSegmentTrip: `const isGuest = !currentUserId()` で分岐。POST スキップ + トースト分岐。
+- saveBulkDrafts: 同様に分岐。未ログインは savedCount に直接カウント (Supabase 失敗カウントが立たないように)。
+- トースト: 未ログイン時は黄色 (`'warn'`, 9 秒) で「✅ 記録 📝: 3区間 5駅 / ⚠️ 端末内のみ・ブラウザ更新で消えます / 🔑 ログインで保存」。
+
+#### 5. マイページ ゲストモード ([`js/13-mypage-common.js`](js/13-mypage-common.js))
+
+`renderMypage` 未ログイン分岐を「ログインしてください」エンプティから「ゲストヘッダ + 警告バナー + 完乗率カード + サブタブ nav」に置換。
+
+- ゲストヘッダ: アバター「?」 + 「ゲスト / 未ログイン」 + 🔑 ログインボタン
+- ゲスト警告バナー (`.mp-guest-warn`): 「ゲストモードで表示中 / 記録はこの端末にのみ保存され…ログインしてください」+ CTA。
+- 完乗率カード: `localStorage` から trips を直接ロードして `buildCompletionCards` に渡す (Supabase fetch は行わない = 「反映不要」要件と整合)。`SERVICE_LINES build` は await。
+- サブタブ nav: 5 タブ全部表示。
+  - 📊 統計 / 🚃 旅程 / 📋 路線 → `_mypageCache` (localStorage trips) ベースで動作。
+  - 📸 メモ / 🔗 シェア → 既存実装が `currentUserId() === null` で「ログインが必要です」エンプティを返すので、クラッシュせずそのまま表示。
+- `showAllSubpanes(false)` を撤去 (各サブペインを表示可能に)。
+
+#### 6. ゲスト警告バナー CSS ([`noritetsu-map.html`](noritetsu-map.html))
+
+`.mp-guest-warn` を `.mp-tm-banner` (期間フィルタバナー) と同じ位置に追加。ゴールド系のグラデーション + 左ボーダーで注意喚起。
+
+### syntax-guard
+
+- node --check 5 ファイル clean
+- 新規循環 import なし (21 → 05/12 への上り逆参照は window 経由のみ)
+- window グローバル衝突なし (markSyncSettled は NORIRECO.bulkRecord のみで露出)
+
+### 検証 ToDo (ユスケ)
+
+- 未ログイン (シークレットウィンドウ) で開く → マイページに「ゲストモード」ヘッダ + 警告バナー + 5 タブ。
+- 📋 一括記録モーダルで 1 件保存 → トーストに ⚠️ 警告。リロード → 記録は消える (localStorage は keep されるはずなので、もし「リロードで消える」を厳格に守るなら追加検討必要 → 現状は localStorage に残るが Supabase 同期しないので「他端末では見えない」 = 実用上「消える」と説明可)。
+
+(localStorage の永続性については別途協議。今回は最小実装で「Supabase に行かない = 紛失リスクがある」として案内している。)
+
+---
+
 ## 267. v417 — シェアモーダルを「📤 画像」「🔗 リンク」2 ボタンに再分離
 
 **バージョン**: v417 (CACHE_VERSION)

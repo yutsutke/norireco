@@ -662,6 +662,15 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mp-tm-banner ~ .mp-subtab-nav{top:80px;}
 .mp-tip{font-size:9px;color:var(--silver);padding:6px 4px;margin-bottom:8px;line-height:1.5;}
 
+/* v418: ゲストモード警告バナー (未ログインのマイページ上部) */
+.mp-guest-warn{display:flex;gap:10px;padding:10px 14px;background:linear-gradient(90deg,rgba(245,158,11,.18),rgba(245,158,11,.06));border-bottom:2px solid var(--gold);color:var(--white);}
+.mp-guest-warn-ic{font-size:20px;flex-shrink:0;line-height:1.2;}
+.mp-guest-warn-body{flex:1;min-width:0;}
+.mp-guest-warn-t{font-size:12px;font-weight:700;color:var(--gold);margin-bottom:3px;}
+.mp-guest-warn-s{font-size:11px;color:var(--silver);line-height:1.5;margin-bottom:6px;}
+.mp-guest-warn-btn{padding:5px 12px;background:var(--gold);color:#000;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;}
+.mp-guest-warn-btn:hover{filter:brightness(1.08);}
+
 .mp-trip-wrap{padding:0 12px 80px;}
 .mp-trip-list{display:flex;flex-direction:column;gap:8px;}
 .mp-tcard{background:var(--steel);border:1px solid var(--track);border-radius:10px;padding:10px 12px;}
@@ -1380,9 +1389,11 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
       </div>
     </div>
     <button class="map-mode-fab" id="map-mode-btn" onclick="cycleMapMode()" title="背景切替">🗺️</button>
-    <button class="record-fab fab-login-only" id="rec-btn" onclick="toggleRecordMode()" title="手動記録 — 駅をタップして経路を記録 (ログイン必須)">📝</button>
+    <!-- v418: fab-login-only を外し、未ログインでも記録機能を試せるよう開放。
+         保存系は uid=null 許容 (localStorage のみ) で動き、トーストで「端末内のみ・更新で消失」と案内する。 -->
+    <button class="record-fab" id="rec-btn" onclick="toggleRecordMode()" title="手動記録 — 駅をタップして経路を記録">📝</button>
     <button class="char-fab on" id="char-fab" onclick="toggleCharacterMode()" title="駅キャラ表示の切替 (ON/OFF)">🎭</button>
-    <button class="location-fab fab-login-only" id="location-fab" onclick="cycleLocationMode()" title="現在地表示 (ログイン必須)">📍</button>
+    <button class="location-fab" id="location-fab" onclick="cycleLocationMode()" title="現在地表示">📍</button>
     <div class="nearest-station-panel" id="nearest-station-panel">
       <!-- 開始駅選択モード (記録モード OFF 時) -->
       <div id="ns-mode-select">

@@ -286,14 +286,70 @@ export async function renderMypage() {
 
   const uid = currentUserId();
   if (!uid) {
-    showAllSubpanes(false);
+    // v418: ゲストモード — ヘッダ + 警告バナー + サブタブ nav を表示し、localStorage の
+    //   trips を _mypageCache に詰めて 📊統計 / 🚃旅程 / 📋路線 を概要として閲覧可能にする。
+    //   📸メモ / 🔗シェア は Supabase 専用 (uid 必須) なので各サブタブ側の既存「ログイン必要」
+    //   エンプティに任せる。Supabase fetch は行わない (反映不要)。
     c.innerHTML = `
-      <div class="mp-empty">
-        <div class="mp-empty-ic">🔑</div>
-        <div class="mp-empty-t">ログインしてください</div>
-        <div class="mp-empty-s">マイページではあなたの旅程・GPS 完駅率が使えます</div>
-        <button class="mp-empty-btn" onclick="openAuthModal()">🔑 ログイン / 会員登録</button>
-      </div>`;
+      <div class="mp-header-compact">
+        <div class="mp-avatar-sm" style="background:var(--track);color:var(--silver);">?</div>
+        <div class="mp-userinfo-sm">
+          <div class="mp-username-sm">ゲスト</div>
+          <div class="mp-uid-sm">未ログイン</div>
+        </div>
+        <button class="mp-logout-btn-sm" onclick="openAuthModal()"
+                style="background:var(--gold);color:#000;font-weight:700;padding:6px 10px;font-size:11px;border-radius:6px;width:auto;">🔑 ログイン</button>
+      </div>
+      <div class="mp-guest-warn" role="note">
+        <span class="mp-guest-warn-ic">⚠️</span>
+        <div class="mp-guest-warn-body">
+          <div class="mp-guest-warn-t">ゲストモードで表示中</div>
+          <div class="mp-guest-warn-s">記録はこの端末にのみ保存され、ブラウザを更新したりデータをクリアすると消えます。安全に残すにはログインしてください。</div>
+          <button class="mp-guest-warn-btn" onclick="openAuthModal()">🔑 ログインして保存</button>
+        </div>
+      </div>
+      <div id="mp-completion-pinned"></div>
+      <div class="mp-subtab-nav">
+        <button class="mp-subtab" data-sec="stats" onclick="switchMpSection('stats')">📊 統計</button>
+        <button class="mp-subtab" data-sec="trips" onclick="switchMpSection('trips')">🚃 旅程</button>
+        <button class="mp-subtab" data-sec="lines" onclick="switchMpSection('lines')">📋 路線</button>
+        <button class="mp-subtab" data-sec="memos" onclick="switchMpSection('memos')">📸 メモ</button>
+        <button class="mp-subtab" data-sec="shares" onclick="switchMpSection('shares')">🔗 シェア</button>
+      </div>
+    `;
+
+    // 完乗率カード placeholder
+    const pinnedG = document.getElementById('mp-completion-pinned');
+    if (pinnedG) pinnedG.innerHTML = `<div class="mp-loading" style="padding:14px">📊 完駅率を計算中…</div>`;
+
+    // localStorage trips を取得 (Supabase fetch しない方針)
+    let guestTrips = [];
+    try {
+      const raw = JSON.parse(localStorage.getItem('norireco_trips') || '[]');
+      if (Array.isArray(raw)) guestTrips = raw;
+    } catch (e) {}
+
+    // SERVICE_LINES build を待つ (完乗率カード描画に必要)
+    try {
+      await ((window.NORIRECO && NORIRECO.serviceLines) ? NORIRECO.serviceLines.build() : Promise.resolve());
+    } catch (e) {
+      console.warn('[マイページ:guest] SERVICE_LINES build エラー:', e.message);
+    }
+
+    MP._mypageCache = guestTrips;
+    renderMpTimeMachineBanner();
+
+    if (pinnedG) {
+      pinnedG.innerHTML = '';
+      if (Array.isArray(NORIRECO.data.SERVICE_LINES) && NORIRECO.data.SERVICE_LINES.length > 0) {
+        const tripsForCards = filterTripsByDate(guestTrips);
+        pinnedG.appendChild(NORIRECO.mypage.buildCompletionCards(tripsForCards));
+      } else {
+        pinnedG.innerHTML = `<div class="mp-empty-s" style="padding:14px">⚠ 営業系統マスターの読込に失敗しました</div>`;
+      }
+    }
+
+    applyMpSection();
     return;
   }
 

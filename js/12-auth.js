@@ -102,10 +102,13 @@ export async function initAuth() {
     } else {
       console.log('[Auth] 初期セッションなし (未ログイン)');
       updateAuthHeaderUI();
+      // v418: 未ログイン確定 → オンボーディングバナーの表示判定を解禁。
+      try { window.NORIRECO?.bulkRecord?.markSyncSettled?.(); } catch(e) {}
     }
   } catch (e) {
     console.warn('[Auth] getSession 例外:', e.message || e);
     updateAuthHeaderUI();
+    try { window.NORIRECO?.bulkRecord?.markSyncSettled?.(); } catch(e2) {}
   }
 }
 

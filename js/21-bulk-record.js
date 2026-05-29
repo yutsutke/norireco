@@ -622,14 +622,29 @@ function _esc(s) {
 //
 // 表示条件: 旅程が 1 件もない (localStorage `norireco_trips` 空 AND
 //   `window.RIDDEN_SEGS.length === 0`)。
-// 何らかの記録があれば即 hide。saveBulkDrafts / 通常記録モード両方の保存後
-// に呼ぶ必要があるが、bulk 側からは直接、通常記録は将来 hook を入れるか
-// init 時に 1 回呼ぶだけでも当面十分 (新規ユーザーは bulk が主導線)。
+//
+// v418: 「一瞬しか表示されない」問題の修正。
+//   既ログイン + Supabase 旅程あり + localStorage 空 (初回起動 / 別端末からの初アクセス)
+//   のシナリオで、DOMContentLoaded 時はまだ空 → バナー表示 → 数秒後の syncFromSupabase
+//   完了で RIDDEN_SEGS が埋まり、3秒後の setTimeout で消える、という挙動だった。
+//   _syncSettled フラグを導入し、Supabase 同期 (または未ログイン確認) が settle するまでは
+//   表示判定をしない (hidden 維持)。settle hook は 05-supabase-data.js / 12-auth.js から
+//   window.NORIRECO.bulkRecord.markSyncSettled() で呼ぶ (循環 import 回避)。
 // ──────────────────────────────────────────────────────────────
+
+let _syncSettled = false;
+
+export function markSyncSettled() {
+  if (_syncSettled) return;
+  _syncSettled = true;
+  updateOnboardingBanner();
+}
 
 export function updateOnboardingBanner() {
   const banner = document.getElementById('empty-onboarding-banner');
   if (!banner) return;
+  // v418: Supabase 同期確定前は判定しない (フラッシュ防止)。
+  if (!_syncSettled) { banner.hidden = true; return; }
   let lsLen = 0;
   try { lsLen = (JSON.parse(localStorage.getItem('norireco_trips') || '[]')).length; } catch (e) {}
   const segsLen = Array.isArray(window.RIDDEN_SEGS) ? window.RIDDEN_SEGS.length : 0;
@@ -766,6 +781,8 @@ async function saveBulkDrafts() {
     today:      window.localDateStr(),
     recordedAt: new Date().toISOString(),
   };
+  // v418: 未ログイン時は Supabase POST をスキップし localStorage のみ。
+  const isGuest = !ctx.userId;
 
   let savedCount = 0;
   let failedCount = 0;
@@ -783,13 +800,18 @@ async function saveBulkDrafts() {
       saveBtn.textContent = `💾 保存中... (${i + 1} / ${drafts.length})`;
     }
 
-    try {
-      await _postTripToSupabase(trip);
+    if (!isGuest) {
+      try {
+        await _postTripToSupabase(trip);
+        savedCount++;
+      } catch (e) {
+        failedCount++;
+        if (errors.length < 3) errors.push(e.message || String(e));
+        console.warn('[bulk-record] Supabase POST failed:', drafts[i].lineId, e);
+      }
+    } else {
+      // 未ログインは Supabase POST しない (savedCount は端末内保存ベースで集計)。
       savedCount++;
-    } catch (e) {
-      failedCount++;
-      if (errors.length < 3) errors.push(e.message || String(e));
-      console.warn('[bulk-record] Supabase POST failed:', drafts[i].lineId, e);
     }
 
     // localStorage push (Supabase 失敗時も継続 = 部分コミット許容)
@@ -815,7 +837,10 @@ async function saveBulkDrafts() {
   try { NORIRECO.mypage?.renderMpTripsResultOnly?.(); } catch (e) {}
 
   // トースト
-  if (failedCount === 0) {
+  if (isGuest) {
+    // v418: 未ログイン保存 — 端末内のみ + 更新で消える旨を強めに案内。
+    showRecordToast(`✅ ${savedCount} 件まとめて記録 (${totalStations} 駅)\n⚠️ 端末内のみ・ブラウザ更新で消えます / 🔑 ログインで保存`, 'warn', 9000);
+  } else if (failedCount === 0) {
     showRecordToast(`✅ ${savedCount} 件まとめて記録 (${totalStations} 駅)`);
   } else if (savedCount > 0) {
     showRecordToast(`⚠️ ${savedCount} 件保存 / ${failedCount} 件 Supabase 失敗 (ローカル保存済)\n${errors[0] || ''}`, 'warn', 9000);
@@ -875,18 +900,19 @@ NORIRECO.bulkRecord.open  = openBulkRecordSheet;
 NORIRECO.bulkRecord.close = closeBulkRecordSheet;
 NORIRECO.bulkRecord.save  = saveBulkDrafts;
 NORIRECO.bulkRecord.updateOnboardingBanner = updateOnboardingBanner;
+NORIRECO.bulkRecord.markSyncSettled = markSyncSettled;
 NORIRECO.bulkRecord._debugGetDrafts = _debugGetDrafts;
 
-// A-6: ページ初期化時にも banner 評価。
-//   - DOMContentLoaded 後に呼ぶ (banner element が存在する必要あり)
-//   - RIDDEN_SEGS の populate は 05-supabase-data の async 同期後、
-//     さらに数秒かかる可能性 → 初回チェック + 3 秒後フォローアップで十分カバー。
-//   - 通常記録モード (saveMultiSegmentTrip) からの hook は別 issue (07 側で
-//     window.NORIRECO.bulkRecord.updateOnboardingBanner?.() を呼ぶ追加が必要)。
+// v418: ページ初期化時の動作。
+//   - DOMContentLoaded 後に updateOnboardingBanner を呼ぶが、_syncSettled=false の間は
+//     hidden=true のまま (フラッシュ防止)。markSyncSettled は syncFromSupabase 完了 /
+//     12-auth.js の未ログイン確認のいずれかで呼ばれ、そこで初めて表示判定が走る。
+//   - 8 秒以内に settle されない場合の fallback (ネットワーク不調・SDK 初期化失敗等)
+//     として強制 settle するセーフティタイマーを置く。
 if (typeof window !== 'undefined') {
   const _onReady = () => {
     updateOnboardingBanner();
-    setTimeout(updateOnboardingBanner, 3000);
+    setTimeout(() => markSyncSettled(), 8000);
   };
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', _onReady, { once: true });

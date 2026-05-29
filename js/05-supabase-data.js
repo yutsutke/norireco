@@ -484,6 +484,8 @@ export async function syncFromSupabase() {
   const uid = currentUserId();
   if (!uid) {
     console.log('[乗レコ] Supabase 同期スキップ (未ログイン)');
+    // v418: オンボーディングバナー (21-bulk-record) に「同期確定」を通知。
+    try { window.NORIRECO?.bulkRecord?.markSyncSettled?.(); } catch(e) {}
     return;
   }
   try {
@@ -493,7 +495,10 @@ export async function syncFromSupabase() {
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     let trips = await res.json();
-    if (!trips.length) return;
+    if (!trips.length) {
+      try { window.NORIRECO?.bulkRecord?.markSyncSettled?.(); } catch(e) {}
+      return;
+    }
 
     // v395: 以前は notes / delay_minutes が Supabase に送られず localStorage のみだった (v181〜v394 のバグ)。
     //   syncFromSupabase が localStorage を Supabase 値 (null) で上書きすると v395 以前の編集が消える。
@@ -538,10 +543,14 @@ export async function syncFromSupabase() {
       drawLines();
     }
     updateStorageUI(trips.length, 'supabase');
+    // v418: 同期完了をオンボーディングバナーへ通知 (settle 後に表示判定が走る)。
+    try { window.NORIRECO?.bulkRecord?.markSyncSettled?.(); } catch(e) {}
     // Supabase 同期後にも自動獲得チェック
     setTimeout(() => runCharacterGrantCheck(), 600);
   } catch(e) {
     console.error('[乗レコ] Supabase同期エラー:', e);
+    // v418: 失敗時もバナー判定は進める (ローカルデータベースで表示判定)。
+    try { window.NORIRECO?.bulkRecord?.markSyncSettled?.(); } catch(e2) {}
   }
 }
 
