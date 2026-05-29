@@ -25,9 +25,9 @@ git log --oneline -20
 - [ ] **シェア機能 — MVP 以降の残り (v236 で OGP 画像生成 MVP は完成)**
   - ✅ v236: マイページ完乗率カードから「📸 シェア画像を作成」で 1200×630 PNG 生成・ダウンロード・Web Share / X intent
   - ✅ S-1 (v410): 個別 trip シェア — 旅程カードに「📤 シェア」、`generateTripOgpCanvas` で 1 旅程分の OGP (地図を trip 区間にズーム + 始点○/終点● + 路線名/区間/駅数/乗換/乗車日/車両パネル)。DL/Web Share/X。純クライアント
-  - **残り** (S-2 → S-3 の順、依存関係あり):
-    - S-2: 画像保存先 R2 + Workers (`/upload/share-image` presigned PUT、布石 #2/#4、永続シェア URL に必須)
-    - S-3: シェア専用ページ `/share/<id>` + OGP メタタグ + 「自分も記録」CTA (Supabase `norireco_shares` + Cloudflare Pages Function)。S-2 の永続画像 URL が前提
+  - 🟡 S-2 (v412): R2 永続画像保存 — Worker `/upload/share-image` (presigned PUT, key `shares/<uid>/<id>.png`) + クライアント `uploadShareImage` + シェアモーダル「🔗 画像URLをコピー」(ログイン必須)。**⚠️ Worker は `cd worker && npx wrangler deploy` で別途デプロイが必要** (frontend は main push で反映済 v412 だが endpoint はデプロイ後に有効)
+  - **残り**:
+    - S-3: シェア専用ページ `/share/<id>` + OGP メタタグ + 「自分も記録」CTA (Supabase `norireco_shares` + Cloudflare Pages Function)。S-2 の永続画像 URL を og:image に使う。delete/photo の object_key 正規表現に `shares` (3 segment) 分岐追加も S-3 で
   - 注: v345 で「verified 限定ガード」は撤回 (GPS = 手動の手間省略、世間への証明不要)。手動記録も対等にシェア可
 
 - [ ] **垢BAN（不正利用ペナルティ）対応**

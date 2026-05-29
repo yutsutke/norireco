@@ -5,8 +5,13 @@
 // 外部依存なし (Canvas API のみ)。日本地図シルエットは lat/lon ベースで自己完結。
 // ══════════════════════════════════════════════════════════════
 
+import { authBearerToken, currentUserId } from './12-auth.js';
+
 const OGP_W = 1200;
 const OGP_H = 630;
+
+// S-2 (v412): シェア画像を R2 に保存して恒久 CDN URL を得る Worker ゲートウェイ。
+const NORIRECO_API_BASE = 'https://api.norireco.app';
 
 // 日本全国 bbox (固定) — 沖縄は OGP では切り落とし、メイン 4 島 + 主要離島を表示
 const JP_BBOX = { lat0: 30.5, lat1: 45.7, lon0: 128.5, lon1: 146.0 };
@@ -572,8 +577,9 @@ function ensureModal() {
         <canvas id="share-ogp-canvas" style="width:100%;height:auto;max-width:480px;border-radius:4px;display:block;margin:0 auto"></canvas>
       </div>
       <div id="share-ogp-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-        <button class="btn-gen" id="share-ogp-download-btn" style="flex:1;min-width:120px">📥 ダウンロード</button>
-        <button class="btn-gen" id="share-ogp-share-btn" style="flex:1;min-width:120px;background:rgba(95,181,255,.15);color:#5fb5ff;border:1.5px solid rgba(95,181,255,.4)">🔗 シェア</button>
+        <button class="btn-gen" id="share-ogp-download-btn" style="flex:1;min-width:110px">📥 ダウンロード</button>
+        <button class="btn-gen" id="share-ogp-share-btn" style="flex:1;min-width:110px;background:rgba(95,181,255,.15);color:#5fb5ff;border:1.5px solid rgba(95,181,255,.4)">📤 シェア</button>
+        <button class="btn-gen" id="share-ogp-link-btn" style="flex:1;min-width:110px;background:rgba(46,196,134,.15);color:#2ec486;border:1.5px solid rgba(46,196,134,.4)">🔗 画像URLをコピー</button>
       </div>
       <button class="btn-cls" id="share-ogp-close-btn">閉じる</button>
     </div>
@@ -582,12 +588,77 @@ function ensureModal() {
   m.querySelector('#share-ogp-close-btn').addEventListener('click', closeShareModal);
   m.querySelector('#share-ogp-download-btn').addEventListener('click', downloadCurrentCanvas);
   m.querySelector('#share-ogp-share-btn').addEventListener('click', shareCurrentCanvas);
+  m.querySelector('#share-ogp-link-btn').addEventListener('click', copyShareLink);
   return m;
 }
 
 function closeShareModal() {
   const m = document.getElementById('share-ogp-modal');
   if (m) m.classList.remove('open');
+}
+
+// ── R2 アップロード (S-2) ──────────────────────────────────────
+// 生成済み PNG blob を Worker 経由で R2 に保存し、恒久 CDN URL を返す。
+// 写真アップロード (18-photo-area.js uploadPhoto) と同じ presign → PUT の 2 段。
+async function uploadShareImage(blob) {
+  const presignRes = await fetch(`${NORIRECO_API_BASE}/upload/share-image`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${authBearerToken()}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ content_type: 'image/png', size_bytes: blob.size, ext: 'png' }),
+  });
+  if (!presignRes.ok) {
+    const err = await presignRes.text();
+    throw new Error(`presign 失敗 (${presignRes.status}): ${err.slice(0, 200)}`);
+  }
+  const { upload_url, public_url } = await presignRes.json();
+  const putRes = await fetch(upload_url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'image/png' },
+    body: blob,
+  });
+  if (!putRes.ok) {
+    const err = await putRes.text();
+    throw new Error(`R2 アップロード失敗 (${putRes.status}): ${err.slice(0, 200)}`);
+  }
+  return public_url;
+}
+
+// 「🔗 画像URLをコピー」: 現在のキャンバスを R2 にアップロードし恒久 URL をクリップボードへ。
+// ログイン必須 (Worker が JWT の sub を要求)。未ログイン時は案内のみ。
+async function copyShareLink() {
+  if (typeof currentUserId !== 'function' || !currentUserId()) {
+    alert('シェア用の画像リンクを作るにはログインが必要です。');
+    return;
+  }
+  const canvas = document.getElementById('share-ogp-canvas');
+  if (!canvas) return;
+  const btn = document.getElementById('share-ogp-link-btn');
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ アップロード中…'; }
+  try {
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+    if (!blob) throw new Error('画像の生成に失敗しました');
+    const url = await uploadShareImage(blob);
+    try {
+      await navigator.clipboard.writeText(url);
+      if (btn) btn.textContent = '✅ コピーしました';
+    } catch (clipErr) {
+      // clipboard API が使えない環境では URL を直接見せる
+      window.prompt('画像URL (コピーしてください)', url);
+      if (btn) btn.textContent = '🔗 画像URLをコピー';
+    }
+  } catch (e) {
+    console.error('[シェア] 画像リンク作成失敗:', e);
+    alert('画像リンクの作成に失敗しました。時間をおいて再度お試しください。');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      setTimeout(() => { if (btn) btn.textContent = orig || '🔗 画像URLをコピー'; }, 2200);
+    }
+  }
 }
 
 // profile / trip でダウンロードファイル名・シェア文言が変わるのでモジュール変数で保持。

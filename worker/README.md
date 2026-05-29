@@ -11,13 +11,36 @@
 
 ## エンドポイント
 
-| Method | Path                  | 認証 | 用途                                   |
-|--------|-----------------------|------|----------------------------------------|
-| GET    | `/health`             | 不要 | 疎通確認                               |
-| GET    | `/me`                 | 必要 | JWT verify テスト (uid/email 返却)     |
-| POST   | `/upload/memo-photo`  | 必要 | 駅メモ写真の R2 presigned PUT URL 発行 |
+| Method | Path                   | 認証 | 用途                                        |
+|--------|------------------------|------|---------------------------------------------|
+| GET    | `/health`              | 不要 | 疎通確認                                    |
+| GET    | `/me`                  | 必要 | JWT verify テスト (uid/email 返却)          |
+| POST   | `/upload/memo-photo`   | 必要 | 駅メモ写真の R2 presigned PUT URL 発行      |
+| POST   | `/upload/trip-photo`   | 必要 | 旅程写真の R2 presigned PUT URL 発行        |
+| POST   | `/upload/share-image`  | 必要 | シェア OGP 画像の R2 presigned PUT URL 発行 |
+| POST   | `/delete/photo`        | 必要 | R2 オブジェクト削除 (差し替え時の掃除)      |
 
 認証は `Authorization: Bearer <supabase_access_token>` ヘッダー。Supabase Auth が発行する ES256 JWT を JWKS 経由で verify。
+
+### POST /upload/share-image
+
+シェア用 OGP 画像 (個別 trip / 累計プロフィール) を `shares/<uid>/<id>.png` に保存する presigned PUT URL を発行 (S-2)。写真と違い所有 entity id は無く Worker 側で id を採番する。
+
+Request:
+```json
+{ "content_type": "image/png", "size_bytes": 152096, "ext": "png" }
+```
+
+Response:
+```json
+{
+  "upload_url": "https://<account>.r2.cloudflarestorage.com/...?X-Amz-Signature=...",
+  "public_url": "https://cdn.norireco.app/shares/<uid>/<id>.png",
+  "object_key": "shares/<uid>/<id>.png",
+  "share_id": "<id>",
+  "expires_at": 1734567890
+}
+```
 
 ### POST /upload/memo-photo
 

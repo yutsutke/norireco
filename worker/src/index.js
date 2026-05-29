@@ -3,6 +3,7 @@
 // エンドポイント:
 //   POST   /upload/memo-photo  : 駅メモ写真の R2 presigned PUT URL (memos/<uid>/<memo_id>/...)
 //   POST   /upload/trip-photo  : 旅程写真の R2 presigned PUT URL (trips/<uid>/<trip_id>/...)
+//   POST   /upload/share-image : シェア用 OGP 画像の R2 presigned PUT URL (shares/<uid>/<id>.png)
 //   POST   /delete/photo       : R2 オブジェクト削除 (差し替え時の旧オブジェクト掃除)
 //   GET    /me                 : JWT verify テスト用 (uid/email 返却)
 //   GET    /health             : 認証なし疎通確認
@@ -188,6 +189,61 @@ async function handlePhotoUpload(kind, request, env, origin) {
   );
 }
 
+// ── ハンドラ: POST /upload/share-image ────────────────────────
+// シェア用 OGP 画像 (個別 trip / 累計プロフィール) を R2 に保存する presigned PUT URL を発行。
+// 写真と違い「所有 entity の id」は無く、Worker 側で id を採番する。key: shares/<uid>/<id>.<ext>
+// 用途: S-3 の /share/<id> ページが og:image に指す恒久画像 URL の土台 (S-2)。
+async function handleShareImageUpload(request, env, origin) {
+  let auth;
+  try {
+    auth = await verifyAuth(request, env);
+  } catch (e) {
+    return jsonResponse({ error: 'unauthorized', detail: e.message }, 401, env, origin);
+  }
+  const { uid } = auth;
+
+  const body = await request.json().catch(() => null);
+  if (!body) {
+    return jsonResponse({ error: 'invalid JSON body' }, 400, env, origin);
+  }
+  const ext = String(body.ext || 'png').toLowerCase();
+  if (!EXT_TO_MIME[ext]) {
+    return jsonResponse({ error: `unsupported ext: ${ext}` }, 400, env, origin);
+  }
+  const sizeBytes = Number(body.size_bytes || 0);
+  if (!sizeBytes || sizeBytes <= 0 || sizeBytes > MAX_BYTES) {
+    return jsonResponse({ error: `size out of range (1..${MAX_BYTES})` }, 413, env, origin);
+  }
+
+  const shareId = genPhotoId();
+  const objectKey = `shares/${uid}/${shareId}.${ext}`;
+  const r2 = getR2Client(env);
+
+  const s3Url = new URL(
+    `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${env.R2_BUCKET_NAME}/${objectKey}`
+  );
+  s3Url.searchParams.set('X-Amz-Expires', String(PRESIGN_EXPIRES_IN));
+
+  const signedReq = await r2.sign(s3Url.toString(), {
+    method: 'PUT',
+    aws: { signQuery: true },
+  });
+
+  const expiresAt = Math.floor(Date.now() / 1000) + PRESIGN_EXPIRES_IN;
+  return jsonResponse(
+    {
+      upload_url: signedReq.url,
+      public_url: `${env.CDN_BASE_URL}/${objectKey}`,
+      object_key: objectKey,
+      share_id: shareId,
+      expires_at: expiresAt,
+    },
+    200,
+    env,
+    origin
+  );
+}
+
 // ── ハンドラ: POST /delete/photo ──────────────────────────────
 // 写真差し替え時の旧 R2 オブジェクト掃除。冪等 (404 でも OK 扱い)。
 async function handlePhotoDelete(request, env, origin) {
@@ -287,6 +343,9 @@ export default {
     }
     if (url.pathname === '/upload/trip-photo' && request.method === 'POST') {
       return handlePhotoUpload('trip', request, env, origin);
+    }
+    if (url.pathname === '/upload/share-image' && request.method === 'POST') {
+      return handleShareImageUpload(request, env, origin);
     }
     if (url.pathname === '/delete/photo' && request.method === 'POST') {
       return handlePhotoDelete(request, env, origin);

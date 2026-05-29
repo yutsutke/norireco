@@ -52,6 +52,51 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 262. v412 — シェア機能 S-2: R2 永続画像保存
+
+**バージョン**: v412 (CACHE_VERSION)
+**日付**: 2026-05-29
+**カテゴリ**: A（実装 / 🔥 シェア機能 S-2）
+
+### 背景
+
+S-3 の `/share/<id>` ページが OGP の `og:image` に指す**恒久画像 URL**を作る土台。クライアント生成 PNG を R2 に保存して `cdn.norireco.app/shares/...` の永続 URL を得る。既存の写真アップロード基盤 (Worker presigned PUT + 18-photo-area の presign→PUT パターン) を踏襲。
+
+### 設計判断
+
+- **新エンドポイント `/upload/share-image`**: 写真と違いシェア画像は「所有 entity の id」を持たないので、`handlePhotoUpload` (owner_id 必須) を流用せず専用ハンドラに。**id は Worker 側で採番** (`genPhotoId`)、key = `shares/<uid>/<id>.png`
+- **ログイン必須**: Worker が JWT の `sub` を要求するため。未ログイン時はクライアントで弾いて案内 (S-1 のローカル DL / Web Share は未ログインでも使える)
+- **オンデマンドアップロード**: モーダルを開いた時点では上げず、「🔗 画像URLをコピー」を押したときだけ R2 write (無駄な書き込み回避)
+- **S-2 単独の価値**: コピーした画像 URL を X 等に貼ると画像が unfurl される。S-3 への布石でもある
+
+### 変更
+
+- `worker/src/index.js`: `handleShareImageUpload` 追加 (verify auth → ext/size 検証 → `shares/<uid>/<id>.png` の presigned PUT 発行、`share_id` も返す) + ルート `POST /upload/share-image` + ヘッダコメント。`node --check` clean
+- `worker/README.md`: エンドポイント表に trip-photo / share-image / delete を追記 + share-image の req/res 例
+- `js/14-share-ogp.js`:
+  - `import { authBearerToken, currentUserId } from './12-auth.js'` 追加 (本 module 初の import。14 は window 公開のみのリーフ = 循環なし)
+  - `uploadShareImage(blob)` (presign→PUT、public_url 返却) + `copyShareLink()` (ログインガード + canvas→blob→upload→clipboard、ボタンに進捗/完了表示) 追加
+  - シェアモーダルに「🔗 画像URLをコピー」ボタン (緑 #2ec486) + listener。既存「🔗 シェア」は「📤 シェア」に改称
+- CACHE_VERSION v411 → v412
+
+### ⚠️ デプロイ注意 (重要)
+
+frontend は main push で即反映 (v412) だが、**Worker は別パイプライン**。`cd worker && npx wrangler deploy` を実行するまで `/upload/share-image` は 404。それまで「🔗 画像URLをコピー」は失敗トースト/alert になる。Worker デプロイはユスケの Cloudflare 認証が要るので Claude 側では実行不可。
+
+### 検証 (preview, localhost)
+
+- 「🔗 画像URLをコピー」ボタン表示 (緑)、未ログインクリックで「ログインが必要です」案内 + 非クラッシュ
+- 擬似ログイン (NORIRECO.auth.currentUser 注入) + fetch/clipboard スタブで `copyShareLink` 実フロー検証: `POST /upload/share-image` → `PUT <upload_url>` → clipboard に public_url → ボタン「✅ コピーしました」
+- syntax-guard clean (循環なし確認)、Worker `node --check` clean、console error 0
+- **未検証 (Worker デプロイ後に要確認)**: 実 R2 への presign 署名 + PUT 成否、実 JWT verify
+
+### 残課題
+
+- Worker デプロイ (ユスケ)
+- S-3: Supabase `norireco_shares` + Pages Function `/share/[id]`。delete/photo の object_key 正規表現に shares (3 segment) 分岐追加
+
+---
+
 ## 261. v411 — 個別 trip シェア: 路線名を正式名で表示 + 区間別「経路」詳細
 
 **バージョン**: v411 (CACHE_VERSION)
