@@ -260,13 +260,18 @@ async function handlePhotoDelete(request, env, origin) {
     return jsonResponse({ error: 'invalid body' }, 400, env, origin);
   }
 
-  // セキュリティ: object_key が `<kind>/<uid>/<owner_id>/<photo_id>.<ext>` 形式かつ
-  // uid 部分が JWT の uid と一致することを確認 (他人のオブジェクト削除を防ぐ)
-  const m = body.object_key.match(/^(memos|trips)\/([^/]+)\/([^/]+)\/([^/]+)$/);
-  if (!m) {
+  // セキュリティ: object_key が既知の形式かつ uid 部分が JWT の uid と一致することを確認
+  // (他人のオブジェクト削除を防ぐ)。
+  //   - 写真:   memos|trips / <uid> / <owner_id> / <photo_id>.<ext>   (4 segment)
+  //   - シェア: shares / <uid> / <share_id>.<ext>                     (3 segment, v415〜)
+  // どちらも prefix 直後 (2 つ目) のセグメントが uid。
+  const mPhoto = body.object_key.match(/^(memos|trips)\/([^/]+)\/([^/]+)\/([^/]+)$/);
+  const mShare = body.object_key.match(/^shares\/([^/]+)\/([^/]+)$/);
+  const keyUid = mPhoto ? mPhoto[2] : (mShare ? mShare[1] : null);
+  if (!keyUid) {
     return jsonResponse({ error: 'invalid object_key format' }, 400, env, origin);
   }
-  if (m[2] !== uid) {
+  if (keyUid !== uid) {
     return jsonResponse({ error: 'forbidden: not your object' }, 403, env, origin);
   }
 

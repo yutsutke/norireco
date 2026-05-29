@@ -577,9 +577,8 @@ function ensureModal() {
         <canvas id="share-ogp-canvas" style="width:100%;height:auto;max-width:480px;border-radius:4px;display:block;margin:0 auto"></canvas>
       </div>
       <div id="share-ogp-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-        <button class="btn-gen" id="share-ogp-download-btn" style="flex:1;min-width:110px">📥 ダウンロード</button>
-        <button class="btn-gen" id="share-ogp-share-btn" style="flex:1;min-width:110px;background:rgba(95,181,255,.15);color:#5fb5ff;border:1.5px solid rgba(95,181,255,.4)">📤 シェア</button>
-        <button class="btn-gen" id="share-ogp-link-btn" style="flex:1;min-width:110px;background:rgba(46,196,134,.15);color:#2ec486;border:1.5px solid rgba(46,196,134,.4)">🔗 シェアリンクを作成</button>
+        <button class="btn-gen" id="share-ogp-download-btn" style="flex:1;min-width:130px">📥 ダウンロード</button>
+        <button class="btn-gen" id="share-ogp-share-btn" style="flex:1;min-width:130px;background:rgba(46,196,134,.15);color:#2ec486;border:1.5px solid rgba(46,196,134,.4)">📤 シェア</button>
       </div>
       <button class="btn-cls" id="share-ogp-close-btn">閉じる</button>
     </div>
@@ -588,7 +587,6 @@ function ensureModal() {
   m.querySelector('#share-ogp-close-btn').addEventListener('click', closeShareModal);
   m.querySelector('#share-ogp-download-btn').addEventListener('click', downloadCurrentCanvas);
   m.querySelector('#share-ogp-share-btn').addEventListener('click', shareCurrentCanvas);
-  m.querySelector('#share-ogp-link-btn').addEventListener('click', createShareLink);
   return m;
 }
 
@@ -628,7 +626,7 @@ async function uploadShareImage(blob) {
 }
 
 // norireco_shares に 1 行 insert (S-3)。RLS が auth.uid()=user_id を要求するので
-// Authorization は anon key ではなく access_token を使う (createShareLink はログイン必須)。
+// Authorization は anon key ではなく access_token を使う (シェアはログイン時のみ /share 化)。
 async function insertShareRecord(shareId, imageUrl) {
   const row = {
     id: shareId,
@@ -654,53 +652,6 @@ async function insertShareRecord(shareId, imageUrl) {
   }
 }
 
-// 「🔗 シェアリンクを作成」: 画像を R2 に上げ → norireco_shares 登録 → /share/<id> を生成しコピー。
-// ログイン必須 (R2 アップロードと RLS insert が JWT を要求)。
-async function createShareLink() {
-  if (typeof currentUserId !== 'function' || !currentUserId()) {
-    alert('シェアリンクを作るにはログインが必要です。');
-    return;
-  }
-  const canvas = document.getElementById('share-ogp-canvas');
-  if (!canvas) return;
-  const btn = document.getElementById('share-ogp-link-btn');
-  const orig = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ 作成中…'; }
-  try {
-    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
-    if (!blob) throw new Error('画像の生成に失敗しました');
-    const { public_url, share_id } = await uploadShareImage(blob);
-    await insertShareRecord(share_id, public_url);
-    const shareUrl = `https://norireco.app/share/${share_id}`;
-    // Web Share が使えればリンク共有、無ければクリップボード、最後は prompt
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: _shareMeta.title || '乗レコ', text: _shareText, url: shareUrl });
-        if (btn) btn.textContent = '✅ 共有しました';
-        return;
-      } catch (e) {
-        if (e && e.name === 'AbortError') { if (btn) btn.textContent = orig; return; }
-        // share 失敗時はクリップボードへフォールバック
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      if (btn) btn.textContent = '✅ リンクをコピーしました';
-    } catch (clipErr) {
-      window.prompt('シェアリンク (コピーしてください)', shareUrl);
-      if (btn) btn.textContent = '🔗 シェアリンクを作成';
-    }
-  } catch (e) {
-    console.error('[シェア] シェアリンク作成失敗:', e);
-    alert('シェアリンクの作成に失敗しました。時間をおいて再度お試しください。');
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      setTimeout(() => { if (btn) btn.textContent = orig || '🔗 シェアリンクを作成'; }, 2400);
-    }
-  }
-}
-
 // profile / trip でダウンロードファイル名・シェア文言・share レコードのメタが変わるので
 // モジュール変数で保持。openShareModal / openTripShareModal が開く直前にセットする。
 let _downloadName = 'norireco';
@@ -722,20 +673,78 @@ async function downloadCurrentCanvas() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+// 末尾のルート URL 行を取り除いた共有テキスト (/share リンクを別途載せるため)。
+// _shareText は末尾が "…\nhttps://norireco.app/" 形式なのでそれを剥がす。
+function shareTextWithoutUrl() {
+  return String(_shareText).replace(/\s*https?:\/\/\S+\s*$/i, '').trim();
+}
+
+// 「📤 シェア」(v415 で /share リンクに統一)。
+// - ログイン時: 画像を R2 に保存 → norireco_shares 登録 → /share/<id> を「画像 + リンク」で共有。
+//   リンクは未ログイン視聴者にも開け、X 等では og:image でリッチに unfurl される (トラフィックが戻る)。
+// - 未ログイン / R2・insert 失敗時: 従来通り画像ファイル + ルート URL でフォールバック。
 async function shareCurrentCanvas() {
   const canvas = document.getElementById('share-ogp-canvas');
   if (!canvas) return;
   const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
   if (!blob) { alert('画像の生成に失敗しました'); return; }
   const file = new File([blob], `${_downloadName}.png`, { type: 'image/png' });
-  const shareText = _shareText;
+  const btn = document.getElementById('share-ogp-share-btn');
+  const orig = btn ? btn.textContent : '';
 
+  if (typeof currentUserId === 'function' && currentUserId()) {
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ 準備中…'; }
+    try {
+      const { public_url, share_id } = await uploadShareImage(blob);
+      await insertShareRecord(share_id, public_url);
+      const shareUrl = `https://norireco.app/share/${share_id}`;
+      if (btn) { btn.disabled = false; btn.textContent = orig; }
+      await shareImageWithLink(file, shareUrl, btn, orig);
+      return;
+    } catch (e) {
+      console.error('[シェア] /share リンク作成に失敗、画像のみで共有します:', e);
+      if (btn) { btn.disabled = false; btn.textContent = orig; }
+      // ↓ 画像のみフォールバックへ続行
+    }
+  }
+  await shareImageOnly(file);
+}
+
+// 画像ファイル + /share リンクを共有。files と url を同時に渡せない端末が多いため、
+// リンクは text 末尾に載せる (画像添付不可な環境ではリンクのみ Web Share → X intent)。
+async function shareImageWithLink(file, shareUrl, btn, orig) {
+  const flash = (msg) => {
+    if (!btn) return;
+    btn.textContent = msg;
+    setTimeout(() => { if (btn) btn.textContent = orig || '📤 シェア'; }, 2400);
+  };
+  const textWithLink = `${shareTextWithoutUrl()}\n${shareUrl}`;
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
-      await navigator.share({
-        files: [file],
-        text: shareText,
-      });
+      await navigator.share({ files: [file], text: textWithLink });
+      flash('✅ 共有しました');
+      return;
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: _shareMeta.title || '乗レコ', text: shareTextWithoutUrl(), url: shareUrl });
+      flash('✅ 共有しました');
+      return;
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  // デスクトップ等: X intent (url 付きで card unfurl)
+  const intent = `https://x.com/intent/tweet?text=${encodeURIComponent(shareTextWithoutUrl())}&url=${encodeURIComponent(shareUrl)}`;
+  window.open(intent, '_blank', 'noopener,noreferrer');
+  flash('✅ X を開きました');
+}
+
+// 未ログイン / フォールバック: 画像ファイル + ルート URL (従来挙動)。
+async function shareImageOnly(file) {
+  const shareText = _shareText;
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], text: shareText });
       return;
     } catch (e) {
       if (e && e.name === 'AbortError') return;
