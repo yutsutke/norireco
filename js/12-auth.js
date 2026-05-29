@@ -132,6 +132,8 @@ function handleAuthChange(event, session) {
     try { window.NORIRECO?.colorOverrides?.syncFromSupabase?.(); } catch(e) {}
     // v250: 駅メモをデバイス間同期 (16-memos.js)
     try { window.NORIRECO?.memos?.sync?.(); } catch(e) {}
+    // v423 垢BAN: 自分の share_status を取得 (banned ならシェア UI を塞ぐ / マイページにバッジ)
+    fetchMyProfile();
   }
   // v228: ログアウト時はローカルに残った前ユーザーの乗車データ・キャラ獲得を purge し、
   // 地図を空状態で再描画する (Supabase のデータは破壊しない)。
@@ -157,6 +159,8 @@ function clearLocalUserDataAfterSignOut() {
   try { window.NORIRECO?.colorOverrides?.resetAll?.(); } catch(e) {}
   // v250: 駅メモも個人データなのでログアウト時にローカルから purge
   try { window.NORIRECO?.memos?.clear?.(); } catch(e) {}
+  // v423 垢BAN: アカウント状態をデフォルト (ok) に戻す。次回ログイン時 fetchMyProfile が再取得する。
+  try { if (window.NORIRECO) window.NORIRECO.profile = { share_status: 'ok', ban_reason: null, loaded: false }; } catch(e) {}
   // in-memory RIDDEN_SEGS を空に (window bridge 経由 — 05 が export 済の共有配列)
   if (Array.isArray(window.RIDDEN_SEGS)) {
     window.RIDDEN_SEGS.length = 0;
@@ -215,6 +219,40 @@ export function authBearerToken() {
 // 現在ログインしている user_id を返す (未ログイン時は null)
 export function currentUserId() {
   return auth.currentUser?.id || null;
+}
+
+// v423 垢BAN: 自分の share_status (アカウント状態) を取得して NORIRECO.profile に保持する。
+// 読めなければ / 行が無ければ 'ok' フォールバック (BAN 時のみ norireco_profiles に行ができる)。
+// 結果は window.NORIRECO.profile に置く (14-share-ogp / 13-mypage-common が循環 import せず参照)。
+// SUPABASE_URL / SUPABASE_KEY は Global Lexical Environment 経由で bare 参照 (ファイル冒頭コメント参照)。
+async function fetchMyProfile() {
+  const uid = currentUserId();
+  window.NORIRECO = window.NORIRECO || {};
+  if (!uid) { window.NORIRECO.profile = { share_status: 'ok', ban_reason: null, loaded: false }; return; }
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/norireco_profiles?user_id=eq.${encodeURIComponent(uid)}&select=share_status,ban_reason&limit=1`,
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authBearerToken()}` } }
+    );
+    if (res.ok) {
+      const rows = await res.json();
+      const row = Array.isArray(rows) && rows.length ? rows[0] : null;
+      window.NORIRECO.profile = {
+        share_status: (row && row.share_status) || 'ok',   // 行が無い = ok
+        ban_reason: row ? (row.ban_reason || null) : null,
+        loaded: true,
+      };
+    } else {
+      window.NORIRECO.profile = { share_status: 'ok', ban_reason: null, loaded: false };
+    }
+  } catch (e) {
+    window.NORIRECO.profile = { share_status: 'ok', ban_reason: null, loaded: false };
+  }
+  // マイページが開いていれば状態バッジ反映のため再描画 (renderMypage は本ファイルが import 済)。
+  try {
+    const mp = document.getElementById('pane-mypage');
+    if (mp && mp.classList.contains('active')) renderMypage();
+  } catch (e) {}
 }
 
 // ── ヘッダ UI ──────────────────────────────────────────────────

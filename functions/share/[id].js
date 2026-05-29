@@ -110,7 +110,8 @@ export async function onRequestGet(context) {
   let row = null;
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/norireco_shares?id=eq.${encodeURIComponent(id)}&select=title,description,image_url,kind&limit=1`,
+      // revoked=is.false: 垢BAN (v423) で失効させたシェアは配信しない (= not-found 扱い)。
+      `${SUPABASE_URL}/rest/v1/norireco_shares?id=eq.${encodeURIComponent(id)}&revoked=is.false&select=title,description,image_url,kind&limit=1`,
       { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
     );
     if (res.ok) {

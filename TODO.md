@@ -30,15 +30,14 @@ git log --oneline -20
   - **シェア機能 残り** (S-1〜S-3 で MVP 完結。以降は磨き込み):
     - ✅ v415→v417: シェアボタン整理。v415 で「📤 1 本化 (/share リンク統合)」+ Worker `/delete/photo` 正規表現に `shares` 3-segment 分岐 (deploy 済 Version d854330d) → **v417 で「📤 画像をシェア」「🔗 リンクをシェア」の 2 ボタンに再分離** (Windows OS 共有シートが file 共有時に URL=text を落とすため。🔗 は PC=クリップボードコピー / モバイル=Web Share、ログイン必須)。CHANGELOG §265〜§267
     - ✅ v416: シェア取り消し UI 本体 — マイページ 5 番目「🔗 シェア」サブタブ (作成済み `norireco_shares` を user_id で SELECT し一覧、🔗 リンクコピー + 🗑 取り消し)。取り消し = norireco_shares DELETE (RLS 本人) → R2 `/delete/photo` best-effort cleanup → 再描画。v415 統合で後退した「URL コピー」導線も PC で復活 (Web Share 不可時にクリップボードコピー)。CHANGELOG §266
-    - 残: 垢BAN (share_banned) 状態と「作成したシェア一覧」の連携 (TODO 🔥 垢BAN と統合)
+    - ✅ v423: 垢BAN (share_banned) 連携を実装 — banned で /share リンク作成・画像シェアを停止 (シェアモーダル不開) + 既存リンクも revoked で配信停止 + マイページ「🔗 シェア」タブに状態バナー。詳細 → 🔥「垢BAN」/ CHANGELOG §273
   - 注: v345 で「verified 限定ガード」は撤回 (GPS = 手動の手間省略、世間への証明不要)。手動記録も対等にシェア可
 
-- [ ] **垢BAN（不正利用ペナルティ）対応**
-  - 共有・シェア機能のみ停止、個人記録は通常通り使える設計
-  - 「自分の達成は壊さない、外への発信だけを制限する」 = やり直しの余地を残す
-  - 段階: warn（注意）→ share_banned（シェア不可）→ full_banned（極端な場合のみ）
-  - `users.share_status` を Supabase に追加。マイページにバッジ表示
-  - 発動条件 (v345 改): 不正検知連動は撤回。代わりにスパム的シェア量・他ユーザー通報・規約違反コンテンツ等を別軸で検討
+- [ ] **垢BAN（シェア停止ペナルティ）** — 本体 ✅ v423 (enforcement が効くところまで完成)
+  - ✅ v423 本体: `norireco_profiles` 新設 (share_status = 真実の源 / SELECT 本人のみ + 書込 policy 無し = 本人も自己解除不可)、`shares.revoked` 派生キャッシュ + INSERT(BAN中不可)/UPDATE(revoked 復活穴封鎖) policy 強化、関数 `set_account_status`/`ban_user_share`/`unban_user_share` (EXECUTE は public REVOKE で Dashboard 専用 = RPC 自己解除穴を塞ぐ)。enforcement = RLS(最後の砦) + クライアント(banned 時シェアモーダル不開で リンク作成/画像シェア/DL を一括ブロック) の 2 層。既存リンクも revoked で配信停止 (unban で復活)。**trip/character_grant・Worker は不触** (個人記録は通常どおり)。マイページに状態バナー/チップ。CHANGELOG §273
+  - **⚠️ 残: ユスケ作業** — `supabase/migrations/v423_share_ban.sql` を Dashboard で Run → 末尾に `-- Applied:` 追記。**SQL 先 → JS push の順** (配信側が revoked 列を要求するため、v421 と逆)
+  - 段階: ok → warn(注意・バッジのみ・enforcement なし) → share_banned(シェア不可) → full_banned(今は share_banned と同等の器)
+  - **残 (別タスク)**: 管理 GUI / 自動発動 (スパム的シェア量・他ユーザー通報・規約違反コンテンツ等を別軸で検討) / full_banned の「個人記録の新規作成停止」enforcement (SELECT/閲覧は最後まで残す方針、v423 コメントに拡張点を記録済)
 
 <!-- ✅ 駅 ID 体系 (Phase 1〜3) 完了: 駅マスター (merged_stations 9,030 駅) / SERVICE_LINES / trip / memo / characters_master / 駅名検索 / LINES の全層を `s_NNNNN` id ベース化、同名異所駅 (高松 香川/石川/多摩 等) の判定混線を全面解消。trip.from_station/to_station (v326) + memo.station (v325) の旧 name 列も DROP 済 (Applied 2026-05-25)。詳細 → CHANGELOG_PHASE3.8-station-id.md (Phase 1〜3, v290〜v333) + CHANGELOG §272 (v422 = 集計 rebuild の id 優先化で Phase 2 クローズ)。
      残るは「name 照合の物理撤去 (完全版)」のみ → **今はやらない**と決定 (v422)。🌱 布石 #7 に移動 -->
@@ -246,10 +245,10 @@ git log --oneline -20
   - 発動条件: 10 万 MAU 手前でベンダー比較開始。今は Supabase Auth 一本で OK
   - 今のうちにやること: Magic Link / Google OAuth の UI コードは Supabase 依存を 1 関数に集約する（ユーザー情報取得・JWT 検証の口を狭める）
 
-- [ ] **#6 垢 BAN 設計（共有のみ停止・個人記録は維持）** ← 🔥 残 TODO の「垢BAN 対応」と連動
-  - 理由: シェア機能（OGP）リリース後に垢 BAN を後付けすると trip / share テーブルの flag 設計がスパゲッティになる
-  - 発動条件 (v345 改): シェア機能リリース時。不正検知連動は撤回 (世間への証明不要方針)
-  - 今のうちにやること: シェア機能設計時に `users.share_status`（warn / share_banned / full_banned）と RLS を含める。trip / character_grant は触らない設計に
+<!-- ✅ #6 垢 BAN 設計（共有のみ停止・個人記録は維持）: v423 で本体実装完了 (🔥「垢BAN」に統合)。
+     布石どおり「シェア機能設計時に share_status + RLS を組み込む / trip・character_grant は触らない」を実現 = 後付けスパゲッティを回避。
+     真実の源 = norireco_profiles.share_status、shares.revoked は派生キャッシュ。CHANGELOG §273。残務・別タスクは 🔥「垢BAN」を参照 -->
+
 
 - [ ] **#7 駅 ID name 照合の物理撤去（駅 ID 体系 完全版・今はやらない）** ← 駅 ID 体系 Phase 1〜3 完了 (v290〜v329) + Phase 2 クローズ (v422) の残務
   - 背景: 読み取りは id 化済だが、格納 trip segment を `s.name === seg.from` で照合する箇所が **6 ファイル ~15 ペア**残る（id 優先化済は 04b `rebuild` (v422) + 13-mypage の 2 箇所のみ、残りは **13a-stats ~9 (完乗率・統計 16 種)** / 02b-service-lines-builder / 14-share-ogp / 21-bulk-record ×2）。name 照合を物理的に消すには segments JSONB の `from_id`/`to_id` 全件 backfill が前提

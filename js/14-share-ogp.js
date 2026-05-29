@@ -710,6 +710,7 @@ async function shareCurrentLink() {
     alert('リンクをシェアするにはログインが必要です。');
     return;
   }
+  if (_guardShareBanned()) return;  // v423 垢BAN: 多層防御 (通常は open*ShareModal で既に止まる)
   const canvas = document.getElementById('share-ogp-canvas');
   if (!canvas) return;
   const btn = document.getElementById('share-ogp-link-btn');
@@ -778,7 +779,21 @@ function paintCanvas(canvas) {
   }
 }
 
+// v423 垢BAN: share_banned / full_banned のときシェアを塞ぐ (true=呼び出し側は return)。
+// 「画像シェアも禁止」(ユスケ確定 2026-05-29): モーダル自体を開かせないことで、リンク作成・
+// 画像シェア (Web Share)・画像 DL を 1 か所で一括ブロックする。最終防御は RLS の INSERT policy
+// (v423)、ここはクライアント UX (DevTools 直叩きは RLS が止める)。
+function _guardShareBanned() {
+  const st = window.NORIRECO?.profile?.share_status;
+  if (st === 'share_banned' || st === 'full_banned') {
+    alert('シェア機能の利用が現在制限されています。詳しくはマイページの「🔗 シェア」をご確認ください。');
+    return true;
+  }
+  return false;
+}
+
 export async function openShareModal(stats) {
+  if (_guardShareBanned()) return;
   const m = ensureModal();
   const title = document.getElementById('share-ogp-title');
   const sub = document.getElementById('share-ogp-sub');
@@ -796,6 +811,7 @@ export async function openShareModal(stats) {
 }
 
 export async function openTripShareModal(trip) {
+  if (_guardShareBanned()) return;
   const m = ensureModal();
   const d = deriveTripDisplay(trip);
   // 路線名は最大 3 つまで「・」で繋ぎ、超過は「ほか N 路線」
@@ -846,6 +862,20 @@ async function fetchMyShares(uid) {
   return await res.json();
 }
 
+// v423 垢BAN: マイページ「🔗 シェア」タブ冒頭の状態バナー (warn=注意 / banned=制限中)。
+function _shareStatusBanner() {
+  const p = window.NORIRECO?.profile || {};
+  const st = p.share_status;
+  const reason = p.ban_reason ? `<div style="margin-top:4px;font-size:12px;opacity:.85">理由: ${escAttr(p.ban_reason)}</div>` : '';
+  if (st === 'warn') {
+    return `<div class="mp-tip" style="border-color:var(--gold);color:var(--gold)">⚠️ 注意: 利用規約に抵触する可能性のある利用が確認されています。${reason}</div>`;
+  }
+  if (st === 'share_banned' || st === 'full_banned') {
+    return `<div class="mp-tip" style="border-color:var(--red);color:var(--red)">🚫 シェア機能の利用が現在制限されています。記録の閲覧・編集は通常どおりご利用いただけます。${reason}</div>`;
+  }
+  return '';
+}
+
 function shareCardHtml(s) {
   const created = (s.created_at || '').slice(0, 10);
   const kindLabel = s.kind === 'profile' ? '完乗プロフィール' : '旅程';
@@ -891,12 +921,13 @@ export async function renderMpSharesSection() {
   }
   _sharesById = new Map((shares || []).map(s => [s.id, s]));
   if (!shares.length) {
-    host.innerHTML = `
+    host.innerHTML = _shareStatusBanner() + `
       <div class="mp-tip">📤 旅程カードや完乗率カードの「シェア」からリンクを作成すると、ここに一覧が出ます。リンクは X 等でリッチに表示され、いつでも取り消せます。</div>
       <div class="mp-empty-s" style="padding:14px;text-align:center">まだシェアはありません</div>`;
     return;
   }
   host.innerHTML =
+    _shareStatusBanner() +
     `<div class="mp-tip">作成したシェアリンクの一覧です。🔗 でリンクをコピー、🗑 で取り消し (開いても表示されなくなります)。</div>` +
     shares.map(shareCardHtml).join('');
 }

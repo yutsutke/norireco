@@ -279,6 +279,16 @@ export function resolveStationQuery(q) {
 }
 NORIRECO.mypage.resolveStationQuery = resolveStationQuery;
 
+// v423 垢BAN: ヘッダのアカウント状態チップ (warn / banned のみ表示。ok は何も出さない)。
+// share_status は 12-auth.js の fetchMyProfile が window.NORIRECO.profile に格納する。
+function _mpStatusChip() {
+  const st = window.NORIRECO?.profile?.share_status;
+  const base = 'display:inline-block;margin-top:3px;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;';
+  if (st === 'warn') return `<span style="${base}color:var(--gold);border:1px solid var(--gold)">⚠️ 注意</span>`;
+  if (st === 'share_banned' || st === 'full_banned') return `<span style="${base}color:var(--red);border:1px solid var(--red)">🚫 シェア停止中</span>`;
+  return '';
+}
+
 export async function renderMypage() {
   const c = document.getElementById('mypage-content');
   if (!c) return;
@@ -367,6 +377,7 @@ export async function renderMypage() {
       <div class="mp-userinfo-sm">
         <div class="mp-username-sm">${email.split('@')[0]}</div>
         <div class="mp-uid-sm">${email}</div>
+        ${_mpStatusChip()}
       </div>
       <button class="mp-logout-btn-sm" onclick="if(confirm('ログアウトしますか?'))signOutUser()">×</button>
     </div>

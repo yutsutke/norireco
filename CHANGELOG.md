@@ -52,6 +52,43 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 273. v423 — 垢BAN（シェア停止ペナルティ）本体
+
+**バージョン**: v423 (CACHE_VERSION)
+**日付**: 2026-05-29
+
+### 背景
+シェア機能 MVP (v410〜v418) が本番稼働。TODO 🔥「垢BAN」+ 布石 #6 で「シェア機能リリース後に垢BAN を後付けすると trip/share テーブルの flag 設計がスパゲッティになる」と警告されていた本丸。v413 の migration コメントが既に「将来の垢BAN: share_banned なら配信停止 or revoked 列追加で対応」と予告しており、それを回収。思想は TODO の「自分の達成は壊さない、外への発信だけ制限する＝やり直しの余地を残す」。
+
+### スコープ
+enforcement が実際に効くところまで＝本体。発動は当面 Supabase Dashboard の手動 SQL 関数。**管理 GUI・自動発動 (スパム検知/通報)・full_banned の個人記録停止は別タスク** (TODO で「別軸・未確定」)。段階: `ok` → `warn` (注意・enforcement なし) → `share_banned` (シェア不可) → `full_banned` (極端時・今は share_banned と同等の器)。
+
+### 設計判断
+- **真実の源 = `norireco_profiles.share_status` 一本**。`norireco_shares.revoked` は「share_status の片方向・非正規化キャッシュ」(配信高速化 + anon に profiles を晒さない両立)。同期は `set_account_status` 関数 1 か所のみ (profiles → shares 片方向)。二重管理ではなく明確な主従。
+- **profiles の書込 policy を作らない**: SELECT (本人のみ) policy だけ作成。RLS 有効下で INSERT/UPDATE/DELETE policy が無い = authenticated/anon は書込全拒否、service_role (Dashboard) のみ書込 → **本人が自分の BAN を自己解除できない**。v421 と同じ二重防御で anon REVOKE + authenticated は SELECT のみ GRANT。
+- **関数の EXECUTE を public から REVOKE** (Plan 中に気づいた穴): PostgREST は public スキーマの関数を `/rest/v1/rpc/<fn>` として自動公開する。剥がさないと authenticated が `unban_user_share` を叩いて自己解除できてしまう。REVOKE で Dashboard 専用に。
+- **shares UPDATE policy 強化** (Plan エージェントが発見した穴): 現状 `auth.uid()=user_id` だけなので banned ユーザーが `PATCH {revoked:false}` で自分の全 share を自力復活できた。`WITH CHECK (... AND revoked=false)` で塞ぐ。現状クライアントは shares を PATCH しないので既存挙動は不変。
+- **enforcement 2 層**: (1) DB の RLS が最後の砦 (INSERT BAN中不可・回避不可)、(2) クライアントガードが UX。**trip/character_grant の RLS は一切触らない** (布石 #6 厳守)。**Worker も触らない** (INSERT を弾けば shares 行が作られず /share は not-found、R2 orphan は許容)。
+- **ユスケ確定の仕様 (2026-05-29)**: ①既存リンクも無効化 (revoked で配信停止、unban で復活) ②画像シェアも禁止 = シェアモーダル自体を開かせない (open*ShareModal 冒頭ガードで リンク作成・画像 Web Share・画像 DL を一括ブロック。最終防御は RLS) ③列名は `share_status` (account_status ではなく TODO/CHANGELOG 表記に統一)。
+
+### デプロイ順序 (v421 とは逆・SQL 先)
+配信側 `functions/share/[id].js` が `&revoked=is.false` を要求 → 列が無い間にこのクエリが出ると PostgREST 400 → catch で全 share が not-found 化する事故。profiles 側はクライアントが catch で 'ok' フォールバックするので安全側。→ **v423 SQL を Dashboard で Run (Applied 確認) → その後 JS + functions + sw.js を push**。
+
+### 検証
+- syntax `npm run check` 24/24 OK。
+- preview (python http.server) でモジュールロード console エラー 0 (循環 import 事故なし、12-auth に fetchMyProfile 追加 + renderMypage 直呼び)。
+- ガード eval テスト: `share_banned`/`full_banned` でモーダル不開 + alert、`warn`/`ok` で通常通り開く、を確認。
+- バナー/チップ (マイページ) と配信側 revoked・RLS はログイン状態/DB が要るため本番確認 (ロジックはレビュー済 + syntax OK)。
+
+### 触ったもの
+新規 `supabase/migrations/v423_share_ban.sql` (profiles 新設 + RLS + shares.revoked + INSERT/UPDATE policy 強化 + set_account_status/ban_user_share/unban_user_share + EXECUTE REVOKE)。編集 `functions/share/[id].js` (revoked フィルタ) / `js/12-auth.js` (fetchMyProfile) / `js/14-share-ogp.js` (open*ShareModal ガード + 状態バナー) / `js/13-mypage-common.js` (ヘッダ状態チップ) / `sw.js` (v423)。
+
+### 残課題
+- **ユスケ作業**: v423 SQL を Dashboard で Run → migration 末尾に `-- Applied:` 追記。Run 後に JS を push (デプロイ順)。
+- 別タスク: 管理 GUI / 自動発動 (スパム量・通報) / full_banned の個人記録新規作成停止 enforcement (v421 trip policy に `AND NOT EXISTS(full_banned)` を足す形・ただし SELECT/閲覧は最後まで残す方針、v423 コメントに拡張点を記録済)。
+
+---
+
 ## 272. v422 — 駅 ID 体系 Phase 2 クローズ (集計 rebuild を id 優先 + name fallback に)
 
 **バージョン**: v422 (CACHE_VERSION)
