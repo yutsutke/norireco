@@ -83,3 +83,5 @@ ORDER BY indexname;
 --   table  1 行: norireco_shares
 --   policy 4 行: SELECT (公開) / INSERT / UPDATE / DELETE
 --   index  2 行: PK + user_created
+
+-- Applied: 2026-05-29 by yutsutke

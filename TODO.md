@@ -26,7 +26,7 @@ git log --oneline -20
   - ✅ v236: マイページ完乗率カードから「📸 シェア画像を作成」で 1200×630 PNG 生成・ダウンロード・Web Share / X intent
   - ✅ S-1 (v410): 個別 trip シェア — 旅程カードに「📤 シェア」、`generateTripOgpCanvas` で 1 旅程分の OGP (地図を trip 区間にズーム + 始点○/終点● + 路線名/区間/駅数/乗換/乗車日/車両パネル)。DL/Web Share/X。純クライアント
   - 🟡 S-2 (v412): R2 永続画像保存 — Worker `/upload/share-image` (presigned PUT, key `shares/<uid>/<id>.png`) + クライアント `uploadShareImage` + シェアモーダル「🔗 画像URLをコピー」(ログイン必須)。**⚠️ Worker は `cd worker && npx wrangler deploy` で別途デプロイが必要** (frontend は main push で反映済 v412 だが endpoint はデプロイ後に有効)
-  - 🟡 S-3 (v413): `/share/<id>` 受け側ページ完成 — Supabase `norireco_shares` (公開 SELECT RLS) + Pages Function `functions/share/[id].js` (OGP メタ SSR + 「自分も記録」CTA)。シェアモーダルは「🔗 シェアリンクを作成」に置換 (画像→R2→shares insert→/share/<id> 生成→Web Share/clipboard)。**⚠️ migration `v413_norireco_shares.sql` を Supabase で Run + Applied 行追記が必要** (Pages Function は main push で自動デプロイ)
+  - ✅ S-3 (v413): `/share/<id>` 受け側ページ完成・本番稼働確認済 — Supabase `norireco_shares` (公開 SELECT RLS、migration Applied 2026-05-29) + Pages Function `functions/share/[id].js` (OGP メタ SSR + 「自分も記録」CTA)。シェアモーダルは「🔗 シェアリンクを作成」に置換 (画像→R2→shares insert→/share/<id> 生成→Web Share/clipboard)
   - **シェア機能 残り** (S-1〜S-3 で MVP 完結。以降は磨き込み):
     - delete/photo の object_key 正規表現に `shares` (3 segment) 分岐追加 + シェア取り消し UI (将来)
     - 既存「📤 シェア」(Web Share/X intent) も /share リンクを使うよう統一 (現状は画像 file + norireco.app/)
