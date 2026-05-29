@@ -285,17 +285,28 @@ function drawStatsPanel(ctx, x0, y0, w, h, stats) {
   ctx.textAlign = 'left';
 }
 
+// lineId フォールバック整形: "auto_相模原線_京王電鉄" → "相模原線"。
+// SERVICE_LINES 逆引きが効かなかったときの最終手段 (記録時 lineName が null のケース)。
+function prettifyLineId(id) {
+  if (!id) return '路線';
+  const parts = String(id).replace(/^auto_/, '').split('_');
+  return parts[0] || String(id);
+}
+
 // trip オブジェクトから個別シェア画像の表示用データを導出する。
-// 路線名・区間 (from→to)・駅数・乗換・乗車日 (精度別) ・列車/車両を tripCardHtml と同じ規則で整形。
+// 路線名は lineName が null になりがちなので SERVICE_LINES (lineId 逆引き) を一次情報にする (v369 と同方針)。
 function deriveTripDisplay(trip) {
+  const SL = (window.NORIRECO && NORIRECO.data && NORIRECO.data.SERVICE_LINES) || [];
+  const slById = new Map(SL.map(s => [s.id, s]));
+  const resolveName = (seg) =>
+    (slById.get(seg.lineId) && slById.get(seg.lineId).name) || seg.lineName || prettifyLineId(seg.lineId);
+
   const segs = Array.isArray(trip.segments) ? trip.segments : [];
+  // 区間ごとの脚 (路線名 + from→to) — 「どの路線に乗ったか」の詳細表示用
+  const legs = segs.map(s => ({ name: resolveName(s), from: s.from || '', to: s.to || '' }));
+  // 重複しない路線名リスト (headline 用)
   const lineNames = [];
-  segs.forEach(s => {
-    const n = s.lineName || s.lineId;
-    if (n && !lineNames.includes(n)) lineNames.push(n);
-  });
-  let routeLabel = lineNames[0] || trip.name || '旅程';
-  if (lineNames.length > 1) routeLabel = `${lineNames[0]} ほか ${lineNames.length - 1} 路線`;
+  legs.forEach(l => { if (l.name && !lineNames.includes(l.name)) lineNames.push(l.name); });
 
   let fromTo = '';
   if (segs.length) {
@@ -325,7 +336,7 @@ function deriveTripDisplay(trip) {
   }
 
   return {
-    routeLabel, fromTo,
+    lineNames, legs, fromTo,
     stations: trip.total_stations || 0,
     transfers: trip.transfers || 0,
     dateStr, trainStr,
@@ -341,44 +352,49 @@ function drawTripStatsPanel(ctx, x0, y0, w, h, d) {
   ctx.strokeRect(x0 + 0.5, y0 + 0.5, w - 1, h - 1);
 
   const lx = x0 + 32, rx = x0 + w - 32;
-  let y = y0 + 48;
+  const maxLineW = w - 64;
+  let y = y0 + 44;
 
   // ラベル
   ctx.fillStyle = '#8CA0B3';
   ctx.font = '16px "Zen Kaku Gothic New", "Hiragino Sans", sans-serif';
   ctx.fillText('🚃 この旅程', lx, y);
 
-  // 路線名 (headline) — 幅に収まるようフォント自動縮小
-  y += 52;
+  // 路線名 (headline) — 全路線を「・」で並べ、収まらなければ font 縮小、それでも溢れたら「○○ ほか N 路線」
+  y += 48;
   ctx.fillStyle = '#F4F7FA';
-  let fs = 34;
-  ctx.font = `bold ${fs}px "Zen Kaku Gothic New", "Hiragino Sans", sans-serif`;
-  while (ctx.measureText(d.routeLabel).width > w - 64 && fs > 18) {
-    fs -= 2;
-    ctx.font = `bold ${fs}px "Zen Kaku Gothic New", "Hiragino Sans", sans-serif`;
+  let headline = d.lineNames.join('・') || d.fromTo || '旅程';
+  let fs = 32;
+  const setH = () => { ctx.font = `bold ${fs}px "Zen Kaku Gothic New", "Hiragino Sans", sans-serif`; };
+  setH();
+  while (ctx.measureText(headline).width > maxLineW && fs > 18) { fs -= 2; setH(); }
+  if (ctx.measureText(headline).width > maxLineW && d.lineNames.length > 1) {
+    headline = `${d.lineNames[0]} ほか ${d.lineNames.length - 1} 路線`;
+    fs = 30; setH();
+    while (ctx.measureText(headline).width > maxLineW && fs > 18) { fs -= 2; setH(); }
   }
-  ctx.fillText(d.routeLabel, lx, y);
+  ctx.fillText(headline, lx, y);
 
   // 区間 (from → to)
-  y += 42;
+  y += 40;
   ctx.fillStyle = '#5fb5ff';
-  let fs2 = 24;
+  let fs2 = 23;
   ctx.font = `bold ${fs2}px "Zen Kaku Gothic New", "Hiragino Sans", sans-serif`;
-  while (ctx.measureText(d.fromTo).width > w - 64 && fs2 > 13) {
+  while (ctx.measureText(d.fromTo).width > maxLineW && fs2 > 13) {
     fs2 -= 1;
     ctx.font = `bold ${fs2}px "Zen Kaku Gothic New", "Hiragino Sans", sans-serif`;
   }
   ctx.fillText(d.fromTo, lx, y);
 
   // セパレータ
-  y += 28;
+  y += 26;
   ctx.strokeStyle = 'rgba(140,160,179,0.3)';
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(lx, y); ctx.lineTo(rx, y); ctx.stroke();
 
   // value 行 (label 左 / value 右)。mono=false で和文フォント (列車名用)。
   const row = (label, value, valColor, mono) => {
-    y += 42;
+    y += 38;
     ctx.fillStyle = '#8CA0B3';
     ctx.font = '15px "Zen Kaku Gothic New", "Hiragino Sans", sans-serif';
     ctx.textAlign = 'left';
@@ -386,7 +402,7 @@ function drawTripStatsPanel(ctx, x0, y0, w, h, d) {
     const labelW = ctx.measureText(label).width;
     ctx.fillStyle = valColor || '#F4F7FA';
     const fam = mono === false ? '"Zen Kaku Gothic New", "Hiragino Sans", sans-serif' : '"DM Mono", monospace';
-    let vfs = 22;
+    let vfs = 21;
     ctx.font = `bold ${vfs}px ${fam}`;
     const maxW = w - 64 - labelW - 16;
     while (ctx.measureText(value).width > maxW && vfs > 11) {
@@ -402,6 +418,48 @@ function drawTripStatsPanel(ctx, x0, y0, w, h, d) {
   row('乗換', `${d.transfers} 回`);
   row('乗車日', d.dateStr);
   if (d.trainStr) row('列車・車両', d.trainStr, '#F2A900', false);
+
+  // 経路の詳細 (乗換あり = 区間 2 つ以上のとき): 各脚を「路線名 区間」で列挙。
+  // 余白に収まる範囲で最大 5 脚、超過分は「ほか N 区間」。
+  if (d.legs.length >= 2) {
+    y += 34;
+    ctx.strokeStyle = 'rgba(140,160,179,0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(lx, y); ctx.lineTo(rx, y); ctx.stroke();
+    y += 28;
+    ctx.fillStyle = '#8CA0B3';
+    ctx.font = '14px "Zen Kaku Gothic New", "Hiragino Sans", sans-serif';
+    ctx.fillText('🚉 経路', lx, y);
+
+    const maxLegs = 5;
+    const shown = d.legs.slice(0, maxLegs);
+    shown.forEach((leg, i) => {
+      y += 27;
+      // 路線名 (金) — 幅の 45% まで、超えたら縮小
+      ctx.fillStyle = '#F2A900';
+      let nfs = 15;
+      ctx.font = `bold ${nfs}px "Zen Kaku Gothic New", "Hiragino Sans", sans-serif`;
+      const nameMax = maxLineW * 0.5;
+      while (ctx.measureText(leg.name).width > nameMax && nfs > 10) { nfs -= 1; ctx.font = `bold ${nfs}px "Zen Kaku Gothic New", "Hiragino Sans", sans-serif`; }
+      ctx.fillText(leg.name, lx, y);
+      const nameW = ctx.measureText(leg.name).width;
+      // 区間 (灰) — 残り幅
+      const secX = lx + nameW + 12;
+      ctx.fillStyle = '#8CA0B3';
+      let sfs = 14;
+      ctx.font = `${sfs}px "Zen Kaku Gothic New", "Hiragino Sans", sans-serif`;
+      const secText = `${leg.from} → ${leg.to}`;
+      const secMax = rx - secX;
+      while (ctx.measureText(secText).width > secMax && sfs > 9) { sfs -= 1; ctx.font = `${sfs}px "Zen Kaku Gothic New", "Hiragino Sans", sans-serif`; }
+      ctx.fillText(secText, secX, y);
+    });
+    if (d.legs.length > maxLegs) {
+      y += 25;
+      ctx.fillStyle = '#8CA0B3';
+      ctx.font = '13px "Zen Kaku Gothic New", "Hiragino Sans", sans-serif';
+      ctx.fillText(`…ほか ${d.legs.length - maxLegs} 区間`, lx, y);
+    }
+  }
 }
 
 async function generateOgpCanvas(stats) {
@@ -601,15 +659,18 @@ export async function openShareModal(stats) {
 export async function openTripShareModal(trip) {
   const m = ensureModal();
   const d = deriveTripDisplay(trip);
+  // 路線名は最大 3 つまで「・」で繋ぎ、超過は「ほか N 路線」
+  let lineLabel = d.lineNames.slice(0, 3).join('・') || d.fromTo || '旅程';
+  if (d.lineNames.length > 3) lineLabel += ` ほか ${d.lineNames.length - 3} 路線`;
   const title = document.getElementById('share-ogp-title');
   const sub = document.getElementById('share-ogp-sub');
   if (title) title.textContent = '📤 旅程をシェア';
-  if (sub) sub.textContent = `「${d.routeLabel}」を 1200×630 の画像として書き出します。長押し or ダウンロードで保存できます。`;
+  if (sub) sub.textContent = `「${lineLabel}」を 1200×630 の画像として書き出します。長押し or ダウンロードで保存できます。`;
   // ファイル名に乗車日 (あれば) を含める
   const datePart = (trip.date && trip.date_precision !== 'unknown') ? trip.date : new Date().toISOString().slice(0, 10);
   _downloadName = `norireco-trip-${datePart}`;
   const fromToText = d.fromTo ? ` ${d.fromTo}` : '';
-  _shareText = `${d.routeLabel}${fromToText} に乗りました🚃 #乗レコ #乗り鉄 #電車旅\nhttps://norireco.app/`;
+  _shareText = `${lineLabel}${fromToText} に乗りました🚃 #乗レコ #乗り鉄 #電車旅\nhttps://norireco.app/`;
   m.classList.add('open');
   paintCanvas(await generateTripOgpCanvas(trip));
 }

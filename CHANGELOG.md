@@ -52,6 +52,38 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 261. v411 — 個別 trip シェア: 路線名を正式名で表示 + 区間別「経路」詳細
+
+**バージョン**: v411 (CACHE_VERSION)
+**日付**: 2026-05-29
+**カテゴリ**: A（UI 改善 / 🔥 シェア機能 S-1 仕上げ）
+
+### 背景
+
+v410 のシェア画像で見出しに `auto_相模原線_京王電鉄` のような内部 lineId が出ていた。原因は `seg.lineName` が記録時に null になりがちで、そのまま `lineId` にフォールバックしていたため (v369 の note 「lineName は null になりがち。name は SERVICE_LINES から引く」と同じ罠)。あわせてユスケ要望「どの路線に乗ったか、余白の許す範囲でもっと詳しく」に対応。
+
+### 変更 (`js/14-share-ogp.js` のみ)
+
+- `prettifyLineId(id)` 追加 — `auto_相模原線_京王電鉄` → `相模原線` (SERVICE_LINES 逆引きが効かないときの最終手段)
+- `deriveTripDisplay` を書き換え:
+  - 路線名を **SERVICE_LINES (lineId 逆引き) を一次情報**に解決 (`slById.get(lineId).name` → `lineName` → `prettifyLineId`)
+  - 旧 `routeLabel` 単一フィールドを廃止し、`lineNames` (重複なし路線名配列) + `legs` (`[{name, from, to}]` 区間別) を返す
+- `drawTripStatsPanel`:
+  - 見出しを全路線名「・」連結に。収まらなければ font 縮小 → なお溢れたら「○○線 ほか N 路線」フォールバック
+  - **🚉 経路セクション追加** (乗換あり = 2 区間以上のとき): 各脚を「路線名 (金) + 区間 (灰)」で最大 5 行列挙、超過は「…ほか N 区間」。余白を活用
+- `openTripShareModal`: サブ文言・シェアテキストの路線ラベルを `lineNames` から算出 (最大 3 + ほか N)
+- CACHE_VERSION v410 → v411
+
+### 検証 (preview)
+
+相模原線 (lineName 意図的に null) + 横浜線 の 2 区間 trip を注入:
+- 見出し「相模原線・横浜線」(auto_ 消滅、SERVICE_LINES 逆引き成功)
+- サブ文言「『相模原線・横浜線』を…」
+- 🚉 経路に「相模原線 多摩境→橋本」「横浜線 大口→菊名」を表示
+- PNG 抽出で目視確認、syntax-guard clean (routeLabel 未定義参照ゼロ)、console error 0
+
+---
+
 ## 260. v410 — シェア機能 S-1: 個別 trip シェア画像
 
 **バージョン**: v410 (CACHE_VERSION)
