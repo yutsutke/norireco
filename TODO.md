@@ -39,7 +39,7 @@ git log --oneline -20
   - ✅ v425 補修: 旧 `FOR ALL` policy 1 件残留を DO ブロック冪等 DROP で穴塞ぎ。教訓「migration 確認 SELECT の期待行数まで指差し確認 / FOR INSERT 追加時は同テーブルに FOR ALL が無いことを明示確認」を CHANGELOG §275 に追加。SQL Run + 実機 BAN テスト確認済
   - ✅ v426 管理 GUI MVP: `norireco_admins` (本人のみ SELECT RLS) + 4 関数 (`is_admin` / `admin_list_profiles` / `admin_search_user` / `admin_set_account_status`、全 SECURITY DEFINER + is_admin ゲート + EXECUTE public REVOKE + authenticated GRANT)、新規 `13e-admin.js` で マイページ「🛠 admin」サブタブ (BAN/warn 履歴のあるユーザー一覧 + uid/email 検索 + 4 ボタン + 自分自身 BAN 防止ガード)、`12-auth.fetchMyProfile` に is_admin 取得追加 (`window.NORIRECO.profile.is_admin`)。non-admin にはタブ自体出ない (UI ゲート) + RPC は関数内 is_admin で 401。CHANGELOG §276
   - ✅ v427 hotfix: v426 push 直後の本番で「🛠 admin」サブタブをタップしても中身が空白と判明。原因 = 13e-admin.js が 12-auth.js から `SUPABASE_URL` / `SUPABASE_KEY` を named import していたが両者は 12-auth で export 無し (classic top-level const を bare 参照しているだけ) → ES Modules ロードが SyntaxError で失敗し `renderMpAdminSection` の登録副作用が走らず空 subpane だけが残る事象。`window.SUPABASE_URL` 経由参照に修正 + named import から削除。教訓「`npm run check` は import 解決を検証しない、新規 ES Modules 追加時は本番 console 確認まで」を CHANGELOG §277 に記録
-  - **⚠️ 残: ユスケ作業** — 本番 reload で「🛠 admin」タブを開き、`a28287d9-...` が share_banned で 1 行表示されること + 4 ボタン操作が動くことを確認 (確認 OK なら垢BAN 管理 GUI MVP 完了)
+  - ✅ 実機確認済 (v427 SW 反映後): admin タブで share_banned ユーザー (`a28287d9-...`、norireco@gmail.com、理由「テスト」) が 1 行表示 + 4 ボタン操作可能 → **垢BAN 管理 GUI MVP 完成**
   - 段階: ok → warn(注意・バッジのみ・enforcement なし) → share_banned(シェアのみ停止) → full_banned(シェア + 新規記録停止 / 過去記録は閲覧編集可)
   - **残 (別タスク)**: 自動発動 (スパム的シェア量検知・通報フロー)
 

@@ -243,4 +243,4 @@ SELECT
 -- ║   SELECT is_admin();              -- t が返れば OK             ║
 -- ╚══════════════════════════════════════════════════════════════╝
 
--- Applied:
+-- Applied: 2026-05-29 by yutsutke (8-A: 1 行 / 8-D: false/true/false OK + 初期 admin INSERT 済 + v427 hotfix 後に admin タブで share_banned 行表示 + 4 ボタン動作確認済)
