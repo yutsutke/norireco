@@ -1146,6 +1146,13 @@ window.tripForSupabase = tripForSupabase;
 
 async function saveMultiSegmentTrip() {
   if (!R.selection || R.selection.length === 0) return;
+  // v424 垢BAN: full_banned 時は新規記録不可。RLS が最後の砦だが、入力分を捨てて
+  //   403 を返すのは UX が悪いので入口で alert + return。share_banned 段階では通過させる。
+  //   share_status は 12-auth.fetchMyProfile が window.NORIRECO.profile に格納する。
+  if (window.NORIRECO?.profile?.share_status === 'full_banned') {
+    alert('⚠️ アカウントが停止中です。新規記録は作成できません。\n過去の記録の閲覧・編集・削除は通常通り可能です。');
+    return;
+  }
   const isVisitOnly = R.selection.length === 1 && (!R.segments || R.segments.length === 0);
   if (!isVisitOnly && R.segments && R.segments.some(s => s.error)) {
     alert('未解決の区間があります'); return;

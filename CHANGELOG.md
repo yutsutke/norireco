@@ -52,6 +52,71 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 274. v424 — 垢BAN: full_banned 時の個人記録新規作成停止 enforcement
+
+**バージョン**: v424 (CACHE_VERSION)
+**日付**: 2026-05-29
+**カテゴリ**: A (セキュリティ / 垢BAN 段階の差別化)
+**migration**: [`supabase/migrations/v424_full_ban_insert_enforcement.sql`](supabase/migrations/v424_full_ban_insert_enforcement.sql)（Run 後 Applied 行追記）
+
+### 背景
+
+v423 で垢BAN 本体 (`norireco_profiles` + `share_status`) を入れ実機確認まで完了。enforcement の対象は **share 系 INSERT** だけだったので、`share_banned` と `full_banned` の挙動が同じ（= 段階が空転）状態になっていた。v423 CHANGELOG §273 残課題:
+
+> 別タスク: 管理 GUI / 自動発動 / **full_banned の個人記録新規作成停止 enforcement** (v421 trip policy に AND NOT EXISTS(full_banned) を足す形・ただし SELECT/閲覧は最後まで残す方針)
+
+v424 で **full_banned に「個人記録 INSERT 停止」の意味を付与**し、段階の差別化を完了。
+
+### スコープ (yutsutke 確定 2026-05-29)
+
+- **対象テーブル**: `norireco_trips` / `norireco_character_grants` / `norireco_memos` の **INSERT のみ**
+- **触らない**: UPDATE / DELETE / SELECT — 過去 trip の閲覧・編集・削除は通常通り
+- **`shares` は v423 で既に `('share_banned','full_banned')` 両方ブロック済**なので本 migration では触らない
+- **`share_banned` 段階は通過** — シェアだけ止めて記録は通常通り作れる（やり直しの余地）
+- **管理 GUI / 自動発動 (スパム量 / 通報フロー) は本 migration の範囲外** = 別タスクのまま据置
+
+### 設計判断
+
+- **v423 shares INSERT policy と完全同形**: `WITH CHECK (auth.uid()=user_id AND NOT EXISTS(profiles WHERE user_id=auth.uid() AND share_status=...))`。差は IN リストが `('share_banned','full_banned')` vs `'full_banned'` 単独のみ。「真実の源 = profiles.share_status」の片方向参照という構造を保つ
+- **段階の意味設計**:
+  | 状態 | 既存 share 配信 | share INSERT | trip/grant/memo INSERT | trip 閲覧/編集/削除 |
+  |---|---|---|---|---|
+  | `ok` | ✅ | ✅ | ✅ | ✅ |
+  | `warn` | ✅ | ✅ | ✅ | ✅ |
+  | `share_banned` | ❌ (revoked) | ❌ RLS | ✅ | ✅ |
+  | `full_banned` | ❌ (revoked) | ❌ RLS | ❌ RLS **(v424)** | ✅ |
+  - 「外への発信を全て止める / 自分の達成は壊さない / やり直しの余地を残す」の最も忠実な実装
+- **profiles 行が無い = ok 扱い** (NOT EXISTS で新規ユーザーは通る) — v423 と同じ
+- **DROP POLICY → CREATE POLICY** で冪等化 (v421/v423 と同じパターン、policy 名を旧 → 新で書き換え)
+- **クライアントガードは各 INSERT 呼び元の冒頭に inline** — 14-share-ogp.js の `isShareBlocked()` パターンに倣う。`window.NORIRECO.profile.share_status === 'full_banned'` を直接見る薄い check。`isFullBanned()` ヘルパー化はせず循環 import 事故 (v331→v332 教訓) を避ける。RLS が最後の砦、クライアントは UX 改善 (= 403 を返して入力を捨てる代わりに alert)
+- **`grantCharacter()` 冒頭にもガード** — trip 保存がブロックされれば連鎖獲得経路 (07 → 03:312) は呼ばれないが、`window.grantCharacter` 直叩き / GPS 駅近獲得などの独立経路でもガードが効くように 03 で断つ。localStorage への二重登録もスキップ
+- **デプロイ順序**: SQL/JS どちらが先でも安全 (full_banned 該当者が現状 0 人 + RLS が最後の砦)。SQL 先を推奨 (v423 と揃える)
+
+### 触ったもの
+
+- 新規 [`supabase/migrations/v424_full_ban_insert_enforcement.sql`](supabase/migrations/v424_full_ban_insert_enforcement.sql) (trip/grant/memo の INSERT policy 差し替え + 確認 SELECT)
+- 編集
+  - [`js/07-record-mode.js`](js/07-record-mode.js) `saveMultiSegmentTrip()` 冒頭に full_banned ガード
+  - [`js/21-bulk-record.js`](js/21-bulk-record.js) `saveBulkDrafts()` 冒頭に full_banned ガード (一括記録の入口)
+  - [`js/16-memos.js`](js/16-memos.js) `createMemoOnServer()` 冒頭に full_banned ガード
+  - [`js/03-characters.js`](js/03-characters.js) `grantCharacter()` 冒頭に full_banned ガード (localStorage 保存もスキップ)
+  - [`js/13-mypage-common.js`](js/13-mypage-common.js) `_mpStatusChip()` を share_banned/full_banned で分岐 (full_banned → 「🚫 アカウント停止中」)
+  - [`js/14-share-ogp.js`](js/14-share-ogp.js) `_shareStatusBanner()` を share_banned/full_banned で分岐 (full_banned 用に「シェア + 新規記録停止」の詳細文言)
+- [`sw.js`](sw.js) v424
+
+### 検証
+
+- syntax `npm run check` 24/24 OK
+- preview 動作確認は full_banned 状態のテストユーザー (Supabase Dashboard で `set_account_status('<uuid>','full_banned')` 設定) が必要なため、v423 と同じく **ロジックレビュー + syntax で担保 → ユスケ実機確認** の体制
+- ガード文は 14-share-ogp.js の `isShareBlocked()` (v423) と同じ薄い check で、循環 import や top-level 副作用は無し
+
+### 残課題
+
+- **ユスケ作業**: v424 SQL を Dashboard で Run → migration 末尾に `-- Applied:` 追記。Run 後に JS push (順序逆でも安全だが揃える)
+- 別タスク (v423 から継続): 管理 GUI / 自動発動 (スパム量・通報フロー)
+
+---
+
 ## 273. v423 — 垢BAN（シェア停止ペナルティ）本体
 
 **バージョン**: v423 (CACHE_VERSION)

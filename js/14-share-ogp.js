@@ -863,6 +863,7 @@ async function fetchMyShares(uid) {
 }
 
 // v423 垢BAN: マイページ「🔗 シェア」タブ冒頭の状態バナー (warn=注意 / banned=制限中)。
+// v424: full_banned (シェア + 新規記録停止) と share_banned (シェアのみ停止) で文言を分岐。
 function _shareStatusBanner() {
   const p = window.NORIRECO?.profile || {};
   const st = p.share_status;
@@ -870,7 +871,10 @@ function _shareStatusBanner() {
   if (st === 'warn') {
     return `<div class="mp-tip" style="border-color:var(--gold);color:var(--gold)">⚠️ 注意: 利用規約に抵触する可能性のある利用が確認されています。${reason}</div>`;
   }
-  if (st === 'share_banned' || st === 'full_banned') {
+  if (st === 'full_banned') {
+    return `<div class="mp-tip" style="border-color:var(--red);color:var(--red)">🚫 アカウントが停止中です。シェア機能と新規記録 (旅程・キャラ獲得・メモ) の作成が停止されています。過去の記録の閲覧・編集・削除は通常どおりご利用いただけます。${reason}</div>`;
+  }
+  if (st === 'share_banned') {
     return `<div class="mp-tip" style="border-color:var(--red);color:var(--red)">🚫 シェア機能の利用が現在制限されています。記録の閲覧・編集は通常どおりご利用いただけます。${reason}</div>`;
   }
   return '';

@@ -107,6 +107,11 @@ export async function syncMemosFromSupabase() {
 async function createMemoOnServer(memo) {
   const uid = currentUserId();
   if (!uid) throw new Error('ログインしてください');
+  // v424 垢BAN: full_banned 時はメモ新規作成不可 (RLS が最後の砦)。
+  //   share_status は 12-auth.fetchMyProfile が window.NORIRECO.profile に格納する。
+  if (window.NORIRECO?.profile?.share_status === 'full_banned') {
+    throw new Error('アカウントが停止中です。新規メモは作成できません。');
+  }
   const payload = { ...memo, user_id: uid };
   const res = await fetch(`${SUPABASE_URL}/rest/v1/norireco_memos`, {
     method: 'POST',

@@ -27,6 +27,14 @@ function setOwnedCharacters(set) {
   } catch(e) {}
 }
 function grantCharacter(charId, opts) {
+  // v424 垢BAN: full_banned 時はキャラ獲得自体を停止 (localStorage への保存もしない)。
+  //   trip 保存がブロックされれば連鎖獲得経路 (07 → 312) は呼ばれないが、
+  //   テスト用 console / window.grantCharacter 直叩きでもガードが効くようここで断つ。
+  //   share_banned 段階は通過 (シェアだけ止めて記録は通常通り)。
+  if (window.NORIRECO?.profile?.share_status === 'full_banned') {
+    console.warn(`[キャラ] full_banned のため ${charId} の獲得をスキップ`);
+    return false;
+  }
   const set = getOwnedCharacters();
   if (set.has(charId)) {
     console.log(`[キャラ] ${charId} は既に所持済み`);

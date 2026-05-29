@@ -765,6 +765,12 @@ async function _postTripToSupabase(trip) {
 async function saveBulkDrafts() {
   if (_saving) return;
   if (_bulkDrafts.size === 0) return;
+  // v424 垢BAN: full_banned 時は新規記録不可 (一括記録は trip 一括 INSERT のためまとめてブロック)。
+  //   RLS が最後の砦 — ここの alert は UX 改善 (RLS で 1 件目に 403 → 残り中止) のため。
+  if (window.NORIRECO?.profile?.share_status === 'full_banned') {
+    alert('⚠️ アカウントが停止中です。新規記録は作成できません。\n過去の記録の閲覧・編集・削除は通常通り可能です。');
+    return;
+  }
   // A-5: 開いているアコーディオンがあれば draft 上書き保存してから save 開始
   if (_openLineId) _closeAccordion();
   _saving = true;

@@ -33,11 +33,12 @@ git log --oneline -20
     - ✅ v423: 垢BAN (share_banned) 連携を実装 — banned で /share リンク作成・画像シェアを停止 (シェアモーダル不開) + 既存リンクも revoked で配信停止 + マイページ「🔗 シェア」タブに状態バナー。詳細 → 🔥「垢BAN」/ CHANGELOG §273
   - 注: v345 で「verified 限定ガード」は撤回 (GPS = 手動の手間省略、世間への証明不要)。手動記録も対等にシェア可
 
-- [ ] **垢BAN（シェア停止ペナルティ）** — 本体 ✅ v423 (enforcement が効くところまで完成)
-  - ✅ v423 本体: `norireco_profiles` 新設 (share_status = 真実の源 / SELECT 本人のみ + 書込 policy 無し = 本人も自己解除不可)、`shares.revoked` 派生キャッシュ + INSERT(BAN中不可)/UPDATE(revoked 復活穴封鎖) policy 強化、関数 `set_account_status`/`ban_user_share`/`unban_user_share` (EXECUTE は public REVOKE で Dashboard 専用 = RPC 自己解除穴を塞ぐ)。enforcement = RLS(最後の砦) + クライアント(banned 時シェアモーダル不開で リンク作成/画像シェア/DL を一括ブロック) の 2 層。既存リンクも revoked で配信停止 (unban で復活)。**trip/character_grant・Worker は不触** (個人記録は通常どおり)。マイページに状態バナー/チップ。CHANGELOG §273
-  - **⚠️ 残: ユスケ作業** — `supabase/migrations/v423_share_ban.sql` を Dashboard で Run → 末尾に `-- Applied:` 追記。**SQL 先 → JS push の順** (配信側が revoked 列を要求するため、v421 と逆)
-  - 段階: ok → warn(注意・バッジのみ・enforcement なし) → share_banned(シェア不可) → full_banned(今は share_banned と同等の器)
-  - **残 (別タスク)**: 管理 GUI / 自動発動 (スパム的シェア量・他ユーザー通報・規約違反コンテンツ等を別軸で検討) / full_banned の「個人記録の新規作成停止」enforcement (SELECT/閲覧は最後まで残す方針、v423 コメントに拡張点を記録済)
+- [ ] **垢BAN（シェア停止ペナルティ）** — 本体 ✅ v423 + full_banned enforcement ✅ v424 (段階の差別化完了)
+  - ✅ v423 本体: `norireco_profiles` 新設 (share_status = 真実の源 / SELECT 本人のみ + 書込 policy 無し = 本人も自己解除不可)、`shares.revoked` 派生キャッシュ + INSERT(BAN中不可)/UPDATE(revoked 復活穴封鎖) policy 強化、関数 `set_account_status`/`ban_user_share`/`unban_user_share` (EXECUTE は public REVOKE で Dashboard 専用 = RPC 自己解除穴を塞ぐ)。enforcement = RLS(最後の砦) + クライアント(banned 時シェアモーダル不開で リンク作成/画像シェア/DL を一括ブロック) の 2 層。既存リンクも revoked で配信停止 (unban で復活)。マイページに状態バナー/チップ。CHANGELOG §273 (Applied + 実機確認済)
+  - ✅ v424 full_banned enforcement: `norireco_trips` / `norireco_character_grants` / `norireco_memos` の INSERT policy に `NOT EXISTS(full_banned)` ガード追加 (UPDATE/DELETE/SELECT は据え置き = 過去記録の閲覧編集は通常通り)、各 INSERT 呼び元 (07 saveMultiSegmentTrip / 21 saveBulkDrafts / 16 createMemoOnServer / 03 grantCharacter) の冒頭に薄い inline ガード、マイページのバナー/チップを share_banned/full_banned で文言分岐 (full_banned → 「🚫 アカウント停止中」+ 「シェア + 新規記録停止」の詳細バナー)。share_banned 段階は通過 (シェアだけ止めて記録は通常通り作れる = やり直しの余地)。CHANGELOG §274
+  - **⚠️ 残: ユスケ作業** — `supabase/migrations/v424_full_ban_insert_enforcement.sql` を Dashboard で Run → 末尾に `-- Applied:` 追記 → JS push (v424 は SQL/JS どちらが先でも安全)
+  - 段階: ok → warn(注意・バッジのみ・enforcement なし) → share_banned(シェアのみ停止) → full_banned(シェア + 新規記録停止 / 過去記録は閲覧編集可)
+  - **残 (別タスク)**: 管理 GUI / 自動発動 (スパム的シェア量・他ユーザー通報・規約違反コンテンツ等を別軸で検討)
 
 <!-- ✅ 駅 ID 体系 (Phase 1〜3) 完了: 駅マスター (merged_stations 9,030 駅) / SERVICE_LINES / trip / memo / characters_master / 駅名検索 / LINES の全層を `s_NNNNN` id ベース化、同名異所駅 (高松 香川/石川/多摩 等) の判定混線を全面解消。trip.from_station/to_station (v326) + memo.station (v325) の旧 name 列も DROP 済 (Applied 2026-05-25)。詳細 → CHANGELOG_PHASE3.8-station-id.md (Phase 1〜3, v290〜v333) + CHANGELOG §272 (v422 = 集計 rebuild の id 優先化で Phase 2 クローズ)。
      残るは「name 照合の物理撤去 (完全版)」のみ → **今はやらない**と決定 (v422)。🌱 布石 #7 に移動 -->

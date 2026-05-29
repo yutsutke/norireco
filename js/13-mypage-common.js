@@ -281,11 +281,13 @@ NORIRECO.mypage.resolveStationQuery = resolveStationQuery;
 
 // v423 垢BAN: ヘッダのアカウント状態チップ (warn / banned のみ表示。ok は何も出さない)。
 // share_status は 12-auth.js の fetchMyProfile が window.NORIRECO.profile に格納する。
+// v424: full_banned (シェア + 新規記録停止) と share_banned (シェアのみ停止) で文言を分岐。
 function _mpStatusChip() {
   const st = window.NORIRECO?.profile?.share_status;
   const base = 'display:inline-block;margin-top:3px;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;';
   if (st === 'warn') return `<span style="${base}color:var(--gold);border:1px solid var(--gold)">⚠️ 注意</span>`;
-  if (st === 'share_banned' || st === 'full_banned') return `<span style="${base}color:var(--red);border:1px solid var(--red)">🚫 シェア停止中</span>`;
+  if (st === 'full_banned') return `<span style="${base}color:var(--red);border:1px solid var(--red)">🚫 アカウント停止中</span>`;
+  if (st === 'share_banned') return `<span style="${base}color:var(--red);border:1px solid var(--red)">🚫 シェア停止中</span>`;
   return '';
 }
 
