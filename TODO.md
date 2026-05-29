@@ -29,7 +29,8 @@ git log --oneline -20
   - ✅ S-3 (v413): `/share/<id>` 受け側ページ完成・本番稼働確認済 — Supabase `norireco_shares` (公開 SELECT RLS、migration Applied 2026-05-29) + Pages Function `functions/share/[id].js` (OGP メタ SSR + 「自分も記録」CTA)。シェアモーダルは「🔗 シェアリンクを作成」に置換 (画像→R2→shares insert→/share/<id> 生成→Web Share/clipboard)
   - **シェア機能 残り** (S-1〜S-3 で MVP 完結。以降は磨き込み):
     - ✅ v415: 「📤 シェア」を /share リンクに統一 (🔗「シェアリンクを作成」ボタン撤去・1 本化。ログイン時=画像+/share リンクを共有 / 未ログイン or 失敗時=画像 file+ルート URL fallback) + Worker `/delete/photo` の object_key 正規表現に `shares` (3 segment) 分岐追加 (取り消し UI の下地)。CHANGELOG §265。✅ Worker deploy 済 (Version d854330d, 2026-05-29)
-    - シェア取り消し UI (本体・次回): マイページに「作成したシェア」一覧 (`norireco_shares` を user_id で SELECT) + 取り消し (R2 `/delete/photo` に `shares/<uid>/<id>.png` + `norireco_shares` DELETE)。delete regex 分岐 (v415) は本番反映済なので endpoint 側は準備完了
+    - ✅ v416: シェア取り消し UI 本体 — マイページ 5 番目「🔗 シェア」サブタブ (作成済み `norireco_shares` を user_id で SELECT し一覧、🔗 リンクコピー + 🗑 取り消し)。取り消し = norireco_shares DELETE (RLS 本人) → R2 `/delete/photo` best-effort cleanup → 再描画。v415 統合で後退した「URL コピー」導線も PC で復活 (Web Share 不可時にクリップボードコピー)。CHANGELOG §266
+    - 残: 垢BAN (share_banned) 状態と「作成したシェア一覧」の連携 (TODO 🔥 垢BAN と統合)
   - 注: v345 で「verified 限定ガード」は撤回 (GPS = 手動の手間省略、世間への証明不要)。手動記録も対等にシェア可
 
 - [ ] **垢BAN（不正利用ペナルティ）対応**
@@ -253,8 +254,8 @@ git log --oneline -20
   - ✅ v261: 写真の並び替え UI (← → ボタン方式、共通 PhotoArea 内)。CHANGELOG §110 参照
   - ✅ v262: 写真差し替え時の旧 R2 オブジェクト delete API (`POST /delete/photo` + フロント diff)。CHANGELOG §111 参照
   - ✅ v268: memo/trip 全削除時の R2 cleanup (deleteTripFromMypage / deleteMemoOnServer 内で deletePhotoByUrl 並列実行)。CHANGELOG §117 参照
-  - **残り**:
-    - OGP シェア画像の R2 永続化 + `/share/<id>` 受け側ページ (🔥 シェア機能の残りと統合)
+  - ✅ v412/v413: OGP シェア画像の R2 永続化 (`/upload/share-image`) + `/share/<id>` 受け側ページ (Pages Function + `norireco_shares`)。シェア取り消し時の R2 cleanup は v416 で deletePhotoByUrl 流用 (shares 3-segment 対応は worker v415)。CHANGELOG §257〜§266
+  - **残り**: 特になし (画像ストレージ基盤は memo/trip/share 全用途でひと通り完結。将来の定期 cleanup ジョブは未着手)
 
 - [ ] **#3 `norireco_trips` テーブルの将来シャーディング可能化**
   - 理由: 100 万 MAU で trip データ 2TB、Postgres 単一テーブルは 10 万 MAU で限界。`created_year` で水平分割できる構造にしておけば Neon 移行時もスムーズ

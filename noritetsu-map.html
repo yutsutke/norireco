@@ -694,6 +694,19 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mp-act-btn.share{background:rgba(46,196,134,.1);color:#2ec486;border-color:rgba(46,196,134,.4);}
 .mp-act-btn.share:hover{background:rgba(46,196,134,.2);}
 
+/* v416: シェア取り消し UI — マイページ「🔗 シェア」サブタブのカード */
+.mp-share-card{display:flex;gap:10px;background:var(--steel);border:1px solid var(--track);border-radius:10px;padding:10px;margin-bottom:8px;}
+.mp-share-thumb-link{flex:none;display:block;}
+.mp-share-thumb{display:block;width:96px;height:50px;object-fit:cover;border-radius:6px;border:1px solid var(--track);background:#060f1a;}
+.mp-share-thumb:hover{border-color:var(--gold);}
+.mp-share-body{flex:1;min-width:0;}
+.mp-share-head{display:flex;align-items:center;gap:8px;margin-bottom:3px;}
+.mp-share-date{font-family:'DM Mono',monospace;font-size:10px;color:var(--silver);}
+.mp-share-card .mp-badge{margin-left:auto;background:rgba(140,160,179,.1);color:var(--silver);border:1px solid var(--track);}
+.mp-share-title{font-size:12px;font-weight:700;line-height:1.35;word-break:break-word;}
+.mp-share-desc{font-size:10px;color:var(--silver);margin-top:2px;line-height:1.4;word-break:break-word;}
+.mp-share-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+
 .mp-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--steel);color:var(--white);padding:10px 18px;border-radius:24px;font-size:12px;font-weight:600;border:1px solid var(--track);box-shadow:0 8px 24px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:all .25s ease;z-index:9999;}
 .mp-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .mp-toast.success{border-color:rgba(72,213,151,.5);color:#48d597;}
@@ -1583,6 +1596,9 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
     </div>
     <div class="mp-subpane" id="mp-sub-memos">
       <div class="pane-inner" id="mp-memo-section"></div>
+    </div>
+    <div class="mp-subpane" id="mp-sub-shares">
+      <div class="pane-inner" id="mp-shares-section"></div>
     </div>
   </div>
 </div>

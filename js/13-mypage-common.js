@@ -57,7 +57,7 @@ NORIRECO.mypage.formatDelayMin = formatDelayMin;
 // 案 β stage 1 全 7 ドメイン完了 (auth/map/record/gps/trains/data/mypage、累計 46 state)。
 NORIRECO.mypage.state = NORIRECO.mypage.state || {
   _mypageCache: null,            // 取得した自分の trip[]
-  mpActiveSection: 'stats',      // 'stats' | 'trips' | 'lines' | 'memos'
+  mpActiveSection: 'stats',      // 'stats' | 'trips' | 'lines' | 'memos' | 'shares'
   mpTripFilter: {
     auth: 'all',     // all | verified | manual
     period: 'all',   // all | thisYear | lastYear | custom (日付フィルタは _tripDateFilter と独立)
@@ -315,6 +315,7 @@ export async function renderMypage() {
       <button class="mp-subtab" data-sec="trips" onclick="switchMpSection('trips')">🚃 旅程</button>
       <button class="mp-subtab" data-sec="lines" onclick="switchMpSection('lines')">📋 路線</button>
       <button class="mp-subtab" data-sec="memos" onclick="switchMpSection('memos')">📸 メモ</button>
+      <button class="mp-subtab" data-sec="shares" onclick="switchMpSection('shares')">🔗 シェア</button>
     </div>
   `;
 
@@ -493,11 +494,14 @@ export function applyMpSection() {
   const showTrips = MP.mpActiveSection === 'trips';
   const showLines = MP.mpActiveSection === 'lines';
   const showMemos = MP.mpActiveSection === 'memos';
+  const showShares = MP.mpActiveSection === 'shares';
   document.getElementById('mp-sub-stats').style.display       = showStats ? '' : 'none';
   document.getElementById('mp-sub-trips').style.display       = showTrips ? '' : 'none';
   document.getElementById('mp-sub-lines').style.display       = showLines ? '' : 'none';
   const memoPane = document.getElementById('mp-sub-memos');
   if (memoPane) memoPane.style.display = showMemos ? '' : 'none';
+  const sharePane = document.getElementById('mp-sub-shares');
+  if (sharePane) sharePane.style.display = showShares ? '' : 'none';
 
   // 内容描画 (遅延でレイアウト確定後)
   setTimeout(() => {
@@ -505,6 +509,7 @@ export function applyMpSection() {
     if (showTrips) NORIRECO.mypage.renderMpTripsSection();
     if (showLines) { try { renderList(); } catch(e) {} }
     if (showMemos) { try { NORIRECO.mypage.renderMpMemosSection?.(); } catch(e) {} }
+    if (showShares) { try { NORIRECO.mypage.renderMpSharesSection?.(); } catch(e) {} }
   }, 30);
 }
 NORIRECO.mypage.applyMpSection = applyMpSection;

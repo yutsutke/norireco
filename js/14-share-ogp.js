@@ -6,6 +6,10 @@
 // ══════════════════════════════════════════════════════════════
 
 import { authBearerToken, currentUserId } from './12-auth.js';
+// R2 オブジェクト削除 (best-effort)。シェア取り消し時の画像掃除に流用 — share 画像も
+// cdn.norireco.app/shares/<uid>/<id>.png なので urlToObjectKey が解決でき、worker の
+// delete regex も v415 で shares 3-segment を許可済 (CHANGELOG §265)。
+import { deletePhotoByUrl } from './18-photo-area.js';
 
 const OGP_W = 1200;
 const OGP_H = 630;
@@ -733,10 +737,15 @@ async function shareImageWithLink(file, shareUrl, btn, orig) {
       return;
     } catch (e) { if (e && e.name === 'AbortError') return; }
   }
-  // デスクトップ等: X intent (url 付きで card unfurl)
-  const intent = `https://x.com/intent/tweet?text=${encodeURIComponent(shareTextWithoutUrl())}&url=${encodeURIComponent(shareUrl)}`;
-  window.open(intent, '_blank', 'noopener,noreferrer');
-  flash('✅ X を開きました');
+  // Web Share 不可 (PC ブラウザ等): リンクをクリップボードにコピー (旧「🔗 シェアリンクを作成」と同じ)。
+  // ここで /share URL を手元に取れるので、X に限らず Discord・ブログ等どこへでも貼れる。
+  try {
+    await navigator.clipboard.writeText(shareUrl);
+    flash('✅ リンクをコピーしました');
+  } catch (clipErr) {
+    window.prompt('シェアリンク (コピーしてください)', shareUrl);
+    if (btn) btn.textContent = orig || '📤 シェア';
+  }
 }
 
 // 未ログイン / フォールバック: 画像ファイル + ルート URL (従来挙動)。
@@ -807,5 +816,134 @@ export async function openTripShareModal(trip) {
   paintCanvas(await generateTripOgpCanvas(trip));
 }
 
+// ══════════════════════════════════════════════════════════════
+// シェア取り消し UI (v416) — マイページ「🔗 シェア」サブタブ
+// 作成済み norireco_shares を user_id で一覧し、リンクのコピー / 取り消しを行う。
+// 取り消し = DB 行 DELETE (RLS 本人のみ) → /share は not-found になり実質無効化。
+// 続けて R2 画像を best-effort cleanup (失敗してもシェアは取り消し済)。
+// ══════════════════════════════════════════════════════════════
+
+// 直近に描画したシェア (id → row)。取り消し時に image_url を引くために保持。
+let _sharesById = new Map();
+
+function escAttr(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// 自分のシェア一覧を取得 (RLS は公開 SELECT だが user_id 絞り込みで自分の分だけ)。
+async function fetchMyShares(uid) {
+  const res = await fetch(
+    `${window.SUPABASE_URL}/rest/v1/norireco_shares?user_id=eq.${encodeURIComponent(uid)}&select=*&order=created_at.desc`,
+    { headers: { 'apikey': window.SUPABASE_KEY, 'Authorization': `Bearer ${authBearerToken()}` } }
+  );
+  if (!res.ok) throw new Error(`shares fetch ${res.status}`);
+  return await res.json();
+}
+
+function shareCardHtml(s) {
+  const created = (s.created_at || '').slice(0, 10);
+  const kindLabel = s.kind === 'profile' ? '完乗プロフィール' : '旅程';
+  const title = s.title || '乗レコの記録';
+  const desc = s.description || '';
+  const id = escAttr(s.id);
+  return `
+    <div class="mp-share-card" data-share-id="${id}">
+      <a class="mp-share-thumb-link" href="https://norireco.app/share/${id}" target="_blank" rel="noopener">
+        <img class="mp-share-thumb" src="${escAttr(s.image_url)}" loading="lazy" alt="${escAttr(title)}">
+      </a>
+      <div class="mp-share-body">
+        <div class="mp-share-head">
+          <span class="mp-share-date">${escAttr(created)}</span>
+          <span class="mp-badge">${escAttr(kindLabel)}</span>
+        </div>
+        <div class="mp-share-title">${escAttr(title)}</div>
+        ${desc ? `<div class="mp-share-desc">${escAttr(desc)}</div>` : ''}
+        <div class="mp-share-actions">
+          <button class="mp-act-btn share" onclick="copyShareLink('${id}')">🔗 リンクをコピー</button>
+          <button class="mp-act-btn delete" onclick="revokeShare('${id}')">🗑 取り消し</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+export async function renderMpSharesSection() {
+  const host = document.getElementById('mp-shares-section');
+  if (!host) return;
+  const uid = currentUserId();
+  if (!uid) {
+    host.innerHTML = `<div class="mp-empty-s" style="padding:14px">ログインが必要です</div>`;
+    return;
+  }
+  host.innerHTML = `<div class="mp-loading" style="padding:14px">🔗 シェアを読み込み中…</div>`;
+  let shares = [];
+  try {
+    shares = await fetchMyShares(uid);
+  } catch (e) {
+    console.warn('[シェア] 一覧取得失敗:', e.message);
+    host.innerHTML = `<div class="mp-empty-s" style="padding:14px">⚠ シェアの取得に失敗しました</div>`;
+    return;
+  }
+  _sharesById = new Map((shares || []).map(s => [s.id, s]));
+  if (!shares.length) {
+    host.innerHTML = `
+      <div class="mp-tip">📤 旅程カードや完乗率カードの「シェア」からリンクを作成すると、ここに一覧が出ます。リンクは X 等でリッチに表示され、いつでも取り消せます。</div>
+      <div class="mp-empty-s" style="padding:14px;text-align:center">まだシェアはありません</div>`;
+    return;
+  }
+  host.innerHTML =
+    `<div class="mp-tip">作成したシェアリンクの一覧です。🔗 でリンクをコピー、🗑 で取り消し (開いても表示されなくなります)。</div>` +
+    shares.map(shareCardHtml).join('');
+}
+
+// 「🔗 リンクをコピー」: /share/<id> をクリップボードへ。
+async function copyShareLink(shareId) {
+  const url = `https://norireco.app/share/${shareId}`;
+  try {
+    await navigator.clipboard.writeText(url);
+    NORIRECO.mypage?.showMypageToast?.('🔗 リンクをコピーしました', 'success');
+  } catch (e) {
+    window.prompt('シェアリンク (コピーしてください)', url);
+  }
+}
+
+// 「🗑 取り消し」: DB 行を削除 (→ /share が not-found) → R2 画像を best-effort cleanup。
+async function revokeShare(shareId) {
+  if (!currentUserId()) { alert('ログインが必要です'); return; }
+  if (!confirm('このシェアを取り消しますか?\nリンクを開いても表示されなくなります。')) return;
+  const s = _sharesById.get(shareId);
+  try {
+    const res = await fetch(
+      `${window.SUPABASE_URL}/rest/v1/norireco_shares?id=eq.${encodeURIComponent(shareId)}`,
+      {
+        method: 'DELETE',
+        headers: {
+          'apikey': window.SUPABASE_KEY,
+          'Authorization': `Bearer ${authBearerToken()}`,
+          'Prefer': 'return=minimal',
+        },
+      }
+    );
+    if (!res.ok) throw new Error(`delete ${res.status}`);
+  } catch (e) {
+    console.error('[シェア] 取り消し失敗:', e);
+    alert('取り消しに失敗しました。時間をおいて再度お試しください。');
+    return;
+  }
+  // R2 画像掃除 (失敗してもシェアは取り消し済なので握りつぶす)。
+  if (s && s.image_url) {
+    try { await deletePhotoByUrl(s.image_url); } catch (e) { /* best-effort */ }
+  }
+  NORIRECO.mypage?.showMypageToast?.('🗑 シェアを取り消しました', 'success');
+  renderMpSharesSection();
+}
+
 window.NORIRECO = window.NORIRECO || {};
 window.NORIRECO.share = { openShareModal, openTripShareModal };
+// マイページ統合 (NORIRECO.mypage は 13-mypage-common が初期化。ここでは guard して登録のみ)。
+window.NORIRECO.mypage = window.NORIRECO.mypage || {};
+window.NORIRECO.mypage.renderMpSharesSection = renderMpSharesSection;
+// HTML onclick から呼ぶ口
+window.copyShareLink = copyShareLink;
+window.revokeShare = revokeShare;

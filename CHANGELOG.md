@@ -52,6 +52,42 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 266. v416 — シェア取り消し UI (マイページ「🔗 シェア」タブ) + URL コピー導線の復活
+
+**バージョン**: v416 (CACHE_VERSION)
+**日付**: 2026-05-29
+**カテゴリ**: A（実装 / 🔥 シェア機能 残り = 取り消し UI 本体）
+
+### 背景
+
+- **ユスケ指摘**: v415 でシェアを 📤 1 本に統合した際、旧 🔗「シェアリンクを作成」が持っていた「URL をクリップボードにコピー」導線が後退。Web Share 非対応の PC ブラウザでは X intent が開くだけで、「/share URL を手元に取りたい (Discord・ブログ等に貼る)」ケースを拾えていなかった。URL 発行自体は継続していたが手段が不足。
+- **取り消し UI 本体**: v415 で worker delete regex に `shares` 分岐を入れた下地を使い、作成済みシェアの一覧 + 取り消しを実装する番。
+
+### 変更
+
+- **`js/14-share-ogp.js`**:
+  - **URL コピー復活**: `shareImageWithLink` の最終フォールバック (Web Share 不可時) を X intent → **クリップボードコピー (`✅ リンクをコピーしました`) + prompt** に戻した (旧 🔗 と同挙動)。これで PC でも /share URL を手元に取れる。
+  - **取り消し UI**: `fetchMyShares` (norireco_shares を user_id で SELECT) / `shareCardHtml` / `renderMpSharesSection` / `copyShareLink` / `revokeShare` を追加。取り消し = `norireco_shares` DELETE (RLS 本人のみ) → /share が not-found 化で実質無効 → R2 画像を best-effort cleanup → 再描画。`deletePhotoByUrl` (18-photo-area) を import して R2 削除に流用 (share 画像も `cdn.norireco.app/shares/...` なので `urlToObjectKey` が解決、worker は v415 regex で `shares/<uid>/<file>` 受理)。`_sharesById` Map で image_url を保持。`NORIRECO.mypage.renderMpSharesSection` + `window.copyShareLink/revokeShare` 公開 (NORIRECO.mypage は guard して登録のみ = 循環 import 回避)。
+  - `import { deletePhotoByUrl } from './18-photo-area.js'` 追加 (18 は 14 を import しないので循環なし)。
+- **`js/13-mypage-common.js`**: サブタブ nav に「🔗 シェア」追加 (4→5 tab)。`applyMpSection` に `showShares` 分岐 (`#mp-sub-shares` 表示制御 + `renderMpSharesSection?.()`)。`mpActiveSection` コメントに `'shares'` 追記。
+- **`noritetsu-map.html`**: `#mp-sub-shares` ペイン (`#mp-shares-section`) 追加 + `.mp-share-card` / `.mp-share-thumb` 系 CSS。
+- **`sw.js`**: CACHE_VERSION v415 → v416
+
+### 検証 (preview, 擬似ログイン + fetch スタブ)
+
+- 5 サブタブ描画 (`stats/trips/lines/memos/shares`)、`🔗 シェア` 追加確認。
+- 一覧: モック 2 件描画 + 各カードに `🔗 リンクをコピー` / `🗑 取り消し`。
+- `copyShareLink('aaa111')` → clipboard = `https://norireco.app/share/aaa111`。
+- `revokeShare('aaa111')` → `DELETE norireco_shares` → `DELETE /delete/photo` (object_key = `shares/uidTEST123/aaa111.png` = **v415 regex 経由で受理**) → 再描画で残り 1 件 (bbb222)。
+- 本番コードのエラー 0 (初回テストの `new Response('', {status:204})` = 204 に body 不可の self-inflicted TypeError のみ。revokeShare の error handler が正しく捕捉することの裏取りにもなった)。
+
+### 残課題
+
+- 垢BAN (share_banned 状態) と「作成したシェア一覧」の連携は別タスク (TODO 🔥 垢BAN)。
+- シェア機能 MVP + 磨き込み (S-1〜S-3 + v415/v416) でひと区切り。
+
+---
+
 ## 265. v415 — シェア機能 磨き込み: 📤 シェアを /share リンクに統一 + delete regex に shares 分岐
 
 **バージョン**: v415 (CACHE_VERSION)
