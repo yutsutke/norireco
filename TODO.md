@@ -40,15 +40,7 @@ git log --oneline -20
   - `users.share_status` を Supabase に追加。マイページにバッジ表示
   - 発動条件 (v345 改): 不正検知連動は撤回。代わりにスパム的シェア量・他ユーザー通報・規約違反コンテンツ等を別軸で検討
 
-- [ ] **駅 ID 体系 Phase 2: trip データ自体に `*_station_id` 列追加 + Supabase 移行**
-  - Phase 1 完成 (v293〜v300): 駅マスター (merged_stations 9,017 駅) に `s_NNNNN` id 付与、SERVICE_LINES に伝播、集計・描画判定すべて id ベース化
-  - **Phase 2-a 完成 (v310)**: `from_station_id` / `to_station_id` 列追加 + 並行書き込み
-  - **Phase 2-b 完成 (v311)**: 既存 trip 125 件のバックフィル完遂 (失敗 0)
-  - **Phase 2-c 完成 (v312)**: 完全一致経路 (駅シート/地図駅クリック) を id 優先化
-  - **Phase 2 残り**:
-    - 2-d: 集計の `seg.from/to` name 経由 fallback を撤去 (Phase 3 と一緒でも可)
-    - 完了時: `js/20-dev-backfill.js` を撤去
-  - 動機: 同名異所駅 (例: 高松 香川 / 石川 / 多摩) を trip データレベルで厳密に区別。Phase 1 では SERVICE_LINE 経由で間接解決していたが、trip データそのものが name しか持たないと将来 (グローバル展開・AI 自動列車判定) で破綻する
+<!-- ✅ 駅 ID 体系 Phase 2 完了: 本丸 2-a/2-b/2-c は v310〜v312 + 列 DROP v326 で完成済、`js/20-dev-backfill.js` も撤去済。実質残課題だった「集計 rebuild の name 照合」を v422 で id 優先 + name fallback 化してクローズ (CHANGELOG §272)。完全版 (segments JSONB 全件 backfill + name 照合物理撤去) は下記 Phase 3 の残課題に集約 -->
 
 - [ ] **駅 ID 体系 Phase 3: memo / characters_master / 駅名検索の id 化**
   - **Phase 3-a/3-b 完成 (v313)**: `characters_master.json` schema_v2 で id 化、キャラ獲得判定 / GPS 獲得 / 駅シート連携 を id 優先 + name fallback に
@@ -63,6 +55,7 @@ git log --oneline -20
   - **Phase 3-j 完成 (v327)**: LINES (lines-p1〜p4.json) の stations[] に駅 id 付与 (10,164 中 10,151 / 99.87%)、p2 を「1 路線 1 行」フォーマットに統一。先回り対応 (実態としては N02 LINES.stations[].n 参照箇所が 12 ファイル数十箇所あり、データ側に id を持たせて将来 reader 移行をインクリメンタルに可能にした)
   - **Phase 3-k 完成 (v328)**: lines-p2.json の座標を流用して merged_stations.json に 13 駅 (s_09018〜s_09030) を追加 (常磐線震災区間 11 + 山陽線 2 + 東北線 1)。add_line_station_ids.js 再実行で **カバレッジ 100.00%** 達成 (far=0, missing=0)
   - **Phase 3-k+ データ充実完成 (v329)**: 上記 13 駅を jr_joban_medium / jr_sanyo_main / jr_tohoku_main_rifu の 3 SERVICE_LINES に収録、merged_stations の lines/colors も同時更新、compute_isolation_rank.js で isolation_rank 再計算 (新規駅 rank 3-5 / 9030 駅全てが SERVICE_LINE 収録)
+  - **id 化 残り (Phase 2/3 完全版・低優先)**: 読み取り経路は全層「id 優先 + name fallback」に到達済 (集計 rebuild も v422 で揃えた)。**name 照合の物理撤去** = 既存 trip の segments JSONB に `from_id`/`to_id` を全件 backfill (v311 の top-level 版を segment に展開) → 100% カバレッジ確認 → 各層の name fallback 分岐 + 旧 N02-id 救済 resolve 経路を撤去。破壊リスクと作業量 (半日級) のわりに体験への影響が無いため後回し。グローバル展開・AI 自動列車判定に着手する直前にまとめてやるのが筋
 
 ## 🟡 体験向上（コア層の継続率を上げる）
 

@@ -52,6 +52,52 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 272. v422 — 駅 ID 体系 Phase 2 クローズ (集計 rebuild を id 優先 + name fallback に)
+
+**バージョン**: v422 (CACHE_VERSION)
+**日付**: 2026-05-29
+**カテゴリ**: A (クリーンアップ / 駅 ID 体系の純度向上)
+**変更ファイル**: [`js/04b-ride-record.js`](js/04b-ride-record.js)（1 ファイルのみ）
+
+### 背景
+
+TODO 🔥「駅 ID 体系 Phase 2: trip データに `*_station_id` 列追加 + Supabase 移行」が未チェックのまま残っていたが、着手前調査で **本丸 (2-a/2-b/2-c) は v310〜v312 で完成・デプロイ済**、旧 `from_station`/`to_station` 列も v326 で DROP 済 (Applied 2026-05-25)、`js/20-dev-backfill.js` も撤去済と判明。実質残っていたのは TODO の「2-d: 集計の `seg.from/to` name 経由 fallback を撤去」(明示的に「Phase 3 と一緒でも可」扱い) の 1 点だけだった。
+
+具体的には、マイページ検索/フィルタ ([`13-mypage-common.js`](js/13-mypage-common.js) `tripMatchesAnyStation`) は v3xx で既に「`seg.from_id`/`to_id` 優先 + name fallback」になっていたのに、**地図塗りの中核集計 [`04b-ride-record.js`](js/04b-ride-record.js) `rebuild()` だけが駅名照合のまま取り残されていた**:
+
+```js
+const fromIdx = targetSl.stations.findIndex(s => s.name === seg.from);
+const toIdx   = targetSl.stations.findIndex(s => s.name === seg.to);
+```
+
+### 設計判断
+
+- **「実用版」を採用** (ユスケ判断): id 優先を足しつつ name fallback は残す。`seg.from_id` を持たない旧形式 trip も従来どおり塗れる。完全版 (segments JSONB を全件 backfill して name 照合を物理撤去) は半日級 + 旧 N02-id trip 救済 fallback まで壊すリスクがあり、Phase 3 とまとめる方が筋なので見送り。
+- 13-mypage-common と**同一パターンに統一**: `if (seg.from_id) findIndex(id); if (<0) findIndex(name);`。これで「集計 (地図塗り) も trip データが持つ駅 id を尊重」= 同名異所駅を trip データレベルで厳密区別する Phase 2 の動機を集計経路でも満たす。
+- resolve 経路 fallback ブランチ ([04b:364-387](js/04b-ride-record.js:364)、旧 N02-id trip 救済) は name 照合のまま据置 (これらの trip は from_id/to_id を持たないため)。
+
+### 検証 (preview, 山手線 東京 s_00001 → 秋葉原 s_00049 で合成 seg を rebuild)
+
+| ケース | 入力 | 期待 | 結果 |
+|---|---|---|---|
+| A: id 優先 | name をわざと壊し from_id/to_id 正 | 塗れる | ✅ 3 駅 (旧コードは 0) |
+| B: name fallback | from_id/to_id 無し | 塗れる | ✅ 3 駅 |
+| C: 無効 | id も name も不一致 | 塗れない | ✅ 0 駅 |
+| D: id miss → fallback | 存在しない id + 正しい name | 塗れる | ✅ 3 駅 |
+
+console error 0。id 優先・回帰なし・誤爆なし・グレースフルデグレードを確認。
+
+### 落とし穴 (preview SW キャッシュ)
+
+検証中、ローカル python http.server + ブラウザ HTTP キャッシュの相互作用で **SW (`norireco-v422`) が install 時に `cache.addAll`(=`cache:'default'`) で旧 04b を拾って固定化**し、新コードが配信されない事象に遭遇。`fetch(no-store)` / `fetch(cache:'reload')` では新が取れることを確認 → SW キャッシュの該当エントリを fresh fetch で put 上書き → reload で新コード確認、という手順で回避した。本番 (Cloudflare Pages) では commit 済ファイルが配信されるため起きない、ローカル検証限定の現象。
+
+### 残課題
+
+- 完全版 (segments backfill + name 照合物理撤去) は Phase 3 とまとめて実施 (今回スコープ外)。
+- これで TODO 🔥「駅 ID 体系 Phase 2」は実用上クローズ → TODO から削除。
+
+---
+
 ## 271. v421 — Supabase RLS 強化 (v233 残課題本丸を閉じる)
 
 **バージョン**: v421 (CACHE_VERSION)

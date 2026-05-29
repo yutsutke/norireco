@@ -345,12 +345,19 @@
 
         if (!slRiddenSt[targetSl.id]) slRiddenSt[targetSl.id] = new Set();
 
-        // targetSl 内で seg.from/to が見つかれば駅順展開、見つからなければ
+        // targetSl 内で seg の駅が見つかれば駅順展開、見つからなければ
         // resolve 結果の駅名で照合 (旧 N02 形式 trip のための救済)
         // v317 (Phase 3-e): 同じループ内で slVisitCount[st.id] も +1 (個人化 Lv 用)。
         // v387: stop_type も同じループで集計。位置 (fromIdx / toIdx) or 駅名 (seg.from / seg.to) で判定。
-        const fromIdx = targetSl.stations.findIndex(s => s.name === seg.from);
-        const toIdx = targetSl.stations.findIndex(s => s.name === seg.to);
+        // v422 (Phase 2-d): seg.from_id / to_id を優先し、無ければ name で fallback。
+        //   13-mypage-common.tripMatchesAnyStation と同じ「id 優先 + name fallback」に揃え、
+        //   集計 (地図塗り) も trip データが持つ駅 id を尊重するようにした (同名異所駅の厳密区別)。
+        //   旧形式 trip (from_id/to_id を持たない) は name fallback でそのまま動く。
+        let fromIdx = -1, toIdx = -1;
+        if (seg.from_id) fromIdx = targetSl.stations.findIndex(s => s.id === seg.from_id);
+        if (fromIdx < 0) fromIdx = targetSl.stations.findIndex(s => s.name === seg.from);
+        if (seg.to_id) toIdx = targetSl.stations.findIndex(s => s.id === seg.to_id);
+        if (toIdx < 0) toIdx = targetSl.stations.findIndex(s => s.name === seg.to);
         if (fromIdx >= 0 && toIdx >= 0) {
           const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
           for (let i = a; i <= b; i++) {
