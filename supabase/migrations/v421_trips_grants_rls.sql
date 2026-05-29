@@ -179,3 +179,5 @@ SELECT
 -- ║   このファイル末尾の `-- Applied: YYYY-MM-DD by <user>` が    ║
 -- ║   migration 実行済みの一次情報 (CLAUDE.md / v333 規約)        ║
 -- ╚══════════════════════════════════════════════════════════════╝
+
+-- Applied: 2026-05-29 by yutsutke (6-D 確認: anon SELECT = false/false / 実機動作確認済)
