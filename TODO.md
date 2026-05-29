@@ -36,7 +36,8 @@ git log --oneline -20
 - [ ] **垢BAN（シェア停止ペナルティ）** — 本体 ✅ v423 + full_banned enforcement ✅ v424 (段階の差別化完了)
   - ✅ v423 本体: `norireco_profiles` 新設 (share_status = 真実の源 / SELECT 本人のみ + 書込 policy 無し = 本人も自己解除不可)、`shares.revoked` 派生キャッシュ + INSERT(BAN中不可)/UPDATE(revoked 復活穴封鎖) policy 強化、関数 `set_account_status`/`ban_user_share`/`unban_user_share` (EXECUTE は public REVOKE で Dashboard 専用 = RPC 自己解除穴を塞ぐ)。enforcement = RLS(最後の砦) + クライアント(banned 時シェアモーダル不開で リンク作成/画像シェア/DL を一括ブロック) の 2 層。既存リンクも revoked で配信停止 (unban で復活)。マイページに状態バナー/チップ。CHANGELOG §273 (Applied + 実機確認済)
   - ✅ v424 full_banned enforcement: `norireco_trips` / `norireco_character_grants` / `norireco_memos` の INSERT policy に `NOT EXISTS(full_banned)` ガード追加 (UPDATE/DELETE/SELECT は据え置き = 過去記録の閲覧編集は通常通り)、各 INSERT 呼び元 (07 saveMultiSegmentTrip / 21 saveBulkDrafts / 16 createMemoOnServer / 03 grantCharacter) の冒頭に薄い inline ガード、マイページのバナー/チップを share_banned/full_banned で文言分岐 (full_banned → 「🚫 アカウント停止中」+ 「シェア + 新規記録停止」の詳細バナー)。share_banned 段階は通過 (シェアだけ止めて記録は通常通り作れる = やり直しの余地)。CHANGELOG §274
-  - **⚠️ 残: ユスケ作業** — `supabase/migrations/v424_full_ban_insert_enforcement.sql` を Dashboard で Run → 末尾に `-- Applied:` 追記 → JS push (v424 は SQL/JS どちらが先でも安全)
+  - ✅ v425 補修: v424 SQL Run 後の確認で `norireco_trips` に旧 `FOR ALL` policy が 1 件残留と判明 (v135〜v250 頃の歴史的残骸、v421 個別 cmd 名 DROP で名前漏れ)。RLS は PERMISSIVE = OR 評価のため v424 full_banned ガードが空転していた → DO ブロックで ALL を冪等 DROP。教訓「migration 確認 SELECT の期待行数まで指差し確認 / FOR INSERT 追加時は同テーブルに FOR ALL が無いことを明示確認」を CHANGELOG §275 に追加
+  - **⚠️ 残: ユスケ作業** — `supabase/migrations/v425_drop_trips_legacy_all_policy.sql` を Dashboard で Run → 末尾に `-- Applied:` 追記。v424 SQL は既 Apply 済
   - 段階: ok → warn(注意・バッジのみ・enforcement なし) → share_banned(シェアのみ停止) → full_banned(シェア + 新規記録停止 / 過去記録は閲覧編集可)
   - **残 (別タスク)**: 管理 GUI / 自動発動 (スパム的シェア量・他ユーザー通報・規約違反コンテンツ等を別軸で検討)
 

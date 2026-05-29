@@ -52,6 +52,60 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 275. v425 — norireco_trips の旧 FOR ALL policy を DROP (v424 enforcement の穴塞ぎ)
+
+**バージョン**: v425 (CACHE_VERSION)
+**日付**: 2026-05-29
+**カテゴリ**: A (セキュリティ / v424 の必須補修)
+**migration**: [`supabase/migrations/v425_drop_trips_legacy_all_policy.sql`](supabase/migrations/v425_drop_trips_legacy_all_policy.sql)（Run 後 Applied 行追記）
+
+### 背景
+
+v424 SQL を Dashboard で Run した直後の確認 SELECT (5-B: 各テーブル×cmd 別 policy 件数) が 12 行のはずが **13 行**。スクリーンショット確認で `norireco_trips` に `cmd='ALL'` の policy が 1 件追加で残留していた。
+
+**PostgreSQL の RLS は同一操作に複数 policy がある場合 PERMISSIVE = OR 評価** (= ANY)。つまり:
+
+- v424 INSERT policy: `WITH CHECK (auth.uid()=user_id AND NOT EXISTS(profiles WHERE share_status='full_banned'))`
+- 残留 ALL policy: 推定 `auth.uid()=user_id` のみ
+
+→ INSERT のとき OR 結合 = 旧 ALL policy が `auth.uid()=user_id` を満たすだけで通る = **v424 の full_banned ガードが完全に空転、enforcement 破綻**。
+
+### 原因仮説
+
+- v135 (user_id 列追加) ～ v250 頃の歴史的残骸。v421 の RLS 強化が `FOR SELECT/INSERT/UPDATE/DELETE` 個別 cmd 名で `DROP POLICY IF EXISTS` しただけで、`FOR ALL` で作られた古い policy 名は漏れて残留したと推定。
+- `norireco_character_grants` / `norireco_memos` は ALL policy 無し (v424 確認 SELECT で 4 cmd 各 1 件のみ) → trips 固有の歴史的事故。
+
+### 設計判断
+
+- **個別 policy 名を hard-code せず DO ブロックで「ALL を全部消す」**: 過去の名前が不明 + 将来 Dashboard UI から誤って ALL policy が再び作られた場合の保険として、DO ブロックで `pg_policies` を引き名前を取得 → `EXECUTE format(...)` で DROP。再 Run しても ALL 0 件なら NOOP = 冪等
+- **v421 の 4 件 + v424 の INSERT (full_banned ガード入り) は据え置き** — 触らない
+- **CACHE_VERSION を v425 に bump**: JS 変更ゼロだが「デプロイ回数 = バージョン番号」(CLAUDE.md デプロイ規約) の不変式に従う。本セッションは SQL 補修 + sw.js bump の最小コミット
+- **v424 と統合せず別 commit**: v424 は本番 push 済み・別 SQL 既 Apply。v425 として記録する方が migration 履歴の真実性が高い (「v424 で穴があったが v425 で塞いだ」という事実が残る)
+
+### 教訓
+
+- **migration の確認 SELECT は行数まで指差し確認**: v424 で「3 tables × 4 cmd = 12 行」を期待値として書いていたのに「13 行」見落とし → Run 直後に気づけず push まで進んだ。次回以降、新規 RLS migration には期待行数を明示してチェック
+- **PERMISSIVE RLS の OR 評価は穴になりやすい**: `FOR INSERT` policy を新規に作る時、同テーブルに `FOR ALL` が無いことを **migration 内で明示確認**するパターンを今後採用 (今回の v425 確認 SELECT 3-A がその雛形)
+
+### 触ったもの
+
+- 新規 [`supabase/migrations/v425_drop_trips_legacy_all_policy.sql`](supabase/migrations/v425_drop_trips_legacy_all_policy.sql) (DO ブロックで ALL policy 全 DROP + 確認 SELECT)
+- [`sw.js`](sw.js) v425
+
+### 検証
+
+- syntax (JS 変更なし、sw.js は文字列 1 文字差替えのみ)
+- Dashboard Run 後の期待確認:
+  - 3-A: 4 行 (cmd ∈ SELECT/INSERT/UPDATE/DELETE、cmd='ALL' 0 件)
+  - 3-B: 1 行 (has_full_banned_guard = t)
+
+### 残課題
+
+- **ユスケ作業**: v425 SQL を Dashboard で Run → 末尾に `-- Applied:` 追記 → JS push (もう commit 済み・push 済みなら不要)
+- 本番動作確認: テスト BAN (`SELECT set_account_status('<自分の uuid>','full_banned','テスト')`) → 記録 FAB tap → alert 表示 + Supabase POST が 403 で弾かれる (Network タブで確認) → `SELECT unban_user_share('<uuid>')` で復帰
+
+---
+
 ## 274. v424 — 垢BAN: full_banned 時の個人記録新規作成停止 enforcement
 
 **バージョン**: v424 (CACHE_VERSION)
