@@ -160,7 +160,8 @@ function clearLocalUserDataAfterSignOut() {
   // v250: 駅メモも個人データなのでログアウト時にローカルから purge
   try { window.NORIRECO?.memos?.clear?.(); } catch(e) {}
   // v423 垢BAN: アカウント状態をデフォルト (ok) に戻す。次回ログイン時 fetchMyProfile が再取得する。
-  try { if (window.NORIRECO) window.NORIRECO.profile = { share_status: 'ok', ban_reason: null, loaded: false }; } catch(e) {}
+  // v426 admin GUI: is_admin もログアウトでリセット (前ユーザーが admin でも次ユーザーには引き継がれない)
+  try { if (window.NORIRECO) window.NORIRECO.profile = { share_status: 'ok', ban_reason: null, is_admin: false, loaded: false }; } catch(e) {}
   // in-memory RIDDEN_SEGS を空に (window bridge 経由 — 05 が export 済の共有配列)
   if (Array.isArray(window.RIDDEN_SEGS)) {
     window.RIDDEN_SEGS.length = 0;
@@ -225,10 +226,15 @@ export function currentUserId() {
 // 読めなければ / 行が無ければ 'ok' フォールバック (BAN 時のみ norireco_profiles に行ができる)。
 // 結果は window.NORIRECO.profile に置く (14-share-ogp / 13-mypage-common が循環 import せず参照)。
 // SUPABASE_URL / SUPABASE_KEY は Global Lexical Environment 経由で bare 参照 (ファイル冒頭コメント参照)。
+// v426 admin GUI: norireco_admins に自分の行があれば is_admin = true (admin タブ表示制御の根拠)。
+//   admins テーブルの RLS は「本人のみ SELECT」なので、自分の uid を limit 1 で引いて HEAD で判定。
 async function fetchMyProfile() {
   const uid = currentUserId();
   window.NORIRECO = window.NORIRECO || {};
-  if (!uid) { window.NORIRECO.profile = { share_status: 'ok', ban_reason: null, loaded: false }; return; }
+  if (!uid) { window.NORIRECO.profile = { share_status: 'ok', ban_reason: null, is_admin: false, loaded: false }; return; }
+  let share_status = 'ok';
+  let ban_reason = null;
+  let is_admin = false;
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/norireco_profiles?user_id=eq.${encodeURIComponent(uid)}&select=share_status,ban_reason&limit=1`,
@@ -237,18 +243,24 @@ async function fetchMyProfile() {
     if (res.ok) {
       const rows = await res.json();
       const row = Array.isArray(rows) && rows.length ? rows[0] : null;
-      window.NORIRECO.profile = {
-        share_status: (row && row.share_status) || 'ok',   // 行が無い = ok
-        ban_reason: row ? (row.ban_reason || null) : null,
-        loaded: true,
-      };
-    } else {
-      window.NORIRECO.profile = { share_status: 'ok', ban_reason: null, loaded: false };
+      if (row) {
+        share_status = row.share_status || 'ok';
+        ban_reason = row.ban_reason || null;
+      }
     }
-  } catch (e) {
-    window.NORIRECO.profile = { share_status: 'ok', ban_reason: null, loaded: false };
-  }
-  // マイページが開いていれば状態バッジ反映のため再描画 (renderMypage は本ファイルが import 済)。
+  } catch (e) {}
+  try {
+    const ra = await fetch(
+      `${SUPABASE_URL}/rest/v1/norireco_admins?user_id=eq.${encodeURIComponent(uid)}&select=user_id&limit=1`,
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authBearerToken()}` } }
+    );
+    if (ra.ok) {
+      const rows = await ra.json();
+      is_admin = Array.isArray(rows) && rows.length > 0;
+    }
+  } catch (e) {}
+  window.NORIRECO.profile = { share_status, ban_reason, is_admin, loaded: true };
+  // マイページが開いていれば状態バッジ + admin タブ表示反映のため再描画。
   try {
     const mp = document.getElementById('pane-mypage');
     if (mp && mp.classList.contains('active')) renderMypage();

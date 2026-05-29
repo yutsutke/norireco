@@ -390,6 +390,7 @@ export async function renderMypage() {
       <button class="mp-subtab" data-sec="lines" onclick="switchMpSection('lines')">📋 路線</button>
       <button class="mp-subtab" data-sec="memos" onclick="switchMpSection('memos')">📸 メモ</button>
       <button class="mp-subtab" data-sec="shares" onclick="switchMpSection('shares')">🔗 シェア</button>
+      ${window.NORIRECO?.profile?.is_admin ? `<button class="mp-subtab" data-sec="admin" onclick="switchMpSection('admin')">🛠 admin</button>` : ''}
     </div>
   `;
 
@@ -569,6 +570,7 @@ export function applyMpSection() {
   const showLines = MP.mpActiveSection === 'lines';
   const showMemos = MP.mpActiveSection === 'memos';
   const showShares = MP.mpActiveSection === 'shares';
+  const showAdmin = MP.mpActiveSection === 'admin';
   document.getElementById('mp-sub-stats').style.display       = showStats ? '' : 'none';
   document.getElementById('mp-sub-trips').style.display       = showTrips ? '' : 'none';
   document.getElementById('mp-sub-lines').style.display       = showLines ? '' : 'none';
@@ -576,6 +578,8 @@ export function applyMpSection() {
   if (memoPane) memoPane.style.display = showMemos ? '' : 'none';
   const sharePane = document.getElementById('mp-sub-shares');
   if (sharePane) sharePane.style.display = showShares ? '' : 'none';
+  const adminPane = document.getElementById('mp-sub-admin');
+  if (adminPane) adminPane.style.display = showAdmin ? '' : 'none';
 
   // 内容描画 (遅延でレイアウト確定後)
   setTimeout(() => {
@@ -584,6 +588,7 @@ export function applyMpSection() {
     if (showLines) { try { renderList(); } catch(e) {} }
     if (showMemos) { try { NORIRECO.mypage.renderMpMemosSection?.(); } catch(e) {} }
     if (showShares) { try { NORIRECO.mypage.renderMpSharesSection?.(); } catch(e) {} }
+    if (showAdmin) { try { NORIRECO.mypage.renderMpAdminSection?.(); } catch(e) {} }
   }, 30);
 }
 NORIRECO.mypage.applyMpSection = applyMpSection;

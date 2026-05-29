@@ -45,6 +45,7 @@ const FILES = [
   '13a-stats',
   '13b-trips',
   '13c-lines',
+  '13e-admin',
   '14-share-ogp',
   '15-color-overrides',
   '16-memos',

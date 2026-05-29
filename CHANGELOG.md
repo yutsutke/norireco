@@ -52,6 +52,75 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 276. v426 — 垢BAN 管理 GUI MVP (norireco_admins + admin RPC + マイページ 🛠 サブタブ)
+
+**バージョン**: v426 (CACHE_VERSION)
+**日付**: 2026-05-29
+**カテゴリ**: A (運用 GUI / 垢BAN 別タスク残課題回収)
+**migration**: [`supabase/migrations/v426_admin_gui_mvp.sql`](supabase/migrations/v426_admin_gui_mvp.sql)（Run 後 Applied 行追記 + Dashboard で初期 admin INSERT）
+
+### 背景
+
+v423/v424/v425 で垢BAN 本体・full_banned enforcement・旧 ALL policy 穴塞ぎが完了し、enforcement は実機確認済み。発動は Supabase Dashboard で `SELECT ban_user_share('<uuid>','理由')` を毎回 SQL Editor 操作で行う運用だったが、CHANGELOG §273 残課題「管理 GUI」を回収。MVP スコープは「BAN/warn 履歴のあるユーザー一覧 + uid/email 検索 + 4 ボタン (ok/warn/share_banned/full_banned)」(ユスケ確定 2026-05-29)。
+
+### スコープ
+
+- **SQL**: `norireco_admins` テーブル + 4 関数 (`is_admin` / `admin_list_profiles` / `admin_search_user` / `admin_set_account_status`)
+- **JS**: 新規 [`js/13e-admin.js`](js/13e-admin.js) (admin タブ実装) + [`js/12-auth.js`](js/12-auth.js) fetchMyProfile に `is_admin` 取得 + [`js/13-mypage-common.js`](js/13-mypage-common.js) サブタブ nav に「🛠 admin」追加 (is_admin で表示制御) + [`noritetsu-map.html`](noritetsu-map.html) に subpane div + script tag 登録
+- **対象外 (将来別タスク)**: 自動発動 (スパム量・通報フロー) / share 履歴詳細閲覧 / 統計情報 (share 数・trip 数) / admin 追加 UI (Dashboard 手動 INSERT のまま)
+
+### 設計判断
+
+#### セキュリティ
+
+- **真実の源 = `norireco_admins` テーブル** — git repo に admin uid を hard-code しない (ユスケ uid は migration の運用コメントに従って Dashboard で 1 行 INSERT)
+- **`norireco_admins` RLS**: 「本人の行のみ SELECT」 — 自分が admin かどうかは知れるが他 admin は見えない。INSERT/UPDATE/DELETE policy 無し = service_role (Dashboard) のみ書込。v423 profiles と同形の二重防御 (anon REVOKE + authenticated SELECT のみ GRANT)
+- **全 admin_* 関数は SECURITY DEFINER** — 関数オーナー (postgres) 権限で auth.users / norireco_profiles を直接読める。**関数冒頭で `IF NOT is_admin() THEN RAISE EXCEPTION 'admin only'` で必ずゲート**
+- **EXECUTE は public REVOKE + authenticated GRANT** — 非 admin の authenticated user が RPC を叩いても関数内の `is_admin()` で EXCEPTION で弾かれる。anon は EXECUTE 自体無いので 401 で弾かれる
+- **`admin_set_account_status` は v423 `set_account_status` を内部 PERFORM** — DB 内ロジック 1 か所原則。admin_ 関数は authz layer (admin ゲート) として薄く存在
+- **クライアント側の `is_admin` 偽装は無意味** — タブ表示が変わるだけで、操作は RPC を通すので非 admin は何もできない
+
+#### UX
+
+- **マイページに溶け込ませる** — 専用画面 (`noritetsu-admin.html`) は新規 HTML + ルーティング + sw.js precache + 切替 nav 等のコスト高で却下。1 人運営なら既存マイページ内で完結
+- **サブタブ nav に「🛠 admin」を追加 (is_admin で hide / show)** — 既存 5 サブタブ (📊統計/🚃旅程/📋路線/📸メモ/🔗シェア) と並列。non-admin には表示自体出ない
+- **状態 4 ボタン (ok / warn / share_banned / full_banned)** — 直感的な「現状況 vs 変更先」が一覧で見える。各ボタンに理由入力 `prompt()` + 確認 `confirm()`
+- **自分自身 BAN 防止ガード** — admin が自分を `full_banned` にすると復帰不能 (service_role でないと `set_account_status` 呼べない) → クライアント側で disabled + サーバー側でも将来追加検討 (今は MVP 範囲外)
+
+#### Admin タブ実装 (js/13e-admin.js)
+
+- **RPC 共通 `callRpc(fnName, body)`**: void RETURN は空文字、TABLE RETURN は配列パース。エラーは throw → UI で alert
+- **状態管理 `A.{rows, mode, query, loading}`**: list / search の 2 モード。検索は空文字なら自動で list に戻る
+- **status badge / 日時フォーマット / esc** はファイル内ローカル (DRY より循環 import 回避優先)
+- **window.NORIRECO.admin にハンドラ集約** — HTML onclick から呼びやすい (admin タブは admin だけ表示なので onclick 露出は問題なし)
+
+### 触ったもの
+
+- 新規 [`supabase/migrations/v426_admin_gui_mvp.sql`](supabase/migrations/v426_admin_gui_mvp.sql)
+- 新規 [`js/13e-admin.js`](js/13e-admin.js) (~190 行)
+- 編集
+  - [`js/12-auth.js`](js/12-auth.js) `fetchMyProfile` に `is_admin` 取得 + ログアウト時のリセットに `is_admin: false` 追加
+  - [`js/13-mypage-common.js`](js/13-mypage-common.js) サブタブ nav に「🛠 admin」追加 (is_admin gate) + applyMpSection に admin 分岐追加
+  - [`noritetsu-map.html`](noritetsu-map.html) `mp-sub-admin` subpane div + 13e-admin.js script tag
+  - [`sw.js`](sw.js) v426 + precache に 13e-admin.js 追加
+  - [`scripts/syntax-check.js`](scripts/syntax-check.js) FILES リストに 13e-admin 追加
+
+### 検証
+
+- syntax `npm run check` 25/25 OK (新規 13e-admin 含む)
+- preview 動作確認は v426 SQL Run + Dashboard で初期 admin INSERT が必要なため、v423/v424 と同じく **ロジックレビュー + syntax で担保 → ユスケ実機確認** の体制
+- RPC ガードは SECURITY DEFINER + `is_admin()` で多重防御済
+
+### 残課題
+
+- **ユスケ作業**:
+  1. v426 SQL を Dashboard で Run → 末尾に `-- Applied:` 追記
+  2. Dashboard で初期 admin (ユスケ) を INSERT: `INSERT INTO norireco_admins (user_id, note) VALUES ('<yutsutke の uuid>', 'プロジェクトオーナー');`
+  3. 本番 reload → マイページに「🛠 admin」サブタブが出現することを確認 → 一覧表示 + 4 ボタン動作確認
+- **垢BAN 別タスク継続**: 自動発動 (スパム量検知 / 通報フロー)
+
+---
+
 ## 275. v425 — norireco_trips の旧 FOR ALL policy を DROP (v424 enforcement の穴塞ぎ)
 
 **バージョン**: v425 (CACHE_VERSION)
