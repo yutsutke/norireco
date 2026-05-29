@@ -12,7 +12,11 @@
 // 真実の源 = norireco_admins テーブル (本人のみ SELECT)、初期 admin (ユスケ) は
 // Dashboard で手動 INSERT (v426 migration の運用コメント参照)。
 
-import { SUPABASE_URL, SUPABASE_KEY, authBearerToken, currentUserId } from './12-auth.js';
+// v426 hotfix: SUPABASE_URL / SUPABASE_KEY は 12-auth.js が export していない (classic
+//   top-level const を Global Lexical Environment 経由で bare 参照する設計)。本 module 化
+//   ファイルからは bare 参照だと undefined になるため window.SUPABASE_URL / window.SUPABASE_KEY
+//   経由でアクセスする (21-bulk-record.js と同じパターン)。
+import { authBearerToken, currentUserId } from './12-auth.js';
 
 window.NORIRECO = window.NORIRECO || {};
 NORIRECO.mypage = NORIRECO.mypage || {};
@@ -27,10 +31,10 @@ const A = {
 
 // ── RPC 共通 ─────────────────────────────────────────────────
 async function callRpc(fnName, body) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fnName}`, {
+  const res = await fetch(`${window.SUPABASE_URL}/rest/v1/rpc/${fnName}`, {
     method: 'POST',
     headers: {
-      'apikey': SUPABASE_KEY,
+      'apikey': window.SUPABASE_KEY,
       'Authorization': `Bearer ${authBearerToken()}`,
       'Content-Type': 'application/json',
       'Accept': 'application/json',

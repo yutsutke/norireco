@@ -52,6 +52,72 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 277. v427 — admin タブ空白 hotfix (13e-admin.js の import 修正)
+
+**バージョン**: v427 (CACHE_VERSION)
+**日付**: 2026-05-29
+**カテゴリ**: A (v426 hotfix)
+**migration**: なし (JS のみ)
+
+### 背景
+
+v426 push 後、ユスケが SQL Run + 初期 admin INSERT を済ませて本番で「🛠 admin」サブタブをタップ → **中身が完全に空白**で何も表示されないと報告。サブタブ自体は出ているので `window.NORIRECO.profile.is_admin = true` で 13-mypage-common.js の admin gate は通過、`applyMpSection` の admin 分岐も入っているのに subpane 内が空。
+
+### 原因
+
+[`js/13e-admin.js`](js/13e-admin.js) の冒頭 import:
+
+```js
+import { SUPABASE_URL, SUPABASE_KEY, authBearerToken, currentUserId } from './12-auth.js';
+```
+
+**`SUPABASE_URL` / `SUPABASE_KEY` は 12-auth.js が export していない**。12-auth.js のヘッダコメント (line 17-18) には:
+
+> SUPABASE_URL / SUPABASE_KEY (classic の top-level const) は Global Lexical Environment 経由でモジュールから bare 参照可。
+
+とあるとおり、両者は別のクラシック script の top-level const で、12-auth.js は **bare 参照**するだけで export はしていない。13e-admin.js の named import に `SUPABASE_URL` / `SUPABASE_KEY` を含めたため、ES Modules の解決時に **module 全体のロードが SyntaxError で失敗** → 副作用 (`NORIRECO.mypage.renderMpAdminSection = renderMpAdminSection`) が走らず、admin タブ表示時に `applyMpSection` 内の `NORIRECO.mypage.renderMpAdminSection?.()` が undefined で何もしない → 空 subpane だけが残る。
+
+`npm run check` は parse OK で通る (named import の名前は dynamic に解決されるため static check できない)。実機ロード時にのみ console error。
+
+### 修正
+
+21-bulk-record.js などと同じパターンに揃え、**`window.SUPABASE_URL` / `window.SUPABASE_KEY` 経由** に変更:
+
+```js
+import { authBearerToken, currentUserId } from './12-auth.js';
+// ... callRpc 内
+const res = await fetch(`${window.SUPABASE_URL}/rest/v1/rpc/${fnName}`, {
+  headers: { 'apikey': window.SUPABASE_KEY, ... },
+  ...
+});
+```
+
+これで 12-auth.js から実際に export されている関数だけを named import し、`SUPABASE_URL` / `SUPABASE_KEY` はクラシック script が定義した window globals 経由でアクセス。
+
+### 設計判断 (再発防止)
+
+- **新規 module ファイルを作るときは、12-auth.js から import する `SUPABASE_URL` / `SUPABASE_KEY` は必ず `window.SUPABASE_URL` 経由で書く** (named import に含めない) — 既存 module (16-memos.js / 17-station-actions.js / 21-bulk-record.js etc.) は混在しており bare 参照と window 参照が両方ある。bare 参照は classic script のロード順序に依存するので fragile、window 経由が安全な定石
+- **`npm run check` は import 解決を検証しない** (parse のみ) ことを認識する。新規 module の追加時は本番 / preview でブラウザ console エラーの確認まで含めて 1 サイクル — ただし admin 機能のように DB 状態 (admins INSERT) を要するものは preview で完結できないため、本番 deploy 直後に DevTools console を確認する手順を残課題に追加
+- **教訓**: 「syntax check 25/25 OK」は実行時の import 解決を含まない指標。CLAUDE.md の検証規約に「新規 ES Modules ファイル追加時は実行時 console エラー有無まで確認」を追記検討
+
+### 触ったもの
+
+- [`js/13e-admin.js`](js/13e-admin.js) import 行修正 + `callRpc` 内の SUPABASE_URL/KEY を window 経由に
+- [`sw.js`](sw.js) v427
+
+### 検証
+
+- syntax `npm run check` 25/25 OK
+- 修正後の admin タブ動作確認はユスケ実機 reload で確認予定 (ユーザー `a28287d9-...` が share_banned で v426 SQL Apply 済なので、admin タブを開けば 1 行表示されるはず)
+
+### 残課題
+
+- ユスケ実機 reload で admin タブに `a28287d9-...` が share_banned で表示されること、ボタン操作が動くことを確認
+- 確認 OK なら垢BAN 「管理 GUI」は MVP として完了
+- 別タスク継続: 自動発動 (スパム量 / 通報フロー)
+
+---
+
 ## 276. v426 — 垢BAN 管理 GUI MVP (norireco_admins + admin RPC + マイページ 🛠 サブタブ)
 
 **バージョン**: v426 (CACHE_VERSION)
