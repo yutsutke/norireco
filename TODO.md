@@ -40,25 +40,10 @@ git log --oneline -20
   - `users.share_status` を Supabase に追加。マイページにバッジ表示
   - 発動条件 (v345 改): 不正検知連動は撤回。代わりにスパム的シェア量・他ユーザー通報・規約違反コンテンツ等を別軸で検討
 
-<!-- ✅ 駅 ID 体系 Phase 2 完了: 本丸 2-a/2-b/2-c は v310〜v312 + 列 DROP v326 で完成済、`js/20-dev-backfill.js` も撤去済。実質残課題だった「集計 rebuild の name 照合」を v422 で id 優先 + name fallback 化してクローズ (CHANGELOG §272)。完全版 (segments JSONB 全件 backfill + name 照合物理撤去) は下記 Phase 3 の残課題に集約 -->
+<!-- ✅ 駅 ID 体系 (Phase 1〜3) 完了: 駅マスター (merged_stations 9,030 駅) / SERVICE_LINES / trip / memo / characters_master / 駅名検索 / LINES の全層を `s_NNNNN` id ベース化、同名異所駅 (高松 香川/石川/多摩 等) の判定混線を全面解消。trip.from_station/to_station (v326) + memo.station (v325) の旧 name 列も DROP 済 (Applied 2026-05-25)。詳細 → CHANGELOG_PHASE3.8-station-id.md (Phase 1〜3, v290〜v333) + CHANGELOG §272 (v422 = 集計 rebuild の id 優先化で Phase 2 クローズ)。
+     残るは「name 照合の物理撤去 (完全版)」のみ → **今はやらない**と決定 (v422)。🌱 布石 #7 に移動 -->
 
-- [ ] **駅 ID 体系 Phase 3: memo / characters_master / 駅名検索の id 化**
-  - **Phase 3-a/3-b 完成 (v313)**: `characters_master.json` schema_v2 で id 化、キャラ獲得判定 / GPS 獲得 / 駅シート連携 を id 優先 + name fallback に
-  - **Phase 3-c 完成 (v314)**: GPS 後追い認証 `findStCoord` を id 対応に
-  - **Phase 3-d 完成 (v315)**: メモに station_id 列追加 + 並行書き込み + 読み込み id 優先化 (バックフィル省略、既存 3 件は name fallback)
-  - **Phase 3-e 部分完成 (v316)**: 13a-stats の visitCount を id 化、`js/20-dev-backfill.js` 撤去
-  - **Phase 3-e 仕上げ完成 (v317)**: マイページ駅名検索を id 解決層経由 (resolveStationQueryIds) に、slVisitCount を SERVICE_LINES + 駅 id キーに統一、08-rendering / キャラモーダルの参照側も ms.id ベースに
-  - **Phase 3-f 完成 (v323)**: slStopType を駅名 → 駅 id キーに切替 (同名異所駅の stop_type 判定混線を解消)
-  - **Phase 3-g 完成 (v324)**: characters_master schema_v3 で `station_names` / `obtainable_at_names` 撤去、stationCharMap / `getStationCharacter` 系 API を駅 id ベースに統一
-  - **Phase 3-h 完成 (v325 + Run 2026-05-25 + v333 cleanup)**: memo.station 列 DROP 完遂、fallback 分岐撤去、backfill 関数撤去
-  - **Phase 3-i 完成 (v326 + Run 2026-05-25 + v333 cleanup)**: trip.from_station/to_station 列 DROP 完遂、fallback 分岐撤去、backfill 関数撤去
-  - **Phase 3-j 完成 (v327)**: LINES (lines-p1〜p4.json) の stations[] に駅 id 付与 (10,164 中 10,151 / 99.87%)、p2 を「1 路線 1 行」フォーマットに統一。先回り対応 (実態としては N02 LINES.stations[].n 参照箇所が 12 ファイル数十箇所あり、データ側に id を持たせて将来 reader 移行をインクリメンタルに可能にした)
-  - **Phase 3-k 完成 (v328)**: lines-p2.json の座標を流用して merged_stations.json に 13 駅 (s_09018〜s_09030) を追加 (常磐線震災区間 11 + 山陽線 2 + 東北線 1)。add_line_station_ids.js 再実行で **カバレッジ 100.00%** 達成 (far=0, missing=0)
-  - **Phase 3-k+ データ充実完成 (v329)**: 上記 13 駅を jr_joban_medium / jr_sanyo_main / jr_tohoku_main_rifu の 3 SERVICE_LINES に収録、merged_stations の lines/colors も同時更新、compute_isolation_rank.js で isolation_rank 再計算 (新規駅 rank 3-5 / 9030 駅全てが SERVICE_LINE 収録)
-  - **id 化 残り = name 照合の物理撤去 (Phase 2/3 完全版・低優先・1.5〜2 セッション級)**:
-    - 現状の正確な棚卸し (v422 調査): 格納 trip の segment を `s.name === seg.from` で照合している箇所は **6 ファイル・約 15 ペア**。うち **id 優先化済みは 04b-ride-record `rebuild` (v422) と 13-mypage-common の 2 箇所のみ**。残りは素の name 照合 = **13a-stats 約 9 ペア (完乗率・統計 16 種)** / 02b-service-lines-builder (slSet) / 14-share-ogp / 21-bulk-record ×2
-    - 手順: ① 残り ~13 サイトを id 優先 + name fallback に揃える (2〜3h、13a-stats が主役) → ② segments JSONB の `from_id`/`to_id` を全 trip backfill (3〜5h、v311 は top-level 列のみで segment 未対応。**旧 N02-id trip の resolve が関門** = 漏れると地図から消える silent 破壊) → ③ 全 ~15 サイトの name fallback + 04b:331-389 / 02b candidateN02Ids の旧 N02 救済経路を撤去 (2〜3h) → ④ 完乗率・地図塗り・統計 16 種・シェア画像・一括記録・検索を実データ + 実機で回帰検証 (2〜3h)
-    - **やる価値の判断**: SERVICE_LINE 内では駅名が一意なので「正しい SL に resolve 済 → name 照合」は実質 id 照合と等価 (同名異所は SL resolution で既に解決)。よって物理撤去は純度のためだけで体験改善ゼロ・履歴データ破壊リスクあり。**グローバル展開・AI 自動列車判定の着手直前にまとめてやるのが筋** (その頃データモデル自体が変わる可能性も高い)
+<!-- ✅ 駅 ID 体系 Phase 3 (memo / characters_master / 駅名検索 の id 化) は上記コメントの通り全サブ項目 (3-a〜3-k+, v313〜v329) 完了。詳細は CHANGELOG_PHASE3.8-station-id.md -->
 
 ## 🟡 体験向上（コア層の継続率を上げる）
 
@@ -265,6 +250,12 @@ git log --oneline -20
   - 理由: シェア機能（OGP）リリース後に垢 BAN を後付けすると trip / share テーブルの flag 設計がスパゲッティになる
   - 発動条件 (v345 改): シェア機能リリース時。不正検知連動は撤回 (世間への証明不要方針)
   - 今のうちにやること: シェア機能設計時に `users.share_status`（warn / share_banned / full_banned）と RLS を含める。trip / character_grant は触らない設計に
+
+- [ ] **#7 駅 ID name 照合の物理撤去（駅 ID 体系 完全版・今はやらない）** ← 駅 ID 体系 Phase 1〜3 完了 (v290〜v329) + Phase 2 クローズ (v422) の残務
+  - 背景: 読み取りは id 化済だが、格納 trip segment を `s.name === seg.from` で照合する箇所が **6 ファイル ~15 ペア**残る（id 優先化済は 04b `rebuild` (v422) + 13-mypage の 2 箇所のみ、残りは **13a-stats ~9 (完乗率・統計 16 種)** / 02b-service-lines-builder / 14-share-ogp / 21-bulk-record ×2）。name 照合を物理的に消すには segments JSONB の `from_id`/`to_id` 全件 backfill が前提
+  - 理由 (今やらない・v422 判断): SERVICE_LINE 内で駅名は一意なので「正しい SL に resolve → name 照合」は実質 id 照合と等価 = **体験改善ゼロ**。逆に backfill 漏れで履歴 trip が地図から消える silent 破壊リスクを負うだけ
+  - 発動条件: グローバル展開 or AI 自動列車判定の着手直前（その頃データモデル自体が変わる可能性が高い）
+  - 今のうちにやること: 特になし（新規 trip は既に from_id/to_id 入り、読み取りは id 優先 or name fallback で正しく動作中）。工数感のみ記録 = **1.5〜2 セッション級**（① 残 ~13 サイト id 優先化 ② segment backfill ③ fallback + 旧 N02 救済 (04b:331-389 / 02b candidateN02Ids) 撤去 ④ 全層回帰検証）。詳細 → CHANGELOG §272
 
 ---
 
