@@ -637,7 +637,6 @@ let _syncSettled = false;
 export function markSyncSettled() {
   if (_syncSettled) return;
   _syncSettled = true;
-  console.log('[banner-debug] markSyncSettled CALLED', new Error().stack); // TEMP v428 (原因特定後に撤去)
   updateOnboardingBanner();
 }
 
@@ -645,16 +644,11 @@ export function updateOnboardingBanner() {
   const banner = document.getElementById('empty-onboarding-banner');
   if (!banner) return;
   // v418: Supabase 同期確定前は判定しない (フラッシュ防止)。
-  if (!_syncSettled) {
-    banner.hidden = true;
-    console.log('[banner-debug] not-settled → hide', new Error().stack); // TEMP v428 (原因特定後に撤去)
-    return;
-  }
+  if (!_syncSettled) { banner.hidden = true; return; }
   let lsLen = 0;
   try { lsLen = (JSON.parse(localStorage.getItem('norireco_trips') || '[]')).length; } catch (e) {}
   const segsLen = Array.isArray(window.RIDDEN_SEGS) ? window.RIDDEN_SEGS.length : 0;
   const isEmpty = lsLen === 0 && segsLen === 0;
-  console.log('[banner-debug] settled', { lsLen, segsLen, isEmpty, willHide: !isEmpty }, new Error().stack); // TEMP v428 (原因特定後に撤去)
   banner.hidden = !isEmpty;
 }
 
