@@ -1476,21 +1476,6 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
   </div>
 </div>
 
-<!-- 一括記録 (まとめて記録) ボトムシート — A-1 skeleton (vXXX 〜)。
-     Notion §1.3 設計確定の本体。マイページ「📋 過去の乗車をまとめて記録」から開く。
-     A-2 以降で営業系統チェックリスト + たたむ/開くアコーディオンを格納。 -->
-<div class="memo-modal" id="bulk-record-sheet" onclick="if(event.target===this)closeBulkRecordSheet()">
-  <div class="memo-sheet" style="position:relative">
-    <button class="btn-cls" onclick="closeBulkRecordSheet()" aria-label="閉じる" title="閉じる" style="position:absolute;top:6px;right:8px;width:auto;min-width:0;margin:0;padding:4px 12px;font-size:20px;line-height:1.2;z-index:2">✕</button>
-    <div class="sh"></div>
-    <div class="modal-title">📋 過去の乗車をまとめて記録</div>
-    <div class="modal-sub" style="color:var(--silver);font-size:11px;margin-bottom:14px">
-      営業系統をチェックすると、その路線を完乗 (全線) として記録します。
-    </div>
-    <div id="bulk-record-body"></div>
-  </div>
-</div>
-
 <!-- キャラ詳細モーダル -->
 <div class="memo-modal" id="char-modal" onclick="if(event.target===this)closeCharModal()">
   <div class="memo-sheet">
@@ -1614,6 +1599,23 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
     <div class="mp-subpane" id="mp-sub-admin">
       <div class="pane-inner" id="mp-admin-section"></div>
     </div>
+  </div>
+</div>
+
+<!-- 一括記録 (まとめて記録) ボトムシート — A-1 skeleton (vXXX 〜)。
+     Notion §1.3 設計確定の本体。マイページ「📋 過去の乗車をまとめて記録」から開く。
+     A-2 以降で営業系統チェックリスト + たたむ/開くアコーディオンを格納。
+     v433: .content (position:fixed = containing block) の内側だと地図タブで見えないため
+     .content 外の top-level (station-action-modal と同階層) へ移動。 -->
+<div class="memo-modal" id="bulk-record-sheet" onclick="if(event.target===this)closeBulkRecordSheet()">
+  <div class="memo-sheet" style="position:relative">
+    <button class="btn-cls" onclick="closeBulkRecordSheet()" aria-label="閉じる" title="閉じる" style="position:absolute;top:6px;right:8px;width:auto;min-width:0;margin:0;padding:4px 12px;font-size:20px;line-height:1.2;z-index:2">✕</button>
+    <div class="sh"></div>
+    <div class="modal-title">📋 過去の乗車をまとめて記録</div>
+    <div class="modal-sub" style="color:var(--silver);font-size:11px;margin-bottom:14px">
+      営業系統をチェックすると、その路線を完乗 (全線) として記録します。
+    </div>
+    <div id="bulk-record-body"></div>
   </div>
 </div>
 
