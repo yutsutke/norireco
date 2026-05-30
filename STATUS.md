@@ -28,7 +28,7 @@
 
 ## Service Worker
 
-**`CACHE_VERSION = 'v427'`** · デプロイ回数 = バージョン番号の不変式 (v426 admin タブ空白 hotfix)
+**`CACHE_VERSION = 'v429'`** · デプロイ回数 = バージョン番号の不変式 (v429 空マップバナー z-index 修正)
 
 ---
 

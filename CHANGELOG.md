@@ -52,6 +52,22 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 278. v429 — 空マップ オンボーディングバナーが地図に隠れて「一瞬で消える」bug 修正 (z-index) + v428 調査
+
+**症状**: 新規ゲスト (localStorage 空・未ログイン) で初期ページを開くと、空マップ案内バナー `#empty-onboarding-banner`（「乗ったことのある路線でマップを塗ろう」）が一瞬表示 → 何もしなくても勝手に消える。記録ゼロのゲストなら本来は出続けるべき。
+
+**調査 (v428 = debug trace)**: 静的解析では矛盾 = 「localStorage 空 + RIDDEN_SEGS 空なら `isEmpty=true` で出続けるはずで、消える経路が無い」。実行時の呼び出し元スタックを取るため `markSyncSettled` / `updateOnboardingBanner` に一時 `console.log('[banner-debug]', …, new Error().stack)` を仕込み本番 deploy → ユスケ実機ログ採取。結果: `updateOnboardingBanner` は計2回 (`not-settled→hide` ← `_onReady` / `settled {lsLen:0,segsLen:0,isEmpty:true,willHide:false}` ← `markSyncSettled` ← `syncFromSupabase` ← `initMap`) のみで、**最後は `willHide:false`（= `banner.hidden=false`、表示のまま）**。`willHide:true` の行は皆無 → **ロジックは正しくバナーを表示しており、hidden を戻す処理は走っていなかった**。
+
+**真因 (CSS z-index)**: `.empty-onboarding-banner` の `z-index:120` が Leaflet 地図 pane (200〜700) より低く、`#map` が独立 stacking context を作らない (position:relative + z-index:auto) ため、地図のタイル/路線/駅マーカー描画完了でバナーが地図の下に潜り視覚的に消えていた。`initMap` 途中の `markSyncSettled` で一瞬表示 → 地図描画完了で隠れる = 「一瞬で消える」の正体。他フロート UI (FAB・統計ボックス・最寄駅パネル・日付フィルタ) は全て `z-index:1000` で地図の上に出ていたのに、バナーだけ 120 だった。
+
+**修正**: `z-index:120 → 1000`（地図 pane の上・他フロート UI と同帯・モーダル 9999 より下）。v428 の調査用 trace を撤去。preview (python static, port 8000) で SW キャッシュ purge 後に実証 = v429 で `zIndex:1000`・rect 寸法あり (151×179)・`elementFromPoint`=バナー自身 (eob-title) = 地図に覆われず表示、を screenshot で確認。
+
+**教訓**: 「DOM 上は表示 (hidden=false) なのに見えない」系はロジックではなく z-index/重なりを疑う。新規オーバーレイを地図上に置くときは Leaflet pane (200〜700) と既存フロート UI (1000) の z-index 帯を意識する。本番に debug trace を出して実機ログを取る手法が有効だった (preview は localhost で localStorage 空のため症状再現せず)。
+
+**別件メモ (今回未対応・別タスク)**: `filterTripsByCurrentUser` (05-supabase-data.js:280) がゲスト時に `return trips;`（全件）で、v419 の `loadRiddenSegsFromStorage`「user_id 付きのみ」対称修正が漏れている。`applyDateFilter` 経由で過去ログインの trip が混入しうる。今回の症状とは無関係 (`applyDateFilter` 未実行をログで確認) なので残課題として記録のみ。
+
+---
+
 ## 277. v427 — admin タブ空白 hotfix (13e-admin.js の import 修正)
 
 **バージョン**: v427 (CACHE_VERSION)
