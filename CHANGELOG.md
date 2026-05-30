@@ -52,6 +52,22 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 279. v430〜v432 — 一括記録シート 閉じるボタンを右上に移設 + ゲスト trip フィルタ対称修正
+
+依頼3点（細かい改善）をまとめて処理。
+
+**(1) バナータップ → 一括記録へ遷移 (v429 で解決済)**: 空マップバナーは元々 `onclick="openBulkRecordSheet()"` で一括記録シートを開く実装。§278 の z-index 修正でバナーが押せるようになり要件充足。新規作業なし。
+
+**(2) 一括記録シート 閉じるボタンを上部へ (v432)**: `#bulk-record-sheet` (class=memo-modal) の閉じるボタンが最下部 (`btn-cls`「閉じる」) にあり、長い系統リスト (638 系統) を最後までスクロールしないと閉じられず面倒だった → `.memo-sheet` を `position:relative` にして右上に `✕` を absolute 配置 (`top:6px;right:8px;width:auto`)、下部フッターボタンは削除。desktop(1280)/mobile(390) 両幅で「枠内・はみ出しなし・クリック貫通あり」を preview DOM 実測で確認 (screenshot は modal の backdrop-filter:blur でタイムアウトするため eval 実測で代替)。
+
+**(3) ゲスト trip フィルタの対称修正 (v430, §278 残課題回収)**: `filterTripsByCurrentUser` (05-supabase-data.js:280) がゲスト時に `return trips` で全件返しており、`applyDateFilter` 経由で過去ログインの `user_id` 付き trip が地図塗り/集計に混入しうる穴を修正。ゲスト時は `trips.filter(t => !t.user_id)` で uid=null 保存分のみ通す。v419 §269 で `loadRiddenSegsFromStorage`「user_id 空のみ」にしたのと対称。
+
+**プロセス失敗の教訓**: (2) の HTML 変更で、Read せず推測した `old_string` (`bulk-sheet-head`/`bulk-sheet-footer`/`-inner` 重複等、実在しない構造) で Edit を 2 連続失敗させ、v430・v431 の commit メッセージに「閉じるボタン移動」と書きながら実際は sw の CACHE_VERSION bump だけが push される状態を 2 回作った。HTML を Grep/Read で実構造確認してから v432 でようやく実体反映。**反省: HTML/CSS の Edit 前は必ず該当箇所を Read して exact match を取る (このセッションは startup hook inline で読んだ気になり Read 履歴が無く、Edit が弾かれた / 推測 old_string で空振りした、を複数回繰り返した)**。
+
+詳細な z-index 調査は §278 参照。
+
+---
+
 ## 278. v429 — 空マップ オンボーディングバナーが地図に隠れて「一瞬で消える」bug 修正 (z-index) + v428 調査
 
 **症状**: 新規ゲスト (localStorage 空・未ログイン) で初期ページを開くと、空マップ案内バナー `#empty-onboarding-banner`（「乗ったことのある路線でマップを塗ろう」）が一瞬表示 → 何もしなくても勝手に消える。記録ゼロのゲストなら本来は出続けるべき。
