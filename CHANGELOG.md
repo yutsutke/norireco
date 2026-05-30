@@ -52,6 +52,25 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 281. v434 — 一括記録アコーディオンに写真添付 (残課題 #2)
+
+**背景**: 一括記録の残課題のうち「アコーディオン展開に写真添付」(Notion §1.3 / A 段階外、別タスク持ち越し #2)。A-5 (v404) では `features.photos: false` で skip していた。factory (`createTripDetailEditor`) と PhotoArea は写真対応済みなので、Notion では「`saveBulkDrafts` での `uploadAndGetPhotos(tripId)` 連結を追加すれば動く軽い拡張」と見積もられていた。
+
+**見落としていた落とし穴**: 一括記録のアコーディオンは「同時 1 行」制御で、行を閉じる/切替えるたびに `_openEditor.destroy()` → `PhotoArea.destroy()` が走り、**未アップロードの新規写真 (内部 `items[]` の `kind:'new'` blob) が消える**。draft Map に退避される editor 状態 (`getDraft()`) には写真が含まれない (getDraft は collectPhotos しない)。素直に `features.photos:true` にするだけだと、別の行を開いた瞬間に前の行の写真が失われる。
+
+**設計**: 「保留 blob を draft に退避 → 保存時に `uploadPhoto` で個別アップロード」方式。trip_id は保存時まで未確定なので、開いている間は `getOwnerId: () => null`、実アップロードは `saveBulkDrafts` で trip_id 確定後に行う (v258 の確認モーダルと同じ順序の発想)。
+
+**実装** (3 ファイル):
+- **`18-photo-area.js`**: ① `createPhotoArea` に `initialItems` オプション追加 — `getItemsSnapshot()` の戻り値を受け、`kind:'new'` は blob から previewUrl を再生成して復元 (既存 `initialPhotos` (url のみ) より優先)。② `getItemsSnapshot()` メソッド追加 — items を破壊せず複製で返す (new は previewUrl を含めず blob のみ = 二重 revoke 回避)。`initialUrls` (削除 diff 用) は existing のみに限定。
+- **`20-trip-detail-editor.js`**: `initPhotos` で `featPhotos.initialItems` を passthrough。`getPhotoItems()` メソッド追加 (destroy 前に呼んで退避、destroy 後は空配列)。
+- **`21-bulk-record.js`**: ① `uploadPhoto` を import。② アコーディオン body に `📷 写真` ラベル + `.tde-photos` コンテナ追加、`_mountDetailEditor` の `features.photos` を `{kind:'trip', getOwnerId:()=>null, initialItems: draft._photoItems}` に。③ `_closeAccordion` / 区間ピッカー変更時の再 mount の両方で、destroy 前に `editor.getPhotoItems()` を `draft._photoItems` に退避。④ `_uploadDraftPhotos(draft, tripId)` ヘルパー (existing はそのまま / new は `uploadPhoto('trip', tripId, blob)`)。⑤ `saveBulkDrafts` で trip_id 確定後にアップロード、未ログインはスキップ (R2 は JWT 必須)、写真失敗は trip 本体保存は継続 (部分コミット許容)、トーストに写真失敗/未ログインスキップ件数を付記。
+
+**検証**: preview (python static) の eval で、(1) アコーディオン展開時に `📷 写真` + PhotoArea (`.pa-wrap` / `＋0/5`) が mount されること、(2) 合成 PNG を file input に注入 → 別行に切替 → 戻ると `＋1/5` でサムネイル復元 + `blob:` URL 再生成 (= snapshot→復元パスが正常) を確認。console エラー無し。実 R2 アップロード (`uploadPhoto` 経由) は認証必須でローカル静的 preview では再実行不可だが、v258 以降の確認モーダル写真フローと同一関数のため動作は実証済み。
+
+**残課題 (一括記録)**: ① 環状線対応 (山手線 17/30 駅塗り)、③ 複数 segment (設計上スキップ推奨) は別途。
+
+---
+
 ## 280. v433 — 一括記録シートが地図タブで見えないバグ修正 (#bulk-record-sheet を .content 外へ移動)
 
 **症状**: 地図タブのオンボーディングバナーから `#bulk-record-sheet`（一括記録モーダル）を開くと、中身（638系統リスト）は描画されるのに地図タブでは見えず、ユーザーがマイページタブに手動で切り替えると見える。PC・スマホ両方で再現。ユーザーの「マイページタブに切り替えると表示されている」という証言が決定打になった。

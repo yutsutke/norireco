@@ -149,26 +149,56 @@ export function createPhotoArea(opts) {
     kind,
     getOwnerId,
     initialPhotos = [],
+    // v434: 再 mount 用スナップショット (getItemsSnapshot の戻り値)。指定時は initialPhotos より優先。
+    //   new アイテム ({kind:'new', blob, w, h}) は previewUrl を持たない形で渡るので blob から再生成する。
+    //   用途: 一括記録のアコーディオンが行切替で PhotoArea を destroy → 再 open で復元する。
+    initialItems = null,
     maxCount = 5,
     onChange = null,
   } = opts;
 
   // items[]: { kind: 'existing', url, w, h, bytes, content_type }
   //       | { kind: 'new', blob, w, h, previewUrl }
-  let items = (Array.isArray(initialPhotos) ? initialPhotos : [])
-    .filter((p) => p && p.url)
-    .map((p) => ({
-      kind: 'existing',
-      url: p.url,
-      w: p.w || null,
-      h: p.h || null,
-      bytes: p.bytes || null,
-      content_type: p.content_type || 'image/webp',
-    }));
+  let items;
+  if (Array.isArray(initialItems) && initialItems.length > 0) {
+    // v434: スナップショットからの復元 — existing はそのまま、new は blob から previewUrl 再生成。
+    items = initialItems
+      .filter((it) => it && (it.url || it.blob))
+      .map((it) => {
+        if (it.kind === 'new' && it.blob) {
+          return {
+            kind: 'new',
+            blob: it.blob,
+            w: it.w || null,
+            h: it.h || null,
+            previewUrl: it.previewUrl || URL.createObjectURL(it.blob),
+          };
+        }
+        return {
+          kind: 'existing',
+          url: it.url,
+          w: it.w || null,
+          h: it.h || null,
+          bytes: it.bytes || null,
+          content_type: it.content_type || 'image/webp',
+        };
+      });
+  } else {
+    items = (Array.isArray(initialPhotos) ? initialPhotos : [])
+      .filter((p) => p && p.url)
+      .map((p) => ({
+        kind: 'existing',
+        url: p.url,
+        w: p.w || null,
+        h: p.h || null,
+        bytes: p.bytes || null,
+        content_type: p.content_type || 'image/webp',
+      }));
+  }
 
   // v261+: 初期 URL を記憶 (保存時の diff で削除対象を検出)
   // モーダル開いた時点で既にあった写真の URL セット — ✕ で外されたら R2 から削除する
-  const initialUrls = new Set(items.map((it) => it.url));
+  const initialUrls = new Set(items.filter((it) => it.kind === 'existing').map((it) => it.url));
 
   // DOM 構築
   container.innerHTML = `
@@ -394,6 +424,15 @@ export function createPhotoArea(opts) {
 
     hasUnsavedNew() {
       return items.some((it) => it.kind === 'new');
+    },
+
+    // v434: 再 mount 用スナップショット — items を破壊せず複製して返す。
+    //   new アイテムは previewUrl を含めない (受け側が blob から再生成し、二重 revoke を避ける)。
+    //   一括記録のアコーディオン行切替で「未アップロード写真を draft に退避」するために使う。
+    getItemsSnapshot() {
+      return items.map((it) => it.kind === 'new'
+        ? { kind: 'new', blob: it.blob, w: it.w, h: it.h }
+        : { kind: 'existing', url: it.url, w: it.w, h: it.h, bytes: it.bytes, content_type: it.content_type });
     },
 
     destroy() {

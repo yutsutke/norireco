@@ -1382,6 +1382,8 @@ export function createTripDetailEditor(opts) {
       container: photoInner,
       kind: featPhotos.kind || 'trip',
       getOwnerId: (typeof featPhotos.getOwnerId === 'function') ? featPhotos.getOwnerId : (() => null),
+      // v434: initialItems (再 mount スナップショット) があれば優先 — 一括記録のアコーディオン復元用。
+      initialItems: Array.isArray(featPhotos.initialItems) ? featPhotos.initialItems : null,
       initialPhotos: featPhotos.initialPhotos || draft.photos || [],
       maxCount: featPhotos.maxCount || 5,
       onChange: onChange ? () => { try { onChange(); } catch (e) {} } : null,
@@ -1408,6 +1410,13 @@ export function createTripDetailEditor(opts) {
     async uploadAndGetPhotos(ownerIdOverride) {
       if (!_photoArea) return [];
       return _photoArea.uploadAndGetPhotos(ownerIdOverride);
+    },
+
+    // v434: 写真 items の再 mount 用スナップショット。一括記録のアコーディオンが
+    //   行切替で editor を destroy → 再 open する際、未アップロード写真を draft に
+    //   退避してから destroy するために使う (destroy 後は PhotoArea が無いため空配列)。
+    getPhotoItems() {
+      return _photoArea ? _photoArea.getItemsSnapshot() : [];
     },
 
     // 内部 PhotoArea (blob URL revoke) + DOM クリア。

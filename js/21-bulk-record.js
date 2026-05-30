@@ -37,6 +37,9 @@ import { updateOverlays } from './08-rendering.js';
 //   B-4-b の multi-container API (containers: {time, train, delay, notes})
 //   を活用して 1 行に複数 section を縦並べ。photos は A-5 では skip。
 import { createTripDetailEditor } from './20-trip-detail-editor.js';
+// v434: 写真添付。アコーディオンは行切替で editor を destroy するため、未アップロード写真は
+//   draft._photoItems に退避し (editor.getPhotoItems)、保存時に trip_id 確定後 uploadPhoto で個別 upload。
+import { uploadPhoto } from './18-photo-area.js';
 
 window.NORIRECO = window.NORIRECO || {};
 window.NORIRECO.bulkRecord = window.NORIRECO.bulkRecord || {};
@@ -286,6 +289,8 @@ function _buildLineItem(sl) {
       <div class="tde-train"></div>
       <div class="tde-delay"></div>
       <div class="tde-notes"></div>
+      <div class="bulk-photos-label" style="font-size:11px;color:var(--gold);margin:10px 0 4px">📷 写真</div>
+      <div class="tde-photos"></div>
     </div>
   `;
 
@@ -428,10 +433,13 @@ function _mountSegmentPicker(sl, body) {
     if (_openEditor) {
       try {
         const ed = _openEditor.getDraft();
+        // v434: destroy 前に未アップロード写真を退避 (再 mount で復元するため)。
+        const photoItems = _openEditor.getPhotoItems();
         const cur2 = _bulkDrafts.get(sl.id);
         if (cur2) {
           _bulkDrafts.set(sl.id, {
             ...cur2,
+            _photoItems:    (Array.isArray(photoItems) && photoItems.length > 0) ? photoItems : null,
             date:           ed.date           || null,
             depart_time:    ed.depart_time    || null,
             arrive_time:    ed.arrive_time    || null,
@@ -460,10 +468,11 @@ function _mountDetailEditor(sl, body) {
   try {
     _openEditor = createTripDetailEditor({
       containers: {
-        time:  body.querySelector('.tde-time'),
-        train: body.querySelector('.tde-train'),
-        delay: body.querySelector('.tde-delay'),
-        notes: body.querySelector('.tde-notes'),
+        time:   body.querySelector('.tde-time'),
+        train:  body.querySelector('.tde-train'),
+        delay:  body.querySelector('.tde-delay'),
+        notes:  body.querySelector('.tde-notes'),
+        photos: body.querySelector('.tde-photos'),
       },
       initial: _draftToEditorInitial(draft, sl),
       features: {
@@ -471,7 +480,15 @@ function _mountDetailEditor(sl, body) {
         trainPicker: 'per-seg-rows',
         delay:       true,
         notes:       true,
-        photos:      false,
+        // v434: 写真添付。trip_id は保存時まで未確定なので getOwnerId は null を返し、
+        //   実 upload は saveBulkDrafts で _uploadDraftPhotos(draft, tripId) が担う。
+        //   initialItems = 行切替で退避した未アップロード写真スナップショット (再 open 復元)。
+        photos: {
+          kind: 'trip',
+          getOwnerId: () => null,
+          initialItems: Array.isArray(draft._photoItems) ? draft._photoItems : null,
+          maxCount: 5,
+        },
       },
     });
   } catch (e) {
@@ -504,10 +521,13 @@ function _closeAccordion() {
   if (_openEditor) {
     try {
       const ed = _openEditor.getDraft();
+      // v434: destroy 前に未アップロード写真を退避 (再 open 復元 + 保存時 upload 用)。
+      const photoItems = _openEditor.getPhotoItems();
       const cur = _bulkDrafts.get(lineId);
       if (cur) {
         _bulkDrafts.set(lineId, {
           ...cur,
+          _photoItems:    (Array.isArray(photoItems) && photoItems.length > 0) ? photoItems : null,
           date:           ed.date           || null,
           depart_time:    ed.depart_time    || null,
           arrive_time:    ed.arrive_time    || null,
@@ -743,6 +763,28 @@ function _buildTripFromDraft(draft, idx, ctx) {
   };
 }
 
+// v434: draft の退避写真 (_photoItems) を trip_id 確定後にアップロードして photos[] を返す。
+//   - existing (url 既存) はそのまま、new (blob) は uploadPhoto で R2 PUT。
+//   - 1 枚でも失敗すると例外 → 呼び元が catch して trip 本体保存は継続 (部分コミット許容)。
+//   - 未ログイン (R2 不可) では呼び元がガードして呼ばない。
+async function _uploadDraftPhotos(draft, tripId) {
+  const items = Array.isArray(draft._photoItems) ? draft._photoItems : [];
+  if (items.length === 0) return [];
+  const result = [];
+  for (const it of items) {
+    if (it && it.kind === 'new' && it.blob) {
+      const up = await uploadPhoto('trip', tripId, it.blob, { w: it.w, h: it.h });
+      result.push(up);
+    } else if (it && it.url) {
+      result.push({
+        url: it.url, w: it.w || null, h: it.h || null,
+        bytes: it.bytes || null, content_type: it.content_type || 'image/webp',
+      });
+    }
+  }
+  return result;
+}
+
 async function _postTripToSupabase(trip) {
   // saveMultiSegmentTrip と同じパターン。v421 RLS 強化以降は access_token Bearer 必須
   // (anon Bearer だと auth.uid() = user_id が満たせず 403)。
@@ -794,11 +836,30 @@ async function saveBulkDrafts() {
   let savedCount = 0;
   let failedCount = 0;
   let totalStations = 0;
+  let photoFailCount = 0;     // v434: 写真アップロード失敗件数 (ログイン中)
+  let guestPhotoSkipped = 0;  // v434: 未ログインで写真を諦めた件数
   const errors = [];
   const tripsForRebuild = [];
 
   for (let i = 0; i < drafts.length; i++) {
     const trip = _buildTripFromDraft(drafts[i], i, ctx);
+
+    // v434: 写真 — 退避済み未アップロード写真を trip_id 確定後にアップロード。
+    //   未ログインは R2 不可 (JWT 必須) のためスキップ。失敗時は写真だけ諦め trip 本体は継続。
+    const draftPhotoCount = Array.isArray(drafts[i]._photoItems) ? drafts[i]._photoItems.length : 0;
+    if (draftPhotoCount > 0) {
+      if (isGuest) {
+        guestPhotoSkipped += draftPhotoCount;
+      } else {
+        try {
+          trip.photos = await _uploadDraftPhotos(drafts[i], trip.id);
+        } catch (e) {
+          photoFailCount++;
+          console.warn('[bulk-record] photo upload failed:', drafts[i].lineId, e);
+        }
+      }
+    }
+
     tripsForRebuild.push(trip);
     totalStations += trip.total_stations;
 
@@ -844,15 +905,18 @@ async function saveBulkDrafts() {
   try { NORIRECO.mypage?.renderMpTripsResultOnly?.(); } catch (e) {}
 
   // トースト
+  // v434: 写真の補足。ログイン中の失敗 / 未ログインでのスキップを末尾に付記。
+  const photoNote = photoFailCount > 0 ? `\n⚠️ 写真 ${photoFailCount} 件のアップロード失敗` : '';
   if (isGuest) {
     // v418: 未ログイン保存 — 端末内のみ + 更新で消える旨を強めに案内。
-    showRecordToast(`✅ ${savedCount} 件まとめて記録 (${totalStations} 駅)\n⚠️ 端末内のみ・ブラウザ更新で消えます / 🔑 ログインで保存`, 'warn', 9000);
+    const guestPhotoNote = guestPhotoSkipped > 0 ? `\n📷 写真 ${guestPhotoSkipped} 枚は未ログインのため保存されません` : '';
+    showRecordToast(`✅ ${savedCount} 件まとめて記録 (${totalStations} 駅)\n⚠️ 端末内のみ・ブラウザ更新で消えます / 🔑 ログインで保存${guestPhotoNote}`, 'warn', 9000);
   } else if (failedCount === 0) {
-    showRecordToast(`✅ ${savedCount} 件まとめて記録 (${totalStations} 駅)`);
+    showRecordToast(`✅ ${savedCount} 件まとめて記録 (${totalStations} 駅)${photoNote}`, photoFailCount > 0 ? 'warn' : undefined, photoFailCount > 0 ? 9000 : undefined);
   } else if (savedCount > 0) {
-    showRecordToast(`⚠️ ${savedCount} 件保存 / ${failedCount} 件 Supabase 失敗 (ローカル保存済)\n${errors[0] || ''}`, 'warn', 9000);
+    showRecordToast(`⚠️ ${savedCount} 件保存 / ${failedCount} 件 Supabase 失敗 (ローカル保存済)\n${errors[0] || ''}${photoNote}`, 'warn', 9000);
   } else {
-    showRecordToast(`❌ Supabase 全 ${failedCount} 件失敗 (ローカル保存のみ)\n${errors[0] || ''}`, 'warn', 9000);
+    showRecordToast(`❌ Supabase 全 ${failedCount} 件失敗 (ローカル保存のみ)\n${errors[0] || ''}${photoNote}`, 'warn', 9000);
   }
 
   _saving = false;
