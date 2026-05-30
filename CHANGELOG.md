@@ -52,6 +52,29 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 282. v435 — 環状線「17/30 駅塗り」は v422 で解消済みと判明 → 偽の注意書きを撤去 (残課題 #1)
+
+**結論 (一次データで確定)**: 一括記録の残課題 #1「環状線対応 — 山手線 17/30 駅塗り」は **既に解消済み**で、コードの機能修正は不要だった。Notion §1.3 / STATUS の「17/30」記述は A-5 (v404) 当時のもので、**v422 (slRiddenSt を id 優先 + name fallback に統一) で実質解決していた**。残っていた実害は「一括記録シートに表示される偽の注意書き」だけ。
+
+**調査 (preview eval で実機計測)**:
+- 山手線 SL は実行時 `stations.length = 30` / `circular: true`。candidateN02Ids の N02「山手線」エンティティは西側 17 駅のみ (品川→新宿→田端)、東側は東北線(9)・東海道線(7) に分散。
+- 全周 draft (`東京→有楽町`, stations[0]→stations[-1]) で rebuild → **`slRiddenSt['jr_yamanote_line'].size = 30/30`・欠落ゼロ**。`riddenSt` (N02 物理線) は 山手線17+東北線8+東海道線6 だが、**これは SERVICE_LINE のポリライン描画には使われない**。
+- 実 redraw パス (ゲスト保存フロー) で計測 → `drawServiceLineBase` が SL 自身の 30 駅 + `sl.circular` の wrap で描画し、**ridden 実線が全 30 駅 + 環状閉じ線をカバー** (`riddenMainPolylines:2`=run+wrap, `circularWrapDrawn:true`)。
+- 大阪環状線も同機構で **19/19・欠落ゼロ**。circular SL はこの 2 本のみ。
+
+**仕組み**: `04b-ride-record.js` の slRiddenSt 構築は SL の `stations` 配列を index 0..N-1 で線形展開 (357-370)。`08-rendering.js` の `drawServiceLineBase` は `slRiddenSt[sl.id]` の駅 id Set + `sl.circular` の wrap (594-612) で描く。`riddenSt` (N02 17駅) は SERVICE_LINE 描画経路に不使用。よって slRiddenSt が 30 になった時点 (v422) で全周が塗られていた。
+
+**実害の修正** (`21-bulk-record.js` + `noritetsu-map.html`):
+- `_renderBody` の偽の注意書き `🚧 環状線は 1 駅のみ ridden になります (A-5 で半周分割予定)` の `<div class="bulk-note">` を撤去 (ユーザーに虚偽の制約を見せていた)。
+- `.bulk-note` CSS (孤立) を削除。
+- `_buildDefaultDraft` / ファイル header の「環状線は同一駅 / 1 駅のみ / 半周分割予定」コメントを実態 (全周塗られる) に修正。
+
+**教訓**: STATUS / Notion の残課題記述を鵜呑みにせず、preview eval で `slRiddenSt` / `riddenSt` / 実描画ポリラインを実測して「ドキュメントが古い・コードが正しい」を確定した (CLAUDE.md「ずれたらコードが正しい」+ 一次データ規律)。`circular` は `master.is_circular` 由来 (raw JSON の `circular` 直読みでは undefined に見える点に注意)。
+
+**残課題 (一括記録)**: ③ 複数 segment = 設計上スキップ推奨 (1 系統 1 行モデル / 手動記録 07 で代替)。
+
+---
+
 ## 281. v434 — 一括記録アコーディオンに写真添付 (残課題 #2)
 
 **背景**: 一括記録の残課題のうち「アコーディオン展開に写真添付」(Notion §1.3 / A 段階外、別タスク持ち越し #2)。A-5 (v404) では `features.photos: false` で skip していた。factory (`createTripDetailEditor`) と PhotoArea は写真対応済みなので、Notion では「`saveBulkDrafts` での `uploadAndGetPhotos(tripId)` 連結を追加すれば動く軽い拡張」と見積もられていた。

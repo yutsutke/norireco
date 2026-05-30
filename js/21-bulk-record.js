@@ -15,10 +15,12 @@
 //   A-3 (v402): 一括保存 MVP — saveBulkDrafts で順次 Supabase POST + localStorage push
 //                + RIDDEN_SEGS push + rideRecord.rebuild + redrawAllLinesAfterTripChange
 //                + updateOverlays + _mypageCache push + renderMpTripsResultOnly
-//                + トースト + sheet 自動 close。環状線は 1 駅のみ ridden (既知 / A-5 で改善)
+//                + トースト + sheet 自動 close
 //   A-4: 検索 + フィルタ (近く / 会社 / 都道府県) + 既定「近く」並べ替え
 //   A-5: アコーディオン展開 (createTripDetailEditor per-seg-rows mode を行内 mount)
-//        + 環状線の半周分割対応
+//   A-9 (v434): アコーディオンに写真添付 (退避/復元 + 保存時 uploadPhoto)
+//   環状線 (v434 検証): 山手線 30/30・大阪環状線 19/19 で全周塗られると実機計測で確認。
+//        旧「環状線は半周分割が必要 / 17/30」は v422 (slRiddenSt id 優先) で解消済 → 偽の注意書き撤去
 //   A-6: 空マップ時オンボーディングバナー
 //   A-7: unknown 完乗率/塗り集計まわりの検証
 //
@@ -74,8 +76,12 @@ let _openEditor = null;
 // ──────────────────────────────────────────────────────────────
 
 // 営業系統 1 件 → 全線 1 segment の draft trip。
-// 端駅: stations[0] → stations.at(-1)。環状線は同一駅になる (A-5 で半周 2 seg
-// に分割するか検討するが、A-2 段階では端駅同名のままで一旦保持 = visit-only 相当)。
+// 端駅: stations[0] → stations.at(-1)。
+// v434 検証: 環状線 (山手線/大阪環状線) も stations[0]→stations[-1] (例 東京→有楽町)
+//   で問題なく全周塗られる。rebuild の slRiddenSt は SL 自身の駅配列を index 0..N-1 で
+//   線形展開し (04b:357-370)、drawServiceLineBase は slRiddenSt + sl.circular の wrap で
+//   全周を描く (08:594-612)。「環状線は 1 駅のみ / 17/30」という旧 A-5 (v404) の懸念は
+//   v422 で slRiddenSt が id 優先になった時点で解消済み (実機 30/30・19/19 を計測確認)。
 function _buildDefaultDraft(sl) {
   const sts = Array.isArray(sl.stations) ? sl.stations : [];
   if (sts.length < 1) return null;
@@ -199,9 +205,6 @@ function _renderBody() {
         ${groupOpts}
       </select>
       <button class="bulk-filter-reset" id="bulk-filter-reset" title="フィルタをリセット">↺</button>
-    </div>
-    <div class="bulk-note">
-      🚧 環状線は 1 駅のみ ridden になります (A-5 で半周分割予定)。
     </div>
     <div id="bulk-checklist-meta" class="bulk-checklist-meta"></div>
     <div id="bulk-checklist" class="bulk-checklist"></div>
