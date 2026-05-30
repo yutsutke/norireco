@@ -277,7 +277,11 @@ export function updateDateFilterUI() {
 // 対応: ログイン中なら `trip.user_id === uid` のみ採用 (未ログイン時は全件を許容)。
 function filterTripsByCurrentUser(trips) {
   const uid = currentUserId();
-  if (!uid) return trips; // 未ログイン: localStorage の全件 (ガイド用)
+  // v429: ゲスト時は自分の記録 (uid=null で localStorage 保存した分 = user_id 無し) のみ通す。
+  //   従来 `return trips` で全件返しており、過去ログインの user_id 付き trip が
+  //   applyDateFilter 経由で地図塗り/集計に混入しうる穴だった (v419 §269 で renderMypage
+  //   ゲスト分岐を「user_id 空のみ」にしたときの対称修正漏れ)。
+  if (!uid) return trips.filter(t => !t.user_id);
   return trips.filter(t => !t.user_id || t.user_id === uid);
 }
 
