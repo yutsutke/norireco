@@ -66,20 +66,6 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
-## 280. v433 — 一括記録シートが地図タブで見えないバグ修正 (#bulk-record-sheet を .content 外へ移動)
-
-**症状**: 地図タブのオンボーディングバナーから `#bulk-record-sheet`（一括記録モーダル）を開くと、中身（638系統リスト）は描画されるのに地図タブでは見えず、ユーザーがマイページタブに手動で切り替えると見える。PC・スマホ両方で再現。ユーザーの「マイページタブに切り替えると表示されている」証言が決定打。
-
-**真因**: `#bulk-record-sheet`（class=memo-modal, `position:fixed; inset:0`）が `.content`（`position:fixed` ＝ containing block / stacking context を作る）の**内側**に取り残されていた。fixed 要素の基準が viewport でなく祖先の `.content`（top:92px〜）になり、タブ表示状態に巻き込まれて地図タブでは全画面表示されなかった。他の正常モーダル（`#station-action-modal` / `#end-station-modal` / `#char-modal` 等）は全て `.content` の外のトップレベルにある。bulk-record-sheet だけ `.content` 内に取り残されていた（A-1 v400 で skeleton を置いた位置が `.content` 内だった）。
-
-**修正**: `#bulk-record-sheet` ブロックを `.content` の外（`#station-action-modal` と同じトップレベル）へ移動。ブロック移動なので div バランス不変（移動前後で `<div` 286 / `</div>` 286 一致、`id` 重複なしを git blob 比較で検証）。preview（python static, 390x780, SW purge 後）で「地図タブ表示のままバナークリック → シートが `0,0,390,780` 全画面・`centerInsideSheet:true`・親が `.content` でない」を実機検証。サブエージェント（general-purpose）で修正→検証→push。
-
-**調査プロセスの教訓**: 当初 z-index やクリック貫通を疑い preview 測定したが、ビューポートが 0x0 の状態で測り「枠内 OK」等の壊れた値を信用して誤報を重ねた。最終的に (1) ユーザー実機 console で `{zIndex:"1000",closeX:true,onclick:"openBulkRecordSheet()"}` を取得しコード新版を確定、(2)「マイページタブで見える」証言で DOM 配置問題に絞り込み、(3) git blob で div 数を直接数え構造健全性を確認、で解決。**preview 測定は `preview_resize` で `window.innerWidth>0` を確認してから。PowerShell/Bash の文字化け出力は信用せず Grep(ripgrep)・git blob で数える。**
-
-z-index 調査 (v429) は §278、閉じるボタン移設 (v432) は §279 参照。
-
----
-
 ## 279. v430〜v432 — 一括記録シート 閉じるボタンを右上に移設 + ゲスト trip フィルタ対称修正
 
 依頼3点（細かい改善）をまとめて処理。
