@@ -27,10 +27,12 @@ git log --oneline -20
   - ✅ S-1 (v410): 個別 trip シェア — 旅程カードに「📤 シェア」、`generateTripOgpCanvas` で 1 旅程分の OGP (地図を trip 区間にズーム + 始点○/終点● + 路線名/区間/駅数/乗換/乗車日/車両パネル)。DL/Web Share/X。純クライアント
   - 🟡 S-2 (v412): R2 永続画像保存 — Worker `/upload/share-image` (presigned PUT, key `shares/<uid>/<id>.png`) + クライアント `uploadShareImage` + シェアモーダル「🔗 画像URLをコピー」(ログイン必須)。**⚠️ Worker は `cd worker && npx wrangler deploy` で別途デプロイが必要** (frontend は main push で反映済 v412 だが endpoint はデプロイ後に有効)
   - ✅ S-3 (v413): `/share/<id>` 受け側ページ完成・本番稼働確認済 — Supabase `norireco_shares` (公開 SELECT RLS、migration Applied 2026-05-29) + Pages Function `functions/share/[id].js` (OGP メタ SSR + 「自分も記録」CTA)。シェアモーダルは「🔗 シェアリンクを作成」に置換 (画像→R2→shares insert→/share/<id> 生成→Web Share/clipboard)
-  - **シェア機能 残り** (S-1〜S-3 で MVP 完結。以降は磨き込み):
+  - **シェア機能 残り** (S-1〜S-3 で MVP 完結。以降は磨き込み + 拡散強化):
     - ✅ v415→v417: シェアボタン整理。v415 で「📤 1 本化 (/share リンク統合)」+ Worker `/delete/photo` 正規表現に `shares` 3-segment 分岐 (deploy 済 Version d854330d) → **v417 で「📤 画像をシェア」「🔗 リンクをシェア」の 2 ボタンに再分離** (Windows OS 共有シートが file 共有時に URL=text を落とすため。🔗 は PC=クリップボードコピー / モバイル=Web Share、ログイン必須)。CHANGELOG §265〜§267
     - ✅ v416: シェア取り消し UI 本体 — マイページ 5 番目「🔗 シェア」サブタブ (作成済み `norireco_shares` を user_id で SELECT し一覧、🔗 リンクコピー + 🗑 取り消し)。取り消し = norireco_shares DELETE (RLS 本人) → R2 `/delete/photo` best-effort cleanup → 再描画。v415 統合で後退した「URL コピー」導線も PC で復活 (Web Share 不可時にクリップボードコピー)。CHANGELOG §266
     - ✅ v423: 垢BAN (share_banned) 連携を実装 — banned で /share リンク作成・画像シェアを停止 (シェアモーダル不開) + 既存リンクも revoked で配信停止 + マイページ「🔗 シェア」タブに状態バナー。詳細 → 🔥「垢BAN」/ CHANGELOG §273
+    - 🟡 v436: **受け側ページ強化 (③) + view/click 計測 (④)** — MVP サブ項目が全 ✅ で空だった本 TODO を拡散バリューチェーンで再定義し ③+④ を着手 (ユスケ確定 2026-05-31)。`/share/<id>` に CTA 文脈化 (kind 別) + 「乗レコでできること」価値訴求 3 項目、view (bot UA 除外) + CTA click (`/share/<id>/go` リダイレクト Function 経由) を `SECURITY DEFINER` RPC `bump_share_metric` (anon EXECUTE) で計測 → マイページ🔗シェアカードに 👁/🚃 表示。CTA に `?ref=s_<id>` 付与 (Phase 2 attribution の土台)。**⚠️ `supabase/migrations/v436_share_metrics.sql` を Supabase Dashboard で Run 要** (それまでカウント貯まらず、ページ表示は正常)。`functions/` は main push で自動反映。CHANGELOG §283
+    - **残り (Phase 2)**: 登録転換 attribution — CTA 付与済みの `?ref=s_<id>` を app 起動時に localStorage 保持 → 初回登録時に「どのシェア経由か」を記録 (12-auth 等 auth flow 改修)。集計の admin タブ横断ビューも候補。「シェアが分水嶺」(5大原則④) の本命指標
   - 注: v345 で「verified 限定ガード」は撤回 (GPS = 手動の手間省略、世間への証明不要)。手動記録も対等にシェア可
 
 - [ ] **垢BAN（シェア停止ペナルティ）** — 本体 ✅ v423 + full_banned enforcement ✅ v424 + 穴塞ぎ ✅ v425 + 管理 GUI MVP ✅ v426 (発動を Dashboard SQL から GUI に移管)

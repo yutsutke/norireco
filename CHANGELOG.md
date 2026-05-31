@@ -52,6 +52,34 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 283. v436 — シェア受け側 /share の強化 (③) + view/click 計測 (④)
+
+**カテゴリ**: A（実装 / 🔥 シェア機能 — MVP 以降の「残り」の定義から着手）
+
+**背景**: 🔥「シェア機能 — MVP 以降の残り」の TODO はぶら下がりサブ項目 (MVP S-1〜S-3 / 磨き込み v415〜v417 / 取り消し UI v416 / 垢BAN 連携 v423) が**全て ✅ で中身が空**、チェックボックスだけ残っていた。5大原則④「早期βで学習・本リリースで拡散・**シェアが分水嶺**」に照らし、「残り」を**拡散バリューチェーン (①動機 → ②魅力度 → ③受け手の転換 → ④計測)** のどこを厚くするかで再定義。ユスケ判断 (2026-05-31) で **③受け側ページ強化 + ④計測** を選択 (発生済みシェアの価値を最大化する側)。
+
+**設計判断 (ユスケ確定 2026-05-31)**:
+- **④計測の格納先 = Supabase (RPC + 列)**。CF Analytics ではなく、アプリ内 admin / マイページ / Supabase SQL でそのまま見られる自己完結を優先。
+- **登録転換 attribution = Phase 2 送り**。今回は view/click の漏斗まで。CTA リンクに `?ref=s_<id>` を仕込んで土台だけ作る (app の auth flow 改修は次回)。
+- **③ページ強化 = CTA 文脈化 + 価値訴求ブロック**。Leaflet 埋め込みではない (OGP 画像自体が trip 区間ズーム地図なので、ページの役割はコールド訪問者への価値伝達と記録への送り込み)。
+
+**設計の肝 (anon key 制約)**: 受け側は Cloudflare Pages Function で Supabase へ **anon key** でアクセス。`norireco_shares` の UPDATE は本人限定 RLS (v413) なので Function から view_count を直接 increment **できない** → `SECURITY DEFINER` 関数 `bump_share_metric(p_id,p_kind)` を 1 本だけ作り EXECUTE を anon に許可 (指定 id の view/click を +1 するだけ、`revoked=false` ガード、auth バイパス無し)。SNS unfurl クローラも GET で /share を叩くので、view は **UA で bot 除外**して人間の閲覧に寄せる。CTA は **`/share/<id>/go` リダイレクト Function 経由**にして JS 不要でサーバー側に click を確実計測 + `?ref` 付与。
+
+**実装**:
+- **`supabase/migrations/v436_share_metrics.sql`** (新規・**要 Run**): `norireco_shares` に `view_count`/`click_count` (integer NOT NULL DEFAULT 0) + RPC `bump_share_metric` (SECURITY DEFINER + 固定 search_path + revoked ガード) + EXECUTE を public REVOKE → anon/authenticated GRANT。確認 SELECT は列 2 / 関数 1 / anon EXECUTE 1 の期待行数付き。
+- **`functions/share/_metrics.js`** (新規): `_` 始まりで Pages ルーティング除外・import 専用。SUPABASE 定数 + `isLikelyBot(ua)` (bot UA 正規表現) + `bumpShareMetric(id,kind)` (RPC fire-and-forget) + `isValidShareId(id)`。`[id].js` と `[id]/go.js` で共有。
+- **`functions/share/[id].js`** (編集): SUPABASE 定数を `_metrics.js` import に集約。CTA を kind で文脈化 (trip→「🚃 自分も乗車記録をはじめる」/ profile→「🚃 自分の完乗マップをつくる」) + href を `/share/<id>/go` に + 「乗レコでできること」3 項目 (🗾完乗率マップ / 🎭駅キャラ / 📍ワンタップ記録) を本文追加。row 取得後に bot 除外で `context.waitUntil(bumpShareMetric(id,'view'))`。
+- **`functions/share/[id]/go.js`** (新規): id 検証 → `context.waitUntil(bumpShareMetric(id,'click'))` → `302 → norireco.app/?ref=s_<id>` (Cache-Control: no-store で CDN キャッシュ回避)。
+- **`js/14-share-ogp.js`** (編集): `shareCardHtml` に `👁 N 表示 ・ 🚃 N クリック` 行を追加 (本人が自分のシェアの反響を見られる = 拡散の動機づけ)。`fetchMyShares` は `select=*` なので fetch 改修不要、旧データは `Number()||0` で 0 表示。
+- **`noritetsu-map.html`**: `.mp-share-stats` CSS。
+- **`sw.js`**: CACHE_VERSION v435 → v436。
+
+**デプロイ / 順序**: `functions/` は Pages の main push で自動反映 (worker のような個別 wrangler deploy 不要)。SQL は **ユスケが Supabase Dashboard で Run → 末尾に Applied 行追記**。RPC が未適用の間も Function は握りつぶすのでページ表示・リダイレクトは正常、カウントが貯まらないだけ。
+
+**残課題 / Phase 2**: 登録転換 attribution (`?ref=s_<id>` → localStorage 保持 → 初回登録時に記録) は app の auth flow 改修込みで次回。集計の見方は当面マイページ各カードの 👁/🚃 + Supabase SQL (将来 admin タブに横断ビュー追加も可)。anon RPC 直叩きでの水増しは早期β内部指標として許容 (将来 rate-limit / bot 除外強化)。
+
+**検証**: `npm run check` 25/25 OK。Pages Functions 3 本は `.mjs` コピー + `node --check` で構文 OK (PowerShell stdin パイプは日本語化けで偽 FAIL を出すため、一次データはファイル直 check で取得)。**preview 不可**: `/share` Function は Vite dev (:5173) では配信されず、計測表示も DB 列追加後でないと 0 以外にならないため、本番 push + SQL Run 後の実機確認が必要。
+
 ## 282. v435 — 環状線「17/30 駅塗り」は v422 で解消済みと判明 → 偽の注意書きを撤去 (残課題 #1)
 
 **結論 (一次データで確定)**: 一括記録の残課題 #1「環状線対応 — 山手線 17/30 駅塗り」は **既に解消済み**で、コードの機能修正は不要だった。Notion §1.3 / STATUS の「17/30」記述は A-5 (v404) 当時のもので、**v422 (slRiddenSt を id 優先 + name fallback に統一) で実質解決していた**。残っていた実害は「一括記録シートに表示される偽の注意書き」だけ。

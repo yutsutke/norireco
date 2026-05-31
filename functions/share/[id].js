@@ -8,9 +8,9 @@
 //   anon key はそもそも frontend に露出している公開キーなのでここに置いても新たな漏洩はない。
 // ───────────────────────────────────────────────────────────────
 
-const SUPABASE_URL = 'https://zkscxhhlyhdaanisjhdi.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inprc2N4aGhseWhkYWFuaXNqaGRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNTAzNjcsImV4cCI6MjA5MzcyNjM2N30.rGOli3UJjjBtF8caD7NXaoCYdfgbIyv4j_GCdjmPpsU';
-const APP_URL = 'https://norireco.app/';
+// 計測ヘルパー (v436) — SUPABASE 定数 / bot 判定 / RPC 計測 / id バリデーションを共有。
+import { SUPABASE_URL, SUPABASE_ANON_KEY, APP_URL, isLikelyBot, bumpShareMetric, isValidShareId } from './_metrics.js';
+
 const DEFAULT_IMAGE = 'https://norireco.app/icon-512.png';
 
 function escapeHtml(s) {
@@ -28,7 +28,7 @@ function safeImageUrl(url) {
   return DEFAULT_IMAGE;
 }
 
-function renderHtml({ title, description, image, pageUrl, found }) {
+function renderHtml({ id, kind, title, description, image, pageUrl, found }) {
   // OGP メタ用 (見つからない時はアプリ汎用文言)
   const metaTitle = found ? (title || '乗レコの記録') : '乗レコ - 電車旅';
   const metaDesc = found ? (description || '全国鉄道の乗車記録・完乗率を可視化する PWA') : '全国鉄道の乗車記録・完乗率を可視化する PWA。乗り鉄のための YAMAP。';
@@ -37,7 +37,10 @@ function renderHtml({ title, description, image, pageUrl, found }) {
   const img = escapeHtml(image);
   const url = escapeHtml(pageUrl);
   const headTitle = escapeHtml(found ? `${metaTitle} | 乗レコ` : 'シェアが見つかりません | 乗レコ');
-  const ctaLabel = found ? '🚃 自分も乗レコで記録してみる' : '🚃 乗レコをひらく';
+  // CTA は kind で文脈化。リンク先は計測用の /share/<id>/go 経由 (click を数えてから本体へ 302)。
+  const ctaLabel = !found ? '🚃 乗レコをひらく'
+    : (kind === 'profile' ? '🚃 自分の完乗マップをつくる' : '🚃 自分も乗車記録をはじめる');
+  const ctaHref = found ? `/share/${id}/go` : APP_URL;
   // 可視ページ本文 (見つからない時の文言)
   const bodyTitle = found ? t : 'このシェアは見つかりませんでした';
   const bodyDesc = found ? d : '削除されたか、URL が間違っている可能性があります。';
@@ -77,6 +80,12 @@ function renderHtml({ title, description, image, pageUrl, found }) {
   .cta:hover{filter:brightness(1.08);}
   .sub{text-align:center;color:var(--silver);font-size:12px;margin-top:14px;}
   .sub a{color:var(--silver);}
+  .feats-h{font-size:13px;color:var(--silver);font-weight:700;margin:26px 0 4px;letter-spacing:.04em;}
+  .feats{display:flex;flex-direction:column;gap:12px;margin-top:6px;}
+  .feat{display:flex;gap:12px;align-items:flex-start;}
+  .feat .ic{font-size:22px;line-height:1.3;flex:none;width:30px;text-align:center;}
+  .feat .tx{font-size:13px;color:var(--silver);line-height:1.5;}
+  .feat .tt{color:var(--white);font-weight:700;font-size:14px;margin-bottom:1px;}
 </style>
 </head>
 <body>
@@ -90,7 +99,13 @@ function renderHtml({ title, description, image, pageUrl, found }) {
       <p class="desc">${bodyDesc}</p>
     </div>
   </div>
-  <a class="cta" href="${escapeHtml(APP_URL)}">${ctaLabel}</a>
+  <a class="cta" href="${escapeHtml(ctaHref)}">${ctaLabel}</a>
+  <div class="feats-h">乗レコでできること</div>
+  <div class="feats">
+    <div class="feat"><div class="ic">🗾</div><div class="tx"><div class="tt">全国マップで完乗率</div>乗った路線が地図に色づき、あなたの「完乗率」が一目でわかる。</div></div>
+    <div class="feat"><div class="ic">🎭</div><div class="tx"><div class="tt">駅キャラを集める</div>駅を訪れるとご当地の駅キャラを獲得。旅の記録がコレクションに。</div></div>
+    <div class="feat"><div class="ic">📍</div><div class="tx"><div class="tt">ワンタップ記録</div>乗った区間をタップで記録。手動でも GPS でも、まとめて一括でも。</div></div>
+  </div>
   <p class="sub">全国鉄道の乗車記録・完乗率を可視化する PWA・<a href="${escapeHtml(APP_URL)}">norireco.app</a></p>
 </div>
 </body>
@@ -102,8 +117,8 @@ export async function onRequestGet(context) {
   const id = params && params.id;
   const pageUrl = new URL(request.url).toString();
 
-  // id バリデーション (R2 share_id = 16 桁 hex 想定。緩めに英数 8〜64)
-  if (typeof id !== 'string' || !/^[a-zA-Z0-9_-]{6,64}$/.test(id)) {
+  // id バリデーション (R2 share_id = 16 桁 hex 想定。緩めに英数 6〜64)
+  if (!isValidShareId(id)) {
     return htmlResponse(renderHtml({ image: DEFAULT_IMAGE, pageUrl, found: false }), 404);
   }
 
@@ -127,7 +142,16 @@ export async function onRequestGet(context) {
     return htmlResponse(renderHtml({ image: DEFAULT_IMAGE, pageUrl, found: false }), 404);
   }
 
+  // view 計測: SNS unfurl クローラ等は除外し、人間の閲覧に近いものだけ +1 (ベストエフォート)。
+  // waitUntil でレスポンスをブロックせずに RPC を投げる (失敗は _metrics 側で握りつぶし)。
+  const ua = request.headers.get('user-agent') || '';
+  if (!isLikelyBot(ua)) {
+    context.waitUntil(bumpShareMetric(id, 'view'));
+  }
+
   const html = renderHtml({
+    id,
+    kind: row.kind || 'trip',
     title: row.title || '乗レコの記録',
     description: row.description || '',
     image: safeImageUrl(row.image_url),
