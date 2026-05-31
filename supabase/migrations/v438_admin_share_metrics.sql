@@ -76,3 +76,5 @@ WHERE routine_schema='public' AND routine_name='admin_list_share_metrics'
 -- 期待値:
 --   function 1 行: admin_list_share_metrics (prosecdef = true)
 --   grant    1 行: authenticated / EXECUTE
+
+-- Applied: 2026-05-31 by yutsutke
