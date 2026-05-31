@@ -887,8 +887,10 @@ function shareCardHtml(s) {
   const desc = s.description || '';
   const id = escAttr(s.id);
   // v436: シェアの反響 (受け側 /share の表示数 / CTA クリック数)。列が無い旧データは 0 扱い。
+  // v437: signup = シェア経由の新規登録数 (登録転換 = 「シェアが分水嶺」の本命指標)。
   const views = Number(s.view_count) || 0;
   const clicks = Number(s.click_count) || 0;
+  const signups = Number(s.signup_count) || 0;
   return `
     <div class="mp-share-card" data-share-id="${id}">
       <a class="mp-share-thumb-link" href="https://norireco.app/share/${id}" target="_blank" rel="noopener">
@@ -901,7 +903,7 @@ function shareCardHtml(s) {
         </div>
         <div class="mp-share-title">${escAttr(title)}</div>
         ${desc ? `<div class="mp-share-desc">${escAttr(desc)}</div>` : ''}
-        <div class="mp-share-stats">👁 ${views.toLocaleString()} 表示 ・ 🚃 ${clicks.toLocaleString()} クリック</div>
+        <div class="mp-share-stats">👁 ${views.toLocaleString()} 表示 ・ 🚃 ${clicks.toLocaleString()} クリック ・ ✨ ${signups.toLocaleString()} 登録</div>
         <div class="mp-share-actions">
           <button class="mp-act-btn share" onclick="copyShareLink('${id}')">🔗 リンクをコピー</button>
           <button class="mp-act-btn delete" onclick="revokeShare('${id}')">🗑 取り消し</button>

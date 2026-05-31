@@ -43,9 +43,73 @@ window.NORIRECO.auth = window.NORIRECO.auth || {
 };
 const auth = window.NORIRECO.auth;
 
+// ── v437: シェア経由の登録転換 attribution ──────────────────────
+// CTA (/share/<id>/go) が付ける `?ref=s_<id>` を起動時に localStorage へ退避する。
+// OAuth / Magic Link はリダイレクトで URL の query を失うため、ログイン前のこの時点で
+// 保存しておかないと「どのシェア経由で来たか」が消える。実際の登録転換カウントは
+// 初回ログイン確定時に maybeRecordShareReferral が (新規アカウントのときだけ) RPC で行う。
+const SHARE_REF_TTL_MS = 7 * 24 * 3600 * 1000;  // ref の有効期限 (7 日。古い ref は stale 破棄)
+const SIGNUP_RECENT_MS = 24 * 3600 * 1000;       // 「新規登録」とみなすアカウント作成からの猶予 (24h)
+
+function captureShareReferral() {
+  try {
+    const url = new URL(window.location.href);
+    const ref = url.searchParams.get('ref');
+    // /share/<id>/go が付ける形式 `s_<shareId>` のみ受理 (それ以外の ref= は無視)。
+    if (ref && /^s_[a-zA-Z0-9_-]{6,64}$/.test(ref)) {
+      const shareId = ref.slice(2);  // 's_' プレフィックスを剥がす
+      localStorage.setItem('norireco_share_ref', JSON.stringify({ shareId, ts: Date.now() }));
+      // URL から ref を除去 (リロード時の二重処理防止 + 見た目クリーン化)。
+      url.searchParams.delete('ref');
+      history.replaceState({}, document.title, url.toString());
+    }
+  } catch (e) {}
+}
+
+// 初回ログイン確定時に呼ぶ: localStorage の ref が「新規登録に伴うもの」なら登録転換として記録。
+//   - 新規登録の判定 = user.created_at が直近 SIGNUP_RECENT_MS 以内 (既存ユーザーの再訪は除外)。
+//   - 自己シェア / revoked / 二重計上の最終ガードは RPC 側 (norireco_share_referrals PK)。ここは UX。
+//   - 記録できた or 既存ユーザーと判明したら ref をクリア。ネットワーク失敗時のみ残して次回再試行。
+async function maybeRecordShareReferral(user) {
+  if (!user) return;
+  let stored = null;
+  try { stored = JSON.parse(localStorage.getItem('norireco_share_ref') || 'null'); } catch (e) {}
+  if (!stored || !stored.shareId) return;
+  const now = Date.now();
+  // ref が古すぎる → stale 破棄
+  if (!stored.ts || (now - stored.ts) > SHARE_REF_TTL_MS) {
+    try { localStorage.removeItem('norireco_share_ref'); } catch (e) {}
+    return;
+  }
+  // 新規アカウントか? 既存ユーザーがシェアを踏んだだけなら登録転換ではない → 記録せず ref クリア。
+  const createdMs = user.created_at ? new Date(user.created_at).getTime() : 0;
+  if (!createdMs || (now - createdMs) > SIGNUP_RECENT_MS) {
+    try { localStorage.removeItem('norireco_share_ref'); } catch (e) {}
+    return;
+  }
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/record_share_referral`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${authBearerToken()}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ p_share_id: stored.shareId }),
+    });
+    if (res.ok) {
+      try { localStorage.removeItem('norireco_share_ref'); } catch (e) {}
+      console.log('[Share] 登録転換を記録 share=' + stored.shareId);
+    }
+    // 失敗時は ref を残して次回ログインで再試行
+  } catch (e) {}
+}
+
 // SDK 初期化 (CDN 経由で読み込まれた supabase グローバルを使う)
 export async function initAuth() {
   console.log('[Auth] initAuth 開始');
+  // v437: ?ref=s_<id> を最優先で退避 (SDK 未ロードでも、OAuth リダイレクト前でも確実に拾う)。
+  captureShareReferral();
   if (typeof supabase === 'undefined' || !supabase.createClient) {
     console.warn('[Auth] Supabase JS SDK が未ロード');
     return;
@@ -134,6 +198,8 @@ function handleAuthChange(event, session) {
     try { window.NORIRECO?.memos?.sync?.(); } catch(e) {}
     // v423 垢BAN: 自分の share_status を取得 (banned ならシェア UI を塞ぐ / マイページにバッジ)
     fetchMyProfile();
+    // v437: シェア経由の登録転換 attribution (新規アカウント + localStorage ref のときだけ記録)
+    maybeRecordShareReferral(auth.currentUser);
   }
   // v228: ログアウト時はローカルに残った前ユーザーの乗車データ・キャラ獲得を purge し、
   // 地図を空状態で再描画する (Supabase のデータは破壊しない)。

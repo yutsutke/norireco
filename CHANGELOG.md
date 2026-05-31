@@ -52,6 +52,29 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 284. v437 — シェア経由の登録転換 attribution (Phase 2 / 「シェアが分水嶺」本命指標)
+
+**カテゴリ**: A（実装 / 🔥 シェア機能 Phase 2 — v436 で送りにした登録転換 attribution）
+
+**背景**: v436 で /share の view/click を計測したが、漏斗の最終段=「シェア経由で**新規登録**したか」が未計測だった。5大原則④「シェアが分水嶺」の本命指標。v436 で CTA が付けていた `?ref=s_<id>` を回収する。
+
+**設計の肝 (auth flow の制約から導出)**:
+- **`?ref` は OAuth/Magic Link のリダイレクトで失われる** (`redirectTo` = クリーン URL)。→ **ログイン前の起動時に localStorage へ退避**しておく必要がある。`captureShareReferral` を `initAuth` の最初 (SDK チェックより前) に置き、確実に拾う。
+- **`norireco_profiles` 行は新規ユーザーには無い** (v423 で BAN 時のみ作成)。→ 「profile 行の有無」では新規登録を判定できない。代わりに **`user.created_at` が直近 (24h 以内) か**で新規アカウントを判定し、既存ユーザーがシェアを踏んだだけのケースを attribution から除外する。
+- **二重計上の最終保証 = `norireco_share_referrals` の PK (user_id)**。1 ユーザー 1 行。RPC は `ON CONFLICT DO NOTHING` で冪等、**実 INSERT できたときだけ** `shares.signup_count` を +1 (v436 の view/click と同じ主従: 真実の源=referrals テーブル / 派生キャッシュ=signup_count)。
+
+**実装**:
+- **`supabase/migrations/v437_share_referral.sql`** (新規・**要 Run**): `norireco_share_referrals` (user_id PK + share_id + created_at、RLS 有効 + policy 無し = RPC だけが触れる、anon/authenticated REVOKE) + `norireco_shares.signup_count` 列 + RPC `record_share_referral(p_share_id)` (SECURITY DEFINER、自己シェア/revoked 除外、once-per-user INSERT → 成功時のみ signup_count +1)。EXECUTE は **authenticated のみ** (anon に出さない = attribution は本人 uid 必須)。
+- **`js/12-auth.js`**: `captureShareReferral()` (起動時 `?ref=s_<id>` → localStorage `norireco_share_ref` 退避 + URL から ref 除去) を `initAuth` 冒頭に。`maybeRecordShareReferral(user)` を初回ログイン確定ブロック (fetchMyProfile の隣) で呼ぶ。新規判定 (created_at 直近) + ref TTL 7 日 + 記録成功/既存判明で ref クリア・ネットワーク失敗時のみ残して次回再試行。RPC は REST で `Authorization: Bearer <access_token>` (auth.uid() が本人になる)。
+- **`js/14-share-ogp.js`**: マイページ🔗シェアカードの計測行に `✨ N 登録` を追加 (`select=*` なので fetch 改修不要)。
+- **`sw.js`**: CACHE_VERSION v436 → v437。
+
+**デプロイ / 順序**: `functions/` 不変 (今回はクライアント + DB のみ)。`v437_share_referral.sql` を **ユスケが Run → Applied 行追記**。未適用の間も RPC 404 を握りつぶし ref を残すので破壊なし (適用後の次回ログインで記録)。
+
+**残課題 / 補足**: created_at 24h ゲートは「保守的に新規のみ拾う」設計 (取りこぼし < 過大計上)。集計の admin タブ横断ビューは将来候補。これで **シェア漏斗 = view → click → signup** が一通り揃った。
+
+**検証**: `npm run check` 25/25。`captureShareReferral` の中核 (regex 受理/拒否・`s_` 剥がし・URL から ref 除去で他 query 温存・localStorage 往復) を preview 実ブラウザ eval で確認。記録半分 (`maybeRecordShareReferral` + signup_count 表示) は認証 + 新規アカウント + v437 SQL が要るため本番 E2E で確認 (v436 同様 preview 不可)。
+
 ## 283. v436 — シェア受け側 /share の強化 (③) + view/click 計測 (④)
 
 **カテゴリ**: A（実装 / 🔥 シェア機能 — MVP 以降の「残り」の定義から着手）
