@@ -83,3 +83,5 @@ WHERE routine_schema = 'public' AND routine_name = 'bump_share_metric'
 --   column   2 行: view_count (integer, 0) / click_count (integer, 0)
 --   function 1 行: bump_share_metric (prosecdef = true)
 --   grant    1 行: anon / EXECUTE
+
+-- Applied: 2026-05-31 by yutsutke
