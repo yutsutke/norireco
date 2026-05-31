@@ -52,6 +52,25 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 285. v438 — admin シェア計測 横断ビュー (運営が全シェアの漏斗を俯瞰)
+
+**カテゴリ**: A（実装 / 🟢 シェア計測の運営俯瞰 — v436/v437 で揃えた漏斗の集計面）
+
+**背景**: v436 (view/click) + v437 (signup attribution) で計測が揃い、各シェアの反響は所有者本人がマイページ🔗カードで見られる。だが運営 (admin) が**全シェアを横断**して「どのシェアが view→click→signup を driving しているか」を俯瞰する面が無かった。admin タブ (13e-admin.js, v426) に追加。
+
+**設計判断**:
+- **client 直 SELECT (option A) ではなく admin RPC (option B) を採用**。理由: ① admin タブは全機能が RPC 経由 (`callRpc` → SECURITY DEFINER + `is_admin()` ゲート) で統一されており一貫する ② **所有者 email は `auth.users` を join せねば出せず、これは SECURITY DEFINER 関数でしか引けない** (REST 非公開) ③ 関数内 `is_admin()` ゲートで運営限定を強制できる。norireco_shares 自体は公開 SELECT だが、email + 強い gating のため RPC 化。
+- 列追加・新規テーブルなし (view_count/click_count=v436、signup_count=v437 で既存)。**読み取り専用 RPC 1 本だけ**。
+
+**実装**:
+- **`supabase/migrations/v438_admin_share_metrics.sql`** (新規・**要 Run**): RPC `admin_list_share_metrics()` (SECURITY DEFINER + 冒頭 `IF NOT is_admin() THEN RAISE EXCEPTION 'admin only'` + EXECUTE public REVOKE → authenticated GRANT)。`norireco_shares` ⨝ `auth.users` で所有者 email 付き、engagement 降順 (signup→click→view→created_at)、LIMIT 500。既存 admin 関数ファミリ (admin_list_profiles 他) と同形。
+- **`js/13e-admin.js`**: 上部に **🚫 BAN管理 / 📊 シェア計測** のビュー切替 (`A.view` + `showView()`)。renderShell をビュー nav + 本体分岐にリファクタ (既存 BAN UI は `banBodyHtml()` に抽出、無改変)。`shareBodyHtml()` = サマリ (Σview→click→signup + CTR/登録率) + シェア別ランキング、`shareRowHtml()` = title/kind/取消済バッジ + 👁🚃(CTR%)✨ + 所有者 email/日時/id。`loadShareMetrics()` (callRpc) は初回切替時のみ自動ロード + 🔄 再読み込み。`renderMpAdminSection` を view 別ロードに対応。
+- **`sw.js`**: CACHE_VERSION v437 → v438。
+
+**デプロイ / 順序**: `functions/` 不変。`v438_admin_share_metrics.sql` を **ユスケが Run → Applied 行追記**。未適用の間は RPC 404 → alert + 空表示 (BAN 管理ビューは影響なし)。
+
+**検証**: `npm run check` 25/25。漏斗サマリの算術 (CTR=click/view・登録率=signup/click・合計・ゼロ除算ガード・行別 CTR・桁区切り) を preview 実ブラウザ eval で確認 (例: 合計 14/4/1 → CTR 28.6%・登録率 25.0%、pct(5,0)='0.0')。admin タブでの実表示は **admin 権限 + v438 RPC** が要るため本番確認 (v426 教訓「admin 機能は DB 状態が要り preview で完結しない」)。
+
 ## 284. v437 — シェア経由の登録転換 attribution (Phase 2 / 「シェアが分水嶺」本命指標)
 
 **カテゴリ**: A（実装 / 🔥 シェア機能 Phase 2 — v436 で送りにした登録転換 attribution）
