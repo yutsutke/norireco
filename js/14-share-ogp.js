@@ -886,11 +886,7 @@ function shareCardHtml(s) {
   const title = s.title || '乗レコの記録';
   const desc = s.description || '';
   const id = escAttr(s.id);
-  // v436: シェアの反響 (受け側 /share の表示数 / CTA クリック数)。列が無い旧データは 0 扱い。
-  // v437: signup = シェア経由の新規登録数 (登録転換 = 「シェアが分水嶺」の本命指標)。
-  const views = Number(s.view_count) || 0;
-  const clicks = Number(s.click_count) || 0;
-  const signups = Number(s.signup_count) || 0;
+  // v440: 計測 (view/click/signup) はユーザー向けには出さない (admin シェア計測ビューだけで見る)。
   return `
     <div class="mp-share-card" data-share-id="${id}">
       <a class="mp-share-thumb-link" href="https://norireco.app/share/${id}" target="_blank" rel="noopener">
@@ -903,7 +899,6 @@ function shareCardHtml(s) {
         </div>
         <div class="mp-share-title">${escAttr(title)}</div>
         ${desc ? `<div class="mp-share-desc">${escAttr(desc)}</div>` : ''}
-        <div class="mp-share-stats">👁 ${views.toLocaleString()} 表示 ・ 🚃 ${clicks.toLocaleString()} クリック ・ ✨ ${signups.toLocaleString()} 登録</div>
         <div class="mp-share-actions">
           <button class="mp-act-btn share" onclick="copyShareLink('${id}')">🔗 リンクをコピー</button>
           <button class="mp-act-btn delete" onclick="revokeShare('${id}')">🗑 取り消し</button>
@@ -959,13 +954,6 @@ async function captureElementToPng(el, filename, btn) {
   }
 }
 
-// マイページ🔗シェア一覧を 1 枚に保存 (#mp-shares-capture = 一覧本体、ツールバー除く)。
-function captureMyShares(btn) {
-  const el = document.getElementById('mp-shares-capture');
-  const fn = `norireco-my-shares-${new Date().toISOString().slice(0, 10)}.png`;
-  captureElementToPng(el, fn, btn);
-}
-
 export async function renderMpSharesSection() {
   const host = document.getElementById('mp-shares-section');
   if (!host) return;
@@ -992,13 +980,8 @@ export async function renderMpSharesSection() {
   }
   host.innerHTML =
     _shareStatusBanner() +
-    `<div style="display:flex;justify-content:flex-end;margin-bottom:8px">
-       <button class="mp-act-btn" onclick="NORIRECO.share.captureMyShares(this)">📷 一覧をスクショ保存</button>
-     </div>` +
-    `<div id="mp-shares-capture">` +
-      `<div class="mp-tip">作成したシェアリンクの一覧です。🔗 でリンクをコピー、🗑 で取り消し (開いても表示されなくなります)。</div>` +
-      shares.map(shareCardHtml).join('') +
-    `</div>`;
+    `<div class="mp-tip">作成したシェアリンクの一覧です。🔗 でリンクをコピー、🗑 で取り消し (開いても表示されなくなります)。</div>` +
+    shares.map(shareCardHtml).join('');
 }
 
 // 「🔗 リンクをコピー」: /share/<id> をクリップボードへ。
@@ -1044,7 +1027,7 @@ async function revokeShare(shareId) {
 }
 
 window.NORIRECO = window.NORIRECO || {};
-window.NORIRECO.share = { openShareModal, openTripShareModal, captureElementToPng, captureMyShares };
+window.NORIRECO.share = { openShareModal, openTripShareModal, captureElementToPng };
 // マイページ統合 (NORIRECO.mypage は 13-mypage-common が初期化。ここでは guard して登録のみ)。
 window.NORIRECO.mypage = window.NORIRECO.mypage || {};
 window.NORIRECO.mypage.renderMpSharesSection = renderMpSharesSection;

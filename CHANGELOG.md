@@ -52,6 +52,23 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 287. v440 — 計測表示とスクショをユーザー向けから撤去し admin 限定に集約
+
+**カテゴリ**: A（実装 / スコープ修正 — ユスケ判断 2026-05-31）
+
+**背景**: v436/v437 で マイページ🔗シェアカードに計測 (👁view/🚃click/✨signup) を出し、v439 で マイページ🔗シェア一覧に「📷 スクショ保存」を付けたが、**「お客さんから見えるページにはビュー/クリック/登録数も一覧のスクショも要らない、管理者だけ見れれば十分」(ユスケ)**。計測の表示面とスクショは admin に集約する。
+
+**変更 (ユーザー向けの表示のみ撤去・計測ロジックと admin は不変)**:
+- **`js/14-share-ogp.js`**: `shareCardHtml` の計測行 (👁/🚃/✨ = `.mp-share-stats`) と view/click/signup 集計 const を削除。`renderMpSharesSection` の「📷 一覧をスクショ保存」ボタン + `#mp-shares-capture` ラッパを撤去 (素の tip + カードに戻す)。`captureMyShares` 関数 + window bridge 登録を削除。**汎用ヘルパー `captureElementToPng` / `loadHtml2Canvas` は admin (13e) が使うので残す** (`window.NORIRECO.share.captureElementToPng` 公開維持)。
+- **`noritetsu-map.html`**: 未使用化した `.mp-share-stats` CSS を削除。
+- **`sw.js`**: CACHE_VERSION v439 → v440。
+
+**不変 (= 残すもの)**: 計測のカウント自体 (functions/share の view/click + RPC bump_share_metric / record_share_referral)、DB 列、**admin シェア計測 横断ビュー (v438) と admin の「📷 スクショ保存」(v439)**。つまりデータは引き続き貯まり、運営は admin タブで全シェアの漏斗 + スクショを見られる。ユーザーには見せないだけ。
+
+**デプロイ**: client + CSS のみ、main push で反映 (SQL/Function なし)。
+
+**検証**: `npm run check` 25/25。`captureMyShares` / `mp-share-stats` / `mp-shares-capture` の残参照ゼロを grep 確認。admin 側 (captureMetrics → captureElementToPng) は無傷。
+
 ## 286. v439 — シェア計測画面を 1 枚にスクショ保存するボタン (html2canvas)
 
 **カテゴリ**: A（実装 / 🟢 シェア計測の UX — ユスケ要望 2026-05-31）
