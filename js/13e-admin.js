@@ -167,7 +167,14 @@ async function setStatus(uid, newStatus) {
   if (A.mode === 'search' && A.query) await searchUsers(A.query);
   else await loadList();
 }
-window.NORIRECO.admin = { setStatus, searchUsers, loadList, showView, loadShareMetrics };
+// v439: シェア計測ビューを 1 枚に保存 (#admin-share-capture = サマリ + ランキング、ツールバー除く)。
+// html2canvas ベースの共通ヘルパー (14-share-ogp.js) を window 経由で呼ぶ。
+function captureMetrics(btn) {
+  const el = document.getElementById('admin-share-capture');
+  const fn = `norireco-share-metrics-${new Date().toISOString().slice(0, 10)}.png`;
+  window.NORIRECO?.share?.captureElementToPng?.(el, fn, btn);
+}
+window.NORIRECO.admin = { setStatus, searchUsers, loadList, showView, loadShareMetrics, captureMetrics };
 
 // ── レンダリング ─────────────────────────────────────────────
 function renderShell() {
@@ -232,10 +239,13 @@ function shareBodyHtml() {
       </div>
     </div>`;
   return `<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap">
-            <span style="font-size:11px;color:var(--silver)">engagement 降順 (signup→click→view)</span>${refreshBtn}
+            <span style="font-size:11px;color:var(--silver)">engagement 降順 (signup→click→view)</span>
+            <span style="display:flex;gap:6px">${refreshBtn}<button class="mp-act-btn" onclick="NORIRECO.admin.captureMetrics(this)">📷 スクショ保存</button></span>
           </div>
-          ${summary}
-          <div style="display:flex;flex-direction:column;gap:8px">${rows.map(shareRowHtml).join('')}</div>`;
+          <div id="admin-share-capture" style="display:flex;flex-direction:column;gap:10px;background:var(--navy,#0D1B2A);padding:2px">
+            ${summary}
+            <div style="display:flex;flex-direction:column;gap:8px">${rows.map(shareRowHtml).join('')}</div>
+          </div>`;
 }
 
 function shareRowHtml(r) {

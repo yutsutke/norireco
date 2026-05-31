@@ -52,6 +52,27 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 286. v439 — シェア計測画面を 1 枚にスクショ保存するボタン (html2canvas)
+
+**カテゴリ**: A（実装 / 🟢 シェア計測の UX — ユスケ要望 2026-05-31）
+
+**背景**: v438 の admin シェア計測ビュー (と マイページ🔗シェア一覧) は縦に伸びるリストで、通常のスクショだとビューポート分しか撮れず全体が 1 枚に収まらない。「スクショで一枚におさまるってとれるボタンが欲しい」(ユスケ)。→ **見切れる部分も含めて要素まるごとを 1 枚の PNG にする**ボタンを両画面に追加。
+
+**設計判断 (ユスケ確定)**: ① 対象 = **両方** (admin シェア計測 + マイページ🔗シェア一覧) ② 方式 = **html2canvas で見たまま** (専用 Canvas デザインではなく DOM をそのまま画像化、縦長も一括・実装軽め) ③ 出力 = **ダウンロード**。
+- **html2canvas は使うときだけ CDN から lazy load** (cdnjs、Leaflet と同 CDN)。初期ロードを太らせない / 任意機能なので offline は許容。STATIC_ASSETS には入れない (SW の CDN cache-first が機会的にキャッシュ)。
+- 共通ヘルパーは 14-share-ogp.js (画像/DL 処理の集約先) に置き `window.NORIRECO.share` 経由で 13e-admin からも使う (import 依存を増やさず既存の window-bridge 流儀に合わせる)。
+
+**実装**:
+- **`js/14-share-ogp.js`**: `loadHtml2Canvas()` (CDN script を 1 回だけ注入、失敗時は再試行可に promise リセット) + `captureElementToPng(el, filename, btn)` (背景は body 背景を明示=透明黒落ち回避、scale 2、useCORS、toBlob → `<a download>`、ボタンに ⏳/✅ 進捗)。`captureMyShares` + `renderMpSharesSection` にツールバー「📷 一覧をスクショ保存」追加 + 一覧本体を `#mp-shares-capture` でラップ (ツールバー自身は撮らない)。`window.NORIRECO.share` に `captureElementToPng`/`captureMyShares` 公開。
+- **`js/13e-admin.js`**: シェア計測ビューのツールバーに「📷 スクショ保存」追加 + サマリ+ランキングを `#admin-share-capture` でラップ。`captureMetrics(btn)` を `NORIRECO.admin` に追加 (window 経由で 14 のヘルパーを呼ぶ)。
+- **`sw.js`**: CACHE_VERSION v438 → v439。
+
+**既知の注意点**: マイページ一覧のサムネ (`cdn.norireco.app` の R2 画像) は CORS ヘッダ次第で html2canvas に写らない可能性 (useCORS で試行、ダメなら当該サムネだけ空白・他は正常)。admin 計測ビューは画像なし=影響なし。長大リストは scale 2 で canvas 上限に当たりうる (現状シェア数では問題なし)。
+
+**デプロイ**: client のみ (SQL/Function なし)、main push で反映。
+
+**検証**: `npm run check` 25/25。CDN lazy load → html2canvas 描画 → toBlob の核心を preview 実ブラウザ eval で確認 (script `loaded`・canvas 480×200・PNG 17,281 bytes 生成)。ボタン実押下 (#mp-shares-capture/#admin-share-capture 対象・ダウンロード) は ログイン + データが要るため本番確認。
+
 ## 285. v438 — admin シェア計測 横断ビュー (運営が全シェアの漏斗を俯瞰)
 
 **カテゴリ**: A（実装 / 🟢 シェア計測の運営俯瞰 — v436/v437 で揃えた漏斗の集計面）

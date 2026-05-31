@@ -912,6 +912,60 @@ function shareCardHtml(s) {
     </div>`;
 }
 
+// ── v439: 画面まるごとスクショ (html2canvas を lazy load して DOM → PNG ダウンロード) ──
+// 縦に見切れる部分も含めて要素全体を 1 枚の画像にする。html2canvas は使うときだけ CDN から
+// 読み込む (初期ロードを太らせない / admin・マイページの任意機能なので offline は許容)。
+// マイページ🔗シェア一覧 (14) と admin シェア計測 (13e) の両方から window.NORIRECO.share 経由で使う。
+let _html2canvasPromise = null;
+function loadHtml2Canvas() {
+  if (window.html2canvas) return Promise.resolve(window.html2canvas);
+  if (_html2canvasPromise) return _html2canvasPromise;
+  _html2canvasPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    s.async = true;
+    s.onload = () => window.html2canvas ? resolve(window.html2canvas) : reject(new Error('html2canvas ロード失敗'));
+    s.onerror = () => { _html2canvasPromise = null; reject(new Error('html2canvas の読み込みに失敗 (オフライン?)')); };
+    document.head.appendChild(s);
+  });
+  return _html2canvasPromise;
+}
+
+// 指定要素を「見たまま・縦長も全部」1 枚の PNG にして download する。
+// btn を渡すと進捗 (⏳/✅) をボタン文言に出す。背景は透明だと黒落ちするので body 背景を明示。
+async function captureElementToPng(el, filename, btn) {
+  if (!el) return;
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 生成中…'; }
+  try {
+    const h2c = await loadHtml2Canvas();
+    const bg = getComputedStyle(document.body).backgroundColor || '#0D1B2A';
+    const canvas = await h2c(el, { backgroundColor: bg, scale: 2, useCORS: true, logging: false });
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+    if (!blob) throw new Error('画像化に失敗しました');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename || 'norireco.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    if (btn) { btn.textContent = '✅ 保存しました'; setTimeout(() => { if (btn) { btn.textContent = orig; btn.disabled = false; } }, 2000); }
+  } catch (e) {
+    console.error('[capture] 失敗:', e);
+    alert('スクショの保存に失敗しました: ' + (e.message || e));
+    if (btn) { btn.textContent = orig; btn.disabled = false; }
+  }
+}
+
+// マイページ🔗シェア一覧を 1 枚に保存 (#mp-shares-capture = 一覧本体、ツールバー除く)。
+function captureMyShares(btn) {
+  const el = document.getElementById('mp-shares-capture');
+  const fn = `norireco-my-shares-${new Date().toISOString().slice(0, 10)}.png`;
+  captureElementToPng(el, fn, btn);
+}
+
 export async function renderMpSharesSection() {
   const host = document.getElementById('mp-shares-section');
   if (!host) return;
@@ -938,8 +992,13 @@ export async function renderMpSharesSection() {
   }
   host.innerHTML =
     _shareStatusBanner() +
-    `<div class="mp-tip">作成したシェアリンクの一覧です。🔗 でリンクをコピー、🗑 で取り消し (開いても表示されなくなります)。</div>` +
-    shares.map(shareCardHtml).join('');
+    `<div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+       <button class="mp-act-btn" onclick="NORIRECO.share.captureMyShares(this)">📷 一覧をスクショ保存</button>
+     </div>` +
+    `<div id="mp-shares-capture">` +
+      `<div class="mp-tip">作成したシェアリンクの一覧です。🔗 でリンクをコピー、🗑 で取り消し (開いても表示されなくなります)。</div>` +
+      shares.map(shareCardHtml).join('') +
+    `</div>`;
 }
 
 // 「🔗 リンクをコピー」: /share/<id> をクリップボードへ。
@@ -985,7 +1044,7 @@ async function revokeShare(shareId) {
 }
 
 window.NORIRECO = window.NORIRECO || {};
-window.NORIRECO.share = { openShareModal, openTripShareModal };
+window.NORIRECO.share = { openShareModal, openTripShareModal, captureElementToPng, captureMyShares };
 // マイページ統合 (NORIRECO.mypage は 13-mypage-common が初期化。ここでは guard して登録のみ)。
 window.NORIRECO.mypage = window.NORIRECO.mypage || {};
 window.NORIRECO.mypage.renderMpSharesSection = renderMpSharesSection;
