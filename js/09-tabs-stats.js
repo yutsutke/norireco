@@ -10,8 +10,9 @@
 // v224: 12-auth から currentUserId / authBearerToken を import 化。
 // v345: 不正検知撤回に伴い 11-fraud-detection の import を撤去。
 // v225: 13-mypage-common.renderMypage を import 化。
+// v442: renderStats を _mypageCache ベース化し Supabase 直 fetch を撤去 →
+//   currentUserId / authBearerToken の import が不要になり削除。
 // ══════════════════════════════════════
-import { currentUserId, authBearerToken } from './12-auth.js';
 import { renderMypage, tripCardHtml } from './13-mypage-common.js';
 import { filterTripsByDate, lStats } from './05-supabase-data.js';
 // v359: 路線タブの 📺 旅程 / 📸 メモ アイコン → 詳細モーダルで一覧表示
@@ -328,14 +329,12 @@ export async function renderStats(){
     </div>`;
   c.appendChild(tripSection);
 
-  // Supabaseから統計を非同期取得 — ログイン中なら自分のデータのみ
-  const _uid = currentUserId();
-  const _statsUrl = _uid
-    ? `${SUPABASE_URL}/rest/v1/norireco_trips?select=*&user_id=eq.${_uid}`
-    : `${SUPABASE_URL}/rest/v1/norireco_trips?select=*`;
-  fetch(_statsUrl, {
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${authBearerToken()}` }
-  }).then(r => r.json()).then(rawTrips => {
+  // v442: Supabase 直 fetch をやめ、renderMypage がセット済みの _mypageCache を使う。
+  //   ログイン時 = Supabase から取得した自分の trip / ゲスト時 = localStorage の user_id 無し trip。
+  //   これで (a) anon key の全件 fetch (RLS 緩和の名残) が消え、(b) ゲストモードでも上部の
+  //   完乗率カードと同じデータ源で活動量メトリクスを出せる (旧 v420 のゲストガード撤去と対)。
+  {
+    const rawTrips = (window.NORIRECO && NORIRECO.mypage && NORIRECO.mypage.state && NORIRECO.mypage.state._mypageCache) || [];
     // グローバル過去モード (_tripDateFilter) が有効なら絞る
     const trips = filterTripsByDate(rawTrips);
     const totalTrips = trips.length;
@@ -541,10 +540,7 @@ export async function renderStats(){
     }
 
     tripSection.appendChild(trainSection);
-  }).catch(e => {
-    const grid = document.getElementById('trip-stat-grid');
-    if (grid) grid.innerHTML = `<div class="scard"><div class="sc-l">取得失敗</div><div class="sc-v" style="font-size:12px;color:var(--silver)">localStorageを使用中</div></div>`;
-  });
+  }
 
   // ── 系統別達成率 (乗車済みのみ) ──
   const rLines=NORIRECO.data.SERVICE_LINES.filter(l=>NORIRECO.serviceLines.stats(l).r>0).sort((a,b)=>NORIRECO.serviceLines.stats(b).pct-NORIRECO.serviceLines.stats(a).pct);

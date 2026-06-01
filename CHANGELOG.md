@@ -52,6 +52,27 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 289. v442 — ゲストモードでも活動量メトリクスを表示（renderStats を _mypageCache ベース化）
+
+**カテゴリ**: A（実装 — ユスケ要望）
+
+**背景**: v441 で完乗率カードを全記録ベースに統一したが、📊統計サブタブ本体（`renderStats` の活動量メトリクス・月別グラフ・直近旅程・列車制覇）は v420 以降ゲストモードでは「ログイン後に表示されます」エンプティのままだった。理由は `renderStats` が Supabase を anon key で直 fetch しており、未ログイン時は `user_id` フィルタ無しで全ユーザーの trip を引いてしまう RLS 緩和の名残があったため（v420 でゲストガードを入れて封じていた）。ユスケ「②の活動量メトリクスもゲストの localStorage trip ベースで表示したい」。
+
+**変更**（`js/09-tabs-stats.js` + `js/13a-stats.js`。Supabase/Worker 不触）:
+- `renderStats` の Supabase 直 fetch（`fetch(norireco_trips?...)` + `.then`/`.catch`）を撤去し、`renderMypage` がセット済みの `_mypageCache`（ログイン = Supabase から取得した自分の trip / ゲスト = localStorage の user_id 無し trip）を使う同期処理に置換。上部の完乗率カードと同じデータ源になり整合。
+- 不要になった `currentUserId` / `authBearerToken` の import を 09-tabs-stats.js から削除（`SUPABASE_URL`/`KEY` 参照も消滅）。
+- 13a-stats.js `renderMpStatsSection` の v420 ゲストガード（エンプティ + CTA）を撤去し、ゲストでも `renderStats()` を呼ぶ。`currentUserId` の import も削除（他に使用なし）。
+
+**設計判断**: `renderStats` を「ゲスト専用の別関数」にするのではなく、データ源を `_mypageCache` に一本化。`renderMypage` がログイン/ゲストの分岐で既に user_id 込みの正しい trip を `_mypageCache` にセット済みなので、`renderStats` はソースを意識せず描画でき、(a) anon key 全件 fetch の RLS リスクが消え、(b) 重複 fetch も削減、(c) 完乗率カードと統計が同じデータで必ず一致する。
+
+**検証**: ゲストモード（currentUid:null）+ localStorage trip 1 件で renderMypage → renderMpStatsSection 実行 → 活動量メトリクス 4 枚（総旅程数 1 回 / 延べ乗車駅数 3 駅 / 総乗換回数 0 回 / 総乗車時間 0 時間 30 分）+ 月別グラフ + 直近旅程 + 列車制覇が表示、「ログイン後に表示」エンプティ・「取得失敗」catch 文言とも消滅、console error 0。`npm run check` OK 25/25。
+
+**失敗教訓**: 検証中「読み込み中…」「取得失敗 localStorageを使用中」が出て実装ミスを疑ったが、原因は preview の SW/HTTP キャッシュが旧 JS を保持していたこと（実ファイルは `fetch(..., {cache:'no-store'})` で新版を確認済みだった）。**同一オリジンで SW unregister してもリロード時に再登録 + Cache-First で旧 js が戻るため、別ポート（別オリジン = SW スコープ/キャッシュ別）で立て直すのが確実**。
+
+**残課題**: なし。
+
+---
+
 ## 288. v441 — マイページ統計を GPS+手動の全記録ベースに統一（GPS 特別扱い撤去）
 
 **カテゴリ**: A（実装 / 方針整合 — GPS 位置づけ変更 v334〜v363 の積み残し回収）

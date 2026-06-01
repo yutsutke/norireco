@@ -20,7 +20,6 @@
 // ══════════════════════════════════════════════════════════════
 import { distMeters } from './03-characters.js';
 import { renderStats } from './09-tabs-stats.js';
-import { currentUserId } from './12-auth.js';
 // v318: PREFECTURES / prefOfStation を 13-mypage-common から import
 //   (元は本ファイル内に定義していたが、駅名+都道府県検索でも共有するため移動)
 import { tripCardHtml, PREFECTURES, prefOfStation } from './13-mypage-common.js';
@@ -28,26 +27,14 @@ import { tripCardHtml, PREFECTURES, prefOfStation } from './13-mypage-common.js'
 // ── 📊 統計セクション ──────────────────────────────────────────
 function renderMpStatsSection() {
   // 完乗率カードは上部に常時表示されているので、ここでは既存 renderStats だけ呼ぶ
-  // (月別グラフ・直近旅程・列車制覇など)
+  // (活動量メトリクス・月別グラフ・直近旅程・列車制覇など)
   const statsDiv = document.getElementById('stats-content');
   if (!statsDiv) return;
   statsDiv.innerHTML = '';
-  // v420: ゲストモードでは renderStats を呼ばない。renderStats は内部で Supabase に
-  //   `user_id=eq.<uid>` 付きでないと全ユーザーの trip を anon key で取得してしまう
-  //   (v233 RLS 残課題)。ゲストモードの統計はログイン後の表示として割り切り、ここでは
-  //   「ログインして使ってください」エンプティ + CTA だけ出す。完乗率カード (上部) と
-  //   旅程/路線サブタブは localStorage (user_id 空のみ) ベースで動くため、ゲストでも
-  //   「今作った分は見える」状態は維持される。
-  if (!currentUserId()) {
-    statsDiv.innerHTML = `
-      <div class="mp-empty" style="padding:24px 14px">
-        <div class="mp-empty-ic">📊</div>
-        <div class="mp-empty-t">統計はログイン後に表示されます</div>
-        <div class="mp-empty-s">月別グラフ・列車制覇・都道府県別など 16 種の詳細統計はログインユーザー限定です。ゲストモードでは🚃 旅程 / 📋 路線サブタブで今回作った分を確認できます。</div>
-        <button class="mp-empty-btn" onclick="openAuthModal()">🔑 ログイン / 会員登録</button>
-      </div>`;
-    return;
-  }
+  // v442: ゲストモードでも renderStats を呼ぶ。renderStats は _mypageCache (renderMypage が
+  //   ログイン = Supabase / ゲスト = localStorage の user_id 無し trip でセット済み) ベースに
+  //   変わり、anon key の全件 fetch (旧 v420 で警戒した RLS 緩和の名残) が消えたため、ゲストでも
+  //   安全に活動量メトリクスを出せる。上部の完乗率カードと同じデータ源になり整合する。
   try { renderStats(); } catch(e) { console.warn('[マイページ] renderStats:', e); }
 }
 NORIRECO.mypage.renderMpStatsSection = renderMpStatsSection;
