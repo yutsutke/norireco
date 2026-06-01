@@ -521,6 +521,7 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 
 .mp-stats-wrap{padding:0 12px;}
 .mp-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.mp-stat-grid.solo{grid-template-columns:1fr;}/* v441: 完駅率を GPS/全記録 2枚→1枚に統合 */
 @media (max-width:500px){.mp-stat-grid{grid-template-columns:1fr;}}
 .mp-scard{padding:12px 14px;background:var(--steel);border:1px solid var(--track);border-radius:10px;}
 .mp-scard.verified{border-color:rgba(72,213,151,.4);background:linear-gradient(135deg,rgba(72,213,151,.06),var(--steel));}

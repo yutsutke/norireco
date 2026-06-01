@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════════════════════════
 // マイページ 📊 統計サブタブ (v190 分割)
-// - 完乗率カード (📍 GPS / 📝 全記録)
+// - 完乗率カード (GPS・手動を区別しない全記録ベース、v441 で 1 枚に統合)
 // - 詳細統計 16 種 (運営会社別 / 三大都市圏 / Top10 / 都道府県 / 時間帯ヒートマップ ...)
 // - 詳細セクション ⓘ 解説トグル
 //
@@ -67,12 +67,15 @@ function buildCompletionCards(trips) {
   const totalUnique = allUniqueStations.size;
   const totalLines = NORIRECO.data.SERVICE_LINES.length;
 
-  // ── 共通の集計 (verifiedOnly / 全記録) ────────────────────────────
+  // ── 共通の集計 (GPS・手動を区別しない全記録ベース) ────────────────
+  // v441: GPS の位置づけが「公式認定」→「記録の手間省略」に変わった (v334〜v363) のに
+  //   合わせ、統計から GPS 特別扱い (verifiedOnly フィルタ) を撤去。GPS 記録も手動記録も
+  //   対等に集計する。旧 sv (verifiedOnly=true) 系の引数・カードは全廃。
   // v316/v317 (Phase 3-e): visitCount を駅 id キーに移行 (v293/v316 で SERVICE_LINES の
   //   stations[].id が確定済)。表示時 (buildTopStations) は MERGED_STATIONS で id → name 解決。
   //   v317: 04b-ride-record.js の slVisitCount も SERVICE_LINES ベース + 駅 id キーに統一済
   //   (08-rendering / 08 キャラモーダルの個人化レベル用)。
-  function collect(verifiedOnly) {
+  function collect() {
     const slSet = {};
     const visitedUnique = new Set();
     const visitCount = {};       // 駅 id → 訪問 trip 数 (v316)
@@ -81,7 +84,6 @@ function buildCompletionCards(trips) {
     let totalMinutes = 0;
     let validTrips = 0;
     for (const trip of trips) {
-      if (verifiedOnly && !trip.verified) continue;
       if (!trip.segments) continue;
       validTrips++;
       if (trip.total_minutes) totalMinutes += trip.total_minutes;
@@ -135,22 +137,17 @@ function buildCompletionCards(trips) {
       slSet, visitCount, lineRideCount,
     };
   }
-  const sv = collect(true), all = collect(false);
+  const all = collect();
 
-  // ── サマリカード 2 枚 ─────────────────────────────────────────
+  // ── サマリカード 1 枚 (GPS・手動を区別しない完駅率) ───────────────
+  // v441: GPS 完駅率 / 全記録 完駅率 の 2 枚並びを廃止。GPS は記録の手間を省く手段で
+  //   公式認定ではないため、全記録ベースの完駅率 1 枚に統合した。
   const cards = document.createElement('div');
-  cards.className = 'mp-stat-grid';
+  cards.className = 'mp-stat-grid solo';
   cards.innerHTML = `
-    <div class="mp-scard verified">
-      <div class="mp-sc-h">📍 GPS 完駅率</div>
-      <div class="mp-sc-sub">GPS で記録した旅程のみ</div>
-      <div class="mp-sc-pct">${sv.uniquePct}<span>%</span></div>
-      <div class="mp-sc-detail">${sv.uniqueRidden.toLocaleString()} / ${totalUnique.toLocaleString()} 駅</div>
-      <div class="mp-sc-detail">${sv.lines} / ${totalLines} 系統 (完乗 ${sv.complete})</div>
-    </div>
-    <div class="mp-scard all">
-      <div class="mp-sc-h">📝 全記録 完駅率</div>
-      <div class="mp-sc-sub">手動も含む全ての乗車</div>
+    <div class="mp-scard">
+      <div class="mp-sc-h">🚃 完駅率</div>
+      <div class="mp-sc-sub">GPS・手動を含むすべての乗車記録</div>
       <div class="mp-sc-pct">${all.uniquePct}<span>%</span></div>
       <div class="mp-sc-detail">${all.uniqueRidden.toLocaleString()} / ${totalUnique.toLocaleString()} 駅</div>
       <div class="mp-sc-detail">${all.lines} / ${totalLines} 系統 (完乗 ${all.complete})</div>
@@ -194,7 +191,7 @@ function buildCompletionCards(trips) {
   detailPane.className = 'mp-detail-pane-main';
   detailPane.id = 'mp-detail-pane-main';
   detailPane.style.display = 'none';
-  buildDetailContent(detailPane, sv, all, trips, totalUnique, totalLines);
+  buildDetailContent(detailPane, all, trips, totalUnique, totalLines);
   wrap.appendChild(detailPane);
 
   return wrap;
@@ -221,51 +218,49 @@ window.toggleInfo = toggleInfo;
 NORIRECO.mypage.toggleInfo = toggleInfo;
 
 // ── 詳細セクションの内容構築 ──
-function buildDetailContent(pane, sv, all, trips, totalUnique, totalLines) {
+function buildDetailContent(pane, all, trips, totalUnique, totalLines) {
   pane.innerHTML = '';
 
   // ① 集計方式 (系統単位)
-  pane.appendChild(detailCard('集計方式の違い (系統単位)',
-    `<div class="mp-d-row"><span>📍 GPS</span><strong>${sv.lineUnitRidden.toLocaleString()} / ${sv.lineUnitTotal.toLocaleString()}</strong> 駅 <span class="mp-d-pct">(${sv.lineUnitPct}%)</span></div>
-     <div class="mp-d-row"><span>📝 全記録</span><strong>${all.lineUnitRidden.toLocaleString()} / ${all.lineUnitTotal.toLocaleString()}</strong> 駅 <span class="mp-d-pct">(${all.lineUnitPct}%)</span></div>`,
+  pane.appendChild(detailCard('系統単位の完駅率',
+    `<div class="mp-d-row"><span class="mp-d-l">🚃 系統単位</span><strong>${all.lineUnitRidden.toLocaleString()} / ${all.lineUnitTotal.toLocaleString()}</strong> 駅 <span class="mp-d-pct">(${all.lineUnitPct}%)</span></div>`,
     `<strong>系統単位</strong>: 八王子駅 (横浜線・中央本線・中央本線快速・八高線 の 4 系統に属する) のように、複数路線に属する駅を「系統ごとに 1 駅」としてカウントする集計方法。<br>サマリ表示の「ユニーク駅」では八王子は 1 駅扱いだが、ここでは 4 駅枠としてカウントする。<em>「完乗 = 全系統の全駅乗車」を厳密に評価する指標</em>。`
   ));
 
   // ② 総走行距離
   pane.appendChild(detailCard('総走行距離 (推定)',
-    `<div class="mp-d-row"><span>📍 GPS</span><strong>${sv.totalDistanceKm.toLocaleString()}</strong> km</div>
-     <div class="mp-d-row"><span>📝 全記録</span><strong>${all.totalDistanceKm.toLocaleString()}</strong> km</div>`,
+    `<div class="mp-d-row"><span class="mp-d-l">🚃 総距離</span><strong>${all.totalDistanceKm.toLocaleString()}</strong> km</div>`,
     `各旅程の区間 (出発駅〜到着駅) を service_lines_master の駅順で展開し、隣接駅間の Haversine 距離を累積。営業キロではなく直線距離なので、実際の運行距離より少し短めに出る。GPS 軌跡 (将来) で精度向上予定。`
   ));
 
-  // ③ 運営会社別 完駅率 (GPS 記録ベース)
-  pane.appendChild(detailCard('運営会社別 完駅率 (GPS 記録)',
-    buildByOperator(sv),
+  // ③ 運営会社別 完駅率
+  pane.appendChild(detailCard('運営会社別 完駅率',
+    buildByOperator(all),
     `NORIRECO.data.SERVICE_LINES の operator (運営会社) でグルーピングし、駅 id でユニーク集計。同じ会社の中で複数系統に属する駅は 1 駅としてカウント (v293〜 同名異所も別駅扱い)。<br><br><strong>⚠ 各社の合計は全国総駅数 (9,017) を超えます</strong>。乗り入れ駅 (例: 東京駅は JR 東日本 + JR 東海 + 東京メトロ ...) は各会社それぞれにカウントされるため。`
   ));
 
   // ④ 三大都市圏 完駅率
-  pane.appendChild(detailCard('地域別 完駅率 (GPS 記録)',
-    buildByGroup(sv),
+  pane.appendChild(detailCard('地域別 完駅率',
+    buildByGroup(all),
     `NORIRECO.data.SERVICE_LINES の group (地域分類: 首都圏・関西・東海・東北・北海道・九州・四国・中国・新幹線 等) でグルーピング。三大都市圏での完乗率を見やすく可視化。<br><br><strong>⚠ 地域の合計は全国総駅数を超えます</strong>。新幹線駅 (例: 新横浜) は「首都圏」と「新幹線」両方にカウントされるなど、地域横断駅は重複集計のため。`
   ));
 
   // ⑤ よく乗る路線 Top 10
-  pane.appendChild(detailCard('よく乗る路線 (GPS 記録 Top 10)',
-    buildTopLines(sv),
-    `GPS 記録 (verified) 旅程の中で、各系統に乗った旅程数を集計。完乗率と乗車回数の両方が見える。`
+  pane.appendChild(detailCard('よく乗る路線 (Top 10)',
+    buildTopLines(all),
+    `記録した旅程の中で、各系統に乗った旅程数を集計。完乗率と乗車回数の両方が見える。`
   ));
 
   // ⑥ よく訪れる駅 Top 10
-  pane.appendChild(detailCard('よく訪れる駅 (GPS 記録 Top 10)',
-    buildTopStations(sv),
-    `GPS 記録旅程の経路上に登場した駅を訪問回数でランキング。途中通過した駅も含む。ホーム駅・職場最寄駅などが上位に来る傾向。`
+  pane.appendChild(detailCard('よく訪れる駅 (Top 10)',
+    buildTopStations(all),
+    `記録した旅程の経路上に登場した駅を訪問回数でランキング。途中通過した駅も含む。ホーム駅・職場最寄駅などが上位に来る傾向。`
   ));
 
-  // ⑦ 認証ステータス分布
-  pane.appendChild(detailCard('認証ステータス分布',
+  // ⑦ 記録方法の内訳 (v441: 旧「認証ステータス分布」)
+  pane.appendChild(detailCard('記録方法の内訳',
     buildAuthBreakdown(trips),
-    `自分の全旅程を 📍 GPS (位置情報で記録) / 📝 手動 (手で入力) で分類。GPS は手で入力する手間を省くもので、どちらも対等な記録。`
+    `自分の全旅程を 📍 GPS (位置情報で自動記録) / 📝 手動 (手で入力) で分類。GPS は手で入力する手間を省くもので、どちらも対等な記録 (どちらで記録しても完駅率は同じように集計されます)。`
   ));
 
   // ⑧ 累計駅数の推移 (月別)
@@ -280,10 +275,10 @@ function buildDetailContent(pane, sv, all, trips, totalUnique, totalLines) {
     `年ごとの新規訪問駅数とその累計。最初の年は当然多くなり、続ければ毎年 +N が増える形に。「今年は去年より頑張った?」をチェック。`
   ));
 
-  // ⑩ 都道府県別 訪問駅数 (GPS 記録ベース)
-  pane.appendChild(detailCard('都道府県別 訪問駅数 (GPS 記録)',
-    buildPrefectureChart(sv),
-    `47 都道府県ごとに <strong>自分が訪問した駅数 / その県の全駅数</strong> を集計。<em>verified (GPS 記録) のみ</em> 対象。<br>判定は駅座標 (緯度経度) からの簡易 bbox + centroid 最近接で行うため、県境付近の数駅は誤分類されることがある。乗りつぶしオンライン・鉄レコの定番機能の簡易版。`
+  // ⑩ 都道府県別 訪問駅数
+  pane.appendChild(detailCard('都道府県別 訪問駅数',
+    buildPrefectureChart(all),
+    `47 都道府県ごとに <strong>自分が訪問した駅数 / その県の全駅数</strong> を集計。<br>判定は駅座標 (緯度経度) からの簡易 bbox + centroid 最近接で行うため、県境付近の数駅は誤分類されることがある。乗りつぶしオンライン・鉄レコの定番機能の簡易版。`
   ));
 
   // ⑩-2 直近の旅程 (v182) — メモ・遅延も含めた最新カードを統計タブから即確認
@@ -318,7 +313,7 @@ function buildDetailContent(pane, sv, all, trips, totalUnique, totalLines) {
 
   // ⑮ 未踏領域 (未訪問の都道府県・主要ターミナル)
   pane.appendChild(detailCard('🗺 未踏領域',
-    buildUnexplored(sv),
+    buildUnexplored(all),
     `<strong>未訪問の都道府県</strong>と <strong>未踏の主要ターミナル駅</strong>。<br>次の旅の目的地候補に。完乗マラソンの「残り」が見える化される。<br>※ 都道府県判定は簡易 bbox 法のため境界付近の駅は要注意。`
   ));
 
@@ -513,7 +508,7 @@ const MAJOR_TERMINALS = [
 ];
 
 function buildUnexplored(snap) {
-  // 訪問済み駅 (GPS 記録) のフラットセット
+  // 訪問済み駅のフラットセット
   const visited = new Set();
   for (const [_, set] of Object.entries(snap.slSet || {})) {
     for (const n of set) visited.add(n);
@@ -1296,7 +1291,7 @@ function buildAuthBreakdown(trips) {
   const total = trips.length;
   const pct = (n) => total > 0 ? Math.round(n/total*100) : 0;
   return `
-    <div class="mp-d-row"><span class="mp-d-l">📍 GPS</span><strong>${verified}</strong> 件 <span class="mp-d-pct">(${pct(verified)}%)</span></div>
+    <div class="mp-d-row"><span class="mp-d-l">📍 GPS（自動）</span><strong>${verified}</strong> 件 <span class="mp-d-pct">(${pct(verified)}%)</span></div>
     <div class="mp-d-row"><span class="mp-d-l">📝 手動</span><strong>${manual}</strong> 件 <span class="mp-d-pct">(${pct(manual)}%)</span></div>
     <div class="mp-d-bar">
       <div class="mp-d-bar-seg verified" style="width:${pct(verified)}%"></div>
