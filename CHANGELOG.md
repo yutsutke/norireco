@@ -52,6 +52,31 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 290. v443 — シェア画像に期間チップ（この期間 / 今年 / 全期間 / 任意期間）
+
+**カテゴリ**: A（実装 — ユスケ要望）
+
+**背景**: 完乗率マップのシェア画像 (`openShareModal`) は常に「全 RIDDEN_SEGS = 地図の現在フィルタ済み」で固定生成だった。「シェアを押した瞬間に期間を選びたい (今年だけ / 全期間 / 任意期間)、デフォルトは地図で今絞ってる期間に合わせる」(ユスケ)。
+
+**確認 (AskUserQuestion)**: ①「この旅」チップ = **現在地図で絞っている期間** (季節/年/月指定をそのまま、デフォルト選択)。②期間変更は**シェア画像だけ** (地図・ヘッダ・グローバル `_tripDateFilter` は不変 = 一時的)。
+
+**変更**（4 ファイル。循環 import 回避で window ブリッジに統一）:
+- **`05-supabase-data.js`**: `filterTripsByDate(trips, override)` に override 引数追加 (グローバル `_tripDateFilter` を汚さず一時期間でフィルタ)。`filterTripsByDate` / `tripsToSegs` / `seasonFilterLabel` を window 公開。
+- **`13a-stats.js`**: 完乗率集計を `buildCompletionCards` 内の closure `collect()` から module-level `computeCompletionStats(trips)` に切り出し + `NORIRECO.mypage.computeCompletionStats` 公開。戻り値は `drawStatsPanel`/`openShareModal` 用 (pct/ridden/totalUnique/lines/complete/totalLines/distanceKm) と `buildCompletionCards`/`buildDetailContent` 用 (uniquePct/uniqueRidden/lineUnitXxx/slSet) を両方含む。`buildCompletionCards` はこれを使うよう refactor (重複排除)。
+- **`14-share-ogp.js`**: シェアモーダルに期間チップ row (この期間[地図準拠デフォルト]/今年/全期間/任意期間) + 日付 from/to 入力。チップ選択で `_mypageCache` の trips を `_sharePeriod` でフィルタ → `computeCompletionStats` で完乗率再計算 + `tripsToSegs` で地図ポリラインも期間連動 → `generateOgpCanvas(stats, segs)` で再生成。active チップは `_shareChipKey` で判定 (「この期間」と「全期間」が同 filter でも選んだ方だけ光る)。個別 trip シェア (`openTripShareModal`) では期間 row を隠す (1 旅程固定で期間無関係)。
+- **`noritetsu-map.html`**: 期間チップ CSS (`.share-period-chip` / `.share-period-date` / `.share-period-apply`)。
+
+**設計判断**:
+- 期間変更スコープ「シェア画像だけ vs 地図連動」→ **シェア画像だけ** (ユスケ確定)。`filterTripsByDate` に override 引数を足してグローバル `_tripDateFilter` は触らない。「ちょっと今年分だけシェアしたい」ときに地図表示まで変わるのは過剰。
+- 完乗率の再計算を「シェア専用の別ロジック」でなく既存 `collect` を `computeCompletionStats(trips)` に切り出して共有。完乗率カードとシェアで同じ計算 = 数字が必ず一致。
+- 繋ぎは window ブリッジ (13e-admin が html2canvas を window 経由で呼ぶ定石)。14 は誰からも import されない「葉」だが、循環 import 事故 (v331) を構造的に避けるため import でなく window 経由に統一。
+
+**検証**: preview 別オリジン (8043、SW キャッシュ stale 回避) で — window ブリッジ全 function、期間チップで完乗率 (今年=1系統30駅 / 全期間=2系統31駅) と地図 segs (1→2) が連動、active チップは選んだ 1 つだけ (key ベース)、任意期間で日付入力欄表示、個別 trip シェアで期間 row 非表示、console error 0。`npm run check` OK 25/25。
+
+**残課題**: なし。
+
+---
+
 ## 289. v442 — ゲストモードでも活動量メトリクスを表示（renderStats を _mypageCache ベース化）
 
 **カテゴリ**: A（実装 — ユスケ要望）

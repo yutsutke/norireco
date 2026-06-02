@@ -203,8 +203,10 @@ export function seasonFilterLabel(months) {
   return nums.join('・') + '月';
 }
 
-export function filterTripsByDate(trips) {
-  const f = window._tripDateFilter || { mode: 'all' };
+export function filterTripsByDate(trips, override) {
+  // v443: override を渡すとグローバル window._tripDateFilter を汚さず一時期間でフィルタできる
+  //   (シェア画像の期間チップ用)。省略時は従来どおりグローバル期間フィルタを参照。
+  const f = override || window._tripDateFilter || { mode: 'all' };
   if (!f || f.mode === 'all') return trips;
   // 年横断 (季節/月) モード: 連続レンジでなく「月メンバーシップ」で絞る
   if (f.mode === 'season') {
@@ -715,6 +717,11 @@ window.riddenSt = riddenSt;
 // setDateFilter は HTML onclick (noritetsu-map.html dfilter-chip) と 13-mypage-common HTML 文字列で
 // 使われるため window 維持 + export 両建て。toggleCustomDateFilter 等は HTML onclick のため window 維持。
 window.setDateFilter = setDateFilter;
+// v443: シェア画像の期間チップ (14-share-ogp.js) が window 経由で呼ぶ (循環 import 回避の定石)。
+//   filterTripsByDate は override 引数つきで一時期間フィルタ、tripsToSegs で地図ポリラインも期間連動。
+window.filterTripsByDate = filterTripsByDate;
+window.tripsToSegs = tripsToSegs;
+window.seasonFilterLabel = seasonFilterLabel;
 window.toggleCustomDateFilter = toggleCustomDateFilter;
 window.closeCustomDateFilter = closeCustomDateFilter;
 window.applyCustomDateFilter = applyCustomDateFilter;

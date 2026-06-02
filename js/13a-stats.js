@@ -39,12 +39,13 @@ function renderMpStatsSection() {
 }
 NORIRECO.mypage.renderMpStatsSection = renderMpStatsSection;
 
-function buildCompletionCards(trips) {
-  const wrap = document.createElement('div');
-  wrap.className = 'mp-stats-wrap';
-
-  // v293: 全駅マスターは駅 id ベースで Set 化 — 同名異所 (高松 3 駅等) を別駅として
-  //   正しくカウント。id が無い駅 (極稀) は除外。
+// v443: 完乗率の集計を module-level 関数に切り出し。シェア画像の期間チップ (14-share-ogp.js) が
+//   window.NORIRECO.mypage.computeCompletionStats(filteredTrips) として呼び、期間別の完乗率を再計算する。
+//   戻り値は openShareModal/drawStatsPanel 用の pct/ridden/totalUnique/lines/complete/totalLines/distanceKm と、
+//   buildCompletionCards/buildDetailContent 用の uniquePct/uniqueRidden/lineUnitXxx/slSet 等を両方含む。
+// v441: GPS の位置づけ変更 (v334〜v363) に伴い verifiedOnly フィルタを撤去、GPS も手動も対等集計。
+// v316/v317: visitCount/slSet/visitedUnique は全て駅 id キー (同名異所を別駅として正しくカウント)。
+function computeCompletionStats(trips) {
   const allUniqueStations = new Set();
   let lineUnitTotal = 0;
   for (const sl of NORIRECO.data.SERVICE_LINES) {
@@ -54,77 +55,71 @@ function buildCompletionCards(trips) {
   const totalUnique = allUniqueStations.size;
   const totalLines = NORIRECO.data.SERVICE_LINES.length;
 
-  // ── 共通の集計 (GPS・手動を区別しない全記録ベース) ────────────────
-  // v441: GPS の位置づけが「公式認定」→「記録の手間省略」に変わった (v334〜v363) のに
-  //   合わせ、統計から GPS 特別扱い (verifiedOnly フィルタ) を撤去。GPS 記録も手動記録も
-  //   対等に集計する。旧 sv (verifiedOnly=true) 系の引数・カードは全廃。
-  // v316/v317 (Phase 3-e): visitCount を駅 id キーに移行 (v293/v316 で SERVICE_LINES の
-  //   stations[].id が確定済)。表示時 (buildTopStations) は MERGED_STATIONS で id → name 解決。
-  //   v317: 04b-ride-record.js の slVisitCount も SERVICE_LINES ベース + 駅 id キーに統一済
-  //   (08-rendering / 08 キャラモーダルの個人化レベル用)。
-  function collect() {
-    const slSet = {};
-    const visitedUnique = new Set();
-    const visitCount = {};       // 駅 id → 訪問 trip 数 (v316)
-    const lineRideCount = {};    // sl.id → 乗車 trip 数
-    let totalDistanceKm = 0;
-    let totalMinutes = 0;
-    let validTrips = 0;
-    for (const trip of trips) {
-      if (!trip.segments) continue;
-      validTrips++;
-      if (trip.total_minutes) totalMinutes += trip.total_minutes;
-      const tripStations = new Set(); // 駅 id (visitCount 用、v316)
-      const tripLines = new Set();
-      for (const seg of trip.segments) {
-        const sl = NORIRECO.data.SERVICE_LINES.find(l => l.id === seg.lineId);
-        if (!sl) continue;
-        const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
-        const toIdx = sl.stations.findIndex(s => s.name === seg.to);
-        if (fromIdx < 0 || toIdx < 0) continue;
-        const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
-        if (!slSet[sl.id]) slSet[sl.id] = new Set();
-        tripLines.add(sl.id);
-        for (let i = a; i <= b; i++) {
-          const st = sl.stations[i];
-          // v316: slSet / visitedUnique / tripStations 全て駅 id キーに統一
-          if (st.id) {
-            slSet[sl.id].add(st.id);
-            visitedUnique.add(st.id);
-            tripStations.add(st.id);
-          }
-        }
-        // 距離
-        for (let i = a; i < b; i++) {
-          const s1 = sl.stations[i], s2 = sl.stations[i+1];
-          if (s1.lat != null && s2.lat != null) {
-            totalDistanceKm += distMeters(s1.lat, s1.lon, s2.lat, s2.lon) / 1000;
-          }
+  const slSet = {};
+  const visitedUnique = new Set();
+  const visitCount = {};       // 駅 id → 訪問 trip 数
+  const lineRideCount = {};    // sl.id → 乗車 trip 数
+  let totalDistanceKm = 0, totalMinutes = 0, validTrips = 0;
+  for (const trip of (trips || [])) {
+    if (!trip.segments) continue;
+    validTrips++;
+    if (trip.total_minutes) totalMinutes += trip.total_minutes;
+    const tripStations = new Set();
+    const tripLines = new Set();
+    for (const seg of trip.segments) {
+      const sl = NORIRECO.data.SERVICE_LINES.find(l => l.id === seg.lineId);
+      if (!sl) continue;
+      const fromIdx = sl.stations.findIndex(s => s.name === seg.from);
+      const toIdx = sl.stations.findIndex(s => s.name === seg.to);
+      if (fromIdx < 0 || toIdx < 0) continue;
+      const [a, b] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
+      if (!slSet[sl.id]) slSet[sl.id] = new Set();
+      tripLines.add(sl.id);
+      for (let i = a; i <= b; i++) {
+        const st = sl.stations[i];
+        if (st.id) { slSet[sl.id].add(st.id); visitedUnique.add(st.id); tripStations.add(st.id); }
+      }
+      for (let i = a; i < b; i++) {
+        const s1 = sl.stations[i], s2 = sl.stations[i+1];
+        if (s1.lat != null && s2.lat != null) {
+          totalDistanceKm += distMeters(s1.lat, s1.lon, s2.lat, s2.lon) / 1000;
         }
       }
-      for (const id of tripStations) visitCount[id] = (visitCount[id]||0) + 1;
-      for (const lid of tripLines) lineRideCount[lid] = (lineRideCount[lid]||0) + 1;
     }
-    let lineUnitRidden = 0, lines = 0, complete = 0;
-    for (const sl of NORIRECO.data.SERVICE_LINES) {
-      const r = slSet[sl.id] ? slSet[sl.id].size : 0;
-      lineUnitRidden += r;
-      if (r > 0) lines++;
-      if (r === sl.stations.length && sl.stations.length > 0) complete++;
-    }
-    return {
-      uniquePct: totalUnique > 0 ? Math.round(visitedUnique.size / totalUnique * 100) : 0,
-      uniqueRidden: visitedUnique.size,
-      lines, complete,
-      lineUnitRidden, lineUnitTotal,
-      lineUnitPct: lineUnitTotal > 0 ? Math.round(lineUnitRidden / lineUnitTotal * 100) : 0,
-      totalDistanceKm: Math.round(totalDistanceKm),
-      totalMinutes,
-      validTrips,
-      slSet, visitCount, lineRideCount,
-    };
+    for (const id of tripStations) visitCount[id] = (visitCount[id]||0) + 1;
+    for (const lid of tripLines) lineRideCount[lid] = (lineRideCount[lid]||0) + 1;
   }
-  const all = collect();
+  let lineUnitRidden = 0, lines = 0, complete = 0;
+  for (const sl of NORIRECO.data.SERVICE_LINES) {
+    const r = slSet[sl.id] ? slSet[sl.id].size : 0;
+    lineUnitRidden += r;
+    if (r > 0) lines++;
+    if (r === sl.stations.length && sl.stations.length > 0) complete++;
+  }
+  const uniquePct = totalUnique > 0 ? Math.round(visitedUnique.size / totalUnique * 100) : 0;
+  const distanceKm = Math.round(totalDistanceKm);
+  return {
+    // openShareModal / drawStatsPanel 用エイリアス
+    pct: uniquePct, ridden: visitedUnique.size, distanceKm,
+    totalUnique, totalLines, lines, complete,
+    // buildCompletionCards / buildDetailContent 用 (旧 collect 互換)
+    uniquePct, uniqueRidden: visitedUnique.size,
+    lineUnitRidden, lineUnitTotal,
+    lineUnitPct: lineUnitTotal > 0 ? Math.round(lineUnitRidden / lineUnitTotal * 100) : 0,
+    totalDistanceKm: distanceKm, totalMinutes, validTrips,
+    slSet, visitCount, lineRideCount,
+  };
+}
+NORIRECO.mypage.computeCompletionStats = computeCompletionStats;
+
+function buildCompletionCards(trips) {
+  const wrap = document.createElement('div');
+  wrap.className = 'mp-stats-wrap';
+
+  // v443: 完乗率集計は module-level computeCompletionStats に切り出し済 (シェア期間チップと共有)。
+  const all = computeCompletionStats(trips);
+  const totalUnique = all.totalUnique;
+  const totalLines = all.totalLines;
 
   // ── サマリカード 1 枚 (GPS・手動を区別しない完駅率) ───────────────
   // v441: GPS 完駅率 / 全記録 完駅率 の 2 枚並びを廃止。GPS は記録の手間を省く手段で

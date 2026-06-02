@@ -471,7 +471,8 @@ function drawTripStatsPanel(ctx, x0, y0, w, h, d) {
   }
 }
 
-async function generateOgpCanvas(stats) {
+// v443: segs を渡すと地図ポリラインを期間別に描く (シェア期間チップ)。省略時は全 RIDDEN_SEGS。
+async function generateOgpCanvas(stats, segs) {
   const canvas = document.createElement('canvas');
   canvas.width = OGP_W;
   canvas.height = OGP_H;
@@ -502,7 +503,7 @@ async function generateOgpCanvas(stats) {
 
   // 地図エリア (左)
   const mapX = 50, mapY = 110, mapW = 620, mapH = 470;
-  const polylines = buildSegmentPolylines();
+  const polylines = buildSegmentPolylines(segs);
   drawJapanMap(ctx, mapX, mapY, mapW, mapH, polylines);
 
   // ステータスパネル (右)
@@ -576,6 +577,16 @@ function ensureModal() {
       <div class="modal-title" id="share-ogp-title">📸 シェア画像</div>
       <div class="modal-sub" id="share-ogp-sub" style="color:var(--silver);font-size:11px;margin-bottom:12px">
         全国鉄道の完乗状況を 1200×630 の OGP 画像として書き出します。長押し or ダウンロードで保存できます。
+      </div>
+      <div id="share-period-row" style="display:none;margin-bottom:12px">
+        <div style="font-size:10px;color:var(--silver);margin-bottom:6px">📅 期間を選んでシェア</div>
+        <div id="share-period-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+        <div id="share-period-custom" style="display:none;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap">
+          <input type="date" id="share-period-from" class="share-period-date">
+          <span style="color:var(--silver);font-size:11px">〜</span>
+          <input type="date" id="share-period-to" class="share-period-date">
+          <button id="share-period-apply-btn" class="share-period-apply" onclick="NORIRECO.share.applySharePeriodCustom()">適用</button>
+        </div>
       </div>
       <div id="share-ogp-preview-wrap" style="background:#060f1a;border:1px solid var(--track);border-radius:8px;padding:8px;margin-bottom:12px;text-align:center">
         <canvas id="share-ogp-canvas" style="width:100%;height:auto;max-width:480px;border-radius:4px;display:block;margin:0 auto"></canvas>
@@ -792,27 +803,129 @@ function _guardShareBanned() {
   return false;
 }
 
+// ══════════════════════════════════════════════════════════════
+// v443: シェア画像の期間チップ — シェアを押した瞬間に「この期間 / 今年 / 全期間 / 任意期間」を
+//   出し、選んだ期間で完乗率と地図ポリラインを再計算して画像を作り直す。デフォルトは地図の現在
+//   フィルタ ("この期間")。期間変更はシェア画像だけ (グローバル window._tripDateFilter は触らない
+//   = 地図・ヘッダの表示は動かさない、ユスケ確定)。trips は完乗率カードと同じ _mypageCache から。
+// ══════════════════════════════════════════════════════════════
+let _sharePeriod = { mode: 'all' };
+let _shareChipKey = 'current';  // v443: active チップは key で判定 (この期間と全期間が同 filter でも選んだ方だけ光らせる)
+
+function _sharePeriodLabel(f) {
+  if (!f || f.mode === 'all') return '全期間';
+  const y = new Date().getFullYear();
+  if (f.mode === 'thisYear') return `${y}年`;
+  if (f.mode === 'lastYear') return `${y - 1}年`;
+  if (f.mode === 'untilMonth') return f.month ? `〜${f.month.replace('-', '/')}` : '〜月指定';
+  if (f.mode === 'season') return (window.seasonFilterLabel && window.seasonFilterLabel(f.months)) || '季節/月';
+  if (f.mode === 'custom') {
+    const fr = (f.from || '').slice(0, 10), to = (f.to || '').slice(0, 10);
+    return (fr || to) ? `${fr || '…'}〜${to || '…'}` : '任意期間';
+  }
+  return '';
+}
+
+// "この期間" チップのラベル: 地図フィルタが全期間ならそう明示、それ以外は内容を併記。
+function _currentMapPeriodLabel() {
+  const f = window._tripDateFilter || { mode: 'all' };
+  return f.mode === 'all' ? 'この期間 (全期間)' : `この期間 (${_sharePeriodLabel(f)})`;
+}
+
+function _renderSharePeriodChips() {
+  const wrap = document.getElementById('share-period-chips');
+  if (!wrap) return;
+  const chips = [
+    { key: 'current', label: _currentMapPeriodLabel() },
+    { key: 'thisYear', label: '今年' },
+    { key: 'all', label: '全期間' },
+    { key: 'custom', label: '任意期間' },
+  ];
+  wrap.innerHTML = chips.map(c => {
+    const active = c.key === _shareChipKey;
+    return `<button class="share-period-chip${active ? ' active' : ''}" onclick="NORIRECO.share.setSharePeriod('${c.key}')">${c.label}</button>`;
+  }).join('');
+  const custom = document.getElementById('share-period-custom');
+  if (custom) custom.style.display = (_sharePeriod.mode === 'custom') ? 'flex' : 'none';
+}
+
+async function setSharePeriod(key) {
+  _shareChipKey = key;
+  const mapF = window._tripDateFilter || { mode: 'all' };
+  if (key === 'current') _sharePeriod = Object.assign({}, mapF);
+  else if (key === 'thisYear') _sharePeriod = { mode: 'thisYear' };
+  else if (key === 'all') _sharePeriod = { mode: 'all' };
+  else if (key === 'custom') {
+    // 入力欄を開くだけ。再生成は applySharePeriodCustom (適用ボタン) で。
+    _sharePeriod = { mode: 'custom', from: _sharePeriod.from || '', to: _sharePeriod.to || '' };
+    const fromEl = document.getElementById('share-period-from');
+    const toEl = document.getElementById('share-period-to');
+    const y = new Date().getFullYear();
+    if (fromEl && !fromEl.value) fromEl.value = `${y}-01-01`;
+    if (toEl && !toEl.value) toEl.value = new Date().toISOString().slice(0, 10);
+    _renderSharePeriodChips();
+    return;
+  }
+  _renderSharePeriodChips();
+  await _regenShareImage();
+}
+
+async function applySharePeriodCustom() {
+  const fromEl = document.getElementById('share-period-from');
+  const toEl = document.getElementById('share-period-to');
+  const from = fromEl ? fromEl.value : '';
+  const to = toEl ? toEl.value : '';
+  if (!from && !to) { alert('開始日か終了日を入力してください'); return; }
+  _sharePeriod = { mode: 'custom', from, to };
+  _shareChipKey = 'custom';
+  _renderSharePeriodChips();
+  await _regenShareImage();
+}
+
+// _sharePeriod でフィルタした完乗率 + 地図ポリラインで画像を再生成する。
+async function _regenShareImage() {
+  const trips = (window.NORIRECO && NORIRECO.mypage && NORIRECO.mypage.state && NORIRECO.mypage.state._mypageCache) || [];
+  const filtered = window.filterTripsByDate ? window.filterTripsByDate(trips, _sharePeriod) : trips;
+  const stats = (window.NORIRECO && NORIRECO.mypage && NORIRECO.mypage.computeCompletionStats)
+    ? NORIRECO.mypage.computeCompletionStats(filtered)
+    : { pct: 0, ridden: 0, totalUnique: 0, lines: 0, complete: 0, totalLines: 0, distanceKm: 0 };
+  const segs = window.tripsToSegs ? window.tripsToSegs(filtered) : null;
+  const periodLabel = _sharePeriodLabel(_sharePeriod);
+  const suffix = (periodLabel && periodLabel !== '全期間') ? ` / ${periodLabel}` : '';
+  _shareText = `全国鉄道の完乗マップ📍${suffix ? ' (' + periodLabel + ')' : ''} #乗レコ #乗り鉄\nhttps://norireco.app/`;
+  _shareMeta = {
+    kind: 'profile',
+    title: `全国鉄道 完駅率 ${stats.pct}%${suffix}`,
+    description: `制覇 ${(stats.ridden || 0).toLocaleString()} / ${(stats.totalUnique || 0).toLocaleString()} 駅 ・ 系統 ${stats.lines || 0} ・ 総距離 ${(stats.distanceKm || 0).toLocaleString()} km`,
+  };
+  paintCanvas(await generateOgpCanvas(stats, segs));
+}
+
+// stats 引数は後方互換 (呼び出し側は従来どおり渡してよいが、内部は _sharePeriod で再計算する)。
 export async function openShareModal(stats) {
   if (_guardShareBanned()) return;
   const m = ensureModal();
   const title = document.getElementById('share-ogp-title');
   const sub = document.getElementById('share-ogp-sub');
   if (title) title.textContent = '📸 シェア画像';
-  if (sub) sub.textContent = '全国鉄道の完乗状況を 1200×630 の OGP 画像として書き出します。長押し or ダウンロードで保存できます。';
+  if (sub) sub.textContent = '全国鉄道の完乗状況を 1200×630 の OGP 画像として書き出します。期間を選んでシェアできます。';
   _downloadName = `norireco-${new Date().toISOString().slice(0, 10)}`;
-  _shareText = '全国鉄道の完乗マップ📍 #乗レコ #乗り鉄\nhttps://norireco.app/';
-  _shareMeta = {
-    kind: 'profile',
-    title: `全国鉄道 完駅率 ${stats.pct}%`,
-    description: `制覇 ${(stats.ridden || 0).toLocaleString()} / ${(stats.totalUnique || 0).toLocaleString()} 駅 ・ 系統 ${stats.lines || 0} ・ 総距離 ${(stats.distanceKm || 0).toLocaleString()} km`,
-  };
+  // v443: 期間チップを表示。初期は地図の現在フィルタ ("この期間")。
+  const periodRow = document.getElementById('share-period-row');
+  if (periodRow) periodRow.style.display = 'block';
+  _sharePeriod = Object.assign({}, window._tripDateFilter || { mode: 'all' });
+  _shareChipKey = 'current';
+  _renderSharePeriodChips();
   m.classList.add('open');
-  paintCanvas(await generateOgpCanvas(stats));
+  await _regenShareImage();
 }
 
 export async function openTripShareModal(trip) {
   if (_guardShareBanned()) return;
   const m = ensureModal();
+  // v443: 個別 trip は 1 旅程固定なので期間チップは隠す (profile シェアのみ期間選択)。
+  const periodRow = document.getElementById('share-period-row');
+  if (periodRow) periodRow.style.display = 'none';
   const d = deriveTripDisplay(trip);
   // 路線名は最大 3 つまで「・」で繋ぎ、超過は「ほか N 路線」
   let lineLabel = d.lineNames.slice(0, 3).join('・') || d.fromTo || '旅程';
@@ -1027,7 +1140,7 @@ async function revokeShare(shareId) {
 }
 
 window.NORIRECO = window.NORIRECO || {};
-window.NORIRECO.share = { openShareModal, openTripShareModal, captureElementToPng };
+window.NORIRECO.share = { openShareModal, openTripShareModal, captureElementToPng, setSharePeriod, applySharePeriodCustom };
 // マイページ統合 (NORIRECO.mypage は 13-mypage-common が初期化。ここでは guard して登録のみ)。
 window.NORIRECO.mypage = window.NORIRECO.mypage || {};
 window.NORIRECO.mypage.renderMpSharesSection = renderMpSharesSection;
