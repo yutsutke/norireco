@@ -52,6 +52,28 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 291. v444 — 一括記録の達成演出（活性化強化 — 初回の塗れた感動 → シェア導線）
+
+**カテゴリ**: A（実装 — 活性化強化 / ユスケ選択）
+
+**背景**: 「宣伝広告・使う人をどう増やすか」の議論から。ニッチ無料アプリで有料広告は CAC が見合わず、5大原則④「早期βで学習 → 本リリースで拡散」に従えば **拡散の前にバケツの穴 (活性化/継続) を塞ぐ** のが順番。ファネルを実機で診断すると、完乗率・完乗達成日・連続日数 (streak) は `computeCompletionStats` / `buildPersonalRecords` で **計算済みなのに📊統計タブ深部の受け身の数字止まり** で、活性化を駆動する能動的な瞬間になっていなかった。ユスケ選択で「③ 初回の塗れた感動」を厚くする = 一括記録の保存直後に「全国○○駅 制覇！」のリザルトを祝い、そのままシェア (原則④) へ流す機能を実装。
+
+**設計判断**:
+- **新モジュール `js/22-celebrate.js` に切り出し**: 21-bulk-record.js が ~990 行で「1000 行で分割」規約に接触していたため、演出 (~190 行) は別ファイルへ。app モジュールを **import せず `window.NORIRECO.*` ブリッジのみ参照** (循環 import 回避 — [[feedback_es_modules_circular_import]])。完乗率は 13a の `computeCompletionStats`、シェアは 14 の `openShareModal` を再利用。DOM/CSS は `ensureModal` 流儀で自前 1 度だけ注入、オーバーレイは body 直下 + `position:fixed;inset:0` (v433 の「.content 内 fixed」罠回避)。
+- **トリガは一括保存のみ** (`saveBulkDrafts` 末尾、`savedCount>0`)。手動記録 07 には付けず、オンボーディング経路 (空マップバナー → 一括記録) に限定して特別感を維持。
+- **before/after 差分**: 保存前に完乗率をスナップショット → 保存後に再計算し「今回 +N駅 / +M系統」「新規完乗系統」を `slSet` 比較で算出。初回 (before.ridden=0) は 🎉「はじめてマップが塗れました！」、完乗達成ありは 🏆 と文言/絵文字を分岐。
+
+**検証で発見した bug と修正 (重要)**: preview 実機で `_mypageCache: n/a` を実測 → **`_mypageCache` はマイページ描画時 (13-mypage-common.js:356/437/500) にしか populate されず、`syncFromSupabase` も set しない**。つまり今まさに最適化したいオンボーディング経路 (マイページ未表示) では `_mypageCache` が null のまま → 演出もシェア画像も `[]` 集計で **0%/空マップ** になる致命的な穴だった (シェア画像も同じ源なので latent 既存バグ)。修正: `saveBulkDrafts` で `_mypageCache` が array でなければ **localStorage `norireco_trips` から hydrate** (ゲストは `user_id` 無しのみ = v419 と対称、`_readStoredTrips` ヘルパー)。before スナップショットも同じ source 関数に統一。これで演出 + シェア画像が空集計にならず、`_mypageCache` がこの経路で live になる。**教訓**: 新規 UI を既存 state に乗せる前に「その state がこの導線で初期化済か」を実機で確認する ([[feedback_verify_with_primary_data]] と整合)。
+
+**0% deflation 修正**: 当初ヒーロー数字を完乗率% にしたが、初期ユーザーは 15/9,030 駅 = 0.17% → 四捨五入で **「0%」が「おめでとう」直後に出て萎える**。ヒーローを **「乗った駅数」(必ず非ゼロで達成感)** に変更し、完乗率は補助行で 1% 未満のとき小数 1 桁 (「0.2%」) 表示にして非ゼロを保つ。
+
+**検証**:
+- `npm run check` 28/28。この際 **check の FILES 配列に 20/21 が抜けていた既存の検証漏れも是正** (20-trip-detail-editor / 21-bulk-record / 22-celebrate を追加、HTML/sw.js と 3 点更新)。
+- preview (別オリジン + SW unregister/caches purge でキャッシュ stale 回避 — [[feedback_preview_sw_cache_staleness]]) で **実際の一括記録 UI を駆動して E2E**: ゲスト・`_mypageCache` null の状態で篠ノ井線 (15 駅) をチェック → 保存 → 「はじめて 🎉 / 15駅 / 完駅率 0.2% / +15駅 +1系統 1件記録 / 🏆 完乗達成: 篠ノ井線 / ⚠️端末内のみ」を確認。`_mypageCache` が null→1 に hydrate されたことも確認。シェアCTA クリック → 演出が閉じ → 1200×630 OGP キャンバス生成 (pixel サンプリングで 7 色 = ブランド赤/ネイビー/シルバー文字 = 中身入りを確認)。
+- スクショは演出を閉じても**地図ページ全体が環境でタイムアウト** (地図タイル + heavy render の環境制約、演出が原因でないことを overlay 閉でも再現して確認) のため、DOM 状態 + canvas pixel で代替検証。
+
+**残課題** (別タスク): 手動記録 (07 saveMultiSegmentTrip) で完乗到達時の演出 / 「戻る理由」= ネクスト目標「あと○駅で△△線完乗」の常時提示 (活性化ファネル④ の本丸、本タスクの議論で次の候補として整理済) / ゲスト記録の reload 喪失対策 (⑤)。
+
 ## 290. v443 — シェア画像に期間チップ（この期間 / 今年 / 全期間 / 任意期間）
 
 **カテゴリ**: A（実装 — ユスケ要望）

@@ -836,6 +836,24 @@ async function saveBulkDrafts() {
   // v418: 未ログイン時は Supabase POST をスキップし localStorage のみ。
   const isGuest = !ctx.userId;
 
+  // v444: 達成演出 (22-celebrate) 用の before スナップショット。
+  //   この後のループが _mypageCache を変異させるため、保存前にここで完乗率を確定させる。
+  //   _mypageCache はマイページ未描画だと null (オンボーディング→一括記録の経路がまさにこれ)。
+  //   その場合は localStorage を真実の源にする (ゲストは自分の分=user_id 無しのみ、v419 と対称)。
+  //   computeCompletionStats は新規 Set を組むので before の返り値は安定スナップショット。
+  const _readStoredTrips = () => {
+    let stored = [];
+    try { stored = JSON.parse(localStorage.getItem('norireco_trips') || '[]'); } catch (e) {}
+    if (!Array.isArray(stored)) stored = [];
+    return isGuest ? stored.filter(t => !t.user_id) : stored;
+  };
+  let _beforeStats = null;
+  try {
+    const _mc = NORIRECO.mypage?.state?._mypageCache;
+    const _baseTrips = Array.isArray(_mc) ? _mc : _readStoredTrips();
+    _beforeStats = NORIRECO.mypage?.computeCompletionStats?.(_baseTrips) || null;
+  } catch (e) { /* 演出は best-effort、失敗しても保存は続行 */ }
+
   let savedCount = 0;
   let failedCount = 0;
   let totalStations = 0;
@@ -896,11 +914,20 @@ async function saveBulkDrafts() {
   // 全 trip の segments を RIDDEN_SEGS に一括 push、その後 1 回だけ rebuild + redraw
   for (const trip of tripsForRebuild) {
     for (const seg of trip.segments) window.RIDDEN_SEGS.push(seg);
-    try {
-      const mc = NORIRECO.mypage?.state?._mypageCache;
-      if (Array.isArray(mc)) mc.push(trip);
-    } catch (e) {}
   }
+  // v444: _mypageCache を live に保つ。array なら新 trip を append。
+  //   未初期化 (マイページ未表示) なら localStorage から hydrate (新 trip は上のループで反映済)。
+  //   これで達成演出 (22) とシェア画像 (14, openShareModal) が空集計 0% にならない。
+  try {
+    const MP = NORIRECO.mypage?.state;
+    if (MP) {
+      if (Array.isArray(MP._mypageCache)) {
+        for (const trip of tripsForRebuild) MP._mypageCache.push(trip);
+      } else {
+        MP._mypageCache = _readStoredTrips();
+      }
+    }
+  } catch (e) {}
   try { NORIRECO.rideRecord?.rebuild?.(); } catch (e) { console.warn('[bulk-record] rebuild failed:', e); }
   try { redrawAllLinesAfterTripChange(); } catch (e) { console.warn('[bulk-record] redraw failed:', e); }
   try { updateOverlays(); } catch (e) { console.warn('[bulk-record] updateOverlays failed:', e); }
@@ -926,6 +953,20 @@ async function saveBulkDrafts() {
   closeBulkRecordSheet();
   // A-6: 空マップ banner を再評価 (1 件でも保存していれば自動で消える)
   updateOnboardingBanner();
+
+  // v444: 達成演出。1 件以上ローカル反映できたら「全国○%完乗！」リザルトを祝い、
+  //   そのままシェア (原則④) へ誘導する。sheet を閉じた後に出すことで塗れたマップを背後に見せる。
+  //   window ブリッジ経由 (循環 import 回避)。22 未ロードや計算不能なら静かにスキップ。
+  if (savedCount > 0) {
+    try {
+      window.NORIRECO?.celebrate?.showBulkResult?.({
+        before: _beforeStats,
+        savedCount,
+        totalStations,
+        isGuest,
+      });
+    } catch (e) { console.warn('[bulk-record] celebrate failed:', e); }
+  }
 }
 
 // ──────────────────────────────────────────────────────────────

@@ -52,6 +52,9 @@ const FILES = [
   '17-station-actions',
   '18-photo-area',
   '19-drag-sort',
+  '20-trip-detail-editor',
+  '21-bulk-record',
+  '22-celebrate',
   'share-japan-geo',
 ];
 
