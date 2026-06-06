@@ -52,6 +52,37 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 292. v445 — 記録の 2 バグ修正（旅程編集モーダルが路線詳細経由で開かない / 青梅線・阪和線が二重表示）
+
+**カテゴリ**: A（バグ修正 — ユスケ実機報告）
+
+**背景**: ユスケから記録まわりで 2 件の不具合報告。① 「地図 → 路線詳細モーダル → 旅程の ✏️ 編集」を押しても**何も起きない**。② 「青梅線の記録時に青梅線が 2 路線出る」。
+
+### ① 旅程編集モーダルがモーダル二段重ねで背面に出る
+
+**原因**: `#mp-line-detail-modal`（路線詳細）と `#trip-edit-modal`（旅程編集）はどちらも `.memo-modal`（`position:fixed` + `backdrop-filter` + `z-index:200`）で `.content`（`position:fixed` = 入れ子 fixed の基準）内にある。路線詳細を開いたまま編集を開くと **memo-modal を二段重ね**することになり、モバイル Safari の `backdrop-filter` + 入れ子 fixed のスタッキング不具合で編集モーダルが路線詳細の**背面**に回り、画面が変わらず「押しても何も起きない」状態になっていた。`rec-confirm`/`char`/`end-station` だけ `z-index:9999` の最前面化を持ち、`trip-edit`/`line-detail`/`restore` はその穴に該当（z-index override 無し）。マイページ旅程タブ経由だと地図ペインが `display:none` で単一モーダルのため発症しないが、路線詳細経由は地図タブ上の二段重ねで発症。
+
+**修正**:
+- `js/13b-trips.js` `openTripEditModal` 冒頭で `#mp-line-detail-modal` を閉じ、モーダルを常に 1 枚に保つ（二段重ねの根本回避）。`saveTripEdit` は末尾で mypage 旅程セクションを再描画するだけで line-detail に依存しないため安全。
+- `noritetsu-map.html` CSS で `#trip-edit-modal`/`#restore-modal` を `z-index:9999`、`#mp-line-detail-modal` を `z-index:9990`（編集を確実に詳細の上へ）に最前面化 + `.open{display:flex !important}`。rec-confirm 等と同じ最前面グループに揃えた防御。
+
+**教訓**: `.memo-modal` を別の `.memo-modal` の上に重ねない（特に PWA/モバイルで `backdrop-filter` 入れ子 fixed はスタッキングが崩れる）。重ねる導線を作るときは下のモーダルを閉じる。
+
+### ② 青梅線・阪和線が記録時に二重表示
+
+**原因**: v334（CHANGELOG_PHASE3.8-vehicles §266）で `through_lines` の broken ref を解消するため `jr_ome_line`（青梅線）/ `jr_yamatoji_line`（大和路線）/ `jr_hanwa_line`（阪和線）を手動キュレーション系統として新設したが、**流用元の自動生成エントリ `auto_青梅線_東日本旅客鉄道` / `auto_阪和線_西日本旅客鉄道` を削除し忘れていた**（changelog にも「auto_* を駅順データとして流用」とだけ記載・削除記述なし）。記録時の路線候補は `SERVICE_LINES` 由来（`07-record-mode.getCommonServiceLines`、builder に dedup 無し）なので同名 2 件が両方候補に出ていた。大和路線は auto 側が「関西本線」名（全線・名古屋〜）で別物のため重複には出ない。
+
+**修正（データのみ・JS 不変）**:
+- `service_lines_master.json`: 重複 auto 2 件を削除（**642 → 640 系統**）。阪和線支線 `auto_阪和線_西日本旅客鉄道_b1`（羽衣支線・鳳/東羽衣）は別系統なので残し、`parent_id` を `jr_hanwa_line` に付替え。
+- `merged_stations.json`: 各駅の所属路線 `lines[]` を canonical へ移行（青梅線 25 駅 → `jr_ome_line`、阪和線 35 駅 → `jr_hanwa_line`、支線 `_b1` の 2 件は閉じ引用符で区別され不変）。`ms.colors` は v244 以降未参照（色は `SERVICE_LINES.color` 動的取得）なので据置。
+- **既存 trip の互換**: 旧 `auto_青梅線…` で記録済みの旅程も、`04b-ride-record.js` の slRiddenSt 構築が **resolve 経路 fallback**（N02 路線 id 経由で SL を推定）を持つため `jr_ome_line` に解決され、**地図塗りは維持**される（コード調査で確認）。`alias` フィールドはコード未参照のため未使用。
+
+**検証**: `node` で JSON 妥当性 + 残存参照 0（`_b1` 除く）+ 青梅駅 `lines=["jr_ome_line"]` を確認。`npm run check` 28/28。`js-syntax-guard` で 13b-trips.js / HTML を clean 確認。実機確認はユスケに依頼（preview にブラウザ無し・モバイル backdrop-filter 挙動 + DB 要のため）。
+
+**残課題**: 同種の auto/curated 重複は名前一致では他に無し（scan 済）。大和路線/関西本線の併存は意図的（別 official_line）。手動記録 07 からの編集導線（rec-confirm 内）も同じ最前面グループだが二段重ねの可能性は別途要確認。
+
+---
+
 ## 291. v444 — 一括記録の達成演出（活性化強化 — 初回の塗れた感動 → シェア導線）
 
 **カテゴリ**: A（実装 — 活性化強化 / ユスケ選択）

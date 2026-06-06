@@ -886,6 +886,16 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 /* 終了駅 GPS 選択モーダル */
 #end-station-modal{z-index:9999 !important;}
 #end-station-modal.open{display:flex !important;}
+/* v445: 路線詳細・旅程編集・復元モーダルも最前面化。
+   これらは .content (position:fixed = 入れ子 fixed の基準) 内にあり z-index:200 のままだったため、
+   特に「地図→路線詳細→旅程の✏️編集」の二段重ねで編集モーダルが背面に回り「押しても何も起きない」状態だった。
+   rec-confirm/char/end-station と同じ最前面グループに揃える。 */
+#mp-line-detail-modal{z-index:9990 !important;}
+#mp-line-detail-modal.open{display:flex !important;}
+#trip-edit-modal{z-index:9999 !important;}
+#trip-edit-modal.open{display:flex !important;}
+#restore-modal{z-index:9999 !important;}
+#restore-modal.open{display:flex !important;}
 .char-modal-hero{
   text-align:center;margin:8px auto 18px;
 }

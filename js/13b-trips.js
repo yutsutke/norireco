@@ -341,6 +341,12 @@ NORIRECO.mypage.applyTripFilters = applyTripFilters;
 function openTripEditModal(tripId) {
   const trip = (NORIRECO.mypage.state._mypageCache || []).find(t => t.id === tripId);
   if (!trip) { alert('旅程が見つかりません'); return; }
+  // v445: 「地図→路線詳細モーダル→旅程の✏️編集」だと memo-modal を二段重ねすることになり、
+  //   モバイル Safari の backdrop-filter + 入れ子 fixed のスタッキング不具合で編集モーダルが
+  //   路線詳細モーダルの背面に出てしまい「押しても何も起きない」状態になっていた。
+  //   編集を開く前に路線詳細モーダルを閉じてモーダルを 1 枚に保つ (saveTripEdit は mypage 旅程を
+  //   再描画するので line-detail に依存しない)。
+  document.getElementById('mp-line-detail-modal')?.classList.remove('open');
   const idInp = document.getElementById('trip-edit-id');
   const subTitle = document.getElementById('trip-edit-subtitle');
   if (idInp) idInp.value = tripId;
