@@ -1517,8 +1517,60 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
   </div>
 </div>
 
-<!-- v184: 旅程の後追い編集モーダル (マイページ旅程カードから開く)
-     v184: メモ・遅延 / v226: 区間 (read-only) ・乗車時刻 (date/depart/arrive) ・列車種別 を追加 -->
+
+<!-- 復元モーダル -->
+<div class="memo-modal" id="restore-modal" onclick="if(event.target===this)closeRestoreModal()">
+  <div class="memo-sheet">
+    <div class="sh"></div>
+    <div class="modal-title">📲 記録を復元する</div>
+    <div class="modal-sub" style="color:var(--silver);font-size:12px;margin-bottom:16px;line-height:1.6">
+      新しい端末では記録がリセットされます。<br>
+      Claudeに「乗レコ復元データを出して」と送ると<br>
+      復元用JSONが出力されます。それを下に貼り付けてください。
+    </div>
+    <div class="fg">
+      <div class="fl">ClaudeからのJSONを貼り付け</div>
+      <textarea class="mta" id="restore-json-input" style="height:140px;font-family:'DM Mono',monospace;font-size:11px" placeholder='[{"id":"trip_xxx","date":"2026-05-06",...}]'></textarea>
+    </div>
+    <button class="btn-gen" onclick="restoreFromJson(document.getElementById('restore-json-input').value)">
+      📥 この端末に復元する
+    </button>
+    <div style="margin-top:12px;padding:10px;background:rgba(255,255,255,.04);border-radius:8px;font-size:11px;color:var(--silver);line-height:1.6">
+      <b style="color:var(--gold)">現在の記録数：</b><span id="current-trip-count">0</span>件<br>
+      <b style="color:var(--gold)">データ元：</b><span id="current-data-source">-</span>
+    </div>
+    <button class="btn-cls" onclick="closeRestoreModal()">閉じる</button>
+  </div>
+</div>
+  <div class="pane" id="pane-mypage">
+    <!-- マイページ ヘッダ + サブタブ (renderMypage で構築) -->
+    <div class="pane-inner" id="mypage-content"></div>
+    <!-- サブタブ別コンテンツ — renderMypage が活性化制御 -->
+    <div class="mp-subpane" id="mp-sub-stats">
+      <div class="pane-inner" id="stats-content"></div>
+    </div>
+    <div class="mp-subpane" id="mp-sub-trips">
+      <div class="pane-inner" id="mp-trip-section"></div>
+    </div>
+    <div class="mp-subpane" id="mp-sub-lines">
+      <div class="pane-inner" id="list-content"></div>
+    </div>
+    <div class="mp-subpane" id="mp-sub-memos">
+      <div class="pane-inner" id="mp-memo-section"></div>
+    </div>
+    <div class="mp-subpane" id="mp-sub-shares">
+      <div class="pane-inner" id="mp-shares-section"></div>
+    </div>
+    <div class="mp-subpane" id="mp-sub-admin">
+      <div class="pane-inner" id="mp-admin-section"></div>
+    </div>
+  </div>
+</div>
+
+<!-- v184/v445: 旅程の後追い編集モーダル (マイページ旅程カード / 路線詳細 / 駅アクションシートの旅程から開く)
+     v445: .content (position:fixed=入れ子fixedの基準・pane依存) の内側だと地図タブで開いても
+     マイページ pane 側に出てしまうため、bulk-record-sheet と同様に .content 外 (body直下) へ移動し
+     viewport 基準の全画面オーバーレイにした。 -->
 <div class="memo-modal" id="trip-edit-modal" onclick="if(event.target===this)closeTripEditModal()">
   <div class="memo-sheet">
     <div class="sh"></div>
@@ -1567,55 +1619,6 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
     </div>
     <button class="btn-gen" onclick="saveTripEdit()">💾 保存する</button>
     <button class="btn-cls" onclick="closeTripEditModal()">キャンセル</button>
-  </div>
-</div>
-
-<!-- 復元モーダル -->
-<div class="memo-modal" id="restore-modal" onclick="if(event.target===this)closeRestoreModal()">
-  <div class="memo-sheet">
-    <div class="sh"></div>
-    <div class="modal-title">📲 記録を復元する</div>
-    <div class="modal-sub" style="color:var(--silver);font-size:12px;margin-bottom:16px;line-height:1.6">
-      新しい端末では記録がリセットされます。<br>
-      Claudeに「乗レコ復元データを出して」と送ると<br>
-      復元用JSONが出力されます。それを下に貼り付けてください。
-    </div>
-    <div class="fg">
-      <div class="fl">ClaudeからのJSONを貼り付け</div>
-      <textarea class="mta" id="restore-json-input" style="height:140px;font-family:'DM Mono',monospace;font-size:11px" placeholder='[{"id":"trip_xxx","date":"2026-05-06",...}]'></textarea>
-    </div>
-    <button class="btn-gen" onclick="restoreFromJson(document.getElementById('restore-json-input').value)">
-      📥 この端末に復元する
-    </button>
-    <div style="margin-top:12px;padding:10px;background:rgba(255,255,255,.04);border-radius:8px;font-size:11px;color:var(--silver);line-height:1.6">
-      <b style="color:var(--gold)">現在の記録数：</b><span id="current-trip-count">0</span>件<br>
-      <b style="color:var(--gold)">データ元：</b><span id="current-data-source">-</span>
-    </div>
-    <button class="btn-cls" onclick="closeRestoreModal()">閉じる</button>
-  </div>
-</div>
-  <div class="pane" id="pane-mypage">
-    <!-- マイページ ヘッダ + サブタブ (renderMypage で構築) -->
-    <div class="pane-inner" id="mypage-content"></div>
-    <!-- サブタブ別コンテンツ — renderMypage が活性化制御 -->
-    <div class="mp-subpane" id="mp-sub-stats">
-      <div class="pane-inner" id="stats-content"></div>
-    </div>
-    <div class="mp-subpane" id="mp-sub-trips">
-      <div class="pane-inner" id="mp-trip-section"></div>
-    </div>
-    <div class="mp-subpane" id="mp-sub-lines">
-      <div class="pane-inner" id="list-content"></div>
-    </div>
-    <div class="mp-subpane" id="mp-sub-memos">
-      <div class="pane-inner" id="mp-memo-section"></div>
-    </div>
-    <div class="mp-subpane" id="mp-sub-shares">
-      <div class="pane-inner" id="mp-shares-section"></div>
-    </div>
-    <div class="mp-subpane" id="mp-sub-admin">
-      <div class="pane-inner" id="mp-admin-section"></div>
-    </div>
   </div>
 </div>
 
