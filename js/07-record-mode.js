@@ -852,17 +852,24 @@ function openRecConfirm() {
   const endTsLocal = NORIRECO.gps.recordEndTime || new Date().toISOString();
   initArr = new Date(endTsLocal).toTimeString().slice(0, 8);
 
-  // 列車 picker 用の initial segments (新規記録は train_* 全 null)
-  const initialSegments = (R.segments || []).map(seg => ({
-    lineId: seg.line?.id || null,
-    lineName: seg.line?.name || '',
-    from: seg.from?.name || '',
-    to: seg.to?.name || '',
-    train_category: null,
-    train_id: null,
-    train_name: null,
-    car_model: null,
-  })).filter(s => s.lineId);
+  // 列車 picker 用の initial segments。
+  //   v447: 系統 (lineId) ごとに前回選んだ列車・車両形式を localStorage から復元してプリフィル。
+  //   同じ路線を再記録するとき前回値が初期表示される (違う路線は mem 無しで全 null のまま)。
+  const segTrainMem = loadSegTrainMemory();
+  const initialSegments = (R.segments || []).map(seg => {
+    const lineId = seg.line?.id || null;
+    const mem = (lineId && segTrainMem[lineId]) || null;
+    return {
+      lineId,
+      lineName: seg.line?.name || '',
+      from: seg.from?.name || '',
+      to: seg.to?.name || '',
+      train_category: mem?.train_category || null,
+      train_id:       mem?.train_id       || null,
+      train_name:     mem?.train_name     || null,
+      car_model:      mem?.car_model      || null,
+    };
+  }).filter(s => s.lineId);
 
   _recEditor = createTripDetailEditor({
     containers: {
@@ -875,7 +882,7 @@ function openRecConfirm() {
       date: initDate,
       depart_time: initDep,
       arrive_time: initArr,
-      date_precision: 'minute',
+      date_precision: getLastDatePrecision(),  // v447: 前回選んだ精度を初期値に
       segments: initialSegments,
       delay_minutes: null,
       notes: null,
@@ -1208,6 +1215,23 @@ async function saveMultiSegmentTrip() {
     totalStations = 1;
   }
 
+  // v447: 列車マニアトグル ON で記録したときだけ、系統 (lineId) ごとに今回の
+  //   種別・列車・車両形式を localStorage に記憶する。次回同じ路線を記録する際の初期値。
+  //   トグル OFF (train fields 全 null) のときは既存の記憶を上書きしない (誤消去防止)。
+  if (trainToggleOn && tripSegments.length > 0) {
+    const mem = loadSegTrainMemory();
+    for (const s of tripSegments) {
+      if (!s.lineId) continue;
+      mem[s.lineId] = {
+        train_category: s.train_category || null,
+        train_id:       s.train_id       || null,
+        train_name:     s.train_name     || null,
+        car_model:      s.car_model      || null,
+      };
+    }
+    saveSegTrainMemory(mem);
+  }
+
   const fromStation = R.selection[0].name;
   const toStation = R.selection[R.selection.length - 1].name;
   // v310 (Phase 2-a): trip 全体の始終駅 id
@@ -1266,6 +1290,7 @@ async function saveMultiSegmentTrip() {
   let datePrecision = 'day';
   if (!NORIRECO.gps.recordStartedViaGPS && editorDraft) {
     datePrecision = editorDraft.date_precision || 'day';
+    saveLastDatePrecision(datePrecision);  // v447: 次回モーダルの初期精度に記憶 (手動記録のみ)
     tripDate = editorDraft.date || (datePrecision === 'unknown' ? today : tripDate);
     departTime = editorDraft.depart_time != null ? editorDraft.depart_time : '';
     arriveTime = editorDraft.arrive_time != null ? editorDraft.arrive_time : '';
@@ -1519,6 +1544,40 @@ window.onRecordStationClick = onRecordStationClick;
 // ════════════════════════════════════════════════════════════════
 const PREF_SHOW_TRAIN_SELECTOR = 'norireco.prefs.showTrainSelector';
 const PREF_SHOW_DELAY_INPUT    = 'norireco.prefs.showDelayInput';   // v350
+
+// ════════════════════════════════════════════════════════════════
+// v447: 記録モーダルの入力を「前回の選択」で初期化する (毎回まっさらに戻る摩擦の解消)
+//   ① 記憶の精度 (date_precision) — 単一値なのでグローバルに最後の選択を記憶
+//   ② 列車・車両形式 (cascade) — 系統 (lineId) ごとに記憶 (車両形式は路線固有で
+//      別路線に出すと不整合になるため、ユスケ判断で系統スコープに確定)
+//   どちらも localStorage。GPS 記録は精度 UI が無い (timeRow=false) ので手動記録のみ対象。
+// ════════════════════════════════════════════════════════════════
+const PREF_LAST_DATE_PRECISION    = 'norireco.prefs.lastDatePrecision';
+const PREF_LAST_SEG_TRAIN_BY_LINE = 'norireco.prefs.lastSegTrainByLine';
+const VALID_DATE_PRECISIONS = ['minute', 'day', 'month', 'year', 'unknown'];
+
+function getLastDatePrecision() {
+  try {
+    const v = localStorage.getItem(PREF_LAST_DATE_PRECISION);
+    return VALID_DATE_PRECISIONS.includes(v) ? v : 'minute';
+  } catch (e) { return 'minute'; }
+}
+function saveLastDatePrecision(prec) {
+  if (!VALID_DATE_PRECISIONS.includes(prec)) return;
+  try { localStorage.setItem(PREF_LAST_DATE_PRECISION, prec); } catch (e) {}
+}
+
+// 系統ごとの列車記憶: { [lineId]: { train_category, train_id, train_name, car_model } }
+function loadSegTrainMemory() {
+  try {
+    const raw = localStorage.getItem(PREF_LAST_SEG_TRAIN_BY_LINE);
+    const obj = raw ? JSON.parse(raw) : null;
+    return (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
+  } catch (e) { return {}; }
+}
+function saveSegTrainMemory(map) {
+  try { localStorage.setItem(PREF_LAST_SEG_TRAIN_BY_LINE, JSON.stringify(map)); } catch (e) {}
+}
 
 // v399 (B-4-b): 列車マニアトグルは外側 wrapper (`#rec-train-picker`) の visibility 制御のみ担当。
 //   editor は openRecConfirm で常時生成 (containers.train = #rec-train-picker-container)、トグル OFF

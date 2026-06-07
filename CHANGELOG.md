@@ -52,6 +52,28 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 294. v447 — 記録モーダルの入力を「前回の選択」で初期化（記憶の精度 + 系統別カスケード）
+
+**カテゴリ**: A（実装 — ユスケ要望 / 活性化強化の一環 = 記録の摩擦低減）
+
+**背景**: ユスケ報告「記憶の精度を一度『日付のみ』でつけ始めたら、毎回まっさらの『正確な時刻まで』に戻るので結局そればかりになる」。列車・車両形式のカスケードも同様に毎回まっさら。**同じ路線を繰り返し記録する人 (通勤など) ほど、毎回同じ選択をやり直す摩擦が継続率を削る**。「前回選んだものを次回の初期値に」する。対象は記録モーダル (07 確認モーダル) のみ。
+
+**確認 (AskUserQuestion)**: カスケードの記憶スコープを質問 → **「系統ごとに記憶」** で確定。車両形式は路線固有 (中央線の E353 を山手線に出すと不整合) なので、lineId をキーに記憶し同じ路線にのみ復元する。種別だけ全体記憶・直前選択をそのまま、は不採用。
+
+**変更**（`js/07-record-mode.js` のみ。factory `20-trip-detail-editor.js` は `initial.date_precision` / `initial.segments[].train_*` を既にサポートしており無改修）:
+- **localStorage 2 キー追加**: `norireco.prefs.lastDatePrecision` (単一値) / `norireco.prefs.lastSegTrainByLine` (`{ [lineId]: {train_category, train_id, train_name, car_model} }`)。get/set ヘルパーは精度を 5 値ホワイトリストで検証、JSON は壊れていたら `{}` にフォールバック。
+- **復元 (`openRecConfirm`)**: ① `date_precision: 'minute'` 固定 → `getLastDatePrecision()`。② `initialSegments` の train_* 全 null → `loadSegTrainMemory()[lineId]` でプリフィル。factory の chip restore (`selectChip`) がそのまま表示するので restore 機構は既存 (= 旅程編集で保存済 trip を開くのと同一経路) を再利用。
+- **保存 (`saveMultiSegmentTrip`)**: ① 手動記録 (非 GPS) 分岐で `saveLastDatePrecision(datePrecision)`。② 列車マニアトグル ON のときだけ `tripSegments` を lineId キーで記憶に書き戻し。**トグル OFF (train fields 全 null) のときは既存記憶を上書きしない** (セクションを開かなかっただけで記憶が消える誤消去を防止)。GPS 記録は精度 UI が無い (timeRow=false) ので精度記憶の対象外。
+
+**検証**: `npm run check` 28/28。preview (別オリジン + SW unregister/caches purge — [[feedback_preview_sw_cache_staleness]]) で `NORIRECO.record` を実データ (山手線) で組み `openRecConfirm()` を駆動して E2E 3 段:
+- A 精度復元: localStorage='day' → 精度 select が `day`「📅 日付のみ覚えてる」、日付行表示・時刻行非表示。
+- B カスケード復元 (系統別): 山手線に `local`+車両「E235系テスト」を記憶 → 種別=local・SL 車両 custom に値復元・ピッカー表示。
+- C 保存→記憶: 精度を `month`・車両を `SAVED-CAR-X` に変更 → `confirmAndSaveRecord` (ゲスト=localStorage のみ) → `lastDatePrecision='month'` / 記憶の山手線が `SAVED-CAR-X` に更新。コンソールエラー無し。
+
+**残課題** (別タスク): 一括記録 (21 per-seg-rows) への同種記憶の横展開はスコープ外 (ユスケ要望は記録モーダル限定)。必要なら追って検討。
+
+---
+
 ## 293. v446 — 旅程編集モーダルを `.content` 外へ移設（v445 ① の完全修正）
 
 **カテゴリ**: A（バグ修正 — ユスケ実機フィードバック）
@@ -96,7 +118,6 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 **残課題**: 同種の auto/curated 重複は名前一致では他に無し（scan 済）。大和路線/関西本線の併存は意図的（別 official_line）。手動記録 07 からの編集導線（rec-confirm 内）も同じ最前面グループだが二段重ねの可能性は別途要確認。
 
 ---
-
 ## 291. v444 — 一括記録の達成演出（活性化強化 — 初回の塗れた感動 → シェア導線）
 
 **カテゴリ**: A（実装 — 活性化強化 / ユスケ選択）
