@@ -658,7 +658,9 @@ function _esc(s) {
 let _syncSettled = false;
 
 export function markSyncSettled() {
-  if (_syncSettled) return;
+  // v448: 「一度 settle したら no-op」の早期 return を撤去し、毎回バナーを再評価する。
+  //   8 秒 fallback で仮 settle (空) → その後 syncFromSupabase 完了、のような順で
+  //   状態が変わったとき、2 回目以降の settle 通知でも hidden を最新データに追従させる。
   _syncSettled = true;
   updateOnboardingBanner();
 }

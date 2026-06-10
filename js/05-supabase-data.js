@@ -490,8 +490,9 @@ export async function syncFromSupabase() {
   const uid = currentUserId();
   if (!uid) {
     console.log('[乗レコ] Supabase 同期スキップ (未ログイン)');
-    // v418: オンボーディングバナー (21-bulk-record) に「同期確定」を通知。
-    try { window.NORIRECO?.bulkRecord?.markSyncSettled?.(); } catch(e) {}
+    // v448: ここでの markSyncSettled (v418) は撤去。起動時 (06 map init) は auth 初期化前で
+    //   uid が必ず null のため、ここで settle するとログイン直後 (= logout purge で localStorage 空)
+    //   にバナーが誤表示される。「未ログイン確定」の settle は 12-auth.js getSession に一本化。
     return;
   }
   try {

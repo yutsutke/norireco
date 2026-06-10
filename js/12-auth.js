@@ -242,6 +242,8 @@ function clearLocalUserDataAfterSignOut() {
   // マイページキャッシュも空に (renderMypage は未ログイン時に空状態を出すが、
   // 念のためキャッシュ自体をクリアして他経路からの参照が漏れないようにする)
   try { if (window.NORIRECO?.mypage?.state) window.NORIRECO.mypage.state._mypageCache = null; } catch(e) {}
+  // v448: ログアウトで地図が空に戻ったのでオンボーディングバナーを再評価 (空なら表示)
+  try { window.NORIRECO?.bulkRecord?.updateOnboardingBanner?.(); } catch(e) {}
   console.log('[Auth] ローカル乗車データを purge しました (ログアウト)');
 }
 

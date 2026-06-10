@@ -52,6 +52,29 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 295. v448 — ログイン直後にオンボーディングバナーが誤表示（settle の早期確定 + 再評価なし）
+
+**カテゴリ**: A（バグ修正 — ユスケ実機報告）
+
+**症状**: ログイン直後、地図に乗車路線（9 系統）が塗られているにもかかわらず、空マップ用オンボーディングバナー `#empty-onboarding-banner`（「乗ったことのある路線でマップを塗ろう」）が表示され続ける。
+
+**原因**: v418 の `_syncSettled` ゲートに 2 つの穴が重なった。
+1. **settle の早期確定**: 起動時に 06-map-leaflet の地図初期化が `syncFromSupabase()` を呼ぶが、この時点では auth 初期化前で `currentUserId()` が必ず null → 05 の `!uid` 早期 return が「未ログイン確定」とみなして `markSyncSettled()` を呼んでいた (v418 で追加)。ログイン直後は直前のログアウト purge で localStorage が空のため、ここでバナーが表示される。
+2. **再評価なし**: その後 OAuth 完了 → 本物の `syncFromSupabase` が trips を取得・描画して `markSyncSettled()` を再度呼ぶが、`if (_syncSettled) return;` の早期 return で `updateOnboardingBanner()` が走らず、塗られた地図の上にバナーが残留した。
+
+v418 検証時にすり抜けた理由: テストシナリオが「ログイン済 + localStorage あり」(lsLen>0 で hidden) と「ゲスト + 空」(表示が正解) だったため。**「ログアウト → 再ログイン」の遷移 (localStorage 空スタート + あとから Supabase データ到着)** だけがこの 2 穴を両方踏む。
+
+**修正** (3 点):
+- `05-supabase-data.js`: `!uid` 早期 return での `markSyncSettled()` を撤去。「未ログイン確定」の settle は 12-auth `getSession` の no-session 経路に一本化（起動時の uid null は「auth 初期化前」であって「未ログイン」ではない）。
+- `21-bulk-record.js` `markSyncSettled`: `if (_syncSettled) return;` を撤去し、settle 済みでも毎回 `updateOnboardingBanner()` を再評価。8 秒 fallback で仮 settle → その後同期完了、のような順でも hidden が最新データに追従する（残った settle 経路すべての安全網）。
+- `12-auth.js` `clearLocalUserDataAfterSignOut`: purge 後に `updateOnboardingBanner()` を呼ぶ 1 行追加。ログアウトで地図が空に戻ったらバナーを再表示（従来は reload まで hidden のままだった対称漏れ）。
+
+**検証**: preview (SW unregister + cache 全削除で stale 回避、`markSyncSettled.toString()` で新コードロード確認) で 3 点 — ① ゲスト空状態でバナー表示 (A-6 維持) / ② settle 済み + データ投入 + 再 settle でバナー消灯 (バグ再現シーケンス、旧コードでは no-op で残留) / ③ purge + 再評価でバナー復帰 (ログアウト相当)。console エラーなし、npm check 28/28。
+
+**教訓**: 「一度 settle したら戻らない」フラグに表示判定を直結させると、フラグ確定後のデータ変化に UI が追従できない。ゲートは「判定を保留する」ためだけに使い、判定自体はデータ変化のたびに再評価する設計が安全。また「uid が null」は「未ログイン」と「auth 初期化前」の 2 状態を含む — 起動シーケンス中の判定は初期化完了側 (12-auth) に寄せる。
+
+---
+
 ## 294. v447 — 記録モーダルの入力を「前回の選択」で初期化（記憶の精度 + 系統別カスケード）
 
 **カテゴリ**: A（実装 — ユスケ要望 / 活性化強化の一環 = 記録の摩擦低減）
