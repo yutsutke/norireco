@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<meta name="robots" content="noindex" />
+<title>乗レコ 開発の旅 — 3D 地形トレース</title>
+<style>
+  :root {
+    --bg: #0b0f12;
+    --ink: #e8e6df;
+    --dim: #7d8891;
+    --trace: #f5a623;
+    --down: #f0a07a;   /* 下り */
+    --loop: #f5c361;   /* ぐるぐる */
+    --panel: rgba(14,19,23,.62);
+    --line: rgba(125,136,145,.22);
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Roboto Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+    font-family: var(--mono); overflow: hidden; -webkit-tap-highlight-color: transparent; }
+  #stage { position: fixed; inset: 0; }
+  canvas { display: block; touch-action: none; }
+
+  .hud { position: fixed; pointer-events: none; }
+  .top-left { top: 18px; left: 20px; }
+  .title { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink); }
+  .sub   { font-size: 11px; letter-spacing: .04em; color: var(--dim); margin-top: 4px; }
+
+  .read { bottom: 22px; left: 20px; display: grid; grid-template-columns: auto auto; gap: 2px 18px;
+          font-size: 11px; color: var(--dim); }
+  .read b { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .read .now { color: var(--trace); }
+
+  .controls { top: 18px; right: 18px; display: flex; flex-direction: column; gap: 8px;
+              align-items: flex-end; pointer-events: none; }
+  .controls button {
+    pointer-events: auto; font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
+    color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+    backdrop-filter: blur(8px); padding: 8px 12px; border-radius: 2px; cursor: pointer;
+    min-width: 120px; text-align: left; transition: border-color .15s, color .15s;
+  }
+  .controls button:hover { border-color: rgba(245,166,35,.6); color: #fff; }
+  .controls button:focus-visible { outline: 1px solid var(--trace); outline-offset: 2px; }
+
+  #labels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  .lab { position: absolute; transform: translate(-50%, -118%); white-space: nowrap;
+         font-size: 10px; letter-spacing: .03em; color: var(--dim);
+         padding: 2px 7px; border: 1px solid var(--line); background: var(--panel);
+         backdrop-filter: blur(6px); border-radius: 2px; opacity: .45;
+         transition: opacity .2s, color .2s, border-color .2s; }
+  .lab b { color: var(--dim); font-weight: 400; margin-left: 6px; font-size: 9px; }
+  .lab.t-down { color: var(--down); }
+  .lab.t-loop { color: var(--loop); }
+  .lab.near { opacity: 1; color: #fff; border-color: rgba(245,166,35,.55); }
+  .lab.t-down.near { color: #ffd0b8; }
+  .lab.t-loop.near { color: #ffe19a; }
+  .lab.start, .lab.now { opacity: .9; }
+
+  .profile { position: fixed; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(125,136,145,.12); }
+  .profile .fill { height: 100%; width: 0; background: var(--trace); transition: width .05s linear; }
+  .hint { position: fixed; bottom: 22px; right: 20px; font-size: 10px; color: var(--dim);
+          letter-spacing: .04em; text-align: right; line-height: 1.6; }
+</style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div id="labels"></div>
+
+  <div class="hud top-left">
+    <div class="title">乗レコ 開発の旅 — 3D</div>
+    <div class="sub">v60 → v448 ／ 高さ＝積み上げ・谷＝下り（作り直し）</div>
+  </div>
+
+  <div class="hud read">
+    <span>標高</span><b><span id="elev">—</span> m</b>
+    <span>進行</span><b><span id="prog">0</span> %</b>
+    <span>現在地</span><b class="now" id="phase">—</b>
+  </div>
+
+  <div class="controls">
+    <button id="btn-play">⏸ 一時停止</button>
+    <button id="btn-restart">⟲ 最初から</button>
+    <button id="btn-view">視点リセット</button>
+  </div>
+
+  <div class="hint">ドラッグ＝回転 &middot; ホイール＝ズーム</div>
+  <div class="profile"><div class="fill" id="fill"></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+  "use strict";
+
+  // ====== 設定 ======
+  const W = 200, N = 200, MAX_H = 60, METERS = 3000, SEED = 1337;
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ====== ノイズ（外部ライブラリ無し・seed固定で再現可能） ======
+  const hash = (x, y) => { const s = Math.sin(x*127.1 + y*311.7 + SEED*74.7) * 43758.5453; return s - Math.floor(s); };
+  const smooth = t => t*t*(3-2*t), lerp = (a,b,t) => a+(b-a)*t;
+  function vnoise(x, y) {
+    const xi=Math.floor(x), yi=Math.floor(y), xf=x-xi, yf=y-yi, u=smooth(xf), v=smooth(yf);
+    const a=hash(xi,yi), b=hash(xi+1,yi), c=hash(xi,yi+1), d=hash(xi+1,yi+1);
+    return lerp(lerp(a,b,u), lerp(c,d,u), v);
+  }
+  function ridged(x, y) {
+    let sum=0, freq=1, amp=0.5, weight=1;
+    for (let o=0;o<5;o++){ let n=vnoise(x*freq+o*19.3, y*freq-o*7.1); n=1-Math.abs(2*n-1); n*=n; n*=weight; weight=Math.min(1,n*2); sum+=n*amp; freq*=2; amp*=0.5; }
+    return sum;
+  }
+
+  // ====== 旅路のアンカー（= 実際の開発史） ======
+  // {x,h,z, label?, ver?, type?}  h は 0..1（積み上げ高さ）
+  const A = [
+    [-66,0.08,-54,"v60 出発","","start"],
+    [-48,0.50,-40],
+    [-37,0.55,-28,"コア機能","v60–157","peak"],
+    [-26,0.50,-16],
+    [-18,0.24,-7,"ESモジュール化","v189–225","down"],   // 下り：崩して組み直す
+    [-22,0.27,-2],[-13,0.25,-4],[-16,0.24,-10],          // bridge漏れ コイル
+    [-3,0.60,6],
+    [4,0.62,9],[0,0.60,16],[11,0.63,14],                 // Cloudflare 折返し（回り道）
+    [20,0.70,24,"駅メモ・写真","v250–289","peak"],
+    [29,0.86,32],
+    [37,1.00,40,"駅ID体系 最高峰","v290–333","loop"],    // 循環import コイル
+    [44,0.98,42],[40,0.96,48],[33,0.99,44],[39,1.00,39],
+    [48,0.55,49,"GPS削除","v334","down"],                // 下り
+    [57,0.66,56,"機能拡充","v334–418","peak"],
+    [64,0.52,63,"整理","v399–407","down"],               // 下り（−540行・ログ廃止）
+    [70,0.72,70,"垢BAN・磨き込み","v419–448","peak"],
+    [75,0.70,72],[71,0.70,76],[73,0.72,73],              // バナー再発 コイル
+    [77,0.66,79,"今ここ v448","","now"],
+  ];
+  const anchorVecs = A.map(a => new THREE.Vector3(a[0], a[1]*MAX_H, a[2]));
+  const routeCurve = new THREE.CatmullRomCurve3(anchorVecs, false, "catmullrom", 0.5);
+  const routeSamples = routeCurve.getPoints(240).map(p => ({ x:p.x, z:p.z, h:p.y }));
+
+  // ラベル付きアンカー → マーカー（tは曲線パラメータ）
+  const markers = [];
+  A.forEach((a, i) => { if (a[3]) markers.push({ x:a[0], z:a[2], label:a[3], ver:a[4]||"", type:a[5]||"peak", t:i/(A.length-1) }); });
+
+  // ====== 地形：旅路に沿う尾根 ＋ 背景ノイズ ======
+  const islandMask = (wx,wz) => Math.max(0, 1 - Math.pow(Math.hypot(wx,wz)/(W*0.95), 3));
+  function terrain(wx, wz) {
+    let best = Infinity, H = 0;
+    for (let i=0;i<routeSamples.length;i++){ const s=routeSamples[i]; const dx=wx-s.x, dz=wz-s.z, d2=dx*dx+dz*dz; if (d2<best){best=d2; H=s.h;} }
+    const d = Math.sqrt(best);
+    const ridgeW = 17, fall = Math.exp(-(d*d)/(2*ridgeW*ridgeW));   // 1=旅路上 → 0=遠方
+    const bg = ridged(wx*0.018+10, wz*0.018-4);                    // 背景の山々
+    let h = H*fall + bg*0.40*MAX_H*(1-fall);                       // 旅路は尾根、遠方は地形
+    h += (vnoise(wx*0.06, wz*0.06) - 0.5) * 2.4;                   // 細かな凹凸
+    h *= islandMask(wx, wz);
+    return Math.max(0, h);
+  }
+
+  // ====== three セットアップ ======
+  const stage = document.getElementById("stage");
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setClearColor(0x0b0f12, 1);
+  stage.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x0b0f12, 170, 380);
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1400);
+
+  const sun = new THREE.DirectionalLight(0xfff2e0, 1.5);
+  sun.position.set(-120, 100, -50); scene.add(sun);
+  scene.add(new THREE.HemisphereLight(0x6b7a8f, 0x241f1a, 0.55));
+  scene.add(new THREE.AmbientLight(0x404a52, 0.25));
+
+  // ====== 標高 → 頂点カラー（地図調） ======
+  const stops = [
+    [0.00, 0x223038], [0.22, 0x33433a], [0.45, 0x5b5240],
+    [0.70, 0x837a6b], [0.88, 0xb4ae9f], [1.00, 0xeae7df],
+  ];
+  const cA = new THREE.Color(), cB = new THREE.Color();
+  function heightColor(t, target) {
+    t = Math.min(1, Math.max(0, t));
+    for (let i=0;i<stops.length-1;i++){ const [t0,c0]=stops[i], [t1,c1]=stops[i+1];
+      if (t>=t0 && t<=t1){ const k=t1===t0?0:(t-t0)/(t1-t0); cA.setHex(c0); cB.setHex(c1); return target.copy(cA).lerp(cB,k); } }
+    return target.setHex(0xeae7df);
+  }
+
+  // ====== 地形メッシュ ======
+  let terrainMesh = null;
+  const out = new THREE.Color();
+  function buildTerrain() {
+    if (terrainMesh){ scene.remove(terrainMesh); terrainMesh.geometry.dispose(); terrainMesh.material.dispose(); }
+    const verts=[], colors=[], idx=[];
+    for (let gz=0; gz<=N; gz++) for (let gx=0; gx<=N; gx++){
+      const wx=-W/2+(W*gx)/N, wz=-W/2+(W*gz)/N, wy=terrain(wx,wz);
+      verts.push(wx,wy,wz); heightColor(wy/MAX_H, out); colors.push(out.r,out.g,out.b);
+    }
+    const row=N+1;
+    for (let gz=0; gz<N; gz++) for (let gx=0; gx<N; gx++){ const a=gz*row+gx,b=a+1,c=a+row,d=c+1; idx.push(a,c,b,b,c,d); }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(verts,3));
+    geo.setAttribute("color", new THREE.Float32BufferAttribute(colors,3));
+    geo.setIndex(idx); geo.computeVertexNormals();
+    terrainMesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.96, metalness:0.0 }));
+    scene.add(terrainMesh);
+  }
+
+  // ====== 旅路（地形に貼り付け） ======
+  let tube=null, head=null, drape=null, drapeH=[];
+  function buildRoute() {
+    if (tube){ scene.remove(tube); tube.geometry.dispose(); }
+    if (head) scene.remove(head);
+    const pts = routeCurve.getPoints(420);
+    drapeH = [];
+    for (const p of pts){ const y = terrain(p.x, p.z); p.y = y + 1.7; drapeH.push(y); }
+    drape = new THREE.CatmullRomCurve3(pts, false, "catmullrom", 0.2);
+    const geo = new THREE.TubeGeometry(drape, 900, 0.55, 8, false);
+    geo.setDrawRange(0, 0);
+    tube = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xf5a623 }));
+    tube.renderOrder = 2; scene.add(tube);
+    head = new THREE.Mesh(new THREE.SphereGeometry(1.5,16,16), new THREE.MeshBasicMaterial({ color: 0xffd27f }));
+    scene.add(head);
+  }
+
+  // ====== ラベル（HTML を 3D 位置に投影） ======
+  const labelLayer = document.getElementById("labels");
+  function buildLabels() {
+    labelLayer.innerHTML = "";
+    for (const m of markers) {
+      m.pos = new THREE.Vector3(m.x, terrain(m.x, m.z) + 3, m.z);
+      const el = document.createElement("div");
+      el.className = "lab t-" + m.type + (m.type==="start"?" start":"") + (m.type==="now"?" now":"");
+      el.innerHTML = m.label + (m.ver ? " <b>"+m.ver+"</b>" : "");
+      labelLayer.appendChild(el); m.el = el;
+    }
+  }
+  const phaseWord = { start:"出発", peak:"登り", down:"下り（崩して組み直す）", loop:"ぐるぐる（足踏み）", now:"到達" };
+
+  // ====== カメラ（自前オービット） ======
+  const cam0 = { azim:0.95, polar:0.86, radius:190 };
+  let azim=cam0.azim, polar=cam0.polar, radius=cam0.radius;
+  const target = new THREE.Vector3(8, 10, 8);
+  function placeCamera() {
+    polar = Math.min(1.45, Math.max(0.14, polar));
+    radius = Math.min(360, Math.max(70, radius));
+    camera.position.set(
+      target.x + radius*Math.sin(polar)*Math.sin(azim),
+      target.y + radius*Math.cos(polar),
+      target.z + radius*Math.sin(polar)*Math.cos(azim)
+    );
+    camera.lookAt(target);
+  }
+  let dragging=false, px=0, py=0;
+  const dom = renderer.domElement;
+  dom.addEventListener("pointerdown", e => { dragging=true; px=e.clientX; py=e.clientY; dom.setPointerCapture(e.pointerId); });
+  dom.addEventListener("pointerup",   () => dragging=false);
+  dom.addEventListener("pointermove", e => { if(!dragging) return; azim-=(e.clientX-px)*0.005; polar-=(e.clientY-py)*0.005; px=e.clientX; py=e.clientY; });
+  dom.addEventListener("wheel", e => { e.preventDefault(); radius += e.deltaY*0.18; }, { passive:false });
+
+  // ====== ループ ======
+  let progress=0, playing=!reduced;
+  const elElev=document.getElementById("elev"), elProg=document.getElementById("prog"),
+        elPhase=document.getElementById("phase"), elFill=document.getElementById("fill");
+  const v = new THREE.Vector3();
+
+  function currentPhase() {
+    let cur = markers[0];
+    for (const m of markers) if (m.t <= progress + 1e-4) cur = m;
+    return cur;
+  }
+  function tick() {
+    requestAnimationFrame(tick);
+    if (playing && drape){ progress += 0.0010; if (progress > 1) progress = 0; }
+    if (drape){
+      const total = tube.geometry.index.count;
+      tube.geometry.setDrawRange(0, Math.floor(total*progress));
+      head.position.copy(drape.getPointAt(Math.min(0.9999, progress)));
+      const hi = Math.min(drapeH.length-1, Math.floor(progress*(drapeH.length-1)));
+      elElev.textContent = Math.round((drapeH[hi]/MAX_H)*METERS);
+      elProg.textContent = Math.round(progress*100);
+      elFill.style.width = (progress*100)+"%";
+      const cur = currentPhase();
+      elPhase.textContent = (cur.type==="start"||cur.type==="now") ? cur.label : (cur.label + "｜" + phaseWord[cur.type]);
+    }
+    placeCamera();
+    // ラベル投影
+    const w = stage.clientWidth, h = stage.clientHeight;
+    for (const m of markers){
+      v.copy(m.pos).project(camera);
+      if (v.z > 1){ m.el.style.display="none"; continue; }
+      m.el.style.display="block";
+      m.el.style.left = ((v.x*0.5+0.5)*w) + "px";
+      m.el.style.top  = ((-v.y*0.5+0.5)*h) + "px";
+      const near = Math.abs(progress - m.t) < 0.045;
+      m.el.classList.toggle("near", near);
+    }
+    renderer.render(scene, camera);
+  }
+
+  function resize(){ const w=stage.clientWidth, h=stage.clientHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+  addEventListener("resize", resize);
+
+  // ====== UI ======
+  const btnPlay=document.getElementById("btn-play");
+  btnPlay.onclick = () => { playing=!playing; btnPlay.textContent = playing ? "⏸ 一時停止" : "▶ 再生"; };
+  document.getElementById("btn-restart").onclick = () => { progress = 0; };
+  document.getElementById("btn-view").onclick = () => { azim=cam0.azim; polar=cam0.polar; radius=cam0.radius; };
+
+  // ====== 起動 ======
+  resize(); buildTerrain(); buildRoute(); buildLabels();
+  if (reduced){ progress=1; playing=false; btnPlay.textContent="▶ 再生"; }
+  tick();
+})();
+</script>
+</body>
+</html>
