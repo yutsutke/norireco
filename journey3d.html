@@ -53,9 +53,13 @@
   .lab b { color: var(--dim); font-weight: 400; margin-left: 6px; font-size: 9px; }
   .lab.t-down { color: var(--down); }
   .lab.t-loop { color: var(--loop); }
+  .lab.t-up2 { color: #8fd0a8; }
+  .lab.t-fog { color: var(--dim); opacity: .32; font-style: italic; }
   .lab.near { opacity: 1; color: #fff; border-color: rgba(245,166,35,.55); }
   .lab.t-down.near { color: #ffd0b8; }
   .lab.t-loop.near { color: #ffe19a; }
+  .lab.t-up2.near { color: #c8f0d8; }
+  .lab.t-fog.near { opacity: .7; }
   .lab.start, .lab.now { opacity: .9; }
 
   .profile { position: fixed; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(125,136,145,.12); }
@@ -70,7 +74,7 @@
 
   <div class="hud top-left">
     <div class="title">乗レコ 開発の旅 — 3D</div>
-    <div class="sub">v60 → v448 ／ 高さ＝積み上げ・谷＝下り（作り直し）</div>
+    <div class="sub">黎明期 v1–v59 → v60 → v448 ／ 高さ＝積み上げ・谷＝下り（作り直し）</div>
   </div>
 
   <div class="hud read">
@@ -114,14 +118,16 @@
   // ====== 旅路のアンカー（= 実際の開発史） ======
   // {x,h,z, label?, ver?, type?}  h は 0..1（積み上げ高さ）
   const A = [
-    [-66,0.08,-54,"v60 出発","","start"],
+    [-86,0.03,-70],
+    [-76,0.06,-62,"黎明期 v1–v59","Add files via upload","fog"],   // ① 記録以前の麓
+    [-66,0.10,-54,"v60 出発","記録のはじまり","start"],
     [-48,0.50,-40],
     [-37,0.55,-28,"コア機能","v60–157","peak"],
     [-26,0.50,-16],
     [-18,0.24,-7,"ESモジュール化","v189–225","down"],   // 下り：崩して組み直す
     [-22,0.27,-2],[-13,0.25,-4],[-16,0.24,-10],          // bridge漏れ コイル
-    [-3,0.60,6],
-    [4,0.62,9],[0,0.60,16],[11,0.63,14],                 // Cloudflare 折返し（回り道）
+    [-3,0.68,6,"組み直して一段高く","module化の果実","up2"],   // ② 下りの後、前より高い場所に出る
+    [4,0.70,9],[0,0.68,16],[11,0.71,14],                 // Cloudflare 折返し（回り道・高さは保つ）
     [20,0.70,24,"駅メモ・写真","v250–289","peak"],
     [29,0.86,32],
     [37,1.00,40,"駅ID体系 最高峰","v290–333","loop"],    // 循環import コイル
@@ -233,7 +239,7 @@
       labelLayer.appendChild(el); m.el = el;
     }
   }
-  const phaseWord = { start:"出発", peak:"登り", down:"下り（崩して組み直す）", loop:"ぐるぐる（足踏み）", now:"到達" };
+  const phaseWord = { start:"出発", peak:"登り", down:"下り（崩して組み直す）", loop:"ぐるぐる（足踏み）", now:"到達", fog:"記録以前（黎明期）", up2:"登り（前より高く）" };
 
   // ====== カメラ（自前オービット） ======
   const cam0 = { azim:0.95, polar:0.86, radius:190 };
@@ -279,7 +285,7 @@
       elProg.textContent = Math.round(progress*100);
       elFill.style.width = (progress*100)+"%";
       const cur = currentPhase();
-      elPhase.textContent = (cur.type==="start"||cur.type==="now") ? cur.label : (cur.label + "｜" + phaseWord[cur.type]);
+      elPhase.textContent = (cur.type==="start"||cur.type==="now"||cur.type==="fog"||cur.type==="up2") ? cur.label : (cur.label + "｜" + phaseWord[cur.type]);
     }
     placeCamera();
     // ラベル投影
