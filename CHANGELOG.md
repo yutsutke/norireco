@@ -5,7 +5,7 @@
 > ドキュメント役割分担は Notion §0「ドキュメント役割分担」が真実の源（v276 で Notion に集約）。本ファイルは変更履歴詳細を扱う。
 > 過去フェーズは [`CHANGELOG_PHASE1-3.7.md`](CHANGELOG_PHASE1-3.7.md) / [`CHANGELOG_PHASE3.8-early.md`](CHANGELOG_PHASE3.8-early.md) / [`CHANGELOG_PHASE3.8-modules.md`](CHANGELOG_PHASE3.8-modules.md) / [`CHANGELOG_PHASE3.8-share.md`](CHANGELOG_PHASE3.8-share.md) / [`CHANGELOG_PHASE3.8-photo.md`](CHANGELOG_PHASE3.8-photo.md) / [`CHANGELOG_PHASE3.8-mypage.md`](CHANGELOG_PHASE3.8-mypage.md) / [`CHANGELOG_PHASE3.8-station-id.md`](CHANGELOG_PHASE3.8-station-id.md) / [`CHANGELOG_PHASE3.8-vehicles.md`](CHANGELOG_PHASE3.8-vehicles.md) / [`CHANGELOG_PHASE3.8-transfer.md`](CHANGELOG_PHASE3.8-transfer.md) / [`CHANGELOG_PHASE3.8-bulk-record.md`](CHANGELOG_PHASE3.8-bulk-record.md) にアーカイブ。
 
-> 🗺 2026-06-19 (非デプロイ・振り返り artifact): 開発史の可視化 [`journey.html`](journey.html)（Plotly 対話3D）/ [`journey3d.html`](journey3d.html)（three.js 地形トレース・履歴で設計した谷つき山脈＋軌跡アニメ）を追加。PWA 非資産のため `sw.js` 据え置き（CACHE_VERSION 不変）。2D 側面図で意味を固めてから 3D 化した流れ。
+> 🗺 2026-06-19〜21 (非デプロイ・振り返り artifact): 開発史の可視化 [`journey.html`](journey.html)（Plotly 対話3D）/ [`journey3d.html`](journey3d.html)（three.js 地形トレース＋ミニマップ）/ [`journey-walk.html`](journey-walk.html)（スカルプト地形を歩く・編集できる版）を追加。PWA 非資産のため `sw.js` 据え置き（CACHE_VERSION 不変）。2D 側面図で意味を固めてから 3D・歩行版へ展開した流れ。
 
 ## 分割ポリシー
 

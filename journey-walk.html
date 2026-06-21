@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>乗レコ 開発の旅を歩く — 地形トレース</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #9ecbe8; font-family: "Segoe UI", system-ui, sans-serif; }
+  #app { position: fixed; inset: 0; }
+  #hud { position: fixed; left: 16px; top: 14px; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.6);
+    font-size:13px; line-height:1.7; background:rgba(0,0,0,.30); padding:10px 14px; border-radius:10px;
+    pointer-events:none; user-select:none; }
+  #hud b { font-size:15px; }
+  #hud .key { display:inline-block; min-width:18px; text-align:center; padding:1px 6px; margin:0 1px;
+    background:rgba(255,255,255,.2); border-radius:4px; font-weight:600; }
+  #phase { position: fixed; left:50%; top:14px; transform:translateX(-50%); color:#fff;
+    background:rgba(0,0,0,.34); padding:7px 16px; border-radius:20px; font-size:13px;
+    text-shadow:0 1px 2px rgba(0,0,0,.6); pointer-events:none; user-select:none; white-space:nowrap; }
+  #phase b { color:#ffe27a; }
+  #fps { position: fixed; right:14px; top:12px; color:#fff; font-size:12px; text-shadow:0 1px 2px rgba(0,0,0,.6); opacity:.8; }
+  #minimap { position: fixed; right:14px; bottom:14px; width:220px; height:220px;
+    border:2px solid rgba(255,255,255,.75); border-radius:8px; box-shadow:0 2px 12px rgba(0,0,0,.45);
+    background:#1b2a1b; display:block; }
+  #maplabel { position: fixed; right:18px; bottom:240px; color:#fff; font-size:11px;
+    text-shadow:0 1px 2px rgba(0,0,0,.7); opacity:.85; user-select:none; }
+  #editbar { position: fixed; left:50%; bottom:16px; transform:translateX(-50%); color:#fff; font-size:13px;
+    background:rgba(120,45,30,.62); border:1px solid rgba(255,255,255,.3); padding:8px 16px; border-radius:10px;
+    display:none; user-select:none; white-space:nowrap; text-shadow:0 1px 2px rgba(0,0,0,.6); }
+  #editbar b { color:#ffd27a; }
+  body.editing { cursor: crosshair; }
+  #labels { position: fixed; inset:0; pointer-events:none; overflow:hidden; }
+  .lab { position:absolute; transform:translate(-50%,-130%); white-space:nowrap; font-size:11px;
+    color:#2a2a2a; background:rgba(255,255,255,.82); border:1px solid rgba(0,0,0,.18); border-radius:4px;
+    padding:2px 7px; box-shadow:0 1px 4px rgba(0,0,0,.2); opacity:.55; transition:opacity .2s; }
+  .lab b { color:#666; font-weight:400; margin-left:5px; font-size:9px; }
+  .lab.t-down { color:#b5532e; } .lab.t-loop { color:#9a6a12; } .lab.t-up2 { color:#2f7a4a; }
+  .lab.t-fog { color:#7a7a7a; font-style:italic; } .lab.t-start, .lab.t-now { font-weight:600; }
+  .lab.near { opacity:1; box-shadow:0 2px 8px rgba(0,0,0,.3); }
+  #overlay { position: fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.45); color:#fff; text-align:center; cursor:pointer; z-index:10; }
+  #overlay .box { background:rgba(20,30,40,.7); padding:28px 40px; border-radius:16px; max-width:520px; }
+  #overlay h1 { margin:0 0 8px; font-size:24px; }
+  #overlay p { margin:5px 0; opacity:.9; font-size:14px; }
+  #overlay .start { margin-top:16px; font-size:18px; font-weight:700; color:#ffe27a; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="hud">
+  <b>🚶 開発の旅を歩く</b><br>
+  <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> 移動 &nbsp; <span class="key">Shift</span> ダッシュ<br>
+  <span class="key">Space</span> ジャンプ &nbsp; マウスドラッグ: 視点<br>
+  <span class="key">M</span> マップ &nbsp; <span class="key">E</span> 地形編集（盛る/削る）
+</div>
+<div id="phase">現在地: <b id="phasev">麓</b></div>
+<div id="fps"></div>
+<div id="maplabel">全体マップ（旅路）</div>
+<canvas id="minimap"></canvas>
+<div id="editbar"></div>
+<div id="labels"></div>
+<div id="overlay"><div class="box">
+  <h1>乗レコ 開発の旅を歩く</h1>
+  <p>高さ＝積み上げ／谷＝下り（崩して組み直す＝リファクタ）。</p>
+  <p>v60 出発から最高峰の駅ID体系を越えて今ここ v448 へ。</p>
+  <p style="opacity:.75"><b>E</b> キーで地形編集（史観を自分で彫れる）</p>
+  <p class="start">▶ クリックして開始</p>
+</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ===== 基本セットアップ =====
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+document.getElementById('app').appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const SKY = 0x9ecbe8; scene.background = new THREE.Color(SKY); scene.fog = new THREE.Fog(SKY, 360, 820);
+const camera = new THREE.PerspectiveCamera(62, window.innerWidth/window.innerHeight, 0.1, 3000);
+scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x4a5a3a, 0.85));
+const sun = new THREE.DirectionalLight(0xfff2d8, 0.95); sun.position.set(160, 300, 120); scene.add(sun);
+scene.add(new THREE.AmbientLight(0xffffff, 0.15));
+
+// ===== ノイズ（背景のゆるい起伏用）=====
+function hash(x,y){ const h=Math.sin(x*127.1+y*311.7)*43758.5453; return h-Math.floor(h); }
+function smooth(t){ return t*t*(3-2*t); }
+function valueNoise(x,y){ const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi;
+  const tl=hash(xi,yi),tr=hash(xi+1,yi),bl=hash(xi,yi+1),br=hash(xi+1,yi+1),u=smooth(xf),v=smooth(yf);
+  return (tl+(tr-tl)*u)+((bl+(br-bl)*u)-(tl+(tr-tl)*u))*v; }
+function fbm(x,y){ let amp=1,freq=1,sum=0,norm=0; for(let i=0;i<5;i++){ sum+=amp*valueNoise(x*freq,y*freq); norm+=amp; amp*=0.5; freq*=2; } return sum/norm; }
+
+// ===== 旅路のアンカー（= 開発史）。[x, 高さ, z, ラベル?, 版?, 種別?] =====
+const A = [
+  [-300,  6, -250, "黎明期 v1–v59","Add files via upload","fog"],
+  [-265, 14, -220, "v60 出発","記録のはじまり","start"],
+  [-215, 55, -180],
+  [-175, 70, -148, "コア機能","v60–157","peak"],
+  [-128, 64, -108],
+  [ -95, 30,  -78, "ESモジュール化","v189–225","down"],
+  [-112, 33,  -62],[-82, 31, -70],[-92, 30, -90],
+  [ -28, 88,  -18, "組み直して一段高く","module化の果実","up2"],
+  [   8, 92,    6],[-6, 89, 30],[34, 93, 22],
+  [  86, 92,   78, "駅メモ・写真","v250–289","peak"],
+  [ 134,110,  116],
+  [ 178,130,  156, "駅ID体系 最高峰","v290–333","loop"],
+  [ 206,126,  164],[188,123,196],[156,128,172],[182,130,156],
+  [ 228, 70,  206, "GPS削除","v334","down"],
+  [ 262, 86,  238, "機能拡充","v334–418","peak"],
+  [ 292, 67,  272, "整理","v399–407","down"],
+  [ 316, 94,  300, "垢BAN・磨き込み","v419–448","peak"],
+  [ 334, 90,  308],[320,90,324],[330,94,312],
+  [ 340, 86,  334, "今ここ v448","","now"],
+];
+const anchorVecs = A.map(a=> new THREE.Vector3(a[0], a[1], a[2]));
+const routeCurve = new THREE.CatmullRomCurve3(anchorVecs, false, "catmullrom", 0.5);
+const routeSamples = routeCurve.getPoints(260).map(p=>({x:p.x, z:p.z, h:p.y}));
+const markers = []; A.forEach((a,i)=>{ if(a[3]) markers.push({x:a[0], z:a[2], label:a[3], ver:a[4]||"", type:a[5]||"peak", t:i/(A.length-1)}); });
+
+// 史実プロファイル → 高さ（旅路に沿う尾根＋背景の丘）
+function historyHeight(x, z){
+  let best=Infinity, H=0;
+  for(let i=0;i<routeSamples.length;i++){ const s=routeSamples[i],dx=x-s.x,dz=z-s.z,d2=dx*dx+dz*dz; if(d2<best){best=d2; H=s.h;} }
+  const d=Math.sqrt(best), ridgeW=64, fall=Math.exp(-(d*d)/(2*ridgeW*ridgeW));
+  const bg=(fbm(x*0.004+10,z*0.004+4)-0.45)*40;       // 背景のゆるい丘
+  let h = H*fall + bg*(1-fall)*0.8;
+  h += (fbm(x*0.05,z*0.05)-0.5)*3;                     // 細かな起伏
+  return h;
+}
+
+// ===== 高さによる地形カラー =====
+const STOPS = [[-12,0x36622b],[0,0x5fa83f],[12,0x7d8b3a],[26,0x6e5a3c],[46,0x7c7c7c],[72,0x9a9a9a],[100,0xffffff]];
+const _cA=new THREE.Color(),_cB=new THREE.Color(),_cOut=new THREE.Color();
+function colorForHeight(h,out){ for(let i=0;i<STOPS.length-1;i++){ const [h0,c0]=STOPS[i],[h1,c1]=STOPS[i+1];
+  if(h<=h1||i===STOPS.length-2){ const t=Math.max(0,Math.min(1,(h-h0)/(h1-h0))); _cA.setHex(c0);_cB.setHex(c1); out.copy(_cA).lerp(_cB,t); return out; } } return out.setHex(0xffffff); }
+
+// ===== 地形メッシュ（heights[] が正データ。E で編集可）=====
+const SIZE=760, SEG=240, HALF=SIZE/2, STEP=SIZE/SEG, GW=SEG+1;
+const geo = new THREE.PlaneGeometry(SIZE,SIZE,SEG,SEG); geo.rotateX(-Math.PI/2);
+const pos = geo.attributes.position;
+const colArr = new Float32Array(pos.count*3);
+const heights = new Float32Array(pos.count);
+for(let i=0;i<pos.count;i++){ const x=pos.getX(i),z=pos.getZ(i),y=historyHeight(x,z);
+  pos.setY(i,y); heights[i]=y; colorForHeight(y,_cOut); colArr[i*3]=_cOut.r; colArr[i*3+1]=_cOut.g; colArr[i*3+2]=_cOut.b; }
+geo.setAttribute('color', new THREE.BufferAttribute(colArr,3));
+geo.computeVertexNormals();
+geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0,0,0), SIZE);
+const colorAttr = geo.attributes.color;
+const terrain = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors:true }));
+scene.add(terrain);
+function heightAt(x,z){ const fc=(x+HALF)/STEP,fr=(z+HALF)/STEP; let c0=Math.floor(fc),r0=Math.floor(fr);
+  if(c0<0)c0=0;else if(c0>SEG-1)c0=SEG-1; if(r0<0)r0=0;else if(r0>SEG-1)r0=SEG-1;
+  const tx=Math.min(1,Math.max(0,fc-c0)),tz=Math.min(1,Math.max(0,fr-r0));
+  const h00=heights[r0*GW+c0],h10=heights[r0*GW+c0+1],h01=heights[(r0+1)*GW+c0],h11=heights[(r0+1)*GW+c0+1];
+  const a=h00+(h10-h00)*tx,b=h01+(h11-h01)*tx; return a+(b-a)*tz; }
+
+// ===== 木と岩を散らす（低地=森・高峰=岩）=====
+function slopeAt(x,z){ return Math.abs(historyHeight(x+2,z)-historyHeight(x-2,z))+Math.abs(historyHeight(x,z+2)-historyHeight(x,z-2)); }
+function scatter(g,mat,count,yOff,accept){ const placed=[]; let tries=0;
+  while(placed.length<count && tries<count*40){ tries++; const x=(Math.random()*2-1)*(HALF-20),z=(Math.random()*2-1)*(HALF-20),h=historyHeight(x,z);
+    if(accept(h,slopeAt(x,z))) placed.push({x,z,h,s:0.7+Math.random()*0.8,r:Math.random()*Math.PI*2}); }
+  const mesh=new THREE.InstancedMesh(g,mat,placed.length),d=new THREE.Object3D();
+  placed.forEach((p,i)=>{ d.position.set(p.x,p.h+yOff(p.s),p.z); d.scale.set(p.s,p.s,p.s); d.rotation.y=p.r; d.updateMatrix(); mesh.setMatrixAt(i,d.matrix); });
+  mesh.instanceMatrix.needsUpdate=true; scene.add(mesh); }
+scatter(new THREE.CylinderGeometry(0.3,0.45,3,5), new THREE.MeshLambertMaterial({color:0x6b4a2b}), 260, s=>1.5*s, (h,s)=>h>4&&h<46&&s<7);
+scatter(new THREE.ConeGeometry(2.2,6,7), new THREE.MeshLambertMaterial({color:0x2f6b32}), 260, s=>6*s, (h,s)=>h>4&&h<46&&s<7);
+scatter(new THREE.DodecahedronGeometry(1.6,0), new THREE.MeshPhongMaterial({color:0x8a8a8a,flatShading:true,shininess:2}), 150, s=>0.8*s, (h)=>h>74);
+
+// ===== 旅路ライン（地形に沿わせて表示）=====
+const drapePts = routeCurve.getPoints(420).map(p=>new THREE.Vector3(p.x, heightAt(p.x,p.z)+1.6, p.z));
+const drape = new THREE.CatmullRomCurve3(drapePts, false, "catmullrom", 0.2);
+const tube = new THREE.Mesh(new THREE.TubeGeometry(drape,700,1.1,8,false), new THREE.MeshBasicMaterial({color:0xf5a623}));
+tube.renderOrder = 2; scene.add(tube);
+
+// ===== ラベル（HTML を 3D 位置に投影）=====
+const labelLayer = document.getElementById('labels');
+markers.forEach(m=>{ m.pos=new THREE.Vector3(m.x, heightAt(m.x,m.z)+6, m.z);
+  const el=document.createElement('div'); el.className='lab t-'+m.type;
+  el.innerHTML=m.label+(m.ver?' <b>'+m.ver+'</b>':''); labelLayer.appendChild(el); m.el=el; });
+
+// ===== プレイヤー（出発地点から）=====
+const player = new THREE.Group();
+const body = new THREE.Mesh(new THREE.CylinderGeometry(0.62,0.5,2.0,12), new THREE.MeshLambertMaterial({color:0xe8533a})); body.position.y=1.8; player.add(body);
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.55,16,12), new THREE.MeshLambertMaterial({color:0xf2c9a0})); head.position.y=3.1; player.add(head);
+const legMat=new THREE.MeshLambertMaterial({color:0x335c8a});
+const legL=new THREE.Mesh(new THREE.CylinderGeometry(0.26,0.22,1.4,8),legMat), legR=legL.clone();
+legL.position.set(-0.32,0.75,0); legR.position.set(0.32,0.75,0); player.add(legL,legR); scene.add(player);
+const START = A[1];                                   // v60 出発
+const pp = { x:START[0], z:START[2], y:0, velY:0, onGround:true }; pp.y = heightAt(pp.x,pp.z);
+
+// ===== 全体マップ（ミニマップ）=====
+const mapCanvas=document.getElementById('minimap'), mapLabel=document.getElementById('maplabel'), MAP_PX=220;
+mapCanvas.width=MAP_PX; mapCanvas.height=MAP_PX; const mapCtx=mapCanvas.getContext('2d'); let mapVisible=true;
+const mapBg=document.createElement('canvas'); mapBg.width=MAP_PX; mapBg.height=MAP_PX;
+const _mb=mapBg.getContext('2d'), _mimg=_mb.createImageData(MAP_PX,MAP_PX);
+function renderMapBg(){ const d=_mimg.data,c=new THREE.Color();
+  for(let py=0;py<MAP_PX;py++)for(let px=0;px<MAP_PX;px++){ const wx=(px/MAP_PX)*SIZE-HALF,wz=(py/MAP_PX)*SIZE-HALF,h=heightAt(wx,wz);
+    colorForHeight(h,c); const shade=Math.max(-0.3,Math.min(0.3,(h-heightAt(wx+3,wz))*0.05)),i=(py*MAP_PX+px)*4;
+    d[i]=Math.max(0,Math.min(255,(c.r+shade)*255)); d[i+1]=Math.max(0,Math.min(255,(c.g+shade)*255)); d[i+2]=Math.max(0,Math.min(255,(c.b+shade)*255)); d[i+3]=255; }
+  _mb.putImageData(_mimg,0,0); }
+renderMapBg();
+function w2m(x,z){ return [ (x+HALF)/SIZE*MAP_PX, (z+HALF)/SIZE*MAP_PX ]; }
+const evColor={down:"#f0a07a",loop:"#f5c361",up2:"#8fd0a8",now:"#ff5a3a",start:"#dfe7ec",fog:"#9aa6ad",peak:"#ffffff"};
+function drawMinimap(){ if(!mapVisible) return; mapCtx.clearRect(0,0,MAP_PX,MAP_PX); mapCtx.drawImage(mapBg,0,0);
+  mapCtx.lineJoin='round'; mapCtx.lineCap='round'; mapCtx.lineWidth=2.4; mapCtx.strokeStyle='rgba(245,166,35,.95)';   // 旅路
+  mapCtx.beginPath(); routeSamples.forEach((s,i)=>{ const m=w2m(s.x,s.z); i?mapCtx.lineTo(m[0],m[1]):mapCtx.moveTo(m[0],m[1]); }); mapCtx.stroke();
+  for(const mk of markers){ const m=w2m(mk.x,mk.z); mapCtx.fillStyle=evColor[mk.type]||'#fff'; mapCtx.beginPath(); mapCtx.arc(m[0],m[1],mk.type==='now'?3.5:2.4,0,6.2832); mapCtx.fill(); }
+  const m=w2m(pp.x,pp.z),a=player.rotation.y,fx=Math.sin(a),fz=Math.cos(a),s=8;                                       // 現在地＋向き
+  mapCtx.fillStyle='#fff'; mapCtx.strokeStyle='#000'; mapCtx.lineWidth=1.5; mapCtx.beginPath();
+  mapCtx.moveTo(m[0]+fx*s,m[1]+fz*s); mapCtx.lineTo(m[0]-fx*s*0.6-fz*s*0.55,m[1]-fz*s*0.6+fx*s*0.55); mapCtx.lineTo(m[0]-fx*s*0.6+fz*s*0.55,m[1]-fz*s*0.6-fx*s*0.55);
+  mapCtx.closePath(); mapCtx.fill(); mapCtx.stroke(); }
+
+// ===== 入力 =====
+const keys={};
+addEventListener('keydown', e=>{ keys[e.code]=true; if(e.code==='Space') e.preventDefault();
+  if(e.code==='KeyM'){ mapVisible=!mapVisible; mapCanvas.style.display=mapVisible?'block':'none'; mapLabel.style.display=mapVisible?'block':'none'; }
+  if(e.code==='KeyE'){ toggleEdit(); } if(e.code.indexOf('Arrow')===0) e.preventDefault(); });
+addEventListener('keyup', e=>{ keys[e.code]=false; });
+let yaw=0, pitch=0.42, started=false, dragging=false;
+const overlay=document.getElementById('overlay'), canvas=renderer.domElement;
+function begin(){ started=true; overlay.style.display='none'; try{ if(canvas.requestPointerLock) canvas.requestPointerLock(); }catch(e){} }
+overlay.addEventListener('click', begin);
+function locked(){ return document.pointerLockElement===canvas; }
+
+// ===== 地形編集（スカルプト）=====
+let editMode=false, sculpting=false, sculptDir=1, brushR=26, brushStrength=55;
+const editbar=document.getElementById('editbar'), ndc=new THREE.Vector2(), raycaster=new THREE.Raycaster();
+let brushHit=null, mapDirty=false;
+const ring=new THREE.Mesh(new THREE.RingGeometry(0.93,1.0,48), new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.85,side:THREE.DoubleSide,depthTest:false}));
+ring.rotation.x=-Math.PI/2; ring.visible=false; ring.renderOrder=5; scene.add(ring);
+function updateEditbar(){ editbar.innerHTML='🛠 <b>地形編集</b> ｜ 左ドラッグ:盛る ・ 右ドラッグ:削る ・ ホイール:ブラシ径 <b>'+Math.round(brushR)+'</b> ・ 矢印キー:視点 ・ <b>E</b>:終了'; editbar.style.display=editMode?'block':'none'; }
+function toggleEdit(){ editMode=!editMode; document.body.classList.toggle('editing',editMode); ring.visible=editMode;
+  if(editMode){ try{ document.exitPointerLock&&document.exitPointerLock(); }catch(e){} } else { sculpting=false; if(mapDirty){ renderMapBg(); mapDirty=false; } } updateEditbar(); }
+function setNDCFromEvent(e){ const r=canvas.getBoundingClientRect(); ndc.x=((e.clientX-r.left)/r.width)*2-1; ndc.y=-((e.clientY-r.top)/r.height)*2+1; }
+function applyBrush(cx,cz,dir,dt){ const c0=Math.max(0,Math.floor((cx-brushR+HALF)/STEP)),c1=Math.min(SEG,Math.ceil((cx+brushR+HALF)/STEP)),r0=Math.max(0,Math.floor((cz-brushR+HALF)/STEP)),r1=Math.min(SEG,Math.ceil((cz+brushR+HALF)/STEP));
+  let changed=false; for(let r=r0;r<=r1;r++){ const wz=-HALF+r*STEP; for(let c=c0;c<=c1;c++){ const wx=-HALF+c*STEP,d=Math.hypot(wx-cx,wz-cz); if(d>=brushR) continue;
+    const f=0.5*(Math.cos(Math.PI*d/brushR)+1), idx=r*GW+c, nh=heights[idx]+dir*brushStrength*dt*f; heights[idx]=nh; pos.setY(idx,nh); colorForHeight(nh,_cOut); colorAttr.setXYZ(idx,_cOut.r,_cOut.g,_cOut.b); changed=true; } }
+  if(changed){ pos.needsUpdate=true; colorAttr.needsUpdate=true; geo.computeVertexNormals(); mapDirty=true; } }
+canvas.addEventListener('contextmenu', e=>e.preventDefault());
+canvas.addEventListener('mousedown', e=>{ if(editMode){ setNDCFromEvent(e); sculptDir=(e.button===2)?-1:1; sculpting=true; } else { dragging=true; } });
+addEventListener('mouseup', ()=>{ dragging=false; if(sculpting){ sculpting=false; if(mapDirty){ renderMapBg(); mapDirty=false; } } });
+addEventListener('mouseleave', ()=>{ dragging=false; sculpting=false; });
+document.addEventListener('mousemove', e=>{ if(editMode){ setNDCFromEvent(e); return; } if(!started) return; if(!locked()&&!dragging) return;
+  yaw-=e.movementX*0.0025; pitch-=e.movementY*0.0025; pitch=Math.max(-0.4,Math.min(1.1,pitch)); });
+addEventListener('wheel', e=>{ if(!editMode) return; e.preventDefault(); brushR=Math.max(6,Math.min(110,brushR+(e.deltaY<0?4:-4))); updateEditbar(); }, {passive:false});
+
+// ===== 現在地（最寄りの時代）=====
+const phasev=document.getElementById('phasev');
+const phaseWord={start:"出発",peak:"登り",down:"下り（崩して組み直す）",loop:"ぐるぐる（足踏み）",now:"到達",fog:"記録以前",up2:"一段高く"};
+function updatePhase(){ let best=Infinity,cur=markers[0]; for(const m of markers){ const dx=pp.x-m.x,dz=pp.z-m.z,d=dx*dx+dz*dz; if(d<best){best=d;cur=m;} }
+  phasev.innerHTML = cur.label + (['peak','down','loop','up2'].includes(cur.type)?' <span style="opacity:.7">｜'+phaseWord[cur.type]+'</span>':''); }
+
+// ===== ループ =====
+const WALK=22, RUN=46, GRAV=70, JUMP=26; let runPhase=0; const clock=new THREE.Clock();
+const fpsEl=document.getElementById('fps'); let fpsT=0,fpsN=0; const _v=new THREE.Vector3();
+function animate(){ requestAnimationFrame(animate); let dt=clock.getDelta(); dt=Math.min(dt,0.05);
+  if(keys['ArrowLeft']) yaw+=1.6*dt; if(keys['ArrowRight']) yaw-=1.6*dt;
+  if(keys['ArrowUp']) pitch=Math.min(1.1,pitch+1.3*dt); if(keys['ArrowDown']) pitch=Math.max(-0.4,pitch-1.3*dt);
+  const fwd=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw)), right=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw)), move=new THREE.Vector3();
+  if(keys['KeyW'])move.add(fwd); if(keys['KeyS'])move.sub(fwd); if(keys['KeyD'])move.add(right); if(keys['KeyA'])move.sub(right);
+  const moving=move.lengthSq()>0, speed=(keys['ShiftLeft']||keys['ShiftRight'])?RUN:WALK;
+  if(moving){ move.normalize(); pp.x+=move.x*speed*dt; pp.z+=move.z*speed*dt;
+    pp.x=Math.max(-HALF+8,Math.min(HALF-8,pp.x)); pp.z=Math.max(-HALF+8,Math.min(HALF-8,pp.z)); player.rotation.y=Math.atan2(move.x,move.z); runPhase+=dt*speed*0.55; }
+  const ground=heightAt(pp.x,pp.z); if(pp.onGround&&keys['Space']){ pp.velY=JUMP; pp.onGround=false; }
+  pp.velY-=GRAV*dt; pp.y+=pp.velY*dt; if(pp.y<=ground){ pp.y=ground; pp.velY=0; pp.onGround=true; }
+  player.position.set(pp.x,pp.y,pp.z);
+  const sw=moving&&pp.onGround?Math.sin(runPhase)*0.6:0; legL.rotation.x=sw; legR.rotation.x=-sw;
+  body.position.y=1.8+(moving&&pp.onGround?Math.abs(Math.sin(runPhase))*0.12:0);
+  const dist=13,cp=Math.cos(pitch); const cx=pp.x+Math.sin(yaw)*cp*dist, cy=pp.y+3+Math.sin(pitch)*dist+2, cz=pp.z+Math.cos(yaw)*cp*dist;
+  camera.position.set(cx, Math.max(cy, heightAt(cx,cz)+2.5), cz); camera.lookAt(pp.x,pp.y+2.4,pp.z);
+  if(editMode){ raycaster.setFromCamera(ndc,camera); const hit=raycaster.intersectObject(terrain,false)[0];
+    if(hit){ brushHit=hit.point; ring.position.set(brushHit.x,brushHit.y+0.4,brushHit.z); ring.scale.set(brushR,brushR,1); ring.visible=true;
+      ring.material.color.setHex(sculpting?(sculptDir>0?0x66ff66:0xff6666):0xffffff); if(sculpting) applyBrush(brushHit.x,brushHit.z,sculptDir,dt); } else { ring.visible=false; } }
+  // ラベル投影
+  const w=window.innerWidth,h=window.innerHeight;
+  for(const m of markers){ _v.copy(m.pos).project(camera); if(_v.z>1){ m.el.style.display='none'; continue; }
+    m.el.style.display='block'; m.el.style.left=((_v.x*0.5+0.5)*w)+'px'; m.el.style.top=((-_v.y*0.5+0.5)*h)+'px';
+    const dx=pp.x-m.x,dz=pp.z-m.z; m.el.classList.toggle('near', dx*dx+dz*dz < 3600); }
+  updatePhase();
+  renderer.render(scene,camera); drawMinimap();
+  fpsT+=dt; fpsN++; if(fpsT>=0.5){ fpsEl.textContent=Math.round(fpsN/fpsT)+' fps'; fpsT=0; fpsN=0; }
+}
+animate();
+addEventListener('resize', ()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight); });
+</script>
+</body>
+</html>
