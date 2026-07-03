@@ -48,11 +48,11 @@ jobs:
           mkdir -p ~/private_keys
           printf '%s' "$ASC_API_KEY_P8" > ~/private_keys/AuthKey_${ASC_KEY_ID}.p8
 
-      - name: Archive (cloud signing)
-        env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      # アーカイブ時は署名しない (CODE_SIGNING_ALLOWED=NO)。
+      # Capacitor テンプレの CODE_SIGN_IDENTITY="iPhone Developer" が開発用プロファイルを
+      # 要求し、開発用は実機登録 (デバイス 0 台) が必須で失敗するため。
+      # 実際の署名は下の export ステップで App Store 配布用プロファイル (実機不要) で行う。
+      - name: Archive (unsigned)
         run: |
           xcodebuild archive \
             -project ios/App/App.xcodeproj \
@@ -60,12 +60,7 @@ jobs:
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath build/App.xcarchive \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath ~/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGNING_ALLOWED=NO \
             CURRENT_PROJECT_VERSION=${{ github.run_number }}
 
       - name: Write exportOptions.plist
