@@ -54,6 +54,26 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 296. v449 — iOS 対応 Phase A: ホーム画面 PWA を「アプリ同然」に磨く（safe-area / 入力ズーム / アイコン / スプラッシュ / Magic Link 注記）
+
+**カテゴリ**: A（ユスケ依頼「いま web 版だけど、iOS でもいけるように」）
+
+**背景と方針**: ゴールを AskUserQuestion で確定 — **段階的に両方**（Phase A = iPhone Safari/PWA 磨き込み → Phase B = Capacitor で App Store 配信）。Apple Developer Program は加入済み、機材は iPhone/iPad のみ（Mac 無し → Phase B は GitHub Actions の macOS ランナーでクラウドビルド予定）。iOS 用メタタグ（`apple-mobile-web-app-capable` 等）は初期から入っており「動く」状態だったが、ノッチ機のホーム画面起動で見た目が崩れる・ログインが分離する等の「アプリとして使うと露呈する穴」が残っていた。
+
+**修正 6 点**:
+1. **safe-area 対応（本丸）**: `viewport-fit=cover` + `black-translucent` なのに `env(safe-area-inset-*)` を一切使っていなかった → ノッチ/Dynamic Island 機では時計・電池表示がヘッダに重なり、ホームインジケータがボトムシートに重なる。`.header`（padding-top/height + 横 inset）/ `.tabs`（top）/ `.content`（top）/ `.memo-sheet`（padding-bottom、**全ボトムシート 10 個が共用クラスなので 1 箇所で全対応**）/ `.mp-toast` / `.nearest-station-panel` / `.pane:not(#pane-map)`（スクロール末尾余白）に env() 追加。上書き宣言を基本宣言の後に置く方式なので env() 非対応環境では自動フォールバック、Android/PC は env()=0 でレイアウト完全不変（preview で computed 52px/92px/40px を確認済）。
+2. **input フォーカス時の自動ズーム抑止**: 本アプリの input は 11〜13px で、iOS Safari は font-size<16px の input にフォーカスすると画面全体をズームする。10-init.js に iOS 判定（UA + iPadOS 13+ の Macintosh/maxTouchPoints 判別）時のみ viewport へ `maximum-scale=1.0` を動的付与。iOS はピンチズーム自体は殺さない方針なのでアクセシビリティ問題なし、Android には付与しない（pinch が死ぬため）。
+3. **apple-touch-icon 修正**: 旧 `icon-192.png`（192px・透過 PNG）は iOS ホーム画面で角が黒抜けする → PowerShell System.Drawing で navy `#0D1B2A` に合成した不透明 `apple-touch-icon.png`（180×180 正規サイズ）を生成し差し替え。
+4. **起動スプラッシュ**: `apple-touch-startup-image` 未設定で起動のたび白画面フラッシュ → navy 地 + 中央アイコンのスプラッシュ 27 枚（iPhone 縦 11 + iPad 縦横 16、計 884KB）を `splash/` に生成、デバイス解像度別 media query で 27 link タグ追加。OS が直接 fetch するため sw.js STATIC_ASSETS には追加しない。
+5. **Magic Link の standalone 罠に注記**: iOS ホーム画面アプリは Safari と localStorage が分離。Magic Link のメールは Safari 側で開くため、**PKCE の code_verifier が見つからずログインが反映されない**（12-auth は flowType:'pkce'）。認証モーダルに注記 div を追加し、`navigator.standalone === true`（iOS 独自 API）のときだけ 12-auth initAuth が表示 →「Google でログイン」へ誘導。
+6. **小物**: `-webkit-tap-highlight-color:transparent`（タップ時の灰色フラッシュ除去）、`-webkit-text-size-adjust:100%`、`mobile-web-app-capable` meta 追加、manifest の name/description を現行ブランド「乗レコ - 電車旅」に整合。
+
+**検証**: npm check 28/28、HTML 末尾タグ整合（body/html 各 1）、preview（デスクトップ）で header 52px / content top 92px / memo-sheet padding-bottom 40px = env()=0 フォールバック確認 + console エラーなし + 新アセット 200 応答 + スプラッシュ link 27 本。**iOS 実機（時計重なり解消 / スプラッシュ / ホーム画面追加 → Google ログイン / GPS 記録）はユスケの iPhone で要確認**。
+
+**残課題 (Phase B)**: Capacitor scaffold + GitHub Actions macOS ビルド + TestFlight。Capacitor の WKWebView では Google OAuth が `disallowed_useragent` で弾かれるため、ネイティブ側は ASWebAuthenticationSession 系 plugin が必要になる見込み（Phase B 設計時に対応）。
+
+---
+
 ## 295. v448 — ログイン直後にオンボーディングバナーが誤表示（settle の早期確定 + 再評価なし）
 
 **カテゴリ**: A（バグ修正 — ユスケ実機報告）

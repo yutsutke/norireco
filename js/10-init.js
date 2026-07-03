@@ -12,6 +12,21 @@
 import { initAuth } from './12-auth.js';
 import { initMap } from './06-map-leaflet.js';
 import { updateDateFilterUI } from './05-supabase-data.js';
+
+// ══════════════════════════════════════════════
+// iOS: input フォーカス時の自動ズーム抑止 (v449)
+// iOS Safari は font-size < 16px の input にフォーカスすると画面全体を勝手にズームする。
+// viewport に maximum-scale=1 を付けると抑止でき、iOS はアクセシビリティ方針で
+// ピンチズーム自体は殺さない。Android では pinch zoom が無効化されるため iOS のみ付与。
+// iPadOS 13+ は UA が Macintosh を名乗るため maxTouchPoints で判別。
+// ══════════════════════════════════════════════
+(function preventIOSInputZoom() {
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+  if (!isIOS) return;
+  const vp = document.querySelector('meta[name="viewport"]');
+  if (vp && !/maximum-scale/.test(vp.content)) vp.content += ', maximum-scale=1.0';
+})();
 // ══════════════════════════════════════════════
 // アプリ・バージョンバッジ
 // 動作中SWの CACHE_VERSION と GitHub Pages 上の最新 sw.js を比較

@@ -110,6 +110,13 @@ export async function initAuth() {
   console.log('[Auth] initAuth 開始');
   // v437: ?ref=s_<id> を最優先で退避 (SDK 未ロードでも、OAuth リダイレクト前でも確実に拾う)。
   captureShareReferral();
+  // v449: iOS ホーム画面 (standalone) 起動では Magic Link のメールが Safari 側で開き、
+  // localStorage が分離しているため PKCE の code_verifier が見つからずログインが反映されない。
+  // standalone 時のみ Google ログイン推奨の注記を出す (navigator.standalone は iOS Safari 独自)。
+  if (navigator.standalone === true) {
+    const note = document.getElementById('auth-standalone-note');
+    if (note) note.style.display = '';
+  }
   if (typeof supabase === 'undefined' || !supabase.createClient) {
     console.warn('[Auth] Supabase JS SDK が未ロード');
     return;

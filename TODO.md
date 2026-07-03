@@ -22,6 +22,11 @@ git log --oneline -20
 
 ## 🔥 最優先（プロダクトとして欠けている）
 
+- [ ] **iOS 対応（段階的に両方 — ユスケ確定 2026-07-03）**
+  - ✅ Phase A (v449): ホーム画面 PWA 磨き込み — safe-area env() / input 自動ズーム抑止 (iOS のみ maximum-scale=1) / 不透明 apple-touch-icon 180×180 / 起動スプラッシュ 27 枚 / standalone 時 Magic Link 注記 (PKCE ストレージ分離)。CHANGELOG §296
+  - [ ] **Phase A 実機確認 (ユスケ iPhone)**: ① Safari で norireco.app → ホーム画面に追加 → 起動 (スプラッシュ出る/時計がヘッダに重ならない) ② Google ログイン ③ 📍GPS 記録 ④ ボトムシート下端 ⑤ input フォーカスでズームしない
+  - [ ] **Phase B: Capacitor で App Store 配信** — Apple Developer 加入済 / Mac 無し。工程: ① Capacitor scaffold (静的サイトをローカルバンドル、審査 4.2 対策で remote URL 方式は避ける) ② bundle ID・アプリ名決定 ③ GitHub Actions macOS ランナーでビルド (public repo 無料) ④ App Store Connect API キー + fastlane で署名・TestFlight ⑤ 審査提出。**注意**: WKWebView では Google OAuth が disallowed_useragent で弾かれる → ASWebAuthenticationSession 系 plugin 必要。ネイティブ化の果実 = バックグラウンド GPS / プッシュ通知 / AdMob (Notion §3.3)
+
 - [ ] **シェア機能 — MVP 以降の残り (v236 で OGP 画像生成 MVP は完成)**
   - ✅ v236: マイページ完乗率カードから「📸 シェア画像を作成」で 1200×630 PNG 生成・ダウンロード・Web Share / X intent
   - ✅ S-1 (v410): 個別 trip シェア — 旅程カードに「📤 シェア」、`generateTripOgpCanvas` で 1 旅程分の OGP (地図を trip 区間にズーム + 始点○/終点● + 路線名/区間/駅数/乗換/乗車日/車両パネル)。DL/Web Share/X。純クライアント
