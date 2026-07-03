@@ -24,10 +24,22 @@ on:
 
 jobs:
   build-upload:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+
+      # App Store は iOS 26 SDK (Xcode 26) 以上でのビルドを必須化。macos-26 ランナーの
+      # 最新安定版 Xcode を明示選択する (デフォルトが旧版でも確実に 26 系にする保険)
+      - name: Select latest Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Show Xcode / iOS SDK version
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
 
       - uses: actions/setup-node@v4
         with:
