@@ -69,14 +69,23 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 **ユスケ側の 1 回だけの事前作業**（workflow ヘッダにも記載）: ① developer.apple.com で App ID `app.norireco` 登録 ② App Store Connect で新規 App 作成 ③ API キー発行（App Manager 権限）④ GitHub Secrets 4 つ（ASC_KEY_ID / ASC_ISSUER_ID / ASC_API_KEY_P8 / APPLE_TEAM_ID）登録 → Actions から手動実行。
 
-**既知の残課題（B-2 以降、初回ビルド後に対応）**:
+**既知の残課題（B-2 以降、TestFlight 稼働後に対応）**:
 - **Google OAuth**: WKWebView は Google が `disallowed_useragent` で拒否 → `@capacitor/browser`（ASWebAuthenticationSession）+ deep link（カスタムスキーム or Universal Links）+ Supabase Redirect URLs 追加が必要。**初回 TestFlight はゲストモード（v418 で未ログイン開放済み）で検証可能**なのでビルド優先。
+- **CI の署名証明書はクラウド管理（cloud-managed distribution cert）**: 現状 export 時に `-allowProvisioningUpdates` で Apple 側管理の配布証明書を使用。配布証明書には枚数上限（2〜3）があるため、将来リリース頻度が上がったら **fastlane match で証明書を非公開リポジトリに永続化**する方式へ移行を検討（今は不要）。
+- **EU 配信のトレーダーステータス（DSA）**: App Store Connect に「EU 配信にはトレーダーステータス提供が必要」バナー。TestFlight・非 EU 配信には影響しないが、EU 一般公開前に対応要。
 - Magic Link も同様に deep link 対応が本筋。
 - api.norireco.app（R2 Worker）の CORS が `capacitor://localhost` Origin を許すか要確認。
 - アプリアイコン（Assets.xcassets はテンプレのまま）・LaunchScreen のブランド化。
 - 審査 4.2（最小機能性）対策として、ネイティブの果実（バックグラウンド GPS / プッシュ）を段階投入する構想は Notion §3.3。
 
-**検証**: npm check 28/28、build-www 20 項目コピー確認、preview でバッジ v449 🟢 + console エラー 0（Capacitor ガードが Web で inert なこと確認）。**Xcode ビルド自体は CI 初回実行までノーチェック**（Windows ではコンパイル不可）— 初回 run でのビルドエラーは想定内、CI ログで潰す。
+**検証**: npm check 28/28、build-www 20 項目コピー確認、preview でバッジ v449 🟢 + console エラー 0（Capacitor ガードが Web で inert なこと確認）。
+
+**CI 実運用で潰した詰まりどころ（4 run で成功、同セッション 2026-07-03）**: Windows ではコンパイル不可なので初回以降を CI ログで詰めた。3 つの実エラーと修正 —
+1. **署名権限（`Cloud signing permission error` / `No signing certificate "iOS Distribution" found`）**: App Store Connect API キーの役割が **App Manager では配布用証明書を作成できない**。**Admin 役割のキーが必須**。App Manager は TestFlight アップロード・プロファイル管理はできるが証明書作成は不可。→ Admin キーを新規発行して `ASC_KEY_ID` / `ASC_API_KEY_P8` 差し替え。
+2. **開発用プロファイルが実機を要求（`Your team has no devices` / `No profiles for 'app.norireco' were found: iOS App Development`）**: Capacitor テンプレの `CODE_SIGN_IDENTITY = "iPhone Developer"` が **archive 時に開発用プロファイルを要求 → 開発用は登録実機が最低 1 台必要**でデバイス 0 台のため失敗。→ archive を `CODE_SIGNING_ALLOWED=NO`（無署名）にし、**署名は export ステップで App Store 配布用プロファイル（実機不要）に一本化**。
+3. **SDK バージョン（`This app was built with the iOS 18.5 SDK ... must be built with the iOS 26 SDK or later`）**: macos-15 ランナーの既定 Xcode 16.4（iOS 18.5 SDK）では **Apple の「iOS 26 SDK 以上必須」ポリシー**に弾かれる。→ ランナーを **macos-26** + `maxim-lobanov/setup-xcode@v1 latest-stable` で Xcode 26 系を明示選択。
+
+**結果（run #4）**: build-upload 成功（2m19s）、IPA 署名 → App Store Connect アップロード完了。App Store Connect に「乗レコ - 電車旅」iOS 1.0 が「提出準備中」で出現。**Mac 無し・Windows のみで完全自動の TestFlight パイプラインが稼働**。
 
 ---
 
