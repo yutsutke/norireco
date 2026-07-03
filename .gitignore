@@ -1,3 +1,9 @@
 # Claude Code — ユーザー個人設定 / ローカル worktree は追跡しない
 .claude/settings.local.json
 .claude/worktrees/
+
+# Node (Capacitor ビルド用 — v450 iOS Phase B)
+node_modules/
+
+# Capacitor ビルド成果物 (scripts/build-www.js が生成、git 管理しない)
+www/

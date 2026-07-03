@@ -34,6 +34,9 @@ import { updateDateFilterUI } from './05-supabase-data.js';
 async function checkAppVersion(forceReload) {
   const badge = document.getElementById('app-ver-badge');
   if (!badge) return;
+  // v450 iOS Phase B: ネイティブ (Capacitor) は SW 非使用 + 更新は App Store 経由なので
+  // PWA 更新バッジという概念自体が無い。非表示にして終了
+  if (window.Capacitor) { badge.style.display = 'none'; return; }
   const setState = (cls, text, title) => {
     badge.className = 'app-ver-badge ' + cls;
     badge.textContent = text;
@@ -103,7 +106,9 @@ window.addEventListener('load',()=>{
   // キャラ表示ボタンの初期状態を localStorage に合わせる
   const charBtn = document.getElementById('char-fab');
   if (charBtn) charBtn.classList.toggle('on', NORIRECO.data.charModeOn);
-  if('serviceWorker'in navigator) {
+  // v450 iOS Phase B: Capacitor (capacitor:// スキーム) では SW を登録しない。
+  // アセットはアプリ同梱 + WKWebView のカスタムスキームで SW が不安定なため
+  if('serviceWorker'in navigator && !window.Capacitor) {
     navigator.serviceWorker.register('./sw.js').catch(()=>{});
     // 新SWがアクティベートされたらバッジ更新
     navigator.serviceWorker.addEventListener('controllerchange', () => {

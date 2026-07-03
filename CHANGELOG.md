@@ -54,6 +54,32 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 297. v450 — iOS 対応 Phase B-1: Capacitor scaffold + GitHub Actions TestFlight パイプライン（Mac 無しクラウドビルド）
+
+**カテゴリ**: A（iOS 対応の続き。§296 Phase A の直後、同セッション）
+
+**やったこと**: App Store 配信のための土台一式。**Web/PWA 側の動作は完全不変**（`window.Capacitor` ガードのみ追加、Web では undefined で inert）。
+
+1. **Capacitor 8.4.1 導入**: `@capacitor/core` + `@capacitor/ios`（deps）+ `@capacitor/cli`（devDep）。`capacitor.config.json` = appId **`app.norireco`**（norireco.app の逆引き。**App Store 初回リリース後は変更不可 — 提出前にユスケ最終確認**）/ appName 乗レコ / webDir `www`。
+2. **`scripts/build-www.js`**: リポジトリルート = 本番サイトそのものなので、アプリ同梱分だけを `www/` に選別コピーするビルド script。HTML は index.html + noritetsu-map.html の 2 名義、js/・characters/・root JSON マスター全部（package*.json 等除外）・アイコン。**sw.js と splash/ は同梱しない**（ネイティブは SW 不要 + LaunchScreen 使用)。`www/`・`node_modules/` は .gitignore。
+3. **`npx cap add ios`**: Windows でも scaffold 生成可能と確認（ビルドだけが macOS 必須）。Capacitor 8 は **SPM ベース（CocoaPods 不要）**で、capacitor-swift-pm を GitHub から取得 → CI が単純化。`ios/` は commit（テンプレの ios/.gitignore が Pods/public/build を除外）。
+4. **Info.plist**: NSLocationWhenInUseUsageDescription（GPS 記録）/ NSCameraUsageDescription / NSPhotoLibraryAddUsageDescription / ITSAppUsesNonExemptEncryption=false（TestFlight 輸出コンプライアンス自動回答）。iPhone は Portrait 固定（PWA manifest と整合）、iPad は全方向（マルチタスク要件）。
+5. **10-init.js ネイティブガード 2 点**: ① SW 登録を `!window.Capacitor` 時のみに（capacitor:// スキームで SW 不要・不安定）② バージョンバッジは Capacitor 時に非表示 + return（更新は App Store 経由なので PWA 更新バッジの概念が無い）。
+6. **`.github/workflows/ios-testflight.yml`**: workflow_dispatch 手動トリガー。macos-15 ランナー（public repo 無料）で npm ci → build-www → cap sync → **xcodebuild cloud signing**（`-allowProvisioningUpdates` + App Store Connect API キー認証、証明書・プロファイル管理を Apple 側に丸投げ = fastlane match 不要）→ exportOptions `destination: upload` で TestFlight 直アップロード。ビルド番号 = `github.run_number`。
+
+**ユスケ側の 1 回だけの事前作業**（workflow ヘッダにも記載）: ① developer.apple.com で App ID `app.norireco` 登録 ② App Store Connect で新規 App 作成 ③ API キー発行（App Manager 権限）④ GitHub Secrets 4 つ（ASC_KEY_ID / ASC_ISSUER_ID / ASC_API_KEY_P8 / APPLE_TEAM_ID）登録 → Actions から手動実行。
+
+**既知の残課題（B-2 以降、初回ビルド後に対応）**:
+- **Google OAuth**: WKWebView は Google が `disallowed_useragent` で拒否 → `@capacitor/browser`（ASWebAuthenticationSession）+ deep link（カスタムスキーム or Universal Links）+ Supabase Redirect URLs 追加が必要。**初回 TestFlight はゲストモード（v418 で未ログイン開放済み）で検証可能**なのでビルド優先。
+- Magic Link も同様に deep link 対応が本筋。
+- api.norireco.app（R2 Worker）の CORS が `capacitor://localhost` Origin を許すか要確認。
+- アプリアイコン（Assets.xcassets はテンプレのまま）・LaunchScreen のブランド化。
+- 審査 4.2（最小機能性）対策として、ネイティブの果実（バックグラウンド GPS / プッシュ）を段階投入する構想は Notion §3.3。
+
+**検証**: npm check 28/28、build-www 20 項目コピー確認、preview でバッジ v449 🟢 + console エラー 0（Capacitor ガードが Web で inert なこと確認）。**Xcode ビルド自体は CI 初回実行までノーチェック**（Windows ではコンパイル不可）— 初回 run でのビルドエラーは想定内、CI ログで潰す。
+
+---
+
 ## 296. v449 — iOS 対応 Phase A: ホーム画面 PWA を「アプリ同然」に磨く（safe-area / 入力ズーム / アイコン / スプラッシュ / Magic Link 注記）
 
 **カテゴリ**: A（ユスケ依頼「いま web 版だけど、iOS でもいけるように」）

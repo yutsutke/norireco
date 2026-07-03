@@ -25,7 +25,10 @@ git log --oneline -20
 - [ ] **iOS 対応（段階的に両方 — ユスケ確定 2026-07-03）**
   - ✅ Phase A (v449): ホーム画面 PWA 磨き込み — safe-area env() / input 自動ズーム抑止 (iOS のみ maximum-scale=1) / 不透明 apple-touch-icon 180×180 / 起動スプラッシュ 27 枚 / standalone 時 Magic Link 注記 (PKCE ストレージ分離)。CHANGELOG §296
   - [ ] **Phase A 実機確認 (ユスケ iPhone)**: ① Safari で norireco.app → ホーム画面に追加 → 起動 (スプラッシュ出る/時計がヘッダに重ならない) ② Google ログイン ③ 📍GPS 記録 ④ ボトムシート下端 ⑤ input フォーカスでズームしない
-  - [ ] **Phase B: Capacitor で App Store 配信** — Apple Developer 加入済 / Mac 無し。工程: ① Capacitor scaffold (静的サイトをローカルバンドル、審査 4.2 対策で remote URL 方式は避ける) ② bundle ID・アプリ名決定 ③ GitHub Actions macOS ランナーでビルド (public repo 無料) ④ App Store Connect API キー + fastlane で署名・TestFlight ⑤ 審査提出。**注意**: WKWebView では Google OAuth が disallowed_useragent で弾かれる → ASWebAuthenticationSession 系 plugin 必要。ネイティブ化の果実 = バックグラウンド GPS / プッシュ通知 / AdMob (Notion §3.3)
+  - ✅ Phase B-1 (v450): Capacitor 8 scaffold (appId `app.norireco`) + `scripts/build-www.js` + `ios/` + GitHub Actions TestFlight パイプライン (cloud signing、Mac 不要)。CHANGELOG §297
+  - [ ] **Phase B-1.5 ユスケの事前作業 (1 回だけ)**: ① developer.apple.com → Identifiers → App ID `app.norireco` 登録 ② App Store Connect → 新規 App (乗レコ / app.norireco) ③ ユーザとアクセス → 統合 → API キー発行 (App Manager 権限、.p8 DL + Key ID + Issuer ID 控え) ④ GitHub → Settings → Secrets → Actions に `ASC_KEY_ID` / `ASC_ISSUER_ID` / `ASC_API_KEY_P8` (.p8 全文) / `APPLE_TEAM_ID` を登録 → Actions タブ →「iOS TestFlight」→ Run workflow。初回はビルドエラーが出たら CI ログを Claude に貼る
+  - [ ] **Phase B-2: ネイティブ内ログイン対応** — WKWebView は Google OAuth を disallowed_useragent で拒否 → `@capacitor/browser` (ASWebAuthenticationSession) + deep link (カスタムスキーム or Universal Links) + Supabase Redirect URLs 追加。Magic Link も deep link で app に戻す。api.norireco.app (R2 Worker) の CORS が `capacitor://localhost` を許すか確認。**初回 TestFlight はゲストモード (v418) で検証可能なのでログインは後回しで OK**
+  - [ ] **Phase B-3: ストア体裁** — アプリアイコン (Assets.xcassets)・LaunchScreen ブランド化・スクリーンショット・審査 4.2 (最小機能性) 対策の説明文。将来: バックグラウンド GPS / プッシュ通知 / AdMob (Notion §3.3)
 
 - [ ] **シェア機能 — MVP 以降の残り (v236 で OGP 画像生成 MVP は完成)**
   - ✅ v236: マイページ完乗率カードから「📸 シェア画像を作成」で 1200×630 PNG 生成・ダウンロード・Web Share / X intent

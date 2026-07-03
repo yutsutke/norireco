@@ -1,0 +1,8 @@
+{
+  "appId": "app.norireco",
+  "appName": "乗レコ",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never"
+  }
+}

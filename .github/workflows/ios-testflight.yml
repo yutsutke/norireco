@@ -1,0 +1,101 @@
+# ══════════════════════════════════════════════
+# iOS TestFlight ビルド (v450 iOS Phase B)
+#
+# Mac 無し環境のためのクラウドビルド。public repo なので macOS ランナーは無料。
+# 手動トリガー (workflow_dispatch) のみ — main push のたびにビルドはしない
+# (Web/PWA は Cloudflare Pages が本流。ネイティブは節目ごとに手動リリース)。
+#
+# 必要な GitHub Secrets (Settings → Secrets and variables → Actions):
+#   ASC_KEY_ID       … App Store Connect API キーの Key ID
+#   ASC_ISSUER_ID    … 同 Issuer ID
+#   ASC_API_KEY_P8   … 同 .p8 ファイルの中身 (-----BEGIN PRIVATE KEY----- ごと全文)
+#   APPLE_TEAM_ID    … Apple Developer の Team ID (10 桁英数)
+#
+# 事前にユスケ側で 1 回だけ必要な作業:
+#   1. developer.apple.com → Identifiers → App ID `app.norireco` を登録
+#   2. App Store Connect → マイ App → 新規 App (名前: 乗レコ, バンドル ID: app.norireco)
+#   3. App Store Connect → ユーザとアクセス → 統合 → API キー発行 (App Manager 権限)
+#   4. 上記 4 Secrets を GitHub に登録
+# ══════════════════════════════════════════════
+name: iOS TestFlight
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-upload:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install deps & build web assets
+        run: |
+          npm ci
+          node scripts/build-www.js
+          npx cap sync ios
+
+      - name: Write App Store Connect API key
+        env:
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: |
+          mkdir -p ~/private_keys
+          printf '%s' "$ASC_API_KEY_P8" > ~/private_keys/AuthKey_${ASC_KEY_ID}.p8
+
+      - name: Archive (cloud signing)
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcodebuild archive \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/App.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }}
+
+      - name: Write exportOptions.plist
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          cat > build/exportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>teamID</key><string>${APPLE_TEAM_ID}</string>
+            <key>uploadSymbols</key><true/>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Export & upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath build/App.xcarchive \
+            -exportOptionsPlist build/exportOptions.plist \
+            -exportPath build/export \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
