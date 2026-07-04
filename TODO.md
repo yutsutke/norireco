@@ -26,10 +26,8 @@ git log --oneline -20
   - ✅ Phase A (v449): ホーム画面 PWA 磨き込み — safe-area env() / input 自動ズーム抑止 (iOS のみ maximum-scale=1) / 不透明 apple-touch-icon 180×180 / 起動スプラッシュ 27 枚 / standalone 時 Magic Link 注記 (PKCE ストレージ分離)。CHANGELOG §296
   - [ ] **Phase A 実機確認 (ユスケ iPhone)**: ① Safari で norireco.app → ホーム画面に追加 → 起動 (スプラッシュ出る/時計がヘッダに重ならない) ② Google ログイン ③ 📍GPS 記録 ④ ボトムシート下端 ⑤ input フォーカスでズームしない
   - ✅ Phase B-1 (v450): Capacitor 8 scaffold (appId `app.norireco`) + `scripts/build-www.js` + `ios/` + GitHub Actions TestFlight パイプライン。**2026-07-03 に初回ビルドの App Store Connect アップロード成功 (run #4)**。CI 詰まり 3 点解決済 = Admin API キー / archive 無署名化 / macos-26+Xcode26。GitHub Secrets 4 つ (`ASC_KEY_ID`=8HKSGKNACQ[Admin] / `ASC_ISSUER_ID` / `ASC_API_KEY_P8` / `APPLE_TEAM_ID`=25TM5C27YT) 登録済。以後は Actions →「iOS TestFlight」→ Run workflow で再ビルド可。CHANGELOG §297
-  - 🟡 **Phase B-2: ネイティブ内 Google ログイン (v452 コード完了・要設定+実機テスト)** — WKWebView の disallowed_useragent を回避。native 時のみ システムブラウザ (@capacitor/browser) + deep link (app.norireco://login-callback / @capacitor/app appUrlOpen → exchangeCodeForSession)。Info.plist に URL scheme、12-auth に isCapacitorNative 分岐。Web は不変 (preview 確認済)。CHANGELOG §299
-    - [ ] **要ユスケ設定①**: Supabase Dashboard → Authentication → URL Configuration → Redirect URLs に `app.norireco://login-callback` を追加 (無いと code が app に戻らない)
-    - [ ] **要ユスケ設定②**: Actions →「iOS TestFlight」→ Run workflow で iOS 再ビルド → TestFlight 実機で Google ログイン確認
-    - [ ] **残**: Magic Link のネイティブ deep link 対応 (今回は Google のみ)。api.norireco.app (R2 Worker) の CORS が `capacitor://localhost` Origin を許すか確認。Universal Links 化は将来
+  - ✅ **Phase B-2: ネイティブ内 Google ログイン (v452・実機検証済 2026-07-04 build #5)** — WKWebView の disallowed_useragent を回避。native 時のみ システムブラウザ (@capacitor/browser) + deep link (app.norireco://login-callback / @capacitor/app appUrlOpen → exchangeCodeForSession)。Supabase Redirect URLs 登録 + iOS 再ビルド → iPhone 実機で Google ログイン成功。CHANGELOG §299
+    - [ ] **残 (任意)**: Magic Link のネイティブ deep link 対応 (今回は Google のみ)。api.norireco.app (R2 Worker) の CORS が `capacitor://localhost` Origin を許すか確認 (写真アップロード時)。Universal Links 化は将来
   - [ ] **Phase B-3: ストア体裁** — アプリアイコン (Assets.xcassets)・LaunchScreen ブランド化・スクリーンショット・審査 4.2 (最小機能性) 対策の説明文。将来: バックグラウンド GPS / プッシュ通知 / AdMob (Notion §3.3)
 
 - [ ] **シェア機能 — MVP 以降の残り (v236 で OGP 画像生成 MVP は完成)**

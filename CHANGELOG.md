@@ -77,7 +77,9 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 1. **Supabase**: Dashboard → Authentication → URL Configuration → **Redirect URLs に `app.norireco://login-callback` を追加**（無いと Supabase が Site URL に戻してしまい code が app に届かない）。※Google Cloud Console は変更不要（OAuth は Supabase 仲介で、Google が知るのは Supabase の callback だけ）。
 2. **iOS 再ビルド**: Actions →「iOS TestFlight」→ Run workflow で新ビルド（プラグイン + Info.plist + deep link を含む）を上げる。
 
-**残（B-2 続き・任意）**: Magic Link もネイティブでは同じ deep link 対応が必要（今回は Google のみ）。iOS の Universal Links 化（カスタムスキームより堅牢）は将来検討。
+**結果（実機検証済 2026-07-04）**: Supabase Redirect URLs に `app.norireco://login-callback` 登録 → iOS 再ビルド（TestFlight build #5 = commit 2136b0d、CI 成功 3m42s）→ **iPhone 実機で Google ログイン成功**（ユスケ確認）。**Mac 無し・Windows のみで記録もログインも動く iOS ネイティブアプリが完成**。
+
+**残（B-2 続き・任意）**: Magic Link もネイティブでは同じ deep link 対応が必要（今回は Google のみ）。iOS の Universal Links 化（カスタムスキームより堅牢）は将来検討。api.norireco.app（R2 Worker）の CORS が `capacitor://localhost` Origin を許すか（写真アップロード時に要確認、未検証）。
 
 ---
 
