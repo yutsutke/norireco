@@ -54,6 +54,26 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 298. v451 — 駅キャラを一旦全て無効化（機能・コードは残す / 定義は保持 / 🎭 FAB 自動非表示）
+
+**カテゴリ**: A（ユスケ依頼「機能は残して、現在登録しているキャラを消したい」。App Store 版に向けたプレースホルダキャラ（八王子3・立川3）の一旦撤去）
+
+**「Supabase で消すだけでいいか？」→ No**（一次調査で確定）: 乗レコのキャラは 3 層 — ① **カタログ定義** = `characters_master.json`（静的、リポジトリ内）② 獲得キャッシュ = localStorage `norireco_owned_characters` ③ 獲得履歴 = Supabase `norireco_character_grants`。Supabase を消しても ① が残るためキャラは地図に出続ける（特に 6 体中 3 体は `default_unlocked: true` で獲得履歴と無関係に全員所持）。消すべき本体は ①。
+
+**方針（AskUserQuestion で確定）**: ① 定義は**ファイル内に無効化して保持**（消さない）② 🎭 FAB は **0 体のとき自動で隠す** ③ 既存の獲得データ（Supabase 履歴・端末キャッシュ）は**残す**（カタログが空なら参照されず無害、将来分析用）。
+
+**実装（2 ファイル）**:
+- `characters_master.json`: キー `"characters"` → `"characters_disabled"` にリネーム（6 体の定義はそのまま保持）。ローダー `loadCharacters` は `master.characters` を読むため undefined → `|| []` で **0 体扱い**。`_disabled_note` に再有効化手順（リネームを戻すだけ）を明記。
+- `02-data-loaders.js` `loadCharacters` 末尾: キャラ 0 体のとき `#char-fab` を `display:none`。**symmetric に判定**（`length === 0 ? 'none' : ''`）しているので、再有効化すれば FAB も自動で戻る。
+
+**コードの安全性（事前確認済）**: `CHARACTERS` の consumer は 03/04/02 のみで、全て 0 体防御済 — `checkAndGrantCharacters` は `Object.keys(...).length === 0` で早期 return、描画（08/17/04）は `stationCharMap.get(id) || []`。よって空でクラッシュしない。
+
+**検証**: npm check 28/28、JSON 妥当（characters: 0 / characters_disabled: 6 保持）、preview（別オリジン）で `charCount=0` / `stationCharMapSize=0` / `#char-fab` computed `display:none` / 地図は 606 系統・2363 パス正常描画・**キャラマーカー 0** / console エラー無し。
+
+**残**: 将来キャラを本実装する際は `characters_disabled` → `characters` に戻すだけ。TODO の「キャラ図鑑タブ」「キャラ自動獲得トースト連動」「駅キャラを増やす」等は本無効化中は保留（機能コードは全て健在）。
+
+---
+
 ## 297. v450 — iOS 対応 Phase B-1: Capacitor scaffold + GitHub Actions TestFlight パイプライン（Mac 無しクラウドビルド）
 
 **カテゴリ**: A（iOS 対応の続き。§296 Phase A の直後、同セッション）

@@ -136,6 +136,8 @@ git log --oneline -20
   - シーン別体験: 乗車前 → 乗車中 → 降車後 → 乗換時 で出す情報を変える
   - Notion §「駅UIの情報ハブ化」参照（最も詳細な設計あり）
 
+> ⚠️ **キャラは v451 で一旦全無効化中**（ユスケ判断・App Store 版向け）。機能・コードは全て健在。以下キャラ系タスクに着手する前に、まず `characters_master.json` の `characters_disabled` を `characters` にリネームして再有効化する。CHANGELOG §298
+
 - [ ] **キャラ自動獲得トースト連動（Phase 2）**
   - 既に `checkAndGrantCharacters` は実装済み（v89）
   - 残: 獲得時の演出（マーカー光る、効果音、図鑑タブにアニメ表示）

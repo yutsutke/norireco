@@ -1,7 +1,8 @@
 {
   "schema_version": 3,
   "comment": "駅キャラクター管理マスター。v324 (Phase 3) で station_names / obtainable_at_names を撤去し station_ids / obtainable_at (s_NNNNN) のみに統一。表示用駅名は MERGED_STATIONS から逆引き。SVG ファイルは characters/ 配下。1駅に複数キャラ紐付け可能。",
-  "characters": [
+  "_disabled_note": "v451 (2026-07-04): キャラ機能は残したまま、登録キャラを一旦全て無効化。ローダー (02-data-loaders.loadCharacters) は master.characters を読むが、キーを characters_disabled にリネームしたため undefined → 0 体扱いになる。再有効化は下の \"characters_disabled\" を \"characters\" にリネームするだけ (定義はそのまま保持)。0 体のとき 🎭 FAB は自動で隠れる (02-data-loaders)。",
+  "characters_disabled": [
     {
       "id": "kuwaten",
       "name": "クワテン",

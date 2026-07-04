@@ -267,6 +267,10 @@ export async function loadCharacters() {
   } catch(e) {
     console.warn('[乗レコ] characters_master.json 読込失敗:', e.message);
   }
+  // v451: キャラ 0 体のとき 🎭 FAB を隠す (機能・コードは残すが空ボタンを出さない)。
+  //   symmetric に display を決めるので、キャラを再有効化すれば自動で再表示される。
+  const charFab = document.getElementById('char-fab');
+  if (charFab) charFab.style.display = Object.keys(D.CHARACTERS).length === 0 ? 'none' : '';
 }
 
 // ── 列車マスター (trains_master.json) ──
