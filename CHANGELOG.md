@@ -54,6 +54,33 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 299. v452 — iOS 対応 Phase B-2: ネイティブアプリ内 Google ログイン（システムブラウザ + deep link）
+
+**カテゴリ**: A（ユスケ依頼「iOS アプリ内で Google ログイン不可」を解決。AskUserQuestion で対象確定）
+
+**問題**: Capacitor の WKWebView 内で `signInWithOAuth({provider:'google'})` を呼ぶと webview が Google の OAuth 画面に遷移するが、Google は埋め込み WebView を **`disallowed_useragent`** で拒否する（フィッシング対策）。ゲストモードは動くがアカウントログインができなかった。
+
+**解決フロー**（Supabase 公式推奨の Capacitor パターン）:
+1. ネイティブ時は `signInWithOAuth({ redirectTo: 'app.norireco://login-callback', skipBrowserRedirect: true })` で **OAuth URL だけ生成**（webview 内リダイレクトを抑止）
+2. その URL を **システムブラウザ**（`@capacitor/browser` = SFSafariViewController、実 Safari UA なので Google が許可）で開く
+3. 認証後 Supabase が `app.norireco://login-callback?code=...` に戻す → **`@capacitor/app` の `appUrlOpen`** が受信
+4. code を `exchangeCodeForSession(code)` で交換（PKCE の code_verifier は同一 webview の localStorage にあるので成立）→ `onAuthStateChange` が UI 更新
+
+**実装**:
+- プラグイン: `@capacitor/browser@8.0.3` + `@capacitor/app@8.1.0`（Capacitor 8 系）。`npx cap sync ios` で SPM に登録（Package.swift の Windows バックスラッシュパスは `/` に正規化 — CI は cap sync 再生成だが commit 物として整える）。
+- `ios/App/App/Info.plist`: `CFBundleURLTypes` にカスタムスキーム `app.norireco` を登録（deep link 受け口）。
+- `js/12-auth.js`: `isCapacitorNative()`（`window.Capacitor.isNativePlatform()`）で分岐。native の `signInWithGoogle` は上記フロー、`registerNativeDeepLinkHandler()` を `initAuth` から native 時のみ登録（code/error はカスタムスキームの URL パース不安定を避け正規表現抽出）。**Web パスは完全に不変**。
+
+**Web 非影響の検証**: preview で `typeof window.Capacitor === 'undefined'`（→ `isCapacitorNative()` false → 従来の in-page リダイレクト）、Google ボタン `handleAuthGoogleClick()` 健在、console エラー 0、636 系統ロード正常。npm check 28/28。**ネイティブ実機テストは次ビルド（TestFlight）で実施**（Windows では検証不可）。
+
+**ユスケ側の必須設定（2 点、これが無いと動かない）**:
+1. **Supabase**: Dashboard → Authentication → URL Configuration → **Redirect URLs に `app.norireco://login-callback` を追加**（無いと Supabase が Site URL に戻してしまい code が app に届かない）。※Google Cloud Console は変更不要（OAuth は Supabase 仲介で、Google が知るのは Supabase の callback だけ）。
+2. **iOS 再ビルド**: Actions →「iOS TestFlight」→ Run workflow で新ビルド（プラグイン + Info.plist + deep link を含む）を上げる。
+
+**残（B-2 続き・任意）**: Magic Link もネイティブでは同じ deep link 対応が必要（今回は Google のみ）。iOS の Universal Links 化（カスタムスキームより堅牢）は将来検討。
+
+---
+
 ## 298. v451 — 駅キャラを一旦全て無効化（機能・コードは残す / 定義は保持 / 🎭 FAB 自動非表示）
 
 **カテゴリ**: A（ユスケ依頼「機能は残して、現在登録しているキャラを消したい」。App Store 版に向けたプレースホルダキャラ（八王子3・立川3）の一旦撤去）

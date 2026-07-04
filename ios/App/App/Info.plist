@@ -26,6 +26,19 @@
 	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- v452 Phase B-2: Google OAuth をシステムブラウザで開き app.norireco://login-callback で
+	     アプリに戻すためのカスタム URL スキーム登録。12-auth.js の appUrlOpen が受ける -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>app.norireco</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>app.norireco</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>GPS 記録（乗車区間の自動記録）と最寄駅の表示に現在地を使用します。</string>
 	<key>NSCameraUsageDescription</key>

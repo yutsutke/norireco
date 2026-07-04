@@ -138,6 +138,9 @@ export async function initAuth() {
     handleAuthChange(event, session);
   });
 
+  // v452 Phase B-2: ネイティブ (Capacitor/iOS) では OAuth を deep link で受けるハンドラを登録
+  if (isCapacitorNative()) registerNativeDeepLinkHandler();
+
   // URL に OAuth コールバック痕跡があれば手動 exchange (SDK auto-detect の取りこぼし対策)
   const _url = new URL(window.location.href);
   const _code = _url.searchParams.get('code');
@@ -271,13 +274,72 @@ async function signInWithMagicLink(email) {
   return { error };
 }
 
+// v452 Phase B-2: ネイティブ (Capacitor/iOS) 判定。
+//   WKWebView 内で Google の OAuth 画面を開くと Google が disallowed_useragent で拒否するため、
+//   ネイティブでは「システムブラウザで開く → deep link でアプリに戻る」フローに切り替える。
+//   Web (通常ブラウザ / ホーム画面 PWA) では window.Capacitor 自体が無いので false。
+function isCapacitorNative() {
+  return !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+}
+const NATIVE_OAUTH_REDIRECT = 'app.norireco://login-callback';
+
 async function signInWithGoogle() {
   if (!auth.supabaseAuthClient) return { error: { message: 'SDK 未初期化' } };
+  if (isCapacitorNative()) {
+    // ネイティブ: skipBrowserRedirect で OAuth URL だけ生成 (webview 内リダイレクトを抑止) し、
+    //   システムブラウザで開く。認証後 Supabase が NATIVE_OAUTH_REDIRECT?code=... に戻し、
+    //   registerNativeDeepLinkHandler の appUrlOpen が受けて exchangeCodeForSession する。
+    //   ※ Supabase Auth の Redirect URLs に app.norireco://login-callback の登録が必要。
+    const { data, error } = await auth.supabaseAuthClient.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: NATIVE_OAUTH_REDIRECT, skipBrowserRedirect: true },
+    });
+    if (error) return { error };
+    const url = data && data.url;
+    const Browser = window.Capacitor?.Plugins?.Browser;
+    if (!url) return { error: { message: 'OAuth URL の生成に失敗しました' } };
+    if (!Browser) return { error: { message: 'ブラウザプラグイン未読込 (要 cap sync)' } };
+    try {
+      await Browser.open({ url, presentationStyle: 'popover' });
+    } catch (e) {
+      return { error: { message: 'ブラウザ起動に失敗: ' + (e.message || e) } };
+    }
+    return { error: null };
+  }
+  // Web (既存): 通常ブラウザは in-page リダイレクトで OK
   const { error } = await auth.supabaseAuthClient.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: authCleanRedirectUrl() },
   });
   return { error };
+}
+
+// v452 Phase B-2: ネイティブの deep link (app.norireco://login-callback?code=...) を受け、
+//   PKCE code を session に交換する。initAuth から native のときだけ一度登録。
+//   カスタムスキームは URL API のパースが不安定なので code/error は正規表現で抽出する。
+function registerNativeDeepLinkHandler() {
+  const App = window.Capacitor?.Plugins?.App;
+  if (!App || typeof App.addListener !== 'function') return;
+  App.addListener('appUrlOpen', async (event) => {
+    const url = event && event.url;
+    if (!url || url.indexOf('login-callback') === -1) return;
+    // 認証が終わったのでシステムブラウザを閉じる
+    try { window.Capacitor?.Plugins?.Browser?.close?.(); } catch (e) {}
+    if (/[?&]error=/.test(url)) {
+      setAuthMsg('error', 'ログインがキャンセルされました');
+      return;
+    }
+    const m = url.match(/[?&]code=([^&#]+)/);
+    const code = m ? decodeURIComponent(m[1]) : null;
+    if (!code) return;
+    try {
+      const { error } = await auth.supabaseAuthClient.auth.exchangeCodeForSession(code);
+      if (error) { setAuthMsg('error', 'ログイン処理に失敗: ' + error.message); return; }
+      closeAuthModal();  // 成功 → onAuthStateChange が UI を更新
+    } catch (e) {
+      setAuthMsg('error', 'ログイン処理エラー: ' + (e.message || e));
+    }
+  });
 }
 
 async function signOutUser() {
