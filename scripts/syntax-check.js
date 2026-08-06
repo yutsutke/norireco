@@ -55,6 +55,7 @@ const FILES = [
   '20-trip-detail-editor',
   '21-bulk-record',
   '22-celebrate',
+  '23-export',
   'share-japan-geo',
 ];
 

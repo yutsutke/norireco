@@ -427,6 +427,17 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 .mp-uid-sm{font-size:10px;color:var(--silver);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2;}
 .mp-logout-btn-sm{width:26px;height:26px;border-radius:50%;background:rgba(140,160,179,.1);color:var(--silver);border:1px solid var(--track);font-size:14px;cursor:pointer;font-family:inherit;flex-shrink:0;line-height:1;}
 .mp-logout-btn-sm:hover{background:rgba(232,53,42,.15);color:var(--red);border-color:rgba(232,53,42,.4);}
+/* 📦 エクスポートボタン (v455) — ログアウトボタンの隣。hover はゴールド (破壊的操作でないため赤にしない) */
+.mp-export-btn-sm{width:26px;height:26px;border-radius:50%;background:rgba(140,160,179,.1);color:var(--silver);border:1px solid var(--track);font-size:12px;cursor:pointer;font-family:inherit;flex-shrink:0;line-height:1;margin-right:6px;}
+.mp-export-btn-sm:hover{background:rgba(242,169,0,.15);color:var(--gold);border-color:rgba(242,169,0,.4);}
+/* 📦 エクスポートモーダル (v455) */
+.export-cat{display:flex;align-items:center;gap:8px;padding:10px 4px;font-size:14px;border-bottom:1px solid rgba(46,74,99,.35);cursor:pointer;}
+.export-cat input{width:17px;height:17px;accent-color:var(--gold);flex-shrink:0;}
+.export-cat-s{margin-left:auto;font-size:10px;color:var(--silver);text-align:right;flex-shrink:0;}
+.export-cat.disabled{opacity:.4;cursor:default;}
+.export-note{font-size:11px;color:var(--silver);margin-top:10px;line-height:1.6;}
+.export-run-btn{display:block;width:100%;margin-top:14px;background:var(--gold);color:#000;font-weight:800;font-size:15px;border:none;border-radius:12px;padding:14px;cursor:pointer;font-family:inherit;}
+.export-run-btn:disabled{opacity:.5;cursor:default;}
 
 /* 常時表示の完乗率カードコンテナ */
 #mp-completion-pinned{padding:10px 12px 4px;background:rgba(14,24,36,.3);}
@@ -1687,6 +1698,30 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
   </div>
 </div>
 
+<!-- 📦 データエクスポートモーダル (v455) — マイページヘッダの 📦 から開く。
+     「堀を作らない」: 旅程 / 駅メモ / キャラ獲得履歴 / 写真を ZIP 1 個で持ち出せる。
+     fixed 全画面のため .content 内は不可 (v433/v446 教訓)、top-level に置く。ロジックは js/23-export.js -->
+<div class="memo-modal" id="export-modal" onclick="if(event.target===this)closeExportModal()">
+  <div class="memo-sheet" style="max-width:520px">
+    <div class="sh"></div>
+    <div class="modal-title">📦 データのエクスポート</div>
+    <div class="modal-sub" style="color:var(--silver);font-size:11px;margin-bottom:10px">
+      記録はあなたのものです。選んだデータを ZIP ファイル 1 個にまとめてダウンロードできます (いつでも・何度でも)。
+    </div>
+    <div id="export-cats">
+      <label class="export-cat"><input type="checkbox" id="exp-cat-trips" checked> 🚃 旅程（乗車記録）<span class="export-cat-s">CSV + JSON</span></label>
+      <label class="export-cat"><input type="checkbox" id="exp-cat-memos" checked> 📸 駅メモ<span class="export-cat-s">CSV + JSON</span></label>
+      <label class="export-cat"><input type="checkbox" id="exp-cat-chars" checked> 🎭 キャラ獲得履歴<span class="export-cat-s">JSON</span></label>
+      <label class="export-cat"><input type="checkbox" id="exp-cat-photos" checked> 📷 写真<span class="export-cat-s">旅程・メモの添付画像</span></label>
+    </div>
+    <div class="export-note">CSV = Excel などの表計算ソフトでそのまま開ける形式 ／ JSON = すべての項目が入った完全なデータ（他アプリへの取込・バックアップ用）</div>
+    <div id="export-guest-note" class="export-note" style="display:none">⚠️ 未ログインのため、この端末に保存された旅程のみエクスポートできます（駅メモ・キャラ・写真はログイン後に利用できます）。</div>
+    <div id="export-progress" class="export-note" style="display:none;color:var(--gold)"></div>
+    <button class="export-run-btn" id="export-run-btn" onclick="runExport()">📦 エクスポート (ZIP)</button>
+    <button class="btn-cls" onclick="closeExportModal()">閉じる</button>
+  </div>
+</div>
+
 <!-- Station Action Sheet (v253) -->
 <!-- 通常モードで駅マーカータップ → 手動記録 / メモ / 色変更 / (キャラあればキャラ) のメニュー -->
 <div class="memo-modal" id="station-action-modal" onclick="if(event.target===this)closeStationActionSheet()">
@@ -1812,6 +1847,7 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 <script type="module" src="js/18-photo-area.js"></script>
 <script type="module" src="js/19-drag-sort.js"></script>
 <script type="module" src="js/22-celebrate.js"></script>
+<script type="module" src="js/23-export.js"></script>
 <script type="module" src="js/09-tabs-stats.js"></script>
 <script type="module" src="js/10-init.js"></script>
 </body>

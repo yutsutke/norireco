@@ -54,6 +54,36 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 302. v455 — 📦 データエクスポート：旅程・駅メモ・キャラ・写真を ZIP で持ち出せる
+
+**カテゴリ**: A（ユスケ「堀を作るのはやめて、お客さん視点でサイトを作る。乗車履歴やメモや写真など、全部またはカテゴリーをきめて、エクスポートできる仕組みを」）
+
+**位置づけ**: 囲い込み（データを人質にした引き留め）の逆を行く。記録はユーザーのもので、いつでも・何度でも・全部持ち出せる。プロダクト不変原則①「記録・完乗がコア」を信頼で支える機能。
+
+**UI**: マイページのヘッダ（ログイン時・ゲスト時とも）に 📦 ボタン → モーダルでカテゴリを選んで ZIP 1 個をダウンロード。
+- カテゴリ: 🚃 旅程（CSV + JSON）/ 📸 駅メモ（CSV + JSON）/ 🎭 キャラ獲得履歴（JSON）/ 📷 写真（実ファイル同梱）。全部 ON がデフォルト =「全部」
+- ゲストは旅程（この端末の `user_id` 無し trip = v419 と同じ判定）のみ。他カテゴリは disabled + 注記
+
+**ZIP の中身**: `trips.csv`/`trips.json`・`memos.csv`/`memos.json`・`characters.json`・`photos/`・`README.txt`（同梱内容と件数の説明）・`export-report.txt`（写真取得に失敗した URL 一覧、失敗時のみ）
+
+**設計判断**:
+- **JSON = `select=*` の完全 dump / CSV = 人が読める列に整形**。CSV は UTF-8 BOM 付き（無いと Excel が日本語を化かす）、駅 id → 駅名解決、`date_precision`/`source` は日本語ラベル化、列車・車両は per-seg 集約（v379 の sources パターン）、`,`/`"`/改行は CSV 標準エスケープ
+- **データはエクスポート時に Supabase から取り直す**（画面キャッシュの古さを避ける）。notes/delay_minutes は v183 と同じ localStorage merge で補完
+- **写真は cdn.norireco.app から fetch して同梱**。CORS が `norireco.app` に許可済みなことを事前に curl で確認。失敗は 1 枚ずつ握り潰さずレポートへ（URL は JSON 側に常に残るのでデータは失われない）。フォルダ名は「種類_日付or駅名_id 末尾 6 文字」— **id 先頭 6 文字だと `trip_<timestamp>` 形式で全旅程 `trip_1` になり同日 trip が衝突する**ことを検証中に発見し末尾に修正
+- **JSZip は cdnjs から lazy load**（v439 html2canvas と同じパターン）
+- 新規 `js/23-export.js`。import は 12-auth のみ（循環なし）、SUPabase URL/KEY は window 経由（v427 教訓）。モーダルは body 直下（v433/v446 教訓）
+
+**検証**（preview 8002 = 素 origin で SW stale 回避、`dist/` ビルドから起動）:
+- ゲスト E2E: localStorage に 2 trip 仕込み → 📦 → ZIP 解凍検証（BOM・CSV エスケープ・駅名解決・列車集約・README すべて期待通り）
+- ログイン E2E: auth 疑似セット + fetch 横取り fixture で全カテゴリ実行 → 9 エントリの ZIP（写真 2 枚同梱 + 404 1 枚がレポートに）
+- npm check 29/29
+
+**書き込み事故（教訓）**: 初回 Write で正規表現の制御文字エスケープが**生バイト（NUL 含む）としてファイルに混入**し、grep/file がバイナリ扱いする状態になった。ツールは `\uXXXX` エスケープと実文字を相互変換することがある。**BOM・制御文字はソースに直接書かず `String.fromCharCode(0xFEFF)` のようにコードポイント指定で生成する** + 新規ファイルは Node でバイトレベル確認（NUL 数チェック）してから進む。
+
+**残課題**: 本番の実データ（実写真・大量件数）での動作確認はユスケの実機で。CSV 列は将来のスキーマ追加に自動追随しない（JSON は `select=*` なので追随する）— 列を足したら `tripsToCsv`/`memosToCsv` にも足す。
+
+---
+
 ## 301. v454 — 配信を「許可リスト方式」に：開発用ファイルの全公開を止める（`dist/` ビルド出力）
 
 **カテゴリ**: A（v453 の副次発見 → ユスケが案2「Cloudflare Pages の配信対象から除外」を選択）
@@ -94,6 +124,17 @@ RLS ポリシーが読めること自体は直ちに脆弱性ではない（セ�
 - Root directory は `/` のまま変更しない
 
 切り替え後は `/CHANGELOG.md` 等が 404 になる。`/share/<id>` は `functions/` 由来なので影響を受けない。
+
+**結果（2026-08-06 切り替え完了・本番確認済）**: ユスケが Build command / Build output を設定 → `9a493e9` を Retry deployment（成功 29s）。本番実測:
+
+- **サイト正常** — 営業系統 636・路線 606 ロード、地図描画正常、JS/JSON/アイコン/splash/characters すべて 200。console エラーは `walk_transfers_overrides.json` の 404 が 1 件のみ（切り替え前と同一）
+- **`/share/<id>` 健在** — 存在しない id で Function 由来の「シェアが見つかりません」HTML が返る = `functions/` がルートから読まれている確認
+- **`/` → `/noritetsu-map.html` の 302 健在**（`_redirects` が `dist/` に入っている確認）
+- **開発用ファイルは全て 404**（CHANGELOG/CLAUDE/TODO/STATUS.md・package.json・capacitor.config.json・scripts/\*・supabase/migrations/\*.sql・ios Info.plist・.github/workflows/\*・worker/src/index.js）
+
+**落とし穴（切り替え直後に引っかかった）**: 切り替え直後の確認で開発用ファイルが **200 のまま**返ってきて「効いていない」ように見えた。実際は origin は 404 で、**Cloudflare のエッジキャッシュに残った古いコピー**が返っていた（`cf-cache-status: DYNAMIC` / `Age: 430` / `Cache-Control: public, s-maxage=604800` = **7 日保持**）。判別のヒントは「新規ファイル `scripts/build-pages.js` だけ 404」だったこと — 一度もアクセスされていない URL はキャッシュが無いので origin の真の姿が出る。**`?cb=<乱数>` を付けてキャッシュを迂回すると全て 404 で、切り替えは成功していた**。恒久対処として Cloudflare ダッシュボード → norireco.app（ドメイン側。Workers & Pages ではない）→ Caching → Configuration → Purge Everything でキャッシュを破棄する。
+
+**教訓**: 配信の変更を検証するときは、**過去に自分がアクセスした URL は当てにならない**（自分の確認作業がエッジキャッシュを温めてしまう）。cache-buster 付きで叩くか、一度も触っていない URL を対照に使う。v433 の「preview 0x0 の壊れた測定値を信じて誤報を重ねた」と同種の、測定系そのものを疑う話。
 
 **ついでに修正**: `sw.js` の `STATIC_ASSETS` に `characters/komiyau.svg` が残っていた（v291「駅キャラ コミヤウ削除」でファイルは消えたが一覧の行が残存）。本番でも 404 で、`cache.add()` を個別 `catch` しているため実害はなかったが、Service Worker インストールのたびに console 警告が出ていた。行を削除。
 
