@@ -54,6 +54,31 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 300. v453 — 検索結果・OGP の説明文から他社サービス名（YAMAP）を撤去
+
+**カテゴリ**: A（ユスケ報告「Google で検索すると YAMAP と出てしまう。YAMAP は別会社のサービスなので困る」）
+
+**問題**: `norireco.app` の Google 検索結果のスニペットが「全国鉄道の乗車記録・完乗率を可視化する PWA。**乗り鉄のための YAMAP。**」になっていた。初期の位置づけ説明として書いた比喩（登山記録アプリ YAMAP の鉄道版、という説明）がそのまま `meta description` に残っていたもの。他社の登録商標・サービス名を自社プロダクトの説明文として掲示している状態で、①ブランド上の誤認（提携・関連サービスに見える）②商標上のリスク ③検索エンジンが他社名で乗レコを紐づける、の 3 点で望ましくない。
+
+**修正**（「乗り鉄のための YAMAP。」→ 自分の言葉で機能を言い切る文に置換）:
+
+| ファイル | 箇所 | 新しい文 |
+|---|---|---|
+| `noritetsu-map.html` | `meta name="description"` / `og:description` | 全国鉄道の乗車記録・完乗率を可視化する PWA。乗った路線が地図に色づき、乗りつぶしの達成率が一目でわかる。 |
+| `manifest.json` | `description`（PWA インストール時・ストア表示） | 全国鉄道の乗車記録・完乗率を可視化。乗った路線が地図に色づく乗りつぶしマップ。 |
+| `functions/share/[id].js` | `/share/<id>` の **not-found 時**フォールバック `metaDesc` | 同上（HTML 側と同文） |
+
+**触っていないもの**:
+- `www/` と `ios/App/App/public/` は `.gitignore` 済みのビルド生成物（`node scripts/build-www.js` で再生成）。元ファイルを直せば次ビルドで追随するので直接編集しない。
+- `CHANGELOG_PHASE3.8-share.md` の記述は当時の実装を記録した履歴なので改変しない（下記の公開範囲の論点は別）。
+- `<title>`（`乗レコ - 乗りつぶしマップ`）は他社名を含まず検索語としても有効なので据え置き。`og:title` の `乗レコ - 電車旅`（ブランド正式表記）とは意図的に別物のまま。
+
+**反映のタイミング（重要）**: `meta description` を直しても **Google の検索結果スニペットは即座には変わらない**。Google が再クロール・再インデックスするまで旧文言が表示され続ける（通常 数日〜数週間）。急ぐ場合は Google Search Console の URL 検査 →「インデックス登録をリクエスト」で再クロールを促す。
+
+**セッション中に判明した別件（未対応・要判断）**: `https://norireco.app/CHANGELOG.md` が **200 / `text/markdown` で公開配信**されている（Cloudflare Pages がリポジトリルート配信のため `.md` も配信対象）。robots.txt は Cloudflare 既定の content-signals 版のみで `Disallow` 無し = クロール可能。開発履歴（設計判断・Supabase のテーブル構成・admin 機構の説明など）が公開状態で、`YAMAP` の記述もアーカイブ内に残る。対処候補は ①`robots.txt` に `Disallow: /*.md$`（クロール抑止のみ、直アクセスは可能）②Pages のビルド出力から `.md` を除外（配信自体を止める）。ユスケ判断待ち。
+
+---
+
 ## 299. v452 — iOS 対応 Phase B-2: ネイティブアプリ内 Google ログイン（システムブラウザ + deep link）
 
 **カテゴリ**: A（ユスケ依頼「iOS アプリ内で Google ログイン不可」を解決。AskUserQuestion で対象確定）

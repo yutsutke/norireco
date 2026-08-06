@@ -1,7 +1,7 @@
 {
   "name": "乗レコ - 電車旅",
   "short_name": "乗レコ",
-  "description": "全国鉄道の乗車記録・完乗率を可視化。乗り鉄のための YAMAP。",
+  "description": "全国鉄道の乗車記録・完乗率を可視化。乗った路線が地図に色づく乗りつぶしマップ。",
   "start_url": "./noritetsu-map.html",
   "display": "standalone",
   "orientation": "portrait",

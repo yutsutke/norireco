@@ -31,7 +31,7 @@ function safeImageUrl(url) {
 function renderHtml({ id, kind, title, description, image, pageUrl, found }) {
   // OGP メタ用 (見つからない時はアプリ汎用文言)
   const metaTitle = found ? (title || '乗レコの記録') : '乗レコ - 電車旅';
-  const metaDesc = found ? (description || '全国鉄道の乗車記録・完乗率を可視化する PWA') : '全国鉄道の乗車記録・完乗率を可視化する PWA。乗り鉄のための YAMAP。';
+  const metaDesc = found ? (description || '全国鉄道の乗車記録・完乗率を可視化する PWA') : '全国鉄道の乗車記録・完乗率を可視化する PWA。乗った路線が地図に色づき、乗りつぶしの達成率が一目でわかる。';
   const t = escapeHtml(metaTitle);
   const d = escapeHtml(metaDesc);
   const img = escapeHtml(image);
