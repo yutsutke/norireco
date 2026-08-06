@@ -7,3 +7,6 @@ node_modules/
 
 # Capacitor ビルド成果物 (scripts/build-www.js が生成、git 管理しない)
 www/
+
+# Cloudflare Pages ビルド成果物 (scripts/build-pages.js が生成、git 管理しない)
+dist/

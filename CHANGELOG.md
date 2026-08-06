@@ -54,6 +54,51 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 301. v454 — 配信を「許可リスト方式」に：開発用ファイルの全公開を止める（`dist/` ビルド出力）
+
+**カテゴリ**: A（v453 の副次発見 → ユスケが案2「Cloudflare Pages の配信対象から除外」を選択）
+
+**問題（v453 で発覚し、調べたら .md だけの話ではなかった）**: Cloudflare Pages がリポジトリのルートをそのまま配信していたため、**git に入っているものが全部インターネットに公開**されていた。実測（全て HTTP 200）:
+
+| 公開されていた URL | 中身 |
+|---|---|
+| `/CHANGELOG.md` `/CLAUDE.md` `/TODO.md` `/STATUS.md` | 開発履歴・設計判断・運用規約 |
+| `/supabase/migrations/v135_add_user_id.sql` | DB スキーマ・RLS ポリシー |
+| `/ios/App/App/Info.plist` | ネイティブアプリ設定 |
+| `/.github/workflows/ios-testflight.yml` | CI 設定 |
+| `/worker/src/index.js` | Worker ソース |
+| `/package.json` `/capacitor.config.json` `/scripts/build-www.js` | 依存関係・ビルド手順 |
+
+RLS ポリシーが読めること自体は直ちに脆弱性ではない（セキュリティは秘匿でなく RLS 本体で担保している）が、いずれも公開する意図がなかったもの。
+
+**採らなかった案**:
+- **robots.txt で `Disallow`**（案1）: クロールを抑止するだけで、URL を直接叩けば読める。ユスケ判断で不採用。
+- **`_redirects` で 404 に飛ばす**: Cloudflare Pages の `_redirects` が対応するのは 301/302/303/307/308 と 200 rewrite のみで、**404 は非対応**（公式ドキュメントで確認）。そもそも配信物としてはアップロードされたまま。
+- **`.cfignore` / `.assetsignore`**: `.assetsignore` は Workers Static Assets の機能で、**Git 連携の Pages ビルドには効かない**。Pages で配信対象を絞る公式手段は「ビルドコマンド + ビルド出力ディレクトリ」だけ（公式ドキュメントで確認）。
+
+**解決（許可リスト方式）**: `scripts/build-pages.js` を新設し、**配信して良いものだけ**を `dist/` にコピーする。既存の `scripts/build-www.js`（Capacitor 用に `www/` を作る）と同じ考え方で、対になる存在。
+
+- 入るもの: `noritetsu-map.html` / `journey*.html` / `js/` / `characters/` / `sw.js` / ルートの `*.json`（`package.json`・`package-lock.json`・`capacitor.config.json` を除く）/ アイコン 4 種 / `splash/` / `_headers` / `_redirects`
+- 入らないもの: 上表の開発用ファイルすべて。**書き忘れたファイルは配信されない**ので、事故が「公開してしまう」側でなく「消える」側に倒れる
+- `functions/`（`/share/<id>` の SSR）は **コピーしない**。Pages の仕様で Functions は「プロジェクトのルートの `functions/`」から読まれ、ビルド出力の中ではないため（公式ドキュメントで確認）。今の配置のままで動く
+- `dist/` は `.gitignore` に追加（`www/` と同じ扱い）
+
+**検証**（本番設定を切り替える前に、壊れないことを確かめた）:
+1. **完全性チェック**（スクリプトで機械的に照合）— `sw.js` の `STATIC_ASSETS` 50 件 / HTML の `src`・`href` 29 件 / JS の `fetch()` 先 9 件が **すべて `dist/` に存在**。逆方向に、`dist/` 配下に `.md` / `.sql` / `.plist` / `.yml` が **0 件**であることも再帰確認
+2. **実起動**（`python -m http.server --directory dist` で配信して読み込み）— 営業系統 636・路線 606 ロード、地図描画正常、console エラーは 404 が 1 件のみ。その 1 件は `walk_transfers_overrides.json`（もともとリポジトリに存在しない任意の上書きファイル。**現行の本番でも同じく 404**）
+3. `npm run check` 28/28
+
+**ユスケ側の作業（1 回だけ・これをやるまで現状のまま）**: Cloudflare ダッシュボード → Workers & Pages → norireco → Settings → Build:
+- **Build command** = `node scripts/build-pages.js`
+- **Build output directory** = `dist`
+- Root directory は `/` のまま変更しない
+
+切り替え後は `/CHANGELOG.md` 等が 404 になる。`/share/<id>` は `functions/` 由来なので影響を受けない。
+
+**ついでに修正**: `sw.js` の `STATIC_ASSETS` に `characters/komiyau.svg` が残っていた（v291「駅キャラ コミヤウ削除」でファイルは消えたが一覧の行が残存）。本番でも 404 で、`cache.add()` を個別 `catch` しているため実害はなかったが、Service Worker インストールのたびに console 警告が出ていた。行を削除。
+
+---
+
 ## 300. v453 — 検索結果・OGP の説明文から他社サービス名（YAMAP）を撤去
 
 **カテゴリ**: A（ユスケ報告「Google で検索すると YAMAP と出てしまう。YAMAP は別会社のサービスなので困る」）
