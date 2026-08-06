@@ -67,6 +67,17 @@ git log --oneline -20
     - 🟢 **ゲスト記録の reload 喪失対策 (⑤)** — 記録したゲストが更新で全消失する穴 (保存を強く促す or localStorage 永続化)
   - **やらないと決めたこと**: 純粋な有料広告 (リスティング/SNS 広告) はバケツが水を貯めると確認できてから。種蒔き (X 鉄道クラスタ・build in public) はコードでなく運用タスク
 
+- [ ] **お客さん視点で信頼を作る（「堀を作らない」方針 — ユスケ確定 2026-08-06）**
+  - **方針**: 囲い込み（データを人質にした引き留め）はしない。記録はユーザーのもので、いつでも持ち出せる。他社サービス名を借りた説明もしない。信頼そのものを競争力にする
+  - ✅ v453: **検索結果・OGP の説明文から他社サービス名 (YAMAP) を撤去** — 初期の位置づけ比喩が `meta description` に残っていた。noritetsu-map.html (description / og:description) / manifest.json / functions/share/[id].js の 4 箇所を自分の言葉に置換。Google のスニペット反映は再クロール待ち（Search Console の「インデックス登録をリクエスト」で促進可・未実施）。CHANGELOG §300
+  - ✅ v454: **配信を許可リスト方式に** — リポジトリ直配信で CHANGELOG/CLAUDE/TODO/STATUS.md・supabase migration SQL・ios Info.plist・.github workflow・worker ソースまで全公開されていた。`scripts/build-pages.js` が配信可のものだけ `dist/` に集める方式へ。Cloudflare 設定 (Build command / Build output) 済 + 本番 404 化を実測確認。CHANGELOG §301
+  - ✅ v455 + v456: **📦 データエクスポート** — マイページヘッダ 📦 → カテゴリ選択 (旅程 / 駅メモ / キャラ獲得履歴 / 写真、全 ON デフォルト) → ZIP 1 個で DL。CSV (UTF-8 BOM・駅名解決済) + JSON (完全版) + 写真実ファイル。**本番実データで全カテゴリ成功を確認済 (旅程 18 / 駅メモ 3 / キャラ 14 / 写真)**。v456 で「サムネ表示済み画像が CORS キャッシュ汚染で取れない」罠を修正。CHANGELOG §302/§303
+  - **残り**:
+    - 🟡 **CSV 列がスキーマ追加に自動追随しない** — JSON は `select=*` なので追随するが、CSV は `tripsToCsv` / `memosToCsv` の列定義が固定。DB に列を足したら両関数にも足す（忘れ防止の仕組みは未整備）
+    - 🟢 **インポート（取り込み）は未実装** — 「持ち出せる」の対。エクスポートした JSON を読み戻す導線があると、機種変更・アカウント移行が自己完結する
+    - 🟢 **Google Search Console でインデックス登録をリクエスト** (v453 の反映を早める・ユスケ操作)
+    - 🟢 **エッジキャッシュに残る旧ファイル** — v454 前に取得された `.md` 等のコピーが最大 7 日残る。Purge Everything で即消せるが「急がない」判断で放置中 (2026-08-06)
+
 <!-- ✅ 駅 ID 体系 (Phase 1〜3) 完了: 駅マスター (merged_stations 9,030 駅) / SERVICE_LINES / trip / memo / characters_master / 駅名検索 / LINES の全層を `s_NNNNN` id ベース化、同名異所駅 (高松 香川/石川/多摩 等) の判定混線を全面解消。trip.from_station/to_station (v326) + memo.station (v325) の旧 name 列も DROP 済 (Applied 2026-05-25)。詳細 → CHANGELOG_PHASE3.8-station-id.md (Phase 1〜3, v290〜v333) + CHANGELOG §272 (v422 = 集計 rebuild の id 優先化で Phase 2 クローズ)。
      残るは「name 照合の物理撤去 (完全版)」のみ → **今はやらない**と決定 (v422)。🌱 布石 #7 に移動 -->
 
