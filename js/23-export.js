@@ -13,9 +13,9 @@
 //     CSV = 表計算ソフト用に人が読める列へ整形。UTF-8 BOM 付き
 //     (BOM = ファイル先頭の目印。無いと Excel が日本語を文字化けさせる)。
 //   - 写真は cdn.norireco.app から実ファイルを取得して ZIP に同梱。
-//     CORS (異なるドメイン間の取得許可) は norireco.app に対して許可済みと確認。
 //     取得に失敗した分は export-report.txt に URL を列挙 (JSON 側に URL は常に残る
-//     のでデータとしては失われない)。
+//     のでデータとしては失われない)。fetch には cache:'reload' 必須 — 理由は
+//     fetchPhoto() のコメント参照 (v456 で実機再現して確定した罠)。
 //   - ZIP 生成は JSZip を cdnjs から lazy load (v439 html2canvas と同じパターン。
 //     使うときだけ読み込み、初期ロードを太らせない)。
 //
@@ -202,6 +202,37 @@ function sanitizeName(s) {
   return String(s == null ? '' : s).replace(/[\\/:*?"<>|\s]/g, '_').slice(0, 40);
 }
 
+// 写真 1 枚を取得する。cache:'reload' が必須。
+//
+// 【v456 で実機再現した罠】マイページの旅程・メモ一覧は写真サムネを <img> で表示する。
+//   <img> は「他ドメインから読んでよい」許可ヘッダ (CORS) を必要としないため、
+//   cdn.norireco.app はそのリクエストに許可ヘッダを付けずに返す。さらにこのレスポンスには
+//   Vary: Origin (リクエスト内容で中身が変わるという目印) も付かないので、ブラウザは
+//   「このコピーはどの用途にも使い回せる」と判断してキャッシュする。
+//   → 後から JS の fetch (CORS 必須) が同じ URL を叩くとその許可ヘッダ無しのコピーが
+//     返り、ブラウザが弾いて TypeError: Failed to fetch になる。
+//
+//   本番で実測した挙動 (同一 URL・順序だけ変えた対照実験):
+//     img 表示 → 素の fetch          … Failed to fetch  ← ユスケの報告と一致
+//     img 表示 → cache:'reload' fetch … 200 OK
+//     img 表示なし → 素の fetch       … 200 OK  (初回テストが通ってしまった理由)
+//
+//   cache:'reload' はキャッシュを読まずに必ずネットワークへ行くので、Origin 付きの
+//   リクエストが飛び正しい許可ヘッダ付きのレスポンスが返る。念のため失敗時は
+//   クエリを足して (= 別のキャッシュ入口にして) もう一度だけ試す。
+async function fetchPhoto(url) {
+  try {
+    const res = await fetch(url, { mode: 'cors', cache: 'reload' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.blob();
+  } catch (e) {
+    const sep = url.includes('?') ? '&' : '?';
+    const res2 = await fetch(`${url}${sep}_x=${Date.now()}`, { mode: 'cors', cache: 'no-store' });
+    if (!res2.ok) throw new Error(`HTTP ${res2.status}`);
+    return res2.blob();
+  }
+}
+
 // trips / memos の photos[] から取得ジョブを列挙
 function listPhotoJobs(trips, memos) {
   const jobs = [];
@@ -314,9 +345,7 @@ async function runExport() {
         const job = jobs[i];
         setProgress(`📷 写真を取得中… (${i + 1}/${jobs.length})`);
         try {
-          const res = await fetch(job.url);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const blob = await res.blob();
+          const blob = await fetchPhoto(job.url);
           zip.file(`photos/${job.folder}/${job.idx}.${photoExt(job.url)}`, blob);
           ok++;
         } catch (e) {
