@@ -59,11 +59,15 @@ const setCookie = (name, value, maxAge) =>
   `${name}=${value}; HttpOnly; Secure; Path=/; SameSite=Lax; Max-Age=${maxAge}`;
 const clearCookie = (name) => setCookie(name, '', 0);
 
-// `formAction` を渡せるようにしてあるのは CSP の落とし穴のため。
-// `form-action` はフォーム送信**後のリダイレクト先**にも適用される (Chrome/Firefox)。
-// 同意ボタンの POST には Supabase の authorize へ 302 を返すので、'self' だけだと
-// ブラウザがその移動を拒否し、**押しても何も起きない**という形で壊れる (2026-08-29 に実際に踏んだ)。
-// 押した本人にはエラーが見えず、同意レコードだけ消費されて 2 回目が失敗するので原因が分かりにくい。
+// 【CSP form-action の落とし穴 — 2026-08-29 に 2 回踏んだ】
+// `form-action` はフォーム送信の**リダイレクト先すべて**に適用される (Chrome/Firefox)。
+// 同意ボタンの POST に Supabase の authorize へ 302 を返していたため、'self' だけだと
+// ブラウザがその移動を拒否し、**押しても何も起きない**形で壊れていた。押した本人には
+// エラーが見えず、同意レコードだけ消費されて 2 回目が「時間切れ」になるので原因が分かりにくい。
+// 1 度目の修正で Supabase の origin を足したが、Supabase はさらに accounts.google.com へ
+// 転送するのでそこで再びブロックされた。**ホップを列挙する方針そのものが壊れやすい**ため、
+// 最終的に「POST はリダイレクトを返さず、200 + meta refresh で送り出す」形にした
+// (通常のナビゲーションは form-action の対象外)。formAction 引数は将来のための余地。
 function htmlResponse(body, { status = 200, cookies = [], formAction = "'self'" } = {}) {
   const headers = new Headers({
     'Content-Type': 'text/html; charset=utf-8',
@@ -182,8 +186,6 @@ async function showConsent(request, env) {
 
   return htmlResponse(page('接続の確認', body), {
     cookies: [setCookie(CSRF_COOKIE_PREFIX + pendingId, csrfToken, COOKIE_TTL_SEC)],
-    // このページのフォームだけは Supabase の authorize へ抜けていく
-    formAction: `'self' ${new URL(env.SUPABASE_URL).origin}`,
   });
 }
 
@@ -235,14 +237,34 @@ async function startLogin(request, env) {
     codeChallenge: await codeChallengeOf(codeVerifier),
   });
 
-  return new Response(null, {
-    status: 302,
-    headers: [
-      ['Location', url],
-      ['Set-Cookie', clearCookie(CSRF_COOKIE_PREFIX + pendingId)],
-      ['Set-Cookie', setCookie(STATE_COOKIE, `${stateToken}.${await sha256Hex(stateToken)}`, STATE_TTL_SEC)],
-    ],
+  // 302 ではなく 200 + meta refresh で送り出す (上の htmlResponse のコメント参照)。
+  // フォーム送信のリダイレクトは CSP form-action に縛られるが、meta refresh や
+  // リンククリックは普通のナビゲーションなので縛られない。
+  // 自動遷移が効かない環境のために手動リンクも置く。
+  const body = `
+    <h1>Google のログインに進みます</h1>
+    <p class="sub">自動で移動します。切り替わらない場合は下のリンクを押してください。</p>
+    <p><a href="${esc(url)}">Google のログインに進む</a></p>`;
+  const headers = new Headers({
+    'Content-Type': 'text/html; charset=utf-8',
+    'Content-Security-Policy': [
+      "default-src 'none'",
+      "style-src 'unsafe-inline'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+      "base-uri 'none'",
+    ].join('; '),
+    'X-Frame-Options': 'DENY',
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'no-referrer',
+    'Cache-Control': 'no-store',
   });
+  headers.append('Set-Cookie', clearCookie(CSRF_COOKIE_PREFIX + pendingId));
+  headers.append('Set-Cookie', setCookie(STATE_COOKIE, `${stateToken}.${await sha256Hex(stateToken)}`, STATE_TTL_SEC));
+  return new Response(
+    page('Google に移動します', body).replace('</head>', `<meta http-equiv="refresh" content="0;url=${esc(url)}"></head>`),
+    { status: 200, headers },
+  );
 }
 
 // ── GET /callback : Supabase から戻ってきた ───────────────────────
