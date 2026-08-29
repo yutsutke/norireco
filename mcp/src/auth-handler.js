@@ -20,9 +20,20 @@ import {
   storeSession,
 } from './supabase.js';
 
-const CSRF_COOKIE = '__Host-NORIRECO_CSRF';
+// 同意画面ごとに cookie 名を分ける (末尾に pending id を付ける)。
+// 同じブラウザで同意画面を 2 回開くと、1 つの固定名だと後から開いた方が前の cookie を
+// 上書きしてしまい、先に開いたページを送信した瞬間に「トークンが一致しない」になる。
+const CSRF_COOKIE_PREFIX = '__Host-NORIRECO_CSRF_';
 const STATE_COOKIE = '__Host-NORIRECO_STATE';
-const STATE_TTL_SEC = 600;
+// cookie は KV の同意レコードより長生きさせる。逆にすると「期限切れ」なのに
+// 「トークンが一致しない」と表示され、原因を取り違える (2026-08-29 に実際に踏んだ)。
+const PENDING_TTL_SEC = 900;   // 同意画面を開いてからボタンを押すまでの猶予
+const COOKIE_TTL_SEC = 1800;
+const STATE_TTL_SEC = 900;     // Google ログインから戻ってくるまでの猶予
+
+// pending id は form から来る = 信用できない。cookie 名に埋める前に UUID 形式に限定する
+// (CRLF などを混ぜられるとヘッダを壊せるため)。
+const PENDING_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const SCOPES = ['norireco:read', 'norireco:write'];
 
@@ -143,7 +154,7 @@ async function showConsent(request, env) {
   await env.OAUTH_KV.put(
     `oauth:pending:${pendingId}`,
     JSON.stringify({ oauthRequest, clientName: client.clientName || '', csrfToken }),
-    { expirationTtl: STATE_TTL_SEC },
+    { expirationTtl: PENDING_TTL_SEC },
   );
 
   const body = `
@@ -165,7 +176,7 @@ async function showConsent(request, env) {
     <a href="https://norireco.app">乗レコ</a> 側からログアウトすれば切れます。</p>`;
 
   return htmlResponse(page('接続の確認', body), {
-    cookies: [setCookie(CSRF_COOKIE, csrfToken, STATE_TTL_SEC)],
+    cookies: [setCookie(CSRF_COOKIE_PREFIX + pendingId, csrfToken, COOKIE_TTL_SEC)],
   });
 }
 
@@ -174,19 +185,27 @@ async function startLogin(request, env) {
   const form = await request.formData();
   const csrfFromForm = form.get('csrf_token');
   const pendingId = form.get('pending_id');
-  const csrfFromCookie = cookieValue(request, CSRF_COOKIE);
+  const retry = '<p class="note">お手数ですが、接続をもう一度最初から始めてください。</p>';
 
-  if (!csrfFromForm || !csrfFromCookie || csrfFromForm !== csrfFromCookie) {
-    return htmlResponse(page('やり直してください', '<h1>やり直してください</h1><p>確認トークンが一致しませんでした。もう一度接続を開始してください。</p>'), { status: 400 });
+  if (typeof pendingId !== 'string' || !PENDING_ID_RE.test(pendingId)) {
+    return htmlResponse(page('やり直してください', `<h1>やり直してください</h1><p>同意の情報が読み取れませんでした。</p>${retry}`), { status: 400 });
   }
-  const pendingRaw = typeof pendingId === 'string' ? await env.OAUTH_KV.get(`oauth:pending:${pendingId}`) : null;
+  // 同意レコード (単回使用・PENDING_TTL_SEC で失効)
+  const pendingRaw = await env.OAUTH_KV.get(`oauth:pending:${pendingId}`);
   if (!pendingRaw) {
-    return htmlResponse(page('やり直してください', '<h1>やり直してください</h1><p>同意の有効期限が切れています。もう一度接続を開始してください。</p>'), { status: 400 });
+    return htmlResponse(page('時間切れです', `<h1>時間切れです</h1><p>同意画面を開いてから時間が経ちすぎました（${PENDING_TTL_SEC / 60} 分まで）。</p>${retry}`), { status: 400 });
+  }
+  // ブラウザとの結び付け。cookie が無い = 別のブラウザ、または cookie が保存されていない
+  const csrfFromCookie = cookieValue(request, CSRF_COOKIE_PREFIX + pendingId);
+  if (!csrfFromCookie) {
+    return htmlResponse(page('やり直してください', `<h1>やり直してください</h1>
+      <p>同意画面を開いたブラウザと、送信元のブラウザが一致しませんでした。</p>
+      <p class="note">別のブラウザやシークレットウィンドウで開き直した場合や、cookie が保存されない設定になっている場合に起きます。</p>${retry}`), { status: 400 });
   }
   await env.OAUTH_KV.delete(`oauth:pending:${pendingId}`);
   const pending = JSON.parse(pendingRaw);
-  if (pending.csrfToken !== csrfFromForm) {
-    return htmlResponse(page('やり直してください', '<h1>やり直してください</h1><p>確認トークンが一致しませんでした。</p>'), { status: 400 });
+  if (csrfFromForm !== csrfFromCookie || pending.csrfToken !== csrfFromForm) {
+    return htmlResponse(page('やり直してください', `<h1>やり直してください</h1><p>確認トークンが一致しませんでした。</p>${retry}`), { status: 400 });
   }
 
   // Supabase から戻ってきたときに「同じブラウザの、同意済みのフロー」だと確かめるための state。
@@ -213,7 +232,7 @@ async function startLogin(request, env) {
     status: 302,
     headers: [
       ['Location', url],
-      ['Set-Cookie', clearCookie(CSRF_COOKIE)],
+      ['Set-Cookie', clearCookie(CSRF_COOKIE_PREFIX + pendingId)],
       ['Set-Cookie', setCookie(STATE_COOKIE, `${stateToken}.${await sha256Hex(stateToken)}`, STATE_TTL_SEC)],
     ],
   });
