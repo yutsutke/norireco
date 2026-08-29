@@ -17,6 +17,12 @@ SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 binding = "OAUTH_KV"
 id = "PUT_KV_NAMESPACE_ID_HERE"
 
+# 接続を許すアカウント (secret)。公開リポジトリなのでメールは toml に書かない。
+#   npx wrangler secret put ALLOWED_EMAILS
+#   → 値はカンマ区切り (例: me@gmail.com,tester@example.com)
+# 未設定 or 空にすると全開放になる = テストが済んだら secret を消すだけで公開できる:
+#   npx wrangler secret delete ALLOWED_EMAILS
+
 # Custom Domain (norireco.app は Cloudflare DNS 管理下なので自動 bind)
 [[routes]]
 pattern = "mcp.norireco.app"

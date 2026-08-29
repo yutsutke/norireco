@@ -52,7 +52,26 @@ npm install
    を追加する。**これをやらないと Google ログインから戻ってこられない。**
    Google Cloud 側の設定は変更不要（Google から見た戻り先は今まで通り Supabase）。
 
-3. **デプロイ**
+3. **接続できる人を自分だけに絞る（初回は推奨）**
+
+   ```sh
+   npx wrangler secret put ALLOWED_EMAILS
+   ```
+
+   プロンプトに 乗レコ にログインしている Google アカウントのメールを入れる
+   （複数ならカンマ区切り）。公開リポジトリなので `wrangler.toml` には書かないこと。
+
+   本番で動くことを確かめたら、次のコマンドで誰でも使えるように開放できる。
+
+   ```sh
+   npx wrangler secret delete ALLOWED_EMAILS
+   ```
+
+   未設定 or 空 = 全開放。開放すると **Google アカウントを持つ人なら誰でも**自分の
+   乗レコ アカウントに記録できる（他人のデータは RLS で触れない）。ただし
+   レート制限が無いので、開放する前に入れておくのが望ましい。
+
+4. **デプロイ**
 
    ```sh
    npx wrangler deploy
@@ -61,7 +80,7 @@ npm install
    `mcp.norireco.app` は Cloudflare DNS 管理下なので Custom Domain が自動で張られる。
    確認: `curl https://mcp.norireco.app/health` → `ok`
 
-4. **AI クライアントに登録する**
+5. **AI クライアントに登録する**
 
    Claude の「カスタムコネクタを追加」に `https://mcp.norireco.app/mcp` を入れる。
    接続すると同意画面 → Google ログインに飛ぶ。
@@ -105,3 +124,7 @@ npx wrangler deploy
   `warning` に「何駅になるか・逆回りなら何駅か」を出して確認を促している。
 - **ログインは Google のみ**。本体はマジックリンクにも対応しているが、MCP 側は未対応。
 - **列車名は手入力扱い**（`train_id` は常に NULL）。マスター照合は未実装。
+- **レート制限が無い**。全開放するなら、1 ユーザーあたりの上限を入れてからにする。
+- **許可リストは「MCP を使えるか」だけを止める**。許可外の人が Google ログインを試みると
+  Supabase アカウント自体は作られる（本人確認はログイン後にしか成立しないため）。ただし
+  norireco.app も Google で誰でもサインアップできるので、MCP が新しく開けた穴ではない。

@@ -118,18 +118,40 @@ AI チャット経由は GPS を伴わない自己申告なので `verified: fal
 
 途中で見つけて直した穴: 戻り先 URL を `request.url` から組むと **http のまま Supabase に渡り、認可コードが平文で飛ぶ**（`wrangler dev` で発覚）。localhost 以外は https に固定した。
 
+### 接続できる人を絞れるようにした（ユスケ質問「これは、僕だけの設定？ほかの利用者への影響は？」への回答）
+
+聞かれて初めて明文化した点: **この MCP は放っておくと誰でも繋げる**。Google アカウントがあれば
+ユスケ以外の人でも `mcp.norireco.app/mcp` を自分の AI クライアントに登録して、自分の 乗レコ
+アカウントに記録できる。データ自体は v421 の RLS で本人の行しか触れないので漏れないが、
+**レート制限が無いので Cloudflare / Supabase の無料枠を外から使われうる**。
+
+そこで `ALLOWED_EMAILS`（secret・カンマ区切り）を追加した。未設定 or 空なら全開放なので、
+**本番で一度動くことを確かめるまでは自分だけに絞り、確かめたら secret を消すだけで開放できる**。
+公開リポジトリなのでメールは `wrangler.toml`（git に載る）ではなく secret に置く。
+
+判定は Google ログインの後（コード交換の直後・セッションを KV に保存する前）に置いた。本人確認は
+ログインを通さないと成立しないので、許可外の人が試すと Supabase アカウント自体は作られる。ただし
+norireco.app も Google で誰でもサインアップできるため、これは MCP が新しく開けた穴ではない。
+ここで止めているのは「MCP から 乗レコ を操作できること」の方。判定ロジックは 8 ケース（未設定 /
+空白のみ / 一致 / 大小文字 / カンマ + 空白 / 不一致 / email 無し / 空 email）で実測確認。
+
+**既存の PWA 利用者への影響はほぼゼロ**であることも確認した: v457 の PWA 差分は
+`js/23-export.js` の CSV ラベル 1 行と `sw.js` の CACHE_VERSION のみ、SQL migration 0 件
+（スキーマ・RLS 無変更）。MCP Worker は別デプロイなので、デプロイしなければ誰にも何も起きない。
+
 ### 残課題
 
 - **実接続は未検証**。デプロイと下記のユスケ設定が要る。ここを通すまで「動く」とは言えない。
   1. `cd mcp` → `npm install` → `npx wrangler kv namespace create OAUTH_KV` を **1 行ずつ**実行 → 出た id を `wrangler.toml` に貼る
   2. Supabase Dashboard → Authentication → URL Configuration → Redirect URLs に `https://mcp.norireco.app/callback` を追加（**これが無いと Google ログインから戻れない**）
-  3. `npx wrangler deploy` → Claude の「カスタムコネクタ」に `https://mcp.norireco.app/mcp`
+  3. `npx wrangler secret put ALLOWED_EMAILS` で当面は自分だけに絞る
+  4. `npx wrangler deploy` → Claude の「カスタムコネクタ」に `https://mcp.norireco.app/mcp`
 
 **（PowerShell では `&&` が使えない — ユスケ指摘 2026-08-29。手順書のコマンドは 1 行ずつ書く）**
 - ログインは Google のみ（本体のマジックリンクは未対応）。
 - 列車名は手入力扱い（`train_id` は常に NULL）。マスター照合は未実装。
 - 写真添付・記録の削除・完乗率の取得は MVP スコープ外。
-- レート制限は未実装（当面は自分だけが使う前提）。
+- レート制限は未実装。**全開放する前に 1 ユーザーあたりの上限（KV カウンタ）を入れること**。
 
 ---
 

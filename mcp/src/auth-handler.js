@@ -94,6 +94,20 @@ function page(title, inner) {
 </html>`;
 }
 
+// 接続を許してよい人か。`ALLOWED_EMAILS` (secret・カンマ区切り) が空 or 未設定なら誰でも可。
+//
+// 【なぜ後段でしか判定できないか】
+// 本人確認は Google ログインを通したあとにしか成立しない。したがって「許可されていない人が
+// ログインを試みると Supabase にアカウントだけは作られる」ことは避けられない。ただし
+// norireco.app 自体が Google で誰でもサインアップできるので、これは MCP が新しく開けた穴ではない。
+// ここで止めているのは「MCP から乗レコ を操作できること」の方。
+function isAllowedEmail(env, email) {
+  const raw = (env.ALLOWED_EMAILS || '').trim();
+  if (!raw) return true; // 空 = 全開放 (テストが済んだら secret を消すだけで開放できる)
+  const allowed = raw.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+  return allowed.includes(String(email || '').trim().toLowerCase());
+}
+
 async function sha256Hex(text) {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -236,6 +250,15 @@ async function finishLogin(request, env) {
     session = await exchangeCode(env, { code, codeVerifier });
   } catch (e) {
     return htmlResponse(page('ログインできませんでした', `<h1>ログインできませんでした</h1><p>${esc(e.message)}</p>`), { status: 502, cookies });
+  }
+
+  if (!isAllowedEmail(env, session.user?.email)) {
+    // セッションは保存しない = KV に他人の refresh token を残さない
+    return htmlResponse(page('まだ公開していません', `
+      <h1>まだ公開していません</h1>
+      <p>乗レコ の MCP 連携は現在テスト中で、限られたアカウントだけが接続できます。</p>
+      <p class="note">乗レコ 本体は <a href="https://norireco.app">norireco.app</a> から
+      いつも通りお使いいただけます。</p>`), { status: 403, cookies });
   }
 
   const userId = await storeSession(env, session);
