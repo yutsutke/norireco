@@ -59,13 +59,18 @@ const setCookie = (name, value, maxAge) =>
   `${name}=${value}; HttpOnly; Secure; Path=/; SameSite=Lax; Max-Age=${maxAge}`;
 const clearCookie = (name) => setCookie(name, '', 0);
 
-function htmlResponse(body, { status = 200, cookies = [] } = {}) {
+// `formAction` を渡せるようにしてあるのは CSP の落とし穴のため。
+// `form-action` はフォーム送信**後のリダイレクト先**にも適用される (Chrome/Firefox)。
+// 同意ボタンの POST には Supabase の authorize へ 302 を返すので、'self' だけだと
+// ブラウザがその移動を拒否し、**押しても何も起きない**という形で壊れる (2026-08-29 に実際に踏んだ)。
+// 押した本人にはエラーが見えず、同意レコードだけ消費されて 2 回目が失敗するので原因が分かりにくい。
+function htmlResponse(body, { status = 200, cookies = [], formAction = "'self'" } = {}) {
   const headers = new Headers({
     'Content-Type': 'text/html; charset=utf-8',
     'Content-Security-Policy': [
       "default-src 'none'",
       "style-src 'unsafe-inline'",
-      "form-action 'self'",
+      `form-action ${formAction}`,
       "frame-ancestors 'none'",
       "base-uri 'none'",
     ].join('; '),
@@ -177,6 +182,8 @@ async function showConsent(request, env) {
 
   return htmlResponse(page('接続の確認', body), {
     cookies: [setCookie(CSRF_COOKIE_PREFIX + pendingId, csrfToken, COOKIE_TTL_SEC)],
+    // このページのフォームだけは Supabase の authorize へ抜けていく
+    formAction: `'self' ${new URL(env.SUPABASE_URL).origin}`,
   });
 }
 
