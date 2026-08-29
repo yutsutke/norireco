@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "updated_at": "2026-05-25",
+  "updated_at": "2026-08-29",
   "note": "手動キュレーション(都市圏運行系統) + N02 物理路線からの自動生成",
   "service_lines": [
     {
@@ -20035,47 +20035,91 @@
         },
         {
           "order": 5,
-          "name": "海芝浦",
-          "n02_match": true
-        },
-        {
-          "order": 6,
-          "name": "新芝浦",
-          "n02_match": true
-        },
-        {
-          "order": 7,
           "name": "浅野",
           "n02_match": true
         },
         {
-          "order": 8,
+          "order": 6,
           "name": "安善",
           "n02_match": true
         },
         {
-          "order": 9,
+          "order": 7,
           "name": "武蔵白石",
           "n02_match": true
         },
         {
-          "order": 10,
-          "name": "大川",
+          "order": 8,
+          "name": "浜川崎",
           "n02_match": true
         },
         {
-          "order": 11,
-          "name": "扇町",
-          "n02_match": true
-        },
-        {
-          "order": 12,
+          "order": 9,
           "name": "昭和",
           "n02_match": true
         },
         {
-          "order": 13,
-          "name": "浜川崎",
+          "order": 10,
+          "name": "扇町",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "auto_鶴見線_東日本旅客鉄道_b1",
+      "name": "鶴見線(海芝浦支線)",
+      "operator": "東日本旅客鉄道",
+      "operator_id": "jr_east",
+      "color": "hsl(53, 60%, 55%)",
+      "official_line": "鶴見線",
+      "alias": [],
+      "through_lines": [],
+      "is_circular": false,
+      "parent_id": "auto_鶴見線_東日本旅客鉄道",
+      "branch_from": null,
+      "branch_to": null,
+      "auto_generated": true,
+      "stations": [
+        {
+          "order": 1,
+          "name": "浅野",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "新芝浦",
+          "n02_match": true
+        },
+        {
+          "order": 3,
+          "name": "海芝浦",
+          "n02_match": true
+        }
+      ]
+    },
+    {
+      "id": "auto_鶴見線_東日本旅客鉄道_b2",
+      "name": "鶴見線(大川支線)",
+      "operator": "東日本旅客鉄道",
+      "operator_id": "jr_east",
+      "color": "hsl(53, 60%, 55%)",
+      "official_line": "鶴見線",
+      "alias": [],
+      "through_lines": [],
+      "is_circular": false,
+      "parent_id": "auto_鶴見線_東日本旅客鉄道",
+      "branch_from": null,
+      "branch_to": null,
+      "auto_generated": true,
+      "stations": [
+        {
+          "order": 1,
+          "name": "武蔵白石",
+          "n02_match": true
+        },
+        {
+          "order": 2,
+          "name": "大川",
           "n02_match": true
         }
       ]
