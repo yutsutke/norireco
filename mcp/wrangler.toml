@@ -15,7 +15,7 @@ SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 #   npx wrangler kv namespace create OAUTH_KV
 [[kv_namespaces]]
 binding = "OAUTH_KV"
-id = "PUT_KV_NAMESPACE_ID_HERE"
+id = "48033c5d5ecf4971bde0217b2c0bb45b"
 
 # 接続を許すアカウント (secret)。公開リポジトリなのでメールは toml に書かない。
 #   npx wrangler secret put ALLOWED_EMAILS
