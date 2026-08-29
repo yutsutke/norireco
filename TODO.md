@@ -22,20 +22,16 @@ git log --oneline -20
 
 ## 🔥 最優先（プロダクトとして欠けている）
 
-- [ ] **MCP サーバ（AI チャットから乗車記録）— v457 で実装、デプロイ未完**
-  - ✅ 実装 (v457): `mcp/` = Cloudflare Worker。ツール 5 種 (`search_line` / `search_station` / `preview_trip` / `record_trip` / `list_recent_trips`)、OAuth 2.1 + Supabase Google ログイン (PKCE)、駅 id はビルド時インデックス (636 系統/10,499 駅)。ローカルで MCP・OAuth 両方の往復を実測確認済。CHANGELOG §304
-  - [ ] **🔥 ユスケ設定 4 つ（これをやるまで使えない）**
-    1. `cd mcp` → `npm install` → `npx wrangler kv namespace create OAUTH_KV` を **1 行ずつ**実行 → 出た id を `mcp/wrangler.toml` の `PUT_KV_NAMESPACE_ID_HERE` に貼る（PowerShell は `&&` でつなげない）
-    2. Supabase Dashboard → Authentication → URL Configuration → Redirect URLs に `https://mcp.norireco.app/callback` を追加
-    3. `npx wrangler secret put ALLOWED_EMAILS` → 乗レコ にログインしている Google アカウントのメールを入れる（**初回は自分だけに絞る**。公開リポジトリなので wrangler.toml には書かない）
-    4. `cd mcp` → `npx wrangler deploy`（1 行ずつ）→ Claude の「カスタムコネクタを追加」に `https://mcp.norireco.app/mcp`
-  - [ ] **接続後の実地確認**: 実際に 1 本記録して、地図が塗られる / 完駅率に入る / マイページに出る ことを見る（駅 id がずれていないかの本当の答え合わせ）
-  - ✅ レート制限 (2026-08-29): 1 ユーザー 1 日 500 回・記録 60 件の上限を KV カウンタで実装。`wrangler.toml` の `DAILY_LIMIT` / `DAILY_WRITE_LIMIT` で調整可
-  - ✅ **全開放 (2026-08-29)**: ユスケが `wrangler secret delete ALLOWED_EMAILS` を実行。誰でも接続可
-  - ✅ 告知導線 (v458): マイページヘッダ 🤖 → 接続手順 + URL コピーの案内モーダル
-  - [ ] **Cloudflare の使用量アラート設定**（Google アカウントを増やされると枠も増えるので、総量は別途見張る必要がある）
-  - ✅ 乗換候補の自動提案 (2026-08-29): 1 本で繋がらない区間に `routes` を返す。本体の findTransferCandidates を移植（直通あり優先・徒歩乗換込み・2 回乗換 fallback）。あわせて駅名の完全一致優先化（「立川」が西武立川に化けるのを修正）と索引の起動時構築（1 リクエストあたり 11〜18ms → 0.4〜6.6ms）
-  - [ ] 残: マジックリンクでのログイン対応 / 写真添付 / 記録の削除 / 完乗率の取得ツール / 環状線の向き指定
+- [ ] **MCP サーバ（AI チャットから乗車記録）— 稼働中・拡張の余地あり**
+  - ✅ 本体 (v457): `mcp/` = Cloudflare Worker (mcp.norireco.app)。ツール 5 種 + OAuth 2.1 + Supabase Google ログイン (PKCE)。CHANGELOG §304
+  - ✅ デプロイ・接続・実データ確認 (2026-08-29): ユスケ環境で KV 作成 → deploy → Claude のカスタムコネクタ接続 → 実際に記録して**地図が塗られることを確認済**
+  - ✅ レート制限 / 全開放 / 告知導線 (v458 🤖 モーダル) / 乗換候補の自動提案
+  - [ ] **Cloudflare の使用量アラート設定**（ユスケ作業。Google アカウントを増やされると枠も増えるので総量は別途見張る）
+  - [ ] **マジックリンクでのログイン対応** — いま Google ログインのみ。本体はマジックリンクにも対応しているので、**メールだけで使っている人は MCP に繋げない**。誰でも使えるようにした以上ここは穴
+  - [ ] **記録の削除ツール** — 間違えて記録したとき、AI からは消せず本体を開く必要がある
+  - [ ] **完乗率・統計の取得ツール** — 「いま何%？」「あと何駅で完乗？」に答えられるようにする
+  - [ ] **環状線の向き指定** — 山手線「東京→品川」が配列順で 25 駅になる。いまは preview で警告を出すだけ。内回り/外回りを渡せるようにするのが本筋
+  - [ ] 列車名のマスター照合（`train_id` が常に NULL の手入力扱い）／写真の添付
   - [ ] 次の段: 地図画面横のチャットパネル (Phase 1.5 本体・Claude API 課金設計が要る)
 
 - [ ] **iOS 対応（段階的に両方 — ユスケ確定 2026-07-03）**
