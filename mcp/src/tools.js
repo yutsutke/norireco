@@ -10,9 +10,10 @@ import { McpServer } from '@modelcontextprotocol/server';
 import { getMcpAuthContext } from 'agents/mcp/server';
 import { z } from 'zod';
 
-import { searchLines, searchStations, stationNameById } from './lines.js';
+import { findLineById, searchLines, searchStations, stationNameById } from './lines.js';
 import { buildTrip, resolveSegments, todayJst, tripSummary } from './trip.js';
-import { ReauthRequired, fetchShareStatus, restFetch } from './supabase.js';
+import { ReauthRequired, deletePhotoByUrl, fetchShareStatus, restFetch } from './supabase.js';
+import { computeCompletion, lineProgress } from './stats.js';
 import { QuotaExceeded, consumeQuota } from './quota.js';
 
 const json = (value) => ({ content: [{ type: 'text', text: JSON.stringify(value, null, 1) }] });
@@ -230,6 +231,129 @@ export function createServer(env) {
           transfers: t.transfers,
           source: t.source,
           notes: t.notes || undefined,
+        })),
+      });
+    }),
+  );
+
+  server.registerTool(
+    'delete_trip',
+    {
+      description: '保存済みの乗車記録を削除する。**元に戻せない**。trip_id は list_recent_trips で調べること。'
+        + ' 利用者が「消して」と言っていない記録を消してはいけない。どれを消すか曖昧なときは必ず確認すること。',
+      inputSchema: {
+        trip_id: z.string().describe('list_recent_trips が返す trip_id (trip_1787... の形)'),
+      },
+    },
+    guard(async ({ trip_id }) => {
+      const userId = currentUserId();
+      // 何を消すのかを返せるように、先に取得する。見つからなければ何もしない
+      const q = new URLSearchParams({
+        id: `eq.${trip_id}`,
+        user_id: `eq.${userId}`,
+        select: 'id,date,name,photos',
+        limit: '1',
+      });
+      const found = await restFetch(env, userId, `norireco_trips?${q.toString()}`);
+      if (!found.ok) {
+        const body = await found.text().catch(() => '');
+        return fail(`取得に失敗しました (HTTP ${found.status}): ${body.slice(0, 200)}`);
+      }
+      const rows = await found.json();
+      if (rows.length === 0) {
+        return fail(`その旅程が見つかりません (${trip_id})。list_recent_trips で trip_id を確認してください。`);
+      }
+      const trip = rows[0];
+
+      const del = new URLSearchParams({ id: `eq.${trip_id}`, user_id: `eq.${userId}` });
+      const res = await restFetch(env, userId, `norireco_trips?${del.toString()}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        return fail(`削除に失敗しました (HTTP ${res.status}): ${body.slice(0, 200)}`);
+      }
+
+      // 写真は R2 に残るので併せて掃除する (本体の削除と同じ・ベストエフォート)
+      const photos = Array.isArray(trip.photos) ? trip.photos.filter((p) => p && p.url) : [];
+      let photosDeleted = 0;
+      for (const p of photos) {
+        if (await deletePhotoByUrl(env, userId, p.url)) photosDeleted++;
+      }
+
+      return json({
+        deleted: true,
+        trip_id: trip.id,
+        name: trip.name,
+        date: trip.date,
+        photos_deleted: photos.length > 0 ? `${photosDeleted}/${photos.length}` : undefined,
+        note: '元に戻せません。同じ記録が必要なら record_trip で作り直してください。',
+      });
+    }, { write: true }),
+  );
+
+  server.registerTool(
+    'get_completion',
+    {
+      description: '完駅率と完乗の状況を返す。「いま何%？」「あと何駅で完乗？」「惜しい路線は？」に答えるときに使う。'
+        + ' 数え方は 乗レコ 本体のマイページ「🚃 完駅率」カードと同じ。',
+      inputSchema: {
+        line: z.string().optional()
+          .describe('系統を指定するとその路線の進捗だけ返す (line_id か路線名)。「山手線あと何駅？」用'),
+        since: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('この日付以降の記録だけで集計'),
+        until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('この日付以前の記録だけで集計'),
+      },
+    },
+    guard(async ({ line, since, until }) => {
+      const userId = currentUserId();
+      const params = new URLSearchParams({
+        user_id: `eq.${userId}`,
+        select: 'segments,total_minutes,date',
+        limit: '5000',
+      });
+      if (since) params.append('date', `gte.${since}`);
+      if (until) params.append('date', `lte.${until}`);
+      const res = await restFetch(env, userId, `norireco_trips?${params.toString()}`);
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        return fail(`取得に失敗しました (HTTP ${res.status}): ${body.slice(0, 200)}`);
+      }
+      const stats = computeCompletion(await res.json());
+
+      if (line) {
+        const target = findLineById(line) || (() => {
+          const hit = searchLines(line, 1)[0];
+          return hit ? findLineById(hit.line_id) : null;
+        })();
+        if (!target) {
+          return fail(`「${line}」に一致する系統が見つかりません`, { candidates: searchLines(line) });
+        }
+        const p = lineProgress(target.id, stats);
+        return json({
+          line: p.line,
+          line_id: p.line_id,
+          ridden: p.ridden,
+          total: p.total,
+          pct: Math.round((p.ridden / p.total) * 100),
+          complete: p.ridden >= p.total,
+          remaining_count: p.remaining.length,
+          remaining: p.remaining.slice(0, 40),
+        });
+      }
+
+      return json({
+        station_rate: stats.station_rate,
+        lines: stats.lines,
+        distance_km: stats.distance_km,
+        total_minutes: stats.total_minutes || undefined,
+        trips: stats.trips,
+        period: (since || until) ? { since, until } : undefined,
+        // 「あと少しで完乗」の路線。乗りつぶしの次の一手を出せるように残り駅名も返す
+        nearly_complete: stats.partial.slice(0, 10).map((p) => ({
+          line: p.line,
+          line_id: p.line_id,
+          ridden: p.ridden,
+          total: p.total,
+          remaining_count: p.remaining.length,
+          remaining: p.remaining.slice(0, 12),
         })),
       });
     }),

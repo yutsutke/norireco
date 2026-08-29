@@ -128,8 +128,9 @@ for (const sl of master.service_lines || []) {
     if (!coord) { droppedStations++; continue; }
     const id = resolveStationId(s.name, coord[0], coord[1]);
     if (!id) nullIds++;
-    // 3 要素目は正規化済みの駅名。実行時の索引構築を軽くするために焼き込む
-    st.push([s.name, id, normStation(s.name)]);
+    // 3 要素目は正規化済みの駅名 (実行時の索引構築を軽くするため)、4・5 要素目は座標。
+    // 座標は完乗統計の走行距離計算に使う。1e-5 度 ≒ 1m なので 5 桁で足りる。
+    st.push([s.name, id, normStation(s.name), Number(coord[0].toFixed(5)), Number(coord[1].toFixed(5))]);
     coords.push({ lat: coord[0], lon: coord[1] });
   }
   // 02b と同じ足切り: 座標が付いた駅が 2 未満の系統は SERVICE_LINES に載らない

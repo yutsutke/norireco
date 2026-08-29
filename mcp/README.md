@@ -20,8 +20,10 @@ Claude ──OAuth 2.1──▶ mcp.norireco.app ──Supabase REST──▶ no
 | `preview_trip` | 保存せずに解決結果だけ返す。**record_trip の前に必ず通す** |
 | `record_trip` | 旅程を保存する。同じ日の同じ区間は既定で重複拒否 |
 | `list_recent_trips` | 直近の旅程を新しい順に返す |
+| `delete_trip` | 旅程を削除する（元に戻せない。写真も R2 から掃除する） |
+| `get_completion` | 完駅率・完乗の状況。「いま何%？」「あと何駅で完乗？」に答える |
 
-写真の添付・記録の削除・完乗率の取得は入れていない（MVP スコープ外）。
+写真の添付は入れていない（MVP スコープ外）。
 
 ### 乗換候補の自動提案
 

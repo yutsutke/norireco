@@ -146,3 +146,26 @@ export async function fetchShareStatus(env, userId) {
   const rows = await res.json().catch(() => []);
   return rows[0]?.share_status || null;
 }
+
+// R2 に上がっている写真の削除。旅程を消すときに一緒に片付ける。
+// 本体 js/18-photo-area.js の deletePhotoByUrl と同じで、api.norireco.app (別 Worker) に
+// 本人の access token を付けて投げる。MCP 側は R2 の鍵を持たないので、この経路しかない。
+// ベストエフォート: 失敗しても旅程の削除自体は成立させる (R2 のゴミは将来の cleanup で掃除)。
+const CDN_BASE = 'https://cdn.norireco.app/';
+const API_BASE = 'https://api.norireco.app';
+
+export async function deletePhotoByUrl(env, userId, url) {
+  if (typeof url !== 'string' || !url.startsWith(CDN_BASE)) return false;
+  try {
+    const accessToken = await getAccessToken(env, userId);
+    const res = await fetch(`${API_BASE}/delete/photo`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ object_key: url.slice(CDN_BASE.length) }),
+    });
+    return res.ok;
+  } catch (e) {
+    console.warn('[norireco-mcp] 写真の削除に失敗', e.message);
+    return false;
+  }
+}
