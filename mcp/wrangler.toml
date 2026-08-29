@@ -17,6 +17,10 @@ SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 binding = "OAUTH_KV"
 id = "48033c5d5ecf4971bde0217b2c0bb45b"
 
+# 1 ユーザーあたりの 1 日の上限 (省略時は 500 / 記録は 60)。絞りたくなったら数字を変えて deploy。
+# DAILY_LIMIT = "500"
+# DAILY_WRITE_LIMIT = "60"
+
 # 接続を許すアカウント (secret)。公開リポジトリなのでメールは toml に書かない。
 #   npx wrangler secret put ALLOWED_EMAILS
 #   → 値はカンマ区切り (例: me@gmail.com,tester@example.com)

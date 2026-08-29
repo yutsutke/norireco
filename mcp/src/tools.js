@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { searchLines, searchStations, stationNameById } from './lines.js';
 import { buildTrip, resolveSegments, todayJst, tripSummary } from './trip.js';
 import { ReauthRequired, fetchShareStatus, restFetch } from './supabase.js';
+import { QuotaExceeded, consumeQuota } from './quota.js';
 
 const json = (value) => ({ content: [{ type: 'text', text: JSON.stringify(value, null, 1) }] });
 const fail = (message, extra) => ({
@@ -20,25 +21,13 @@ const fail = (message, extra) => ({
   isError: true,
 });
 
-function currentUserId() {
+function currentUserId(optional = false) {
   const props = getMcpAuthContext()?.props;
   if (!props || !props.userId) {
+    if (optional) return null;
     throw new ReauthRequired('乗レコ アカウントに接続されていません。MCP コネクタを繋ぎ直してください');
   }
   return props.userId;
-}
-
-// tool ハンドラ共通の例外処理。想定外の例外をそのまま AI に返すと内部情報が漏れるので絞る。
-function guard(handler) {
-  return async (...args) => {
-    try {
-      return await handler(...args);
-    } catch (e) {
-      if (e instanceof ReauthRequired) return fail(e.message, { reconnect: true });
-      console.error('[norireco-mcp] tool error', e);
-      return fail(`処理に失敗しました: ${e.message}`);
-    }
-  };
 }
 
 const segmentInput = z.object({
@@ -91,6 +80,22 @@ async function resolveOrFail(segments) {
 
 export function createServer(env) {
   const server = new McpServer({ name: 'norireco', version: '1.0.0' });
+
+  // tool ハンドラ共通の前後処理。env を閉じ込めたいので createServer の内側に置く
+  // (module 直下に置いて「直近の env」を差す形にすると、同時リクエストで取り違える)。
+  //   - 1 日の呼び出し上限を消費する (誰でも接続できるので、1 人の暴走で全体を止めない)
+  //   - 想定外の例外をそのまま AI に返すと内部情報が漏れるので絞る
+  const guard = (handler, { write = false } = {}) => async (...args) => {
+    try {
+      await consumeQuota(env, currentUserId(true), write);
+      return await handler(...args);
+    } catch (e) {
+      if (e instanceof ReauthRequired) return fail(e.message, { reconnect: true });
+      if (e instanceof QuotaExceeded) return fail(e.message, { rate_limited: true });
+      console.error('[norireco-mcp] tool error', e);
+      return fail(`処理に失敗しました: ${e.message}`);
+    }
+  };
 
   server.registerTool(
     'search_line',
@@ -183,7 +188,7 @@ export function createServer(env) {
         summary: tripSummary(trip, r.segments),
         url: 'https://norireco.app',
       });
-    }),
+    }, { write: true }),
   );
 
   server.registerTool(

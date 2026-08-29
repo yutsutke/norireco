@@ -30,7 +30,9 @@ git log --oneline -20
     3. `npx wrangler secret put ALLOWED_EMAILS` → 乗レコ にログインしている Google アカウントのメールを入れる（**初回は自分だけに絞る**。公開リポジトリなので wrangler.toml には書かない）
     4. `cd mcp` → `npx wrangler deploy`（1 行ずつ）→ Claude の「カスタムコネクタを追加」に `https://mcp.norireco.app/mcp`
   - [ ] **接続後の実地確認**: 実際に 1 本記録して、地図が塗られる / 完駅率に入る / マイページに出る ことを見る（駅 id がずれていないかの本当の答え合わせ）
-  - [ ] **全開放するならレート制限を先に**: いま許可リスト (`ALLOWED_EMAILS` secret) で自分だけに絞っている。`npx wrangler secret delete ALLOWED_EMAILS` で誰でも使えるようになるが、1 ユーザーあたりの上限が無いので無料枠を外から使い切られうる。開放前に KV カウンタで上限を入れる
+  - ✅ レート制限 (2026-08-29): 1 ユーザー 1 日 500 回・記録 60 件の上限を KV カウンタで実装。`wrangler.toml` の `DAILY_LIMIT` / `DAILY_WRITE_LIMIT` で調整可
+  - [ ] **全開放の実行**: `npx wrangler secret delete ALLOWED_EMAILS` → `npx wrangler deploy`。開放後は Cloudflare の使用量アラートを設定しておく（Google アカウントを増やされると枠も増えるので、総量は別途見張る必要がある）
+  - [ ] 開放するなら告知導線をどうするか（乗レコ本体のマイページ等に「AI チャットから記録」の案内を出すか、当面は URL を知っている人だけにするか）
   - ✅ 乗換候補の自動提案 (2026-08-29): 1 本で繋がらない区間に `routes` を返す。本体の findTransferCandidates を移植（直通あり優先・徒歩乗換込み・2 回乗換 fallback）。あわせて駅名の完全一致優先化（「立川」が西武立川に化けるのを修正）と索引の起動時構築（1 リクエストあたり 11〜18ms → 0.4〜6.6ms）
   - [ ] 残: マジックリンクでのログイン対応 / 写真添付 / 記録の削除 / 完乗率の取得ツール / 環状線の向き指定
   - [ ] 次の段: 地図画面横のチャットパネル (Phase 1.5 本体・Claude API 課金設計が要る)
