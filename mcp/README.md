@@ -30,6 +30,8 @@ cd mcp
 npm install
 ```
 
+> ⚠️ コマンドは **1 行ずつ**実行すること。Windows PowerShell 5.1 は `&&` を解釈しない。
+
 1. **KV を作る**
 
    ```sh

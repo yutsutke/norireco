@@ -25,9 +25,9 @@ git log --oneline -20
 - [ ] **MCP サーバ（AI チャットから乗車記録）— v457 で実装、デプロイ未完**
   - ✅ 実装 (v457): `mcp/` = Cloudflare Worker。ツール 5 種 (`search_line` / `search_station` / `preview_trip` / `record_trip` / `list_recent_trips`)、OAuth 2.1 + Supabase Google ログイン (PKCE)、駅 id はビルド時インデックス (636 系統/10,499 駅)。ローカルで MCP・OAuth 両方の往復を実測確認済。CHANGELOG §304
   - [ ] **🔥 ユスケ設定 3 つ（これをやるまで使えない）**
-    1. `cd mcp && npm install && npx wrangler kv namespace create OAUTH_KV` → 出た id を `mcp/wrangler.toml` の `PUT_KV_NAMESPACE_ID_HERE` に貼る
+    1. `cd mcp` → `npm install` → `npx wrangler kv namespace create OAUTH_KV` を **1 行ずつ**実行 → 出た id を `mcp/wrangler.toml` の `PUT_KV_NAMESPACE_ID_HERE` に貼る（PowerShell は `&&` でつなげない）
     2. Supabase Dashboard → Authentication → URL Configuration → Redirect URLs に `https://mcp.norireco.app/callback` を追加
-    3. `cd mcp && npx wrangler deploy` → Claude の「カスタムコネクタを追加」に `https://mcp.norireco.app/mcp`
+    3. `cd mcp` → `npx wrangler deploy`（1 行ずつ）→ Claude の「カスタムコネクタを追加」に `https://mcp.norireco.app/mcp`
   - [ ] **接続後の実地確認**: 実際に 1 本記録して、地図が塗られる / 完駅率に入る / マイページに出る ことを見る（駅 id がずれていないかの本当の答え合わせ）
   - [ ] 残: マジックリンクでのログイン対応 / 写真添付 / 記録の削除 / 完乗率の取得ツール / レート制限 / 環状線の向き指定
   - [ ] 次の段: 地図画面横のチャットパネル (Phase 1.5 本体・Claude API 課金設計が要る)
@@ -43,7 +43,7 @@ git log --oneline -20
 - [ ] **シェア機能 — MVP 以降の残り (v236 で OGP 画像生成 MVP は完成)**
   - ✅ v236: マイページ完乗率カードから「📸 シェア画像を作成」で 1200×630 PNG 生成・ダウンロード・Web Share / X intent
   - ✅ S-1 (v410): 個別 trip シェア — 旅程カードに「📤 シェア」、`generateTripOgpCanvas` で 1 旅程分の OGP (地図を trip 区間にズーム + 始点○/終点● + 路線名/区間/駅数/乗換/乗車日/車両パネル)。DL/Web Share/X。純クライアント
-  - 🟡 S-2 (v412): R2 永続画像保存 — Worker `/upload/share-image` (presigned PUT, key `shares/<uid>/<id>.png`) + クライアント `uploadShareImage` + シェアモーダル「🔗 画像URLをコピー」(ログイン必須)。**⚠️ Worker は `cd worker && npx wrangler deploy` で別途デプロイが必要** (frontend は main push で反映済 v412 だが endpoint はデプロイ後に有効)
+  - 🟡 S-2 (v412): R2 永続画像保存 — Worker `/upload/share-image` (presigned PUT, key `shares/<uid>/<id>.png`) + クライアント `uploadShareImage` + シェアモーダル「🔗 画像URLをコピー」(ログイン必須)。**⚠️ Worker は別途デプロイが必要**（`cd worker` → `npx wrangler deploy` を 1 行ずつ） (frontend は main push で反映済 v412 だが endpoint はデプロイ後に有効)
   - ✅ S-3 (v413): `/share/<id>` 受け側ページ完成・本番稼働確認済 — Supabase `norireco_shares` (公開 SELECT RLS、migration Applied 2026-05-29) + Pages Function `functions/share/[id].js` (OGP メタ SSR + 「自分も記録」CTA)。シェアモーダルは「🔗 シェアリンクを作成」に置換 (画像→R2→shares insert→/share/<id> 生成→Web Share/clipboard)
   - **シェア機能 残り** (S-1〜S-3 で MVP 完結。以降は磨き込み + 拡散強化):
     - ✅ v415→v417: シェアボタン整理。v415 で「📤 1 本化 (/share リンク統合)」+ Worker `/delete/photo` 正規表現に `shares` 3-segment 分岐 (deploy 済 Version d854330d) → **v417 で「📤 画像をシェア」「🔗 リンクをシェア」の 2 ボタンに再分離** (Windows OS 共有シートが file 共有時に URL=text を落とすため。🔗 は PC=クリップボードコピー / モバイル=Web Share、ログイン必須)。CHANGELOG §265〜§267

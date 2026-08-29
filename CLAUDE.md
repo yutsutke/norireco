@@ -31,6 +31,7 @@
 ## デプロイ規約
 - main 直 push（30秒〜2分で反映）
 - CACHE_VERSION = デプロイ回数 の不変式。push のたびに sw.js を +1
+- **ユスケに渡す手順のコマンドは 1 行ずつ書く**（環境が Windows PowerShell 5.1 = `&&` でつなげない。ユスケ指摘 2026-08-29）
 
 ## Supabase migration 規約（v333 で導入）
 - **migration ファイル末尾の `-- Applied: YYYY-MM-DD by <user>` が「真実の源」**。Supabase Dashboard の状態は git で追跡できないので、ここで補う

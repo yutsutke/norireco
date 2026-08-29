@@ -112,9 +112,11 @@ AI チャット経由は GPS を伴わない自己申告なので `verified: fal
 ### 残課題
 
 - **実接続は未検証**。デプロイと下記のユスケ設定が要る。ここを通すまで「動く」とは言えない。
-  1. `cd mcp && npm install && npx wrangler kv namespace create OAUTH_KV` → 出た id を `wrangler.toml` に貼る
+  1. `cd mcp` → `npm install` → `npx wrangler kv namespace create OAUTH_KV` を **1 行ずつ**実行 → 出た id を `wrangler.toml` に貼る
   2. Supabase Dashboard → Authentication → URL Configuration → Redirect URLs に `https://mcp.norireco.app/callback` を追加（**これが無いと Google ログインから戻れない**）
   3. `npx wrangler deploy` → Claude の「カスタムコネクタ」に `https://mcp.norireco.app/mcp`
+
+**（PowerShell では `&&` が使えない — ユスケ指摘 2026-08-29。手順書のコマンドは 1 行ずつ書く）**
 - ログインは Google のみ（本体のマジックリンクは未対応）。
 - 列車名は手入力扱い（`train_id` は常に NULL）。マスター照合は未実装。
 - 写真添付・記録の削除・完乗率の取得は MVP スコープ外。
