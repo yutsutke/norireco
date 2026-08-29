@@ -22,6 +22,16 @@ git log --oneline -20
 
 ## 🔥 最優先（プロダクトとして欠けている）
 
+- [ ] **MCP サーバ（AI チャットから乗車記録）— v457 で実装、デプロイ未完**
+  - ✅ 実装 (v457): `mcp/` = Cloudflare Worker。ツール 5 種 (`search_line` / `search_station` / `preview_trip` / `record_trip` / `list_recent_trips`)、OAuth 2.1 + Supabase Google ログイン (PKCE)、駅 id はビルド時インデックス (636 系統/10,499 駅)。ローカルで MCP・OAuth 両方の往復を実測確認済。CHANGELOG §304
+  - [ ] **🔥 ユスケ設定 3 つ（これをやるまで使えない）**
+    1. `cd mcp && npm install && npx wrangler kv namespace create OAUTH_KV` → 出た id を `mcp/wrangler.toml` の `PUT_KV_NAMESPACE_ID_HERE` に貼る
+    2. Supabase Dashboard → Authentication → URL Configuration → Redirect URLs に `https://mcp.norireco.app/callback` を追加
+    3. `cd mcp && npx wrangler deploy` → Claude の「カスタムコネクタを追加」に `https://mcp.norireco.app/mcp`
+  - [ ] **接続後の実地確認**: 実際に 1 本記録して、地図が塗られる / 完駅率に入る / マイページに出る ことを見る（駅 id がずれていないかの本当の答え合わせ）
+  - [ ] 残: マジックリンクでのログイン対応 / 写真添付 / 記録の削除 / 完乗率の取得ツール / レート制限 / 環状線の向き指定
+  - [ ] 次の段: 地図画面横のチャットパネル (Phase 1.5 本体・Claude API 課金設計が要る)
+
 - [ ] **iOS 対応（段階的に両方 — ユスケ確定 2026-07-03）**
   - ✅ Phase A (v449): ホーム画面 PWA 磨き込み — safe-area env() / input 自動ズーム抑止 (iOS のみ maximum-scale=1) / 不透明 apple-touch-icon 180×180 / 起動スプラッシュ 27 枚 / standalone 時 Magic Link 注記 (PKCE ストレージ分離)。CHANGELOG §296
   - [ ] **Phase A 実機確認 (ユスケ iPhone)**: ① Safari で norireco.app → ホーム画面に追加 → 起動 (スプラッシュ出る/時計がヘッダに重ならない) ② Google ログイン ③ 📍GPS 記録 ④ ボトムシート下端 ⑤ input フォーカスでズームしない

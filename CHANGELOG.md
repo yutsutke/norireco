@@ -54,6 +54,74 @@ CHANGELOG.md を整理するときは **STATUS.md も同時に整理** する（
 
 ---
 
+## 304. v457 — 🔌 乗レコ MCP サーバ：AI チャットから乗車記録をつけられるようにする
+
+**カテゴリ**: A（ユスケ「mcp を作る。まずは AI チャット経由で旅の記録をできるようにする」2026-08-29）
+
+STATUS の「Phase 1.5: Map × Claude チャット統合 MVP」のうち、**MCP サーバ側だけを先に独立して作った**。地図画面へのチャットパネル埋め込み（Claude API 課金・UI）は含まない。先に MCP を単体で立てておけば、Claude アプリからそのまま使えて価値を確かめられるし、後からパネルを載せるときも同じサーバを指すだけで済む。
+
+新規 `mcp/`（Cloudflare Worker・`mcp.norireco.app`）。既存 `worker/`（R2 presigned URL 発行）とは別 Worker。
+
+```
+Claude ──OAuth 2.1──▶ mcp.norireco.app ──Supabase REST──▶ norireco_trips
+                            └─ Supabase の Google ログイン (PKCE) で本人確認
+```
+
+**ツール 5 種（記録に必要な最小セット・ユスケ確定）**: `search_line`（「中央線」→ `jr_chuo_rapid`）/ `search_station`（同名駅は駅 id ごとに分けて返す）/ `preview_trip`（**保存せず**解決結果だけ返す）/ `record_trip`（保存）/ `list_recent_trips`。写真・削除・完乗率取得は入れていない。
+
+### 設計判断①：ステートレス（Durable Object を使わない）
+
+| 案 | 評価 |
+|---|---|
+| ローカル stdio サーバ（Node） | 実装は最短だがユスケの端末でしか動かず、スマホの Claude から使えない |
+| `McpAgent`（Durable Object・セッション保持） | Cloudflare の定番だが DO の migration と課金プランが増える。今回のツールは全部 1 往復で完結しセッション状態が要らない |
+| **`createMcpHandler`（ステートレス）** ← 採用 | `agents` v0.22 の現行推奨パス。DO 不要。バンドル 347 KB gzip |
+
+### 設計判断②：service_role キーを持たない
+
+MCP から Supabase に書く方法は 2 つある。**service_role キーで代理書き込み**すれば実装は楽だが、それは RLS を素通りするということで、v421（本人の行しか触れない）と v424（`full_banned` は新規記録不可）が **MCP 経由だけ効かない**穴になる。事故ったときの被害も全ユーザーに及ぶ。
+
+採ったのは**ユスケ本人の access token で叩く**方式。OAuth 同意のときに Supabase の Google ログイン（PKCE）を通し、返ってきた refresh token を KV に置く。tool 実行のたびに access token を取り直す（refresh token は使うたびローテーションするので毎回書き戻す）。結果、既存の RLS と垢BAN がそのまま最終防衛線になる。
+
+ブラウザ JS を一切積まずに PKCE を回せるのがこの方式の効いたところ（`@supabase/auth-js` の `_getUrlForProvider` / `exchangeCodeForSession` が組む URL とボディをサーバ側で再現した）。おかげで同意画面の CSP を `default-src 'none'` まで締められる。
+
+### 設計判断③：駅 id はビルド時インデックスに焼く
+
+`record_trip` は `from_station_id` / `to_station_id`（`s_NNNNN`）を正しく入れないと、**保存はできたのに地図が塗られない**という気付きにくい壊れ方をする。id の解決には本来 `service_lines_master.json` + `lines-p1〜4.json` + `merged_stations.json` の 5.6 MB が要るが、Worker で毎回 fetch + parse するのは無理がある。
+
+`mcp/scripts/build-index.mjs` が **`js/02b-service-lines-builder.js` の `build()` をそのまま移植**して（N02 路線から座標を引く → 同名なら最近接の merged_stations の id を採る、v293 の `resolveStationId` 込み）、「系統 id / 名前 / 駅名と駅 id の並び」だけの 350 KB インデックスを吐く。636 系統 / 10,499 駅・**駅 id が付かなかった駅 0**。マスターデータを更新したら再生成が要る（README に明記）。
+
+### 曖昧さは必ず表に出す
+
+AI が勝手に解釈して誤った旅程を黙って保存するのが一番まずい。「新宿から八王子」だけだと中央本線快速・京王線・中央本線(東京〜塩尻) の 3 つが該当するので、**1 つに絞れないときは候補を返して呼び直させる**（実測で確認済）。環状線は配列の並び順で数えると逆回りの駅数になるため（山手線 東京→品川 = 25 駅）、本体 `saveMultiSegmentTrip` と数え方を揃えたうえで `warning` に「逆回りなら何駅か」を出す。同じ日・同じ区間の記録が既にあれば既定で保存を止める（`allow_duplicate: true` で突破）。
+
+### 記録の出自（`source: 'mcp'`）
+
+AI チャット経由は GPS を伴わない自己申告なので `verified: false`。ただし `source` は `gps_button` / `manual` に並ぶ 3 つ目として `'mcp'` を使い、後から「どこから入った記録か」を追えるようにした。`js/23-export.js` の `SOURCE_LABEL` に `mcp: 'AIチャット'` を追加（未知の値は生値表示にフォールバックする実装だったので、既存データは無影響）。**PWA 側の変更はこの 1 行だけ**。
+
+### 検証
+
+`wrangler dev` で実測:
+- MCP: `initialize` / `tools/list` / `search_line`（中央線 → 3 候補）/ `preview_trip`（中央線快速 新宿→八王子 + 横浜線 八王子→町田 = 28 駅・乗換 1・75 分）/ 曖昧時の候補返却 / 未接続時の再接続案内。
+- OAuth: 動的クライアント登録 → 同意画面（クライアント名が `Claude &lt;test&gt;` と HTML エスケープされること）→ POST で Supabase の Google authorize URL へ 302。同意の使い回しと CSRF 不一致がどちらも弾かれること。
+- 保護: 無認証の `POST /mcp` が 401 + `WWW-Authenticate`、discovery 2 種が正しく出ること。
+- `npm run check` 29/29。
+
+途中で見つけて直した穴: 戻り先 URL を `request.url` から組むと **http のまま Supabase に渡り、認可コードが平文で飛ぶ**（`wrangler dev` で発覚）。localhost 以外は https に固定した。
+
+### 残課題
+
+- **実接続は未検証**。デプロイと下記のユスケ設定が要る。ここを通すまで「動く」とは言えない。
+  1. `cd mcp && npm install && npx wrangler kv namespace create OAUTH_KV` → 出た id を `wrangler.toml` に貼る
+  2. Supabase Dashboard → Authentication → URL Configuration → Redirect URLs に `https://mcp.norireco.app/callback` を追加（**これが無いと Google ログインから戻れない**）
+  3. `npx wrangler deploy` → Claude の「カスタムコネクタ」に `https://mcp.norireco.app/mcp`
+- ログインは Google のみ（本体のマジックリンクは未対応）。
+- 列車名は手入力扱い（`train_id` は常に NULL）。マスター照合は未実装。
+- 写真添付・記録の削除・完乗率の取得は MVP スコープ外。
+- レート制限は未実装（当面は自分だけが使う前提）。
+
+---
+
 ## 303. v456 — 📦 エクスポートの写真が全滅する罠を修正（サムネ表示済み画像は CORS キャッシュ汚染で取れない）
 
 **カテゴリ**: A（v455 を本番実データで実行したユスケの報告「写真は失敗してますね」= 旅程 18 / 駅メモ 3 / キャラ 14 は成功、写真 0・失敗 1）

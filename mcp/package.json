@@ -1,0 +1,22 @@
+{
+  "name": "norireco-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "乗レコ MCP サーバ (AI チャットから乗車記録をつける Cloudflare Worker)",
+  "scripts": {
+    "build-index": "node scripts/build-index.mjs",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "dependencies": {
+    "@cloudflare/workers-oauth-provider": "^0.10.3",
+    "@modelcontextprotocol/server": "2.0.0",
+    "agents": "^0.22.0",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "wrangler": "^4.93.1"
+  }
+}

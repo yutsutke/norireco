@@ -1,0 +1,26 @@
+name = "norireco-mcp"
+main = "src/index.js"
+compatibility_date = "2026-08-01"
+# agents の MCP ハンドラが AsyncLocalStorage を使う (認証コンテキストの受け渡し)
+compatibility_flags = ["nodejs_compat"]
+
+# 公開設定 (git に commit して OK)
+[vars]
+SUPABASE_URL = "https://zkscxhhlyhdaanisjhdi.supabase.co"
+# frontend (js/05-supabase-data.js) と同じ公開 anon key。RLS 前提なので秘密ではない
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inprc2N4aGhseWhkYWFuaXNqaGRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNTAzNjcsImV4cCI6MjA5MzcyNjM2N30.rGOli3UJjjBtF8caD7NXaoCYdfgbIyv4j_GCdjmPpsU"
+
+# OAuth のクライアント・グラント・トークンと、Supabase の refresh token を入れる KV。
+# 初回だけ以下を実行して、出力された id をここに貼る:
+#   npx wrangler kv namespace create OAUTH_KV
+[[kv_namespaces]]
+binding = "OAUTH_KV"
+id = "PUT_KV_NAMESPACE_ID_HERE"
+
+# Custom Domain (norireco.app は Cloudflare DNS 管理下なので自動 bind)
+[[routes]]
+pattern = "mcp.norireco.app"
+custom_domain = true
+
+[observability]
+enabled = true

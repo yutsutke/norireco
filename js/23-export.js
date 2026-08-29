@@ -140,7 +140,7 @@ function stationNameById(id) {
 }
 
 const PRECISION_LABEL = { minute: '分まで', day: '日まで', month: '月ごろ', year: '年ごろ', unknown: '不明' };
-const SOURCE_LABEL = { gps_button: 'GPS', manual: '手動' };
+const SOURCE_LABEL = { gps_button: 'GPS', manual: '手動', mcp: 'AIチャット' };
 
 // 区間ごとの列車・車両を「あずさ [E353系] / [205系]」形式に集約 (v379 の sources パターン)
 function tripTrainSummary(t) {
