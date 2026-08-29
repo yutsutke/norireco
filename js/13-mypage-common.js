@@ -309,6 +309,7 @@ export async function renderMypage() {
           <div class="mp-username-sm">ゲスト</div>
           <div class="mp-uid-sm">未ログイン</div>
         </div>
+        <button class="mp-mcp-btn-sm" title="AI チャットから記録する" onclick="openMcpModal()">🤖</button>
         <button class="mp-export-btn-sm" title="データをエクスポート (この端末の記録)" onclick="openExportModal()">📦</button>
         <button class="mp-logout-btn-sm" onclick="openAuthModal()"
                 style="background:var(--gold);color:#000;font-weight:700;padding:6px 10px;font-size:11px;border-radius:6px;width:auto;">🔑 ログイン</button>
@@ -382,6 +383,7 @@ export async function renderMypage() {
         <div class="mp-uid-sm">${email}</div>
         ${_mpStatusChip()}
       </div>
+      <button class="mp-mcp-btn-sm" title="AI チャットから記録する" onclick="openMcpModal()">🤖</button>
       <button class="mp-export-btn-sm" title="データをエクスポート" onclick="openExportModal()">📦</button>
       <button class="mp-logout-btn-sm" onclick="if(confirm('ログアウトしますか?'))signOutUser()">×</button>
     </div>

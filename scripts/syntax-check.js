@@ -56,6 +56,7 @@ const FILES = [
   '21-bulk-record',
   '22-celebrate',
   '23-export',
+  '24-mcp-guide',
   'share-japan-geo',
 ];
 

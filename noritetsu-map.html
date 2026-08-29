@@ -430,6 +430,16 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 /* 📦 エクスポートボタン (v455) — ログアウトボタンの隣。hover はゴールド (破壊的操作でないため赤にしない) */
 .mp-export-btn-sm{width:26px;height:26px;border-radius:50%;background:rgba(140,160,179,.1);color:var(--silver);border:1px solid var(--track);font-size:12px;cursor:pointer;font-family:inherit;flex-shrink:0;line-height:1;margin-right:6px;}
 .mp-export-btn-sm:hover{background:rgba(242,169,0,.15);color:var(--gold);border-color:rgba(242,169,0,.4);}
+/* 🤖 AI チャット案内ボタン (v458) — 📦 の隣。同じ「壊さない操作」なので同じ見た目 */
+.mp-mcp-btn-sm{width:26px;height:26px;border-radius:50%;background:rgba(140,160,179,.1);color:var(--silver);border:1px solid var(--track);font-size:12px;cursor:pointer;font-family:inherit;flex-shrink:0;line-height:1;margin-right:6px;}
+.mp-mcp-btn-sm:hover{background:rgba(242,169,0,.15);color:var(--gold);border-color:rgba(242,169,0,.4);}
+/* 🤖 AI チャット案内モーダル (v458) */
+.mcp-say{background:rgba(14,24,36,.6);border-left:3px solid var(--gold);border-radius:0 8px 8px 0;padding:10px 12px;font-size:13px;line-height:1.7;margin:10px 0 14px;}
+.mcp-steps{margin:0;padding-left:1.2em;font-size:13px;line-height:1.9;}
+.mcp-steps li{margin-bottom:2px;}
+.mcp-url{display:block;background:rgba(14,24,36,.6);border:1px solid var(--track);border-radius:8px;padding:10px 12px;font-size:12px;word-break:break-all;user-select:all;margin:8px 0 6px;}
+.mcp-copy-btn{display:block;width:100%;background:var(--gold);color:#000;font-weight:800;font-size:14px;border:none;border-radius:10px;padding:12px;cursor:pointer;font-family:inherit;}
+.mcp-status{font-size:11px;color:var(--gold);min-height:1.2em;margin-top:6px;}
 /* 📦 エクスポートモーダル (v455) */
 .export-cat{display:flex;align-items:center;gap:8px;padding:10px 4px;font-size:14px;border-bottom:1px solid rgba(46,74,99,.35);cursor:pointer;}
 .export-cat input{width:17px;height:17px;accent-color:var(--gold);flex-shrink:0;}
@@ -1722,6 +1732,36 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
   </div>
 </div>
 
+<!-- 🤖 AI チャットから記録 モーダル (v458) — マイページヘッダの 🤖 から開く。
+     乗レコ の MCP サーバ (mcp.norireco.app) を AI チャットに繋ぐ手順の案内。
+     fixed 全画面のため .content 内は不可 (v433/v446 教訓)、top-level に置く。ロジックは js/24-mcp-guide.js -->
+<div class="memo-modal" id="mcp-modal" onclick="if(event.target===this)closeMcpModal()">
+  <div class="memo-sheet" style="max-width:520px">
+    <div class="sh"></div>
+    <div class="modal-title">🤖 AI チャットから記録する</div>
+    <div class="modal-sub" style="color:var(--silver);font-size:11px;margin-bottom:4px">
+      Claude など MCP に対応した AI チャットに 乗レコ を繋ぐと、話しかけるだけで乗車記録を作れます。
+    </div>
+    <div class="mcp-say">「今日、中央線で新宿から八王子まで乗った。記録して」</div>
+    <ol class="mcp-steps">
+      <li>AI チャットの設定で「カスタムコネクタを追加」を開く</li>
+      <li>下の URL を貼って追加する</li>
+      <li>「接続」を押して Google でログインする</li>
+    </ol>
+    <code class="mcp-url" id="mcp-url">https://mcp.norireco.app/mcp</code>
+    <button class="mcp-copy-btn" onclick="copyMcpUrl()">📋 URL をコピー</button>
+    <div class="mcp-status" id="mcp-copy-status"></div>
+    <div class="export-note">
+      ・路線と駅の検索・旅程の保存・直近の旅程の読み取りができます（写真の追加や記録の削除はできません）。<br>
+      ・乗り換えを含む旅程もそのまま話せます。1 本で繋がらない区間は、AI が乗換候補を出して確かめてきます。<br>
+      ・GPS を使わない自己申告の記録として、記録方法「AIチャット」で保存されます。<br>
+      ・つなぐには Google ログインが必要です。記録はあなたのアカウントにだけ入り、他の人からは見えません。<br>
+      ・使いすぎ防止のため 1 日 500 回・記録 60 件までにしています。
+    </div>
+    <button class="btn-cls" onclick="closeMcpModal()">閉じる</button>
+  </div>
+</div>
+
 <!-- Station Action Sheet (v253) -->
 <!-- 通常モードで駅マーカータップ → 手動記録 / メモ / 色変更 / (キャラあればキャラ) のメニュー -->
 <div class="memo-modal" id="station-action-modal" onclick="if(event.target===this)closeStationActionSheet()">
@@ -1848,6 +1888,7 @@ body:not(.user-authed) .fab-login-only{display:none !important;}
 <script type="module" src="js/19-drag-sort.js"></script>
 <script type="module" src="js/22-celebrate.js"></script>
 <script type="module" src="js/23-export.js"></script>
+<script type="module" src="js/24-mcp-guide.js"></script>
 <script type="module" src="js/09-tabs-stats.js"></script>
 <script type="module" src="js/10-init.js"></script>
 </body>
