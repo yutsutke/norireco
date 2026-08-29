@@ -8,44 +8,32 @@
 // データ: ./data/lines-index.json は mcp/scripts/build-index.mjs の生成物。
 //   本体 js/02b-service-lines-builder.js と同じ手順で駅 id を解決済み。
 import INDEX from './data/lines-index.json';
+import { normLine, normStation } from './norm.js';
 
 const LINES = INDEX.lines;
 
-// 駅名の正規化。本体 04b-ride-record.js の normStName (ケ→ヶ・空白除去) が土台。
-// 検索用にはさらに全角半角の揺れ (NFKC)・中黒・末尾の「駅」を吸収する。
-function normStation(s) {
-  if (!s) return '';
-  return String(s)
-    .normalize('NFKC')
-    .replace(/ケ/g, 'ヶ')
-    .replace(/[\s・]/g, '')
-    .replace(/駅$/, '')
-    .toLowerCase();
-}
-
-// 系統名の正規化。「JR 中央線（快速）」→「jr中央線快速」
-function normLine(s) {
-  if (!s) return '';
-  return String(s)
-    .normalize('NFKC')
-    .replace(/[\s・()（）「」]/g, '')
-    .toLowerCase();
-}
-
-let _stationIndex = null; // 正規化駅名 → [{ line, idx }]
-function stationIndex() {
-  if (_stationIndex) return _stationIndex;
-  _stationIndex = new Map();
+// 正規化駅名 → [{ line, idx }]。
+//
+// **module 直下で組む (遅延させない)。** Worker ではモジュール評価は「起動時間」
+// (上限 400ms) の枠で走るのに対し、リクエスト中の計算は 1 リクエストあたりの CPU
+// 上限 (無料プランは 10ms) に当たる。1 万駅ぶんの索引構築を最初のリクエストの中で
+// やると、そのリクエストだけ失敗しうる。
+//
+// st[i][2] はビルド時に焼き込んだ正規化名 (src/norm.js)。ここで normalize を回すと
+// 起動時間が数倍になるので使わない。
+const STATION_INDEX = (() => {
+  const idx = new Map();
   for (const line of LINES) {
     for (let i = 0; i < line.st.length; i++) {
-      const key = normStation(line.st[i][0]);
-      let arr = _stationIndex.get(key);
-      if (!arr) { arr = []; _stationIndex.set(key, arr); }
+      const key = line.st[i][2] || normStation(line.st[i][0]);
+      let arr = idx.get(key);
+      if (!arr) { arr = []; idx.set(key, arr); }
       arr.push({ line, idx: i });
     }
   }
-  return _stationIndex;
-}
+  return idx;
+})();
+const stationIndex = () => STATION_INDEX;
 
 export function lineSummary(line) {
   return {
@@ -129,6 +117,37 @@ export function searchStations(query, limit = 8) {
   }));
 }
 
+/**
+ * 駅名 → その駅を含む系統の Map(line.id → {line, idx})。
+ *
+ * **完全一致を優先し、どこにも無いときだけ部分一致に落とす。** 系統ごとに独立して
+ * 部分一致を許すと、「立川」が (立川を含まない) 西武拝島線の「西武立川」に一致して
+ * しまい、頼んでいない駅で解決される (2026-08-29 に乗換候補の実測で発見)。
+ *
+ * 索引 (stationIndex) 経由なので全系統をなめない。ここを線形探索にすると 1 回の
+ * 呼び出しで 1 万駅ぶんの正規化が走り、Worker の CPU 時間を食い潰す。
+ *
+ * @param {Set<string>} [allowedIds] 系統を絞る場合の id 集合 (line 指定があるとき)
+ */
+function linesWithStation(query, allowedIds) {
+  const q = normStation(query);
+  if (!q) return new Map();
+  const pick = (entries, out) => {
+    for (const e of entries) {
+      if (allowedIds && !allowedIds.has(e.line.id)) continue;
+      if (!out.has(e.line.id)) out.set(e.line.id, e);
+    }
+  };
+  const exact = new Map();
+  pick(stationIndex().get(q) || [], exact);
+  if (exact.size > 0) return exact;
+  const partial = new Map();
+  for (const [key, entries] of stationIndex()) {
+    if (key.includes(q)) pick(entries, partial);
+  }
+  return partial;
+}
+
 function indexOfStation(line, query) {
   const q = normStation(query);
   let hit = -1;
@@ -156,45 +175,44 @@ function indexOfStation(line, query) {
 export function resolveSegment({ line, from, to }) {
   if (!from) return { ok: false, error: '乗車駅 (from) が指定されていません' };
 
-  // 候補系統: line 指定があれば名前解決、無ければ全系統から from/to の両方を含むものを探す
-  let candidates;
+  // 候補系統: line 指定があれば名前で絞り込み、無ければ全系統が対象
+  let allowedIds = null;
   if (line) {
     const byId = findLineById(line);
     if (byId) {
-      candidates = [byId];
+      allowedIds = new Set([byId.id]);
     } else {
       const q = normLine(line);
-      candidates = LINES.map((l) => ({ l, s: scoreLine(l, q) }))
-        .filter((x) => x.s > 0)
-        .sort((a, b) => b.s - a.s)
-        .map((x) => x.l);
-      if (candidates.length === 0) {
+      const matched = LINES.filter((l) => scoreLine(l, q) > 0);
+      if (matched.length === 0) {
         return { ok: false, error: `「${line}」に一致する系統が見つかりません`, candidates: [] };
       }
+      allowedIds = new Set(matched.map((l) => l.id));
     }
-  } else {
-    candidates = LINES;
   }
 
   // from (と to) が実際に並んでいる系統だけを残す
+  const fromHits = linesWithStation(from, allowedIds);
+  const toHits = (to == null || to === '') ? null : linesWithStation(to, allowedIds);
   const usable = [];
-  for (const l of candidates) {
-    const fi = indexOfStation(l, from);
-    if (fi < 0) continue;
-    if (to == null || to === '') { usable.push({ l, fi, ti: fi }); continue; }
-    const ti = indexOfStation(l, to);
-    if (ti < 0) continue;
-    if (ti === fi) continue; // 同じ駅を指している = 区間にならない
-    usable.push({ l, fi, ti });
+  for (const [lineId, f] of fromHits) {
+    if (!toHits) { usable.push({ l: f.line, fi: f.idx, ti: f.idx }); continue; }
+    const t = toHits.get(lineId);
+    if (!t || t.idx === f.idx) continue; // 同じ駅を指している = 区間にならない
+    usable.push({ l: f.line, fi: f.idx, ti: t.idx });
   }
 
   if (usable.length === 0) {
     const hint = line
       ? `「${line}」に ${from}${to ? ` と ${to}` : ''} の両方が含まれる系統が見つかりません`
       : `${from}${to ? ` と ${to}` : ''} の両方を含む系統が見つかりません`;
+    // 1 本で繋がらないだけかもしれないので、乗り換え経路を自分で探して返す。
+    // AI に「どう行きましたか」と人へ聞き返させるより、候補を出して選んでもらう方が速い。
+    const routes = to ? suggestRoutes(from, to) : [];
     return {
       ok: false,
       error: hint,
+      routes: routes.length > 0 ? routes : undefined,
       candidates: line ? searchLines(line) : searchStations(from),
     };
   }
@@ -253,4 +271,183 @@ export function stationNameById(id) {
     }
   }
   return _nameById.get(id) || null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 乗換候補の自動提案
+//
+// 「東京→拝島」のように 1 本の系統では繋がらない区間を、AI に聞き返させる代わりに
+// 「どこで乗り換えれば繋がるか」を計算して返す。本体 js/07-record-mode.js の
+// findTransferCandidates (v365) / v366 直通優先 / v367 徒歩乗換 を移植したもの:
+//   - a を含む系統 linesA × b を含む系統 linesB の組合せで、両方に乗る駅 x を探す
+//   - 駅一致は駅 id ベース (同名異所を混同しない)。直接無ければ徒歩乗換グループで探す
+//   - 乗換駅ごとに dedupe し「総駅数最小」を残す (同じ駅で複数の系統組合せを並べない)
+//   - 総駅数 = (a→x) + (x→b)。乗換駅を 2 系統ぶん重複カウントするのは本体の数え方と同じ
+//   - lineA.through に lineB が含まれる = 直通電車がある → 総駅数が多くても上位に出す
+// ═══════════════════════════════════════════════════════════════════════
+
+let _idxMaps = null; // line.id → Map(駅 id → その系統での位置)
+function stationIdxMap(line) {
+  if (!_idxMaps) _idxMaps = new Map();
+  let m = _idxMaps.get(line.id);
+  if (!m) {
+    m = new Map();
+    for (let i = 0; i < line.st.length; i++) {
+      const id = line.st[i][1];
+      if (id && !m.has(id)) m.set(id, i);
+    }
+    _idxMaps.set(line.id, m);
+  }
+  return m;
+}
+
+let _walkOf = null; // 駅 id → 同じ徒歩乗換グループの他の駅 id[]
+function walkPartners(stationId) {
+  if (!_walkOf) {
+    _walkOf = new Map();
+    for (const group of INDEX.walk_groups || []) {
+      for (const id of group) _walkOf.set(id, group);
+    }
+  }
+  const group = _walkOf.get(stationId);
+  return group ? group.filter((id) => id !== stationId) : [];
+}
+
+let _linesAt = null; // 駅 id → その駅を通る系統[]
+function linesAtStation(stationId) {
+  if (!_linesAt) {
+    _linesAt = new Map();
+    for (const line of LINES) {
+      for (const [, id] of line.st) {
+        if (!id) continue;
+        let arr = _linesAt.get(id);
+        if (!arr) { arr = []; _linesAt.set(id, arr); }
+        if (arr[arr.length - 1] !== line) arr.push(line);
+      }
+    }
+  }
+  return _linesAt.get(stationId) || [];
+}
+
+const seg = (line, fromIdx, toIdx) => ({
+  line: line.name,
+  line_id: line.id,
+  from: line.st[fromIdx][0],
+  to: line.st[toIdx][0],
+  station_count: Math.abs(toIdx - fromIdx) + 1,
+});
+
+function endpointLines(query) {
+  return [...linesWithStation(query).values()].map((e) => ({ line: e.line, i: e.idx }));
+}
+
+// 1 回乗換で繋がる経路。本体 findTransferCandidates の移植。
+function oneHop(linesA, linesB, toQuery, limit) {
+  const toNorm = normStation(toQuery);
+  const best = new Map();
+  for (const { line: lineA, i: aIdx } of linesA) {
+    const through = new Set(lineA.through || []);
+    for (let i = 0; i < lineA.st.length; i++) {
+      const [xName, xId] = lineA.st[i];
+      if (normStation(xName) === toNorm) continue;
+      const isA = i === aIdx;
+      for (const { line: lineB, i: bIdx } of linesB) {
+        if (lineB.id === lineA.id) continue;
+        const map = stationIdxMap(lineB);
+        let xOnB = xId ? map.get(xId) : undefined;
+        let walkTo = null;
+        if (xOnB === undefined && xId) {
+          // 直接乗り換えられないなら「歩いて別の駅へ」を探す (新宿 → 西武新宿 など)
+          for (const pid of walkPartners(xId)) {
+            const j = map.get(pid);
+            if (j !== undefined) { xOnB = j; walkTo = lineB.st[j][0]; break; }
+          }
+        }
+        if (xOnB === undefined || xOnB === bIdx) continue;
+        // x が乗車駅そのもの = 徒歩乗換のときだけ意味がある
+        // (直接乗り換えられるなら、そもそも 1 本で繋がっていて ここに来ない)
+        if (isA && !walkTo) continue;
+
+        const first = seg(lineA, aIdx, i);
+        const second = seg(lineB, xOnB, bIdx);
+        const total = first.station_count + second.station_count;
+        const direct = through.has(lineB.id);
+        const key = `${xId || xName}${walkTo ? `|w_${walkTo}` : ''}`;
+        const prev = best.get(key);
+        const better = !prev
+          || (direct && !prev.direct_through)
+          || (direct === !!prev.direct_through && total < prev.total_stations);
+        if (better) {
+          best.set(key, {
+            transfer_at: xName,
+            walk_to: walkTo || undefined,
+            direct_through: direct || undefined,
+            total_stations: total,
+            segments: [first, second],
+          });
+        }
+      }
+    }
+  }
+  return [...best.values()]
+    .sort((p, q) => (Number(!!q.direct_through) - Number(!!p.direct_through)) || (p.total_stations - q.total_stations))
+    .slice(0, limit);
+}
+
+// 2 回乗換の fallback (1 回で繋がらない遠距離用)。本体 find2HopTransferCandidates 相当。
+// Worker の CPU 時間は有限なので、探索量に上限を置いて超えたらそこまでの結果を返す。
+function twoHop(linesA, linesB, limit, budget = 40000) {
+  const bIdxOf = new Map(linesB.map(({ line, i }) => [line.id, i]));
+  const bStations = new Set();
+  for (const { line } of linesB) for (const [, id] of line.st) if (id) bStations.add(id);
+
+  const best = new Map();
+  let work = 0;
+  for (const { line: lineA, i: aIdx } of linesA) {
+    for (let i = 0; i < lineA.st.length; i++) {
+      if (i === aIdx) continue;
+      const [xName, xId] = lineA.st[i];
+      if (!xId) continue;
+      for (const lineC of linesAtStation(xId)) {
+        if (lineC.id === lineA.id || bIdxOf.has(lineC.id)) continue;
+        const xOnC = stationIdxMap(lineC).get(xId);
+        if (xOnC === undefined) continue;
+        for (let j = 0; j < lineC.st.length; j++) {
+          if (++work > budget) return finish(best, limit);
+          const [yName, yId] = lineC.st[j];
+          if (!yId || j === xOnC || !bStations.has(yId)) continue;
+          for (const { line: lineB } of linesB) {
+            const yOnB = stationIdxMap(lineB).get(yId);
+            const bIdx = bIdxOf.get(lineB.id);
+            if (yOnB === undefined || yOnB === bIdx) continue;
+            const parts = [seg(lineA, aIdx, i), seg(lineC, xOnC, j), seg(lineB, yOnB, bIdx)];
+            const total = parts.reduce((n, p) => n + p.station_count, 0);
+            const key = `${xId}|${yId}`;
+            const prev = best.get(key);
+            if (!prev || total < prev.total_stations) {
+              best.set(key, { transfer_at: `${xName} → ${yName}`, total_stations: total, segments: parts });
+            }
+          }
+        }
+      }
+    }
+  }
+  return finish(best, limit);
+}
+
+function finish(best, limit) {
+  return [...best.values()].sort((p, q) => p.total_stations - q.total_stations).slice(0, limit);
+}
+
+/**
+ * from → to が 1 本の系統で繋がらないときに、乗り換え経路の候補を返す。
+ * @returns {object[]} 総駅数の少ない順 (直通がある経路は優先)。見つからなければ空配列
+ */
+export function suggestRoutes(from, to, limit = 5) {
+  const linesA = endpointLines(from);
+  const linesB = endpointLines(to);
+  if (linesA.length === 0 || linesB.length === 0) return [];
+  const hop1 = oneHop(linesA, linesB, to, limit);
+  if (hop1.length > 0) return hop1;
+  return twoHop(linesA, linesB, Math.min(limit, 3));
 }

@@ -46,7 +46,7 @@ export function resolveSegments(inputSegments) {
   for (let i = 0; i < inputSegments.length; i++) {
     const s = inputSegments[i];
     const r = resolveSegment({ line: s.line, from: s.from, to: s.to });
-    if (!r.ok) return { ok: false, error: r.error, candidates: r.candidates, at: i + 1 };
+    if (!r.ok) return { ok: false, error: r.error, candidates: r.candidates, routes: r.routes, at: i + 1 };
     resolved.push({
       ...r.segment,
       train_category: s.train_category || null,

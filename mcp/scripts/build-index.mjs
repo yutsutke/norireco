@@ -28,6 +28,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+// 実行時 (src/lines.js) と同じ関数を使う。別実装にすると索引と検索語がずれる。
+import { normStation } from '../src/norm.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, '..', '..');
@@ -36,6 +38,9 @@ const OUT = path.join(HERE, '..', 'src', 'data', 'lines-index.json');
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
 const master = readJson('service_lines_master.json');
+// 徒歩乗換グループ (v367 で本体が使っているもの)。「新宿で降りて西武新宿から乗る」ような
+// 別名の駅同士を同一乗換地点として扱うために要る。
+const walkTransfers = readJson('walk_transfers.json');
 const mergedStations = readJson('merged_stations.json').stations || [];
 const LINES = [1, 2, 3, 4].flatMap((p) => readJson(`lines-p${p}.json`));
 
@@ -123,7 +128,8 @@ for (const sl of master.service_lines || []) {
     if (!coord) { droppedStations++; continue; }
     const id = resolveStationId(s.name, coord[0], coord[1]);
     if (!id) nullIds++;
-    st.push([s.name, id]);
+    // 3 要素目は正規化済みの駅名。実行時の索引構築を軽くするために焼き込む
+    st.push([s.name, id, normStation(s.name)]);
     coords.push({ lat: coord[0], lon: coord[1] });
   }
   // 02b と同じ足切り: 座標が付いた駅が 2 未満の系統は SERVICE_LINES に載らない
@@ -148,15 +154,23 @@ for (const sl of master.service_lines || []) {
     operator: sl.operator || '',
     region: region || '',
     circular: !!sl.is_circular,
+    // 直通系統。乗換候補で「実は直通電車で乗換不要」を優先表示するのに使う (v366 と同じ狙い)
+    through: Array.isArray(sl.through_lines) ? sl.through_lines : [],
     st,
   });
 }
+
+// 徒歩乗換グループは駅 id の配列だけ持てば足りる (名前は lines 側から引ける)
+const walkGroups = (walkTransfers.groups || [])
+  .map((g) => (g.stations || []).filter(Boolean))
+  .filter((ids) => ids.length >= 2);
 
 const index = {
   built_at: new Date().toISOString().slice(0, 10),
   source_updated_at: master.updated_at || '',
   note: 'mcp/scripts/build-index.mjs の生成物。手で編集しないこと。',
   lines,
+  walk_groups: walkGroups,
 };
 
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
@@ -166,3 +180,4 @@ const bytes = fs.statSync(OUT).size;
 const stationCount = lines.reduce((n, l) => n + l.st.length, 0);
 console.log(`build-index: ${lines.length} 系統 / ${stationCount} 駅 → ${OUT} (${(bytes / 1024).toFixed(0)} KB)`);
 console.log(`  座標が引けず落とした駅: ${droppedStations} / 駅 2 未満で落とした系統: ${droppedLines} / 駅 id が付かなかった駅: ${nullIds}`);
+console.log(`  直通を持つ系統: ${lines.filter((l) => l.through.length > 0).length} / 徒歩乗換グループ: ${walkGroups.length}`);

@@ -66,6 +66,19 @@ const tripInput = {
 async function resolveOrFail(segments) {
   const r = resolveSegments(segments);
   if (!r.ok) {
+    // 乗換候補が出せたなら、そちらを主役にする。「1 本では繋がらないので教えて」と
+    // 人に聞き返すより、「この経路で合っていますか」と確かめる方が早い。
+    if (r.routes && r.routes.length > 0) {
+      return {
+        error: fail(`${r.at} 番目の区間は 1 本の系統では繋がりません。乗り換え経路の候補は次の通りです。`, {
+          routes: r.routes,
+          hint: 'どれか 1 つを選び、その segments を展開して (区間ごとに 1 つずつ) 呼び直してください。'
+            + ' direct_through が true の経路は直通電車があるので乗り換え不要のことがあります。'
+            + ' walk_to がある経路は、その駅まで歩いての乗り換えです。'
+            + ' どれも実際に乗った経路と違う場合は利用者に確認してください。',
+        }),
+      };
+    }
     return {
       error: fail(`${r.at} 番目の区間を解決できません: ${r.error}`, {
         candidates: r.candidates,
