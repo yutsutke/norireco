@@ -22,11 +22,22 @@ import { currentUserId, authBearerToken } from './12-auth.js';
 const SUPABASE_URL = 'https://zkscxhhlyhdaanisjhdi.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inprc2N4aGhseWhkYWFuaXNqaGRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNTAzNjcsImV4cCI6MjA5MzcyNjM2N30.rGOli3UJjjBtF8caD7NXaoCYdfgbIyv4j_GCdjmPpsU';
 
+// trip[] → RIDDEN_SEGS 用の区間配列。
+//
+// v461: `from_id` / `to_id` も持ち回る。
+//   v310 で segments に駅 id を入れ、v422 で 04b `rebuild()` を「id 優先・name フォールバック」に
+//   したが、ここが id を捨てていたため **id 分岐は一度も通っていなかった** (常に name 側)。
+//   さらに 07-record-mode / 21-bulk-record は保存直後に trip.segments を RIDDEN_SEGS へ
+//   そのまま push する (= id 入り) ので、同じデータが「保存直後は id 経路 / リロード後は
+//   name 経路」と食い違っていた。ここで id を通して両経路を揃える。
+//   現行マスタでは両者の着地点は完全一致 (全 638 系統 10,501 駅で id 引き == name 引き、
+//   id が null の駅は 0) なので挙動は変わらない。効くのは駅名が改称されたときで、
+//   旧名で保存済みの trip が地図から静かに消えるのを id 側が受け止める。
 function tripsToSegs(trips) {
   const segs = [];
   trips.forEach(trip => {
     (trip.segments || []).forEach(seg => {
-      segs.push({ lineId: seg.lineId, from: seg.from, to: seg.to });
+      segs.push({ lineId: seg.lineId, from: seg.from, to: seg.to, from_id: seg.from_id, to_id: seg.to_id });
     });
   });
   return segs;
