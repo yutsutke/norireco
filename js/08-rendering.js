@@ -515,9 +515,10 @@ function attachLineClick(layer, sl) {
 
 // 営業系統 1本のポリライン描画
 // 表示モード (window._mapDisplayMode):
-//   'both'     — 通常 (未乗車=点線 / 乗車済=点線+solid run)
-//   'ridden'   — 乗車区間のみ表示 (純未乗車系統は skip、partial の bg dotted は隠す)
+//   'both'     — 通常 (未乗区間=点線 / 乗車区間=solid run)
+//   'ridden'   — 乗車区間のみ表示 (純未乗車系統は skip、partial の点線は隠す)
 //   'unridden' — 未乗車区間のみ表示 (完全乗車系統は skip、partial の solid run は隠す)
+// v460: 点線は系統全体ではなく未乗の駅間だけに引く (unriddenEdgeRuns / drawSlUnriddenRun)。
 function drawServiceLineBase(sl) {
   const canvas = CANVAS;
   if (!sl || !sl.stations || sl.stations.length < 2) return;
@@ -565,15 +566,16 @@ function drawServiceLineBase(sl) {
   } else {
     // 乗車済み (一部 or 完全): 背景点線 (未乗区間) + solid 乗車区間
     // mode='ridden' なら背景点線を抑制、mode='unridden' なら solid 乗車区間を抑制
+    //
+    // v460: 背景点線は **未乗区間だけ** に描く (旧実装は系統全体に 1 本引いていた)。
+    //   mode='both' では solid が上に載るので旧実装でも見た目は同じだったが、
+    //   mode='unridden' (駅フィルタ □未訪問 のみ ON) では solid が抑制されるため、
+    //   乗ったばかりの区間が点線のまま残り「記録したのに点線が消えない」ように見えていた
+    //   (ユスケ報告 2026-09-12 / 多摩モノレール 立川北→多摩センター + 小田急多摩線 多摩センター→唐木田)。
     if (mode !== 'ridden') {
-      const bg = L.polyline(latlngs, {
-        color: sl.color, weight: 2.2, opacity: 0.35,
-        dashArray: '6 5', lineCap: 'round', renderer: canvas
-      });
-      bg._norireco_priority = priority;
-      attachLineClick(bg, sl);
-      allLayers.push(bg);
-      if (visible) bg.addTo(NORIRECO.map.instance);
+      for (const run of unriddenEdgeRuns(sl, rs)) {
+        drawSlUnriddenRun(sl, run, canvas, priority, visible);
+      }
     }
     if (!IS_MOBILE) {
       const hover = L.polyline(latlngs, {color:'transparent',weight:10,opacity:0,lineCap:'round'})
@@ -612,6 +614,53 @@ function drawServiceLineBase(sl) {
       }
     }
   }
+}
+
+// v460: 未乗区間 (点線で描くべき区間) を「駅」ではなく「駅間」単位で求める。
+//
+// 乗車判定は駅単位 (slRiddenSt = 駅 id Set) だが、線を塗るのは駅間なので、
+// **両端の駅がどちらも乗車済みの駅間だけ** を「乗った線路」とみなす。
+// 乗車駅 → 隣の未乗車駅 の駅間は乗っていない線路なので点線側に残る
+// (これは旧実装の見た目 = solid run が乗車駅で止まり、その先は点線、と一致する)。
+//
+// 返り値は駅間 index の連続範囲 [startEdge, endEdge] の配列。
+// 駅間 e は stations[e] と stations[e+1] を結ぶ (環状線は最後の駅間 n-1 が stations[n-1]→stations[0])。
+function unriddenEdgeRuns(sl, rs) {
+  const n = sl.stations.length;
+  const isR = (i) => {
+    const id = sl.stations[i % n].id;
+    return !!id && rs.has(id);
+  };
+  const edgeCount = sl.circular ? n : n - 1;
+  const runs = [];
+  let start = null;
+  for (let e = 0; e < edgeCount; e++) {
+    const unridden = !(isR(e) && isR(e + 1));
+    if (unridden && start === null) start = e;
+    if (!unridden && start !== null) { runs.push([start, e - 1]); start = null; }
+  }
+  if (start !== null) runs.push([start, edgeCount - 1]);
+  return runs;
+}
+
+function drawSlUnriddenRun(sl, [startEdge, endEdge], canvas, priority, visible) {
+  const n = sl.stations.length;
+  const latlngs = [];
+  for (let e = startEdge; e <= endEdge; e++) {
+    const s = sl.stations[e % n];
+    latlngs.push([s.lat, s.lon]);
+  }
+  const last = sl.stations[(endEdge + 1) % n];
+  latlngs.push([last.lat, last.lon]);
+  if (latlngs.length < 2) return;
+  const bg = L.polyline(latlngs, {
+    color: sl.color, weight: 2.2, opacity: 0.35,
+    dashArray: '6 5', lineCap: 'round', renderer: canvas
+  });
+  bg._norireco_priority = priority;
+  attachLineClick(bg, sl);
+  allLayers.push(bg);
+  if (visible) bg.addTo(NORIRECO.map.instance);
 }
 
 function drawSlRiddenRun(sl, fromIdx, toIdx, canvas, priority, visible) {
