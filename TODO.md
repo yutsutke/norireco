@@ -276,7 +276,8 @@ git log --oneline -20
   - 理由 (今やらない・v422 判断): SERVICE_LINE 内で駅名は一意なので「正しい SL に resolve → name 照合」は実質 id 照合と等価 = **体験改善ゼロ**。逆に backfill 漏れで履歴 trip が地図から消える silent 破壊リスクを負うだけ
   - 発動条件: グローバル展開 or AI 自動列車判定の着手直前（その頃データモデル自体が変わる可能性が高い）
   - 今のうちにやること: 特になし（新規 trip は既に from_id/to_id 入り、読み取りは id 優先 or name fallback で正しく動作中）。工数感のみ記録 = **1.5〜2 セッション級**（① 残 ~13 サイト id 優先化 ② segment backfill ③ fallback + 旧 N02 救済 (04b:331-389 / 02b candidateN02Ids) 撤去 ④ 全層回帰検証）。詳細 → CHANGELOG §272
-  - 追記 (v460 調査で判明): 04b `rebuild` の id 優先分岐は **実際には一度も通っていない**。`js/05-supabase-data.js` の `tripsToSegs` が `{lineId, from, to}` しか積まず `seg.from_id` / `to_id` を落とすため、常に name フォールバック側に落ちる。1 系統の中に同名駅は無いので実害は無いが、①のとき `tripsToSegs` に 2 フィールド足すのが起点になる
+  - ✅ 解消 (v461): `tripsToSegs` が `seg.from_id` / `to_id` を落としていたため 04b `rebuild` の id 優先分岐が一度も通っていなかった件を修正（v460 調査で発覚）。全 638 系統 10,501 駅で「id 引き == name 引き」「id が null の駅 0 件」、擬似旅程 1,914 件で `slRiddenSt` 差分 0 を機械検証済（挙動不変）。詳細 → CHANGELOG §308
+  - これにより ① の前提が変わった: RIDDEN_SEGS に駅 id が乗るようになったので、**残る name 照合サイトは backfill を待たずに id 優先化できる**（name フォールバックを残したまま）。次に着手するなら `02b-service-lines-builder.globalStats` と `14-share-ogp.buildSegmentPolylines` の 2 つが手近（どちらも `sl.stations.findIndex(s => s.name === seg.from)` 1 行ずつ）。backfill が要るのは ③ の「name 照合の物理撤去」だけ
 
 ---
 
